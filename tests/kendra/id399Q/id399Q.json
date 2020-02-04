@@ -1,0 +1,704 @@
+{
+    "cfiles": {
+        "id399.c": {
+            "domains": [
+                "llvisp"
+            ], 
+            "functions": {
+                "function1": {
+                    "ppos": [
+                        {
+                            "cfgctxt": "if-expr_stmt:1", 
+                            "expctxt": "2op:1", 
+                            "line": 52, 
+                            "predicate": "initialized", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:0_stmt:2_if-then_stmt:1", 
+                            "expctxt": "2op:1_arg:1", 
+                            "line": 54, 
+                            "predicate": "initialized", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:0_stmt:2_if-then_stmt:1", 
+                            "expctxt": "arg:1", 
+                            "line": 54, 
+                            "predicate": "int-underflow", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:0_stmt:2_if-then_stmt:1", 
+                            "expctxt": "arg:1", 
+                            "line": 54, 
+                            "predicate": "int-overflow", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "return_stmt:3_if-then_stmt:1", 
+                            "expctxt": "", 
+                            "line": 54, 
+                            "predicate": "initialized", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }
+                    ], 
+                    "spos": [
+                        {
+                            "cfgctxt": "return_stmt:3_if-then_stmt:1", 
+                            "line": 54, 
+                            "predicate": "value-constraint", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "return_stmt:4_if-else_stmt:1", 
+                            "line": 58, 
+                            "predicate": "value-constraint", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }
+                    ]
+                }, 
+                "main": {
+                    "ppos": [
+			{
+			    "cfgctxt": "instr:0_stmt:5",
+			    "expctxt": "",
+			    "line": 68,
+			    "predicate": "stack-address-escape",
+			    "status": "safe",
+			    "tgtstatus": "safe"
+			},
+                        {
+                            "cfgctxt": "instr:1_stmt:5", 
+                            "expctxt": "ftarget", 
+                            "line": 69, 
+                            "predicate": "initialized", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:1_stmt:5", 
+                            "expctxt": "mem_lval_ftarget", 
+                            "line": 69, 
+                            "predicate": "initialized", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:1_stmt:5", 
+                            "expctxt": "mem_lval_ftarget", 
+                            "line": 69, 
+                            "predicate": "not-null", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:1_stmt:5", 
+                            "expctxt": "mem_lval_ftarget", 
+                            "line": 69, 
+                            "predicate": "valid-mem", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:1_stmt:5", 
+                            "expctxt": "mem_lval_ftarget", 
+                            "line": 69, 
+                            "predicate": "lower-bound", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:1_stmt:5", 
+                            "expctxt": "mem_lval_ftarget", 
+                            "line": 69, 
+                            "predicate": "upper-bound", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:2_stmt:5", 
+                            "expctxt": "var_lhs", 
+                            "line": 72, 
+                            "predicate": "index-lower-bound", 
+                            "status": "safe:delegated", 
+                            "tgtstatus": "safe:delegated"
+                        }, 
+                        {
+                            "cfgctxt": "instr:2_stmt:5", 
+                            "expctxt": "var_lhs", 
+                            "line": 72, 
+                            "predicate": "index-upper-bound", 
+                            "status": "violation", 
+                            "tgtstatus": "violation"
+                        }, 
+                        {
+                            "cfgctxt": "instr:2_stmt:5", 
+                            "expctxt": "index_var_lhs", 
+                            "line": 72, 
+                            "predicate": "initialized", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:2_stmt:5", 
+                            "expctxt": "rhs", 
+                            "line": 72, 
+                            "predicate": "signed-to-signed-cast-lb", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:2_stmt:5", 
+                            "expctxt": "rhs", 
+                            "line": 72, 
+                            "predicate": "signed-to-signed-cast-ub", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:1_stmt:5", 
+                            "expctxt": "mem_lval_ftarget", 
+                            "line": 69, 
+                            "predicate": "in-scope", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }
+                    ]
+                }
+            }
+        }, 
+        "id400.c": {
+            "domains": [
+                "llvisp"
+            ], 
+            "functions": {
+                "function1": {
+                    "ppos": [
+                        {
+                            "cfgctxt": "if-expr_stmt:1", 
+                            "expctxt": "2op:1", 
+                            "line": 52, 
+                            "predicate": "initialized", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:0_stmt:2_if-then_stmt:1", 
+                            "expctxt": "2op:1_arg:1", 
+                            "line": 54, 
+                            "predicate": "initialized", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:0_stmt:2_if-then_stmt:1", 
+                            "expctxt": "arg:1", 
+                            "line": 54, 
+                            "predicate": "int-underflow", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:0_stmt:2_if-then_stmt:1", 
+                            "expctxt": "arg:1", 
+                            "line": 54, 
+                            "predicate": "int-overflow", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "return_stmt:3_if-then_stmt:1", 
+                            "expctxt": "", 
+                            "line": 54, 
+                            "predicate": "initialized", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }
+                    ], 
+                    "spos": [
+                        {
+                            "cfgctxt": "return_stmt:3_if-then_stmt:1", 
+                            "line": 54, 
+                            "predicate": "value-constraint", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "return_stmt:4_if-else_stmt:1", 
+                            "line": 58, 
+                            "predicate": "value-constraint", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }
+                    ]
+                }, 
+                "main": {
+                    "ppos": [
+			{
+			    "cfgctxt": "instr:0_stmt:5",
+			    "expctxt": "",
+			    "line": 68,
+			    "predicate": "stack-address-escape",
+			    "status": "safe",
+			    "tgtstatus": "safe"
+			},
+                        {
+                            "cfgctxt": "instr:1_stmt:5", 
+                            "expctxt": "ftarget", 
+                            "line": 69, 
+                            "predicate": "initialized", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:1_stmt:5", 
+                            "expctxt": "mem_lval_ftarget", 
+                            "line": 69, 
+                            "predicate": "initialized", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:1_stmt:5", 
+                            "expctxt": "mem_lval_ftarget", 
+                            "line": 69, 
+                            "predicate": "not-null", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:1_stmt:5", 
+                            "expctxt": "mem_lval_ftarget", 
+                            "line": 69, 
+                            "predicate": "valid-mem", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:1_stmt:5", 
+                            "expctxt": "mem_lval_ftarget", 
+                            "line": 69, 
+                            "predicate": "lower-bound", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:1_stmt:5", 
+                            "expctxt": "mem_lval_ftarget", 
+                            "line": 69, 
+                            "predicate": "upper-bound", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:2_stmt:5", 
+                            "expctxt": "var_lhs", 
+                            "line": 72, 
+                            "predicate": "index-lower-bound", 
+                            "status": "safe:delegated", 
+                            "tgtstatus": "safe:delegated"
+                        }, 
+                        {
+                            "cfgctxt": "instr:2_stmt:5", 
+                            "expctxt": "var_lhs", 
+                            "line": 72, 
+                            "predicate": "index-upper-bound", 
+                            "status": "violation", 
+                            "tgtstatus": "violation"
+                        }, 
+                        {
+                            "cfgctxt": "instr:2_stmt:5", 
+                            "expctxt": "index_var_lhs", 
+                            "line": 72, 
+                            "predicate": "initialized", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:2_stmt:5", 
+                            "expctxt": "rhs", 
+                            "line": 72, 
+                            "predicate": "signed-to-signed-cast-lb", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:2_stmt:5", 
+                            "expctxt": "rhs", 
+                            "line": 72, 
+                            "predicate": "signed-to-signed-cast-ub", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:1_stmt:5", 
+                            "expctxt": "mem_lval_ftarget", 
+                            "line": 69, 
+                            "predicate": "in-scope", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }
+                    ]
+                }
+            }
+        }, 
+        "id401.c": {
+            "domains": [
+                "llvisp"
+            ], 
+            "functions": {
+                "function1": {
+                    "ppos": [
+                        {
+                            "cfgctxt": "if-expr_stmt:1", 
+                            "expctxt": "2op:1", 
+                            "line": 52, 
+                            "predicate": "initialized", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:0_stmt:2_if-then_stmt:1", 
+                            "expctxt": "2op:1_arg:1", 
+                            "line": 54, 
+                            "predicate": "initialized", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:0_stmt:2_if-then_stmt:1", 
+                            "expctxt": "arg:1", 
+                            "line": 54, 
+                            "predicate": "int-underflow", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:0_stmt:2_if-then_stmt:1", 
+                            "expctxt": "arg:1", 
+                            "line": 54, 
+                            "predicate": "int-overflow", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "return_stmt:3_if-then_stmt:1", 
+                            "expctxt": "", 
+                            "line": 54, 
+                            "predicate": "initialized", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }
+                    ], 
+                    "spos": [
+                        {
+                            "cfgctxt": "return_stmt:3_if-then_stmt:1", 
+                            "line": 54, 
+                            "predicate": "value-constraint", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "return_stmt:4_if-else_stmt:1", 
+                            "line": 58, 
+                            "predicate": "value-constraint", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }
+                    ]
+                }, 
+                "main": {
+                    "ppos": [
+			{
+			    "cfgctxt": "instr:0_stmt:5",
+			    "expctxt": "",
+			    "line": 68,
+			    "predicate": "stack-address-escape",
+			    "status": "safe",
+			    "tgtstatus": "safe"
+			},
+                        {
+                            "cfgctxt": "instr:1_stmt:5", 
+                            "expctxt": "ftarget", 
+                            "line": 69, 
+                            "predicate": "initialized", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:1_stmt:5", 
+                            "expctxt": "mem_lval_ftarget", 
+                            "line": 69, 
+                            "predicate": "initialized", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:1_stmt:5", 
+                            "expctxt": "mem_lval_ftarget", 
+                            "line": 69, 
+                            "predicate": "not-null", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:1_stmt:5", 
+                            "expctxt": "mem_lval_ftarget", 
+                            "line": 69, 
+                            "predicate": "valid-mem", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:1_stmt:5", 
+                            "expctxt": "mem_lval_ftarget", 
+                            "line": 69, 
+                            "predicate": "lower-bound", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:1_stmt:5", 
+                            "expctxt": "mem_lval_ftarget", 
+                            "line": 69, 
+                            "predicate": "upper-bound", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:2_stmt:5", 
+                            "expctxt": "var_lhs", 
+                            "line": 72, 
+                            "predicate": "index-lower-bound", 
+                            "status": "safe:delegated", 
+                            "tgtstatus": "safe:delegated"
+                        }, 
+                        {
+                            "cfgctxt": "instr:2_stmt:5", 
+                            "expctxt": "var_lhs", 
+                            "line": 72, 
+                            "predicate": "index-upper-bound", 
+                            "status": "violation", 
+                            "tgtstatus": "violation"
+                        }, 
+                        {
+                            "cfgctxt": "instr:2_stmt:5", 
+                            "expctxt": "index_var_lhs", 
+                            "line": 72, 
+                            "predicate": "initialized", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:2_stmt:5", 
+                            "expctxt": "rhs", 
+                            "line": 72, 
+                            "predicate": "signed-to-signed-cast-lb", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:2_stmt:5", 
+                            "expctxt": "rhs", 
+                            "line": 72, 
+                            "predicate": "signed-to-signed-cast-ub", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:1_stmt:5", 
+                            "expctxt": "mem_lval_ftarget", 
+                            "line": 69, 
+                            "predicate": "in-scope", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }
+                    ]
+                }
+            }
+        }, 
+        "id402.c": {
+            "domains": [
+                "llvisp"
+            ], 
+            "functions": {
+                "function1": {
+                    "ppos": [
+                        {
+                            "cfgctxt": "if-expr_stmt:1", 
+                            "expctxt": "2op:1", 
+                            "line": 52, 
+                            "predicate": "initialized", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:0_stmt:2_if-then_stmt:1", 
+                            "expctxt": "2op:1_arg:1", 
+                            "line": 54, 
+                            "predicate": "initialized", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:0_stmt:2_if-then_stmt:1", 
+                            "expctxt": "arg:1", 
+                            "line": 54, 
+                            "predicate": "int-underflow", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:0_stmt:2_if-then_stmt:1", 
+                            "expctxt": "arg:1", 
+                            "line": 54, 
+                            "predicate": "int-overflow", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "return_stmt:3_if-then_stmt:1", 
+                            "expctxt": "", 
+                            "line": 54, 
+                            "predicate": "initialized", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }
+                    ], 
+                    "spos": [
+                        {
+                            "cfgctxt": "return_stmt:3_if-then_stmt:1", 
+                            "line": 54, 
+                            "predicate": "value-constraint", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "return_stmt:4_if-else_stmt:1", 
+                            "line": 58, 
+                            "predicate": "value-constraint", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }
+                    ]
+                }, 
+                "main": {
+                    "ppos": [
+			{
+			    "cfgctxt": "instr:0_stmt:5",
+			    "expctxt": "",
+			    "line": 68,
+			    "predicate": "stack-address-escape",
+			    "status": "safe",
+			    "tgtstatus": "safe"
+			},
+                        {
+                            "cfgctxt": "instr:1_stmt:5", 
+                            "expctxt": "ftarget", 
+                            "line": 69, 
+                            "predicate": "initialized", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:1_stmt:5", 
+                            "expctxt": "mem_lval_ftarget", 
+                            "line": 69, 
+                            "predicate": "initialized", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:1_stmt:5", 
+                            "expctxt": "mem_lval_ftarget", 
+                            "line": 69, 
+                            "predicate": "not-null", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:1_stmt:5", 
+                            "expctxt": "mem_lval_ftarget", 
+                            "line": 69, 
+                            "predicate": "valid-mem", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:1_stmt:5", 
+                            "expctxt": "mem_lval_ftarget", 
+                            "line": 69, 
+                            "predicate": "lower-bound", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:1_stmt:5", 
+                            "expctxt": "mem_lval_ftarget", 
+                            "line": 69, 
+                            "predicate": "upper-bound", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:2_stmt:5", 
+                            "expctxt": "var_lhs", 
+                            "line": 72, 
+                            "predicate": "index-lower-bound", 
+                            "status": "safe:delegated", 
+                            "tgtstatus": "safe:delegated"
+                        }, 
+                        {
+                            "cfgctxt": "instr:2_stmt:5", 
+                            "expctxt": "var_lhs", 
+                            "line": 72, 
+                            "predicate": "index-upper-bound", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:2_stmt:5", 
+                            "expctxt": "index_var_lhs", 
+                            "line": 72, 
+                            "predicate": "initialized", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:2_stmt:5", 
+                            "expctxt": "rhs", 
+                            "line": 72, 
+                            "predicate": "signed-to-signed-cast-lb", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:2_stmt:5", 
+                            "expctxt": "rhs", 
+                            "line": 72, 
+                            "predicate": "signed-to-signed-cast-ub", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:1_stmt:5", 
+                            "expctxt": "mem_lval_ftarget", 
+                            "line": 69, 
+                            "predicate": "in-scope", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }
+                    ]
+                }
+            }
+        }
+    }
+}

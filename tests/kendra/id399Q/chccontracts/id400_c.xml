@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<c-analysis>
+  <header info="cfile" name="cfile" time="2018-05-09 21:02:33.484706"/>
+  <cfile name="id400">
+    <data-structures/>
+    <functions>
+      <function name="main">
+        <parameters>
+          <par name="argc" nr="1"/>
+          <par name="argv" nr="2"/>
+        </parameters>
+        <postconditions/>
+      </function>
+      <function name="function1">
+        <parameters>
+          <par name="counter" nr="1"/>
+        </parameters>
+        <postconditions>
+	  <post>
+	    <math>
+	      <apply><eq/><return/><cn>17</cn></apply>
+	    </math>
+	  </post>
+	</postconditions>
+      </function>
+    </functions>
+  </cfile>
+</c-analysis>

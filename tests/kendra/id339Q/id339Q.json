@@ -1,0 +1,240 @@
+{
+    "cfiles": {
+        "id339.c": {
+            "domains": [
+                "llvis"
+            ], 
+            "functions": {
+                "main": {
+                    "ppos": [
+                        {
+                            "cfgctxt": "instr:1_stmt:1", 
+                            "expctxt": "rhs", 
+                            "line": 57, 
+                            "predicate": "initialized", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:2_stmt:1", 
+                            "expctxt": "var_lhs", 
+                            "line": 60, 
+                            "predicate": "index-lower-bound", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:2_stmt:1", 
+                            "expctxt": "var_lhs", 
+                            "line": 60, 
+                            "predicate": "index-upper-bound", 
+                            "status": "violation", 
+                            "tgtstatus": "violation"
+                        }, 
+                        {
+                            "cfgctxt": "instr:2_stmt:1", 
+                            "expctxt": "index_var_lhs", 
+                            "line": 60, 
+                            "predicate": "initialized", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:2_stmt:1", 
+                            "expctxt": "rhs", 
+                            "line": 60, 
+                            "predicate": "signed-to-signed-cast-lb", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:2_stmt:1", 
+                            "expctxt": "rhs", 
+                            "line": 60, 
+                            "predicate": "signed-to-signed-cast-ub", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }
+                    ]
+                }
+            }
+        }, 
+        "id340.c": {
+            "domains": [
+                "llvis"
+            ], 
+            "functions": {
+                "main": {
+                    "ppos": [
+                        {
+                            "cfgctxt": "instr:1_stmt:1", 
+                            "expctxt": "rhs", 
+                            "line": 57, 
+                            "predicate": "initialized", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:2_stmt:1", 
+                            "expctxt": "var_lhs", 
+                            "line": 60, 
+                            "predicate": "index-lower-bound", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:2_stmt:1", 
+                            "expctxt": "var_lhs", 
+                            "line": 60, 
+                            "predicate": "index-upper-bound", 
+                            "status": "violation", 
+                            "tgtstatus": "violation"
+                        }, 
+                        {
+                            "cfgctxt": "instr:2_stmt:1", 
+                            "expctxt": "index_var_lhs", 
+                            "line": 60, 
+                            "predicate": "initialized", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:2_stmt:1", 
+                            "expctxt": "rhs", 
+                            "line": 60, 
+                            "predicate": "signed-to-signed-cast-lb", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:2_stmt:1", 
+                            "expctxt": "rhs", 
+                            "line": 60, 
+                            "predicate": "signed-to-signed-cast-ub", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }
+                    ]
+                }
+            }
+        }, 
+        "id341.c": {
+            "domains": [
+                "llvis"
+            ], 
+            "functions": {
+                "main": {
+                    "ppos": [
+                        {
+                            "cfgctxt": "instr:1_stmt:1", 
+                            "expctxt": "rhs", 
+                            "line": 57, 
+                            "predicate": "initialized", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:2_stmt:1", 
+                            "expctxt": "var_lhs", 
+                            "line": 60, 
+                            "predicate": "index-lower-bound", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:2_stmt:1", 
+                            "expctxt": "var_lhs", 
+                            "line": 60, 
+                            "predicate": "index-upper-bound", 
+                            "status": "violation", 
+                            "tgtstatus": "violation"
+                        }, 
+                        {
+                            "cfgctxt": "instr:2_stmt:1", 
+                            "expctxt": "index_var_lhs", 
+                            "line": 60, 
+                            "predicate": "initialized", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:2_stmt:1", 
+                            "expctxt": "rhs", 
+                            "line": 60, 
+                            "predicate": "signed-to-signed-cast-lb", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:2_stmt:1", 
+                            "expctxt": "rhs", 
+                            "line": 60, 
+                            "predicate": "signed-to-signed-cast-ub", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }
+                    ]
+                }
+            }
+        }, 
+        "id342.c": {
+            "domains": [
+                "llvis"
+            ], 
+            "functions": {
+                "main": {
+                    "ppos": [
+                        {
+                            "cfgctxt": "instr:1_stmt:1", 
+                            "expctxt": "rhs", 
+                            "line": 57, 
+                            "predicate": "initialized", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:2_stmt:1", 
+                            "expctxt": "var_lhs", 
+                            "line": 60, 
+                            "predicate": "index-lower-bound", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:2_stmt:1", 
+                            "expctxt": "var_lhs", 
+                            "line": 60, 
+                            "predicate": "index-upper-bound", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:2_stmt:1", 
+                            "expctxt": "index_var_lhs", 
+                            "line": 60, 
+                            "predicate": "initialized", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:2_stmt:1", 
+                            "expctxt": "rhs", 
+                            "line": 60, 
+                            "predicate": "signed-to-signed-cast-lb", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:2_stmt:1", 
+                            "expctxt": "rhs", 
+                            "line": 60, 
+                            "predicate": "signed-to-signed-cast-ub", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }
+                    ]
+                }
+            }
+        }
+    }
+}

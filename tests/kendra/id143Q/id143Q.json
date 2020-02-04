@@ -1,0 +1,105 @@
+{
+    "cfiles": {
+        "id143.c": {
+            "functions": {
+                "main": {
+                    "ppos": [
+                        {
+                            "cfgctxt": "instr:0_stmt:1", 
+                            "expctxt": "var_lhs", 
+                            "line": 56, 
+                            "predicate": "index-lower-bound", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:0_stmt:1", 
+                            "expctxt": "var_lhs", 
+                            "line": 56, 
+                            "predicate": "index-upper-bound", 
+                            "status": "violation", 
+                            "tgtstatus": "violation"
+                        }
+                    ]
+                }
+            }
+        }, 
+        "id144.c": {
+            "functions": {
+                "main": {
+                    "ppos": [
+                        {
+                            "cfgctxt": "instr:0_stmt:1", 
+                            "expctxt": "var_lhs", 
+                            "line": 56, 
+                            "predicate": "index-lower-bound", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:0_stmt:1", 
+                            "expctxt": "var_lhs", 
+                            "line": 56, 
+                            "predicate": "index-upper-bound", 
+                            "status": "violation", 
+                            "tgtstatus": "violation"
+                        }
+                    ]
+                }
+            }
+        }, 
+        "id145.c": {
+            "functions": {
+                "main": {
+                    "ppos": [
+                        {
+                            "cfgctxt": "instr:0_stmt:1", 
+                            "expctxt": "var_lhs", 
+                            "line": 56, 
+                            "predicate": "index-lower-bound", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:0_stmt:1", 
+                            "expctxt": "var_lhs", 
+                            "line": 56, 
+                            "predicate": "index-upper-bound", 
+                            "status": "violation", 
+                            "tgtstatus": "violation"
+                        }
+                    ]
+                }
+            }
+        }, 
+        "id146.c": {
+            "functions": {
+                "main": {
+                    "ppos": [
+                        {
+                            "cfgctxt": "instr:0_stmt:1", 
+                            "expctxt": "var_lhs", 
+                            "line": 56, 
+                            "predicate": "index-lower-bound", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }, 
+                        {
+                            "cfgctxt": "instr:0_stmt:1", 
+                            "expctxt": "var_lhs", 
+                            "line": 56, 
+                            "predicate": "index-upper-bound", 
+                            "status": "safe", 
+                            "tgtstatus": "safe"
+                        }
+                    ]
+                }
+            }
+        }
+    }, 
+    "characteristics": [
+        "write", 
+        "upper", 
+        "unsigned int"
+    ]
+}
