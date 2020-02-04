@@ -1,0 +1,59 @@
+# ------------------------------------------------------------------------------
+# Python API to access CodeHawk Java Analyzer analysis results
+# Author: Andrew McGraw
+# ------------------------------------------------------------------------------
+# The MIT License (MIT)
+#
+# Copyright (c) 2016-2020 Kestrel Technology LLC
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+# 
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+# ------------------------------------------------------------------------------
+
+'''
+To use this file to configure the analysis, change its name to ConfigLocal.py and
+make sure that it is in the same directory as Config.py
+
+The config object passed to getLocals is the universal Config, you can update
+any of that config's variables here if you want to use a value other than the default.
+'''
+import os
+
+mycfiles = {
+    "mixer.c": {
+        "path": "/Users/henny/CCode/testexamples/cleanflight/src_main_flight",
+        "file": "mixer.c"
+        }
+    }
+
+def getLocals(config):
+    '''Set local configuration variables here if they differ from the defaults in Config.py
+    
+    Example :
+    config.canalyzer = '/home/username/my-analyzer/canalyzer'
+    config.cparser = '/home/username/my-parser/parseFile'
+    config.summaries = '/home/username/my-summaries/cchsummaries.jar'
+    '''
+
+    config.canalyzer = '/Users/henny/gitrepo/codehawk/CodeHawk/CHC/cchcmdline/canalyzer'
+    config.cparser = '/Users/henny/repo/CodeHawk/CHC/cchcil/parseFile'
+    config.chc_gui = '/Users/henny/gitrepo/codehawk/CodeHawk/CHC/cchgui/chc_gui'
+    config.summaries = '/Users/henny/repo/CodeHawk/CHC/cchsummaries/cchsummaries.jar'
+
+    config.mycfiles = mycfiles
+
