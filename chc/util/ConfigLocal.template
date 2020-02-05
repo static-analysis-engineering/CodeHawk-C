@@ -25,21 +25,16 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
-'''
+"""Personalized settings that modify and/or complement Config.py.
+
 To use this file to configure the analysis, change its name to ConfigLocal.py and
 make sure that it is in the same directory as Config.py
 
 The config object passed to getLocals is the universal Config, you can update
 any of that config's variables here if you want to use a value other than the default.
-'''
-import os
+"""
 
-mycfiles = {
-    "mixer.c": {
-        "path": "/Users/henny/CCode/testexamples/cleanflight/src_main_flight",
-        "file": "mixer.c"
-        }
-    }
+import os
 
 def getLocals(config):
     '''Set local configuration variables here if they differ from the defaults in Config.py
@@ -48,12 +43,6 @@ def getLocals(config):
     config.canalyzer = '/home/username/my-analyzer/canalyzer'
     config.cparser = '/home/username/my-parser/parseFile'
     config.summaries = '/home/username/my-summaries/cchsummaries.jar'
+    config.bear = '/home/username/bear-home/bear'
+    config.libear = '/home/username/bear-home/libear.so'
     '''
-
-    config.canalyzer = '/Users/henny/gitrepo/codehawk/CodeHawk/CHC/cchcmdline/canalyzer'
-    config.cparser = '/Users/henny/repo/CodeHawk/CHC/cchcil/parseFile'
-    config.chc_gui = '/Users/henny/gitrepo/codehawk/CodeHawk/CHC/cchgui/chc_gui'
-    config.summaries = '/Users/henny/repo/CodeHawk/CHC/cchsummaries/cchsummaries.jar'
-
-    config.mycfiles = mycfiles
-
