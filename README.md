@@ -1,2 +1,4 @@
 # CodeHawk-C
-CodeHawk C Analyzer: sound static analysis of memory safety (undefined behavior)
+
+### Sound Static Analysis of C for Memory Safety (Undefined Behavior)
+
