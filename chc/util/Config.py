@@ -30,6 +30,8 @@ import os
 if os.path.isfile(os.path.join(os.path.dirname(os.path.abspath(__file__)), "ConfigLocal.py")):
     import chc.util.ConfigLocal as ConfigLocal
     localconfig = True
+else:
+    localconfig = False
 
 
 class Config(object):
