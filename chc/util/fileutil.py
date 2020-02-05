@@ -36,6 +36,7 @@ import xml.etree.ElementTree as ET
 import chc.util.xmlutil as UX
 
 from chc.util.Config import Config
+config = Config()
 
 class CHError(Exception):
 
@@ -54,12 +55,12 @@ class CHCError(CHError):
 class CHCParserNotFoundError(CHCError):
 
     def __init__(self,location):
-        CHCError.__init__(self,'C Parser executable not found at ' + location)
+        CHCError.__init__(self,'CodeHawk C Parser not found at ' + location)
 
 class CHCAnalyzerNotFoundError(CHCError):
 
     def __init__(self,location):
-        CHCError.__init__(self,'C Analyzer executable not found at ' + location)
+        CHCError.__init__(self,'CodeHawk C Analyzer executable not found at ' + location)
 
 class CHCFileNotFoundError(CHCError):
 
@@ -115,6 +116,16 @@ def create_backup_file(filename):
         timestamp = calendar.timegm(time.gmtime())
         backupfilename = filename + '_' + str(timestamp)
         shutil.copy(filename,backupfilename)
+
+# --------------------------------------- check presence of parser and analyzer
+
+def check_analyzer():
+    if not os.path.isfile(config.canalyzer):
+        raise CHCAnalyzerNotFoundError(config.canalyzer)
+
+def check_parser():
+    if not os.path.isfile(config.cparser):
+        raise CHCParserNotFoundError(config.cparser)
 
 # ------------------------------------------------------------------------------
 
