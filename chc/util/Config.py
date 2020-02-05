@@ -37,7 +37,7 @@ class Config(object):
     def __init__(self):
         # platform settings
         if os.uname()[0] == 'Linux': self.platform = 'linux'
-        elif os.uname()[0] == 'Darwin': self.platform = 'mac'
+        elif os.uname()[0] == 'Darwin': self.platform = 'macOS'
 
         # general settings
         self.utildir = os.path.dirname(os.path.abspath(__file__)) 
@@ -45,56 +45,55 @@ class Config(object):
         self.bindir = os.path.join(self.rootdir,'bin')
         self.topdir = os.path.dirname(self.rootdir)
         self.testdir = os.path.join(self.topdir,'tests')
-        summariesdir = os.path.join(self.rootdir,'summaries')
-        self.summaries = os.path.join(summariesdir,'cchsummaries.jar')
-        self.binariesdir = os.path.join(self.bindir,'binaries')
-        self.cparser = os.path.join(self.binariesdir,'parseFile_linux')
-        self.canalyzer = os.path.join(self.binariesdir,'chc_analyze_linux')
-        self.chc_gui = os.path.join(self.binariesdir,'chc_gui_linux')
+
+        # parser and analyzer executables
+        if self.platform == 'linux':
+            self.linuxdir = os.path.join(bindir,'linux')
+            self.cparser = os.path.join(self.linuxdir,'parseFile')
+            self.canalyzer = os.path.join(self.linuxdir,'canalyzer')
+            self.chc_gui = None
+
+        if self.platform == 'macOS':
+            self.macOSdir = os.path.join(self.bindir,'macOS')
+            self.cparser = os.path.join(self.macOSdir,'parseFile')
+            self.canalyzer = os.path.join(self.macOSdir,'canalyzer')
+            self.chc_gui = None
+
+        # bear: a tool that generates a compilation database in json
         self.bear = None
         self.libear = None
-        if self.platform == 'mac':
-            self.cparser = os.path.join(self.binariesdir,'parseFile_mac')
-            self.canalyzer = os.path.join(self.binariesdir,'chc_analyze_mac')
-            self.chc_gui = os.path.join(self.binariesdir,'chch_gui_mac')
+
+        # summaries
+        summariesdir = os.path.join(self.rootdir,'summaries')
+        self.summaries = os.path.join(summariesdir,'cchsummaries.jar')
 
         # tests included in this repository
         self.kendradir = os.path.join(self.testdir,'kendra')
         self.zitserdir = os.path.join(self.testdir,'zitser')
 
-        '''test cases'''
-        self.projects = {}
-        self.myprojects = {}
-        self.mycfiles = {}
-
         # personalization
         if localconfig: ConfigLocal.getLocals(self)
 
     def __str__(self):
-        plen = 20
         lines = []
         parserfound = ' (found)' if os.path.isfile(self.cparser) else ' (not found)'
         analyzerfound = ' (found)' if os.path.isfile(self.canalyzer) else ' (not found)'
         summariesfound = ' (found)' if os.path.isfile(self.summaries) else  ' (not found)'
+        lines.append('=' * 80)
         lines.append('Analyzer configuration:')
         lines.append('-----------------------')
         lines.append('  platform : ' + self.platform)        
         lines.append('  parser   : ' + self.cparser +  parserfound)
         lines.append('  analyzer : ' + self.canalyzer + analyzerfound)
         if not self.bear is None:
-            lines.append('bear'.ljust(plen) + ': ' + self.bear)
-            lines.append('libear'.ljust(plen) + ': ' + self.libear)
+            lines.append('bear  :' + self.bear)
+            lines.append('libear:' + self.libear)
         lines.append('  summaries: ' + self.summaries + summariesfound)
         
         lines.append('\nTest directories')
         lines.append('-' * 64)
-        lines.append('test directory'.ljust(plen) + ': ' + self.testdir)
-        lines.append('projects'.ljust(plen) + ':')
-        if len(self.myprojects) > 0:
-            lines.append('my projects'.ljust(plen) + ':')
-            for (p,d) in sorted(self.myprojects.items()):
-                lines.append(' '.ljust(3) + str(p).ljust(12) + ': ' + str(d))
-        lines.append('-' * 64)
+        lines.append('  test directory:' + self.testdir)
+        lines.append('=' * 80)
         return '\n'.join(lines)
 
 
