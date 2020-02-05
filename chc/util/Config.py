@@ -48,7 +48,7 @@ class Config(object):
 
         # parser and analyzer executables
         if self.platform == 'linux':
-            self.linuxdir = os.path.join(bindir,'linux')
+            self.linuxdir = os.path.join(self.bindir,'linux')
             self.cparser = os.path.join(self.linuxdir,'parseFile')
             self.canalyzer = os.path.join(self.linuxdir,'canalyzer')
             self.chc_gui = None
