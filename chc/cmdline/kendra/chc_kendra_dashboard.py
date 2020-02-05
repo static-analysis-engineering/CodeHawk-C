@@ -27,24 +27,22 @@
 
 """Shows results of the regression (kendra) tests.
 
-The report should show the following columns:
+The report shows the following columns:
 
-testcase            name of the quartet of testcases (e.g. id115Q)
-ppos                total number of primary proof obligations generated (e.g. 12)
-spos                total number of secondary proof obligations generated (e;g. 0)
-predicate           (optional) predicate of the ppo/spo that is violated (one per line)  
-                      (e.g. index-upper-bound). For most test cases there is only one
-                      predicate, occasionally there are two.
-cfg-context         (optional) the location of the violated ppo/spo in the cfg
-exp-context         (optional) the location of the violated ppo in an expression (only
-                      applicable to ppo)
-%safe (ppo)         percent of safe ppos proven safe
-%violation (ppo)    percent of violated ppos proven violation
-unknowns (ppo)      number of ppos not discharged
-%safe (spo)         percent of safe spos proven safe (N/A if there are no spos)
-%violation (spo)    percent of violated spos proven violation (N/A if there are no spos)
-unknowns (spo)      number of spos not discharged (N/A if there are no spos)
+testcase: name of the quartet of testcases (e.g. id115Q).
+  ppos: total number of primary proof obligations generated;
+  %safe proven: percent of safe ppos proven safe;
+  %violation proven: percent of violations proven to be violation;
+  %delegated: percent of proof obligations delegated;
+  open: number of open ppos;
 
+  spos: total number of supporting proof obligations generated;
+  %safe proven: percent of safe spos proven safe;
+  %violation proven: percent of violations proven to be violation;
+  %delegated: percent of spos delegated;
+  open: number of open spos;
+
+predicates: predicates that are violated.
 """
     
 import argparse
@@ -53,24 +51,24 @@ import os
 
 from chc.util.Config import Config
 
-kendra = os.path.join(os.path.join(Config().testdir,'sard'),'kendra')
+kendra = os.path.join(Config().testdir,'kendra')
 testcases = [ (i,'id' + str(i) + 'Q') for i in range(115,394,4) ]
 
 def parse():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--predicates',
-                            help='Show violated predicates with location',action='store_true')
+    parser = argparse.ArgumentParser(description=__doc__)
     args = parser.parse_args()
     return args
 
-def getppocount(spec):
+def get_ppo_count(spec):
+    """Returns the number of ppos in the spec file."""
     total = 0
     for f in spec["cfiles"]:
         for ff in spec["cfiles"][f]["functions"]:
             total += len(spec["cfiles"][f]["functions"][ff]["ppos"])
     return total
 
-def getspocount(spec):
+def get_spo_count(spec):
+    """Returns the number of spos in the spec file."""
     total = 0
     for f in spec["cfiles"]:
         for ff in spec["cfiles"][f]["functions"]:
@@ -78,112 +76,167 @@ def getspocount(spec):
                 total += len(spec["cfiles"][f]["functions"][ff]["spos"])
     return total
 
-def getppos(spec,f):
+def get_ppos(spec,f):
     ppos = []
     for ff in spec["cfiles"][f]["functions"]:
         ppos.extend(spec["cfiles"][f]["functions"][ff]["ppos"])
     return ppos
                 
-def getspos(spec, f):
+def get_spos(spec, f):
     spos = []
     for ff in spec["cfiles"][f]["functions"]:
         if "spos" in spec["cfiles"][f]["functions"][ff]:
             spos.extend(spec["cfiles"][f]["functions"][ff]["spos"])
     return spos
     
-def getviolationpredicates(spec):
+def get_violation_predicates(spec):
     predicates = set([])
     for f in spec['cfiles']:
-        for ppo in getppos(spec,f):
+        for ppo in get_ppos(spec,f):
             status = ppo['tgtstatus']
+            if status in ['violation','violation:delegated']:
+                predicates.add(ppo['predicate'])
+        for spo in get_spos(spec,f):
+            status = spo['tgtstatus']
             if status == 'violation':
-                predicates.add((ppo['predicate'],ppo['cfgctxt'],ppo['expctxt']))
+                predicates.add(ppo['predicate'])
     return predicates
-                                   
-def getsafeproofperc(spec, obligationtype):
-    safetgtcount = 0
-    safecount = 0
-    violationcount = 0
-    violationtgtcount = 0
-    unknowntgtcount = 0
-    for f in spec['cfiles']:
-        if obligationtype == 'ppo':
-            for ppo in getppos(spec,f):
-                if ppo['status'] == 'safe':
-                    safetgtcount += 1
-                    safecount += 1
-                elif ppo['status'] == 'violation':
-                    violationtgtcount += 1
-                    violationcount += 1
-                elif ppo['tgtstatus'] == 'safe':
-                    safetgtcount += 1
-                elif ppo['tgtstatus'] == 'violation':
-                    violationtgtcount += 1
-                else:
-                    unknowntgtcount += 1
-        elif obligationtype == 'spo':
-            for spo in getspos(spec, f):
-                if spo['status'] == 'safe':
-                    safetgtcount += 1
-                    safecount += 1
-                elif spo['status'] == 'violations':
-                    violationtgtcount += 1
-                    violationcount += 1
-                elif spo['tgtstatus'] == 'safe':
-                    safetgtcount += 1
-                elif spo['tgtstatus'] == 'violation':
-                    violationtgtcount += 1
-                else:
-                    unknowntgtcount += 1
-    if safetgtcount > 0:
-        safepct = float(safecount)/float(safetgtcount) * 100.0
-    else:
-        safepct = 0.0
-    if violationtgtcount > 0:
-        violationpct = float(violationcount)/float(violationtgtcount) * 100.0
-    else:
-        violationpct = 0.0
-    unknowns = '  -'
-    if unknowntgtcount > 0:
-        unknowns = str(unknowntgtcount).rjust(3)
-    return ('{:>10.1f}'.format(safepct) + '    ' + '{:>10.1f}'.format(violationpct) +
-                '     ' + unknowns + '   ')
 
-def testdata(printpredicates,i,t,spec):
-    lines = []
-    ppocount = getppocount(spec)
-    spocount = getspocount(spec)
-    ppoproofperc = getsafeproofperc(spec, "ppo")
-    spoproofperc = ''
-    if spocount > 0 : spoproofperc = getsafeproofperc(spec, "spo")
-    violationpreds = list(getviolationpredicates(spec))
-    base = t + '  ' + str(ppocount).rjust(5) + '  ' + str(spocount).rjust(3) + ' '
-    if len(violationpreds) == 0 and printpredicates == True:
-        lines.append(base + (' ' * 104) + ppoproofperc + spoproofperc)
-    elif printpredicates == True:
-        lines.append(base + violationpreds[0][0].ljust(24) +
-                         violationpreds[0][1].ljust(40) +
-                         violationpreds[0][2].ljust(40) + ppoproofperc + spoproofperc)
-        for v in violationpreds[1:]:
-            lines.append((' ' * 19) + v[0].ljust(24) + v[1].ljust(40) + v[2].ljust(40))
+def get_perc(x,y,width):
+    fmt = '{:>' + str(width) + '.1f}'
+    if y > 0:
+        perc = float(x)/float(y) * 100.0
+        return fmt.format(perc)
     else:
-        lines.append(base + ppoproofperc + spoproofperc)
-    return lines
+        return ' - '.rjust(width)
+
+def get_status_ppo_counts(spec,status):
+    count = 0
+    tgtcount = 0
+    for f in spec['cfiles']:
+        for ppo in get_ppos(spec,f):
+            if ppo['tgtstatus'] == status:
+                tgtcount += 1
+                if ppo['status'] == status:
+                    count += 1
+    return (count,tgtcount)
+
+def get_open_ppo_count(spec):
+    count = 0
+    for f in spec['cfiles']:
+        for ppo in get_ppos(spec,f):
+            if ppo['status'] == 'open':
+                count += 1
+    return count
+
+def get_safe_ppo_counts(spec):
+    return get_status_ppo_counts(spec,'safe')
+
+def get_safe_ppo_perc(spec,width):
+    (cnt,tgtcnt)  = get_safe_ppo_counts(spec)
+    return get_perc(cnt,tgtcnt,width)
+
+def get_violation_ppo_counts(spec):
+    return get_status_ppo_counts(spec,'violation')
+
+def get_violation_ppo_perc(spec,width):
+    (cnt,tgtcnt) = get_violation_ppo_counts(spec)
+    return get_perc(cnt,tgtcnt,width)
+
+def get_delegated_ppo_counts(spec):
+    (safecnt,safetgtcnt) = get_status_ppo_counts(spec,'safe:delegated')
+    (vcnt,vtgtcnt) = get_status_ppo_counts(spec,'violation:delegated')
+    return (safecnt + vcnt, safetgtcnt + vtgtcnt)
+
+def get_delegated_ppo_perc(spec,width):
+    (cnt,tgtcnt) = get_delegated_ppo_counts(spec)
+    return get_perc(cnt,tgtcnt,width)
+
+def get_status_spo_counts(spec,status):
+    count = 0
+    tgtcount = 0
+    for f in spec['cfiles']:
+        for spo in get_spos(spec,f):
+            if spo['tgtstatus'] == status:
+                tgtcount += 1
+                if spo['status'] == status:
+                    count += 1
+    return (count,tgtcount)
+
+def get_open_spo_count(spec):
+    count = 0
+    for f in spec['cfiles']:
+        for spo in get_spos(spec,f):
+            if spo['status'] == 'open':
+                count += 1
+    return count
+
+def get_safe_spo_counts(spec):
+    return get_status_spo_counts(spec,'safe')
+
+def get_safe_spo_perc(spec,width):
+    (cnt,tgtcnt) = get_safe_spo_counts(spec)
+    return get_perc(cnt,tgtcnt,width)
+
+def get_violation_spo_counts(spec):
+    return get_status_spo_counts(spec,'violation')
+
+def get_violation_spo_perc(spec,width):
+    (cnt,tgtcnt) = get_violation_spo_counts(spec)
+    return get_perc(cnt,tgtcnt,width)
+
+def get_delegated_spo_counts(spec):
+    (safecnt,safetgtcnt) = get_status_spo_counts(spec,'safe:delegated')
+    (vcnt,vtgtcnt) = get_status_spo_counts(spec,'violation:delegated')
+    return (safecnt + vcnt, safetgtcnt + vtgtcnt)
+
+def get_delegated_spo_perc(spec,width):
+    (cnt,tgtcnt) = get_delegated_spo_counts(spec)
+    return get_perc(cnt,tgtcnt,width)
+
+def get_ppo_results(spec):
+    opencnt = get_open_ppo_count(spec)
+    if opencnt == 0: opencnt = '-'
+    return (str(get_ppo_count(spec)).rjust(6)
+                + get_safe_ppo_perc(spec,12)
+                + get_violation_ppo_perc(spec,12)
+                + get_delegated_ppo_perc(spec,12)
+                + str(opencnt).rjust(10))
+
+def get_spo_results(spec):
+    spocount = get_spo_count(spec)
+    if spocount == 0: spocount = '-'
+    opencnt = get_open_spo_count(spec)
+    if opencnt == 0: opencnt =  '-'
+    return (str(spocount).rjust(6)
+                + get_safe_spo_perc(spec,12)
+                + get_violation_spo_perc(spec,12)
+                + get_delegated_spo_perc(spec,12)
+                + str(opencnt).rjust(10))
 
 if __name__ == '__main__': 
     args = parse()
-
-    header = 'testcase'.ljust(9) + 'ppos'.rjust(5) + 'spos'.rjust(5) + '  ' 
-    if args.predicates:
-        header += 'predicates'.ljust(24) + 'cfg-context'.ljust(40) + 'exp-context'.ljust(40)
-    header += '%safe (ppos)'.rjust(10) + '  %violation'.rjust(10) + '  unknowns  '
-    header += '%safe (spos)'.rjust(10) + '  %violation'.rjust(10) + '  unknowns'
-    print header
+    header = 'testcase'.ljust(9)
+    headerppos = ('ppos'.rjust(6) + '   ' + '%safe'.center(12) + '%violation'.center(12)
+                      + '%delegated'.center(12)
+                      + '%open'.center(12))
+    headerspos =  ('spos'.rjust(6) + '  ' + '%safe'.center(12) + '%violation'.center(12)
+                       + '%delegated'.center(12)
+                       + '%open'.center(12))
+    header = header + headerppos + headerspos + '  predicates'
+    headerline2 = (' '.ljust(18) + 'proven'.center(12) + 'proven'.center(12)
+                       + '-'.ljust(32) + 'proven'.center(12) + 'proven'.center(12))
+    print(header)
+    print(headerline2)
     print('-' * 150)
     for (i,t) in testcases:
+        if (i % 100) < 4: print('-' * 120)
         specfilename = os.path.join(os.path.join(kendra, t),t + '.json')
         with open(specfilename) as fp:
             spec = json.load(fp)
-        for l in testdata(args.predicates,i,t,spec):
-            print(l)
+        print(t.ljust(9) + get_ppo_results(spec)
+                  + '   | ' 
+                  + get_spo_results(spec) + ' '.ljust(6)
+                  + ','.join(get_violation_predicates(spec)))
+    print('-' * 150)
         

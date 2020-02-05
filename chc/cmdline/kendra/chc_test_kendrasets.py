@@ -48,19 +48,24 @@ skips = [ 163, 363, 391 ]
 if __name__ == '__main__':
     args = parse()
 
+    try:
+        UF.check_parser()
+        UF.check_analyzer()
+    except UF.CHError as e:
+        print(str(e.wrap()))
+        exit(1)
+
     for id in range(115,403,4):
 
         if id in skips: continue
 
         testname = 'id' + str(id) + 'Q'
-        cpath = UF.get_kendra_testpath(testname)
-        if not os.path.isdir(cpath):
-            print('*' * 80)
-            print('Test directory ')
-            print('    ' + cpath)
-            print('not found.')
-            print('*' * 80)
-            exit(1)
+
+        try:
+            cpath = UF.get_kendra_testpath(testname)
+        except UF.CHError as e:
+            print(str(e.wrap()))
+            continue
 
         testfilename = os.path.join(cpath,testname + '.json')
         if not os.path.isfile(testfilename):
@@ -71,11 +76,10 @@ if __name__ == '__main__':
             print('*' * 80)
             exit(1)
 
-        #parsemanager = ParseManager(cpath,cpath,verbose=False)
         testmanager = TestManager(cpath,cpath,testname,verbose=args.verbose)
         testmanager.clean()
         try:
-            if testmanager.test_parser() or UF.unpack_tar_file(cpath):
+            if testmanager.test_parser():
                 testmanager.test_ppos()
                 testmanager.test_ppo_proofs(delaytest=True)
                 testmanager.test_spos(delaytest=True)
@@ -89,18 +93,10 @@ if __name__ == '__main__':
                     testmanager.print_test_results()
                 else:
                     testmanager.print_test_results_line_summary()
-            else:
-                print(
-                    '\n' + ('*' * 80) + '\nThis test set is not supported on the mac.' +
-                    '\n' + ('*' * 80) )
         except FileParseError as e:
             print(': Unable to parse ' + str(e))
             exit(1)
-        except AnalyzerMissingError as e:
-            print('*' * 80)
-            print('Analyzer not found at ' + str(e) + ': Please set analyzer location in Config.py')
-            print('*' * 80)
-            exit(1)
+
         except OSError as e:
             print('*' * 80)
             print('OS Error: ' + str(e) + ': Please check the platform settings in Config.py')

@@ -33,7 +33,7 @@ import chc.util.fileutil as UF
 
 from chc.app.CApplication import CApplication
 
-class FileParseError(Exception):
+class FileParseError(UF.CHCError):
     
     def __init__(self,msg):
         UF.CHCError.__init__(self,msg)
@@ -96,7 +96,7 @@ class TestManager(object):
         self.tgtpath = tgtpath
         self.saveref = saveref
         self.config = Config()
-        self.ismac = self.config.platform == 'mac'
+        self.ismac = self.config.platform == 'macOS'
         self.verbose = verbose
         self.sempath = os.path.join(self.cpath,'semantics')
         self.contractpath = os.path.join(self.cpath,'chccontracts')

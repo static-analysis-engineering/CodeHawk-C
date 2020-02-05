@@ -30,7 +30,6 @@ import os
 
 import chc.util.fileutil as UF
 
-from chc.util.Config import Config
 from chc.cmdline.kendra.TestManager import TestManager
 
 def parse():
@@ -45,7 +44,7 @@ if __name__ == '__main__':
     testname = args.testset
     try:
         cpath = UF.get_kendra_testpath(testname)
-    except CHError as e:
+    except UF.CHError as e:
         print(str(e.wrap()))
         exit(1)
     

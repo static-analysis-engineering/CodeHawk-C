@@ -95,7 +95,7 @@ class TestSetRef(object):
                             tgtstatus = '(' + ppo.get_tgt_status() + ')'
                         lines.append(
                             '    ' + str(ppo.get_line()).rjust(4) + '  ' +
-                            ppo.get_predicate().ljust(22) +
+                            ppo.get_predicate().ljust(24) +
                             ' ' + status + ' ' + ctxt.ljust(40) + tgtstatus)
         return '\n'.join(lines)
 

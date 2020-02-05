@@ -24,20 +24,20 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Displays the proof obligations and their expected (desired) status."""
 
 import argparse
 import json
 import os
 
-from chc.util.Config import Config
+import chc.util.fileutil as UF
 from chc.cmdline.kendra.TestSetRef import TestSetRef
 
 def parse():
     usage = ('\nCall with the directory name of one of the subdirectories in\n' +
-                 'tests/sard/kendra\n\n' +
+                 'tests/kendra\n\n' +
                  '   Example: python chc_show_kendraset.py id115Q\n')
-    description = ('Displays the proof obligations and their expected (desired) status')
-    parser = argparse.ArgumentParser(usage=usage,description=description)
+    parser = argparse.ArgumentParser(usage=usage,description=__doc__)
     parser.add_argument('testset',help='name of test directory')
     args = parser.parse_args()
     return args
@@ -45,16 +45,12 @@ def parse():
 if __name__ == '__main__':
 
     args = parse()
-    config = Config()
-    testpath = os.path.join(config.testdir,'kendra')
+
     testname = args.testset
-    cpath = os.path.join(os.path.abspath(testpath),testname)
-    if not os.path.isdir(cpath):
-        print('*' * 80)
-        print('Test directory')
-        print('   ' + cpath)
-        print('not found')
-        print('*' * 80)
+    try:
+        cpath = UF.get_kendra_testpath(testname)
+    except UF.CHError as e:
+        print(str(e.wrap()))
         exit(1)
 
     testfilename = os.path.join(cpath,testname + '.json')

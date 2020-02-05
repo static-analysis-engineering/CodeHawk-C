@@ -64,8 +64,15 @@ if __name__ == '__main__':
     logging.basicConfig(filename=logfilename,level=loglevel)
 
     try:
+        UF.check_parser()
+        UF.check_analyzer()
+    except UF.CHError as e:
+        print(str(e.wrap()))
+        exit(1)
+
+    try:
         cpath = UF.get_kendra_testpath(testname)
-    except CHError as e:
+    except UF.CHError as e:
         print(str(e.wrap()))
         exit(1)
 
@@ -81,7 +88,7 @@ if __name__ == '__main__':
     testmanager = TestManager(cpath,cpath,testname,saveref=args.saveref,verbose=args.verbose)
     testmanager.clean()
     try:
-        if testmanager.test_parser(savesemantics=args.savesemantics) or UF.unpack_tar_file(cpath):
+        if testmanager.test_parser(savesemantics=args.savesemantics):
             testmanager.test_ppos()
             testmanager.test_ppo_proofs(delaytest=True)
             testmanager.test_spos(delaytest=True)
@@ -97,18 +104,10 @@ if __name__ == '__main__':
                 testmanager.print_test_results()
             else:
                 testmanager.print_test_results_summary()
-        else:
-            print(
-                '\n' + ('*' * 80) + '\nThis test set is not supported on the mac.' +
-                '\n' + ('*' * 80) )
     except FileParseError as e:
         print(': Unable to parse ' + str(e))
         exit(1)
-    except AnalyzerMissingError as e:
-        print('*' * 80)
-        print('Analyzer not found at ' + str(e) + ': Please set analyzer location in Config.py')
-        print('*' * 80)
-        exit(1)
+
     except OSError as e:
         print('*' * 80)
         print('OS Error: ' + str(e) + ': Please check the platform settings in Config.py')
