@@ -73,6 +73,10 @@ class Config(object):
         self.kendradir = os.path.join(self.testdir,'kendra')
         self.zitserdir = os.path.join(self.testdir,'zitser')
 
+        # analysis targets
+        self.name_separator = ':'
+        self.targets = {}
+
         # personalization
         if localconfig: ConfigLocal.getLocals(self)
 
@@ -87,16 +91,27 @@ class Config(object):
         lines.append('  platform : ' + self.platform)        
         lines.append('  parser   : ' + self.cparser +  parserfound)
         lines.append('  analyzer : ' + self.canalyzer + analyzerfound)
+        if not self.chc_gui is None:
+            chcguifound = ' (found)' if os.path.isfile(self.chc_gui) else ' (not found)'
+            lines.append('  gui      : ' + self.chc_gui + chcguifound)
         if not self.bear is None:
             lines.append('bear  :' + self.bear)
             lines.append('libear:' + self.libear)
-        lines.append('  summaries: ' + self.summaries + summariesfound)
+        lines.append('\n  summaries: ' + self.summaries + summariesfound)
         
         lines.append('\nTest directories')
         lines.append('-' * 64)
         lines.append('  test directory:' + self.testdir)
-        lines.append('=' * 80)
+        lines.append('-' * 80)
+
+        if len(self.targets) > 0:
+            lines.append('\nRegistered analysis targets')
+            lines.append('-' * 80)
+            for group in self.targets:
+                lines.append('  ' + group + ': ' + self.targets[group])
+            lines.append('-' * 80)
         return '\n'.join(lines)
+
 
 
 if __name__ == '__main__':
