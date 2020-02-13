@@ -81,7 +81,8 @@ class CFileContracts(object):
         if self.has_postconditions():
             lines.append('\nFile: ' + self.cfile.name + ' - postconditions')
             lines.append('-' * 80)
-            for f in self.functions.values():
+            for fname in sorted(self.functions):
+                f = self.functions[fname]
                 if f.has_postconditions():
                     lines.append(f.report_postconditions())
             return '\n'.join(lines)
@@ -92,7 +93,8 @@ class CFileContracts(object):
         if self.has_preconditions():
             lines.append('\nFile: ' + self.cfile.name + ' - preconditions')
             lines.append('-' * 80)
-            for f in  self.functions.values():
+            for fname in  sorted(self.functions):
+                f = self.functions[fname]
                 if f.has_preconditions():
                     lines.append(f.report_preconditions())
             return '\n'.join(lines)
@@ -125,25 +127,3 @@ class CFileContracts(object):
             fn = CFunctionContract(self,fnode)
             self.functions[fn.name] = fn
 
-if __name__ == '__main__':
-
-    import os
-    import xml.etree.ElementTree as ET
-    from advance.app.CApplication import CApplication
-
-    path = '/Users/henny/gitrepo/ktadvance/tests/sard/kendra/id263Q'
-    contractpath = os.path.join(path,'ktacontracts')
-
-    cfapp = CApplication(os.path.join(path,'semantics'),cfilename='id263.c',contractpath=contractpath)
-    ccfile = os.path.join(path,'ktacontracts/id263_ktacc.xml')
-    cfile = cfapp.get_cfile()
-
-
-    tree = ET.parse(ccfile)
-    root = tree.getroot()
-    cnode = root.find('c-file')
-    fnode = cnode[0]
-    cfilecontracts = CFileContracts(cfile,contractpath)
-    print(str(cfilecontracts.get_function_contract('function1')))
-        
-        
