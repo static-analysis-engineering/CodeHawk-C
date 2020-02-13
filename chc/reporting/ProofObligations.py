@@ -602,7 +602,7 @@ def get_totals_from_tagtotals(tagtotals):
 
 def totals_to_string(tagtotals,absolute=True,totals=True):
     lines = []
-    rhlen = max ([ len(t) for t in tagtotals ])
+    rhlen = max( [ max ([ len(t) for t in tagtotals ]), 12 ])
     header1 = ''
     dsmethods = get_dsmethods([])
     width = 10
@@ -640,7 +640,7 @@ def totals_to_string(tagtotals,absolute=True,totals=True):
 
 def totals_to_presentation_string(ppototals,spototals,projectstats,absolute=True,totals=True):
     lines = []
-    rhlen = max([ len(t) for t in ppototals ])
+    rhlen = max( [ max([ len(t) for t in ppototals ]), 12 ])
     header1 = ''
     dsmethods = get_dsmethods([])
     lines.append(' '.rjust(rhlen) + 'line count'.rjust(10)
