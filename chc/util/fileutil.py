@@ -62,11 +62,58 @@ class CHCAnalyzerNotFoundError(CHCError):
     def __init__(self,location):
         CHCError.__init__(self,'CodeHawk C Analyzer executable not found at ' + location)
 
+class CHCGuiNotFoundError(CHCError):
+
+    def __init__(self,location):
+        CHCError.__init__(self,'CodeHawk C Analyzer Gui not found')
+        self.location = location
+
+    def __str__(self):
+        if location is None:
+            return ('Location of the CodeHawk C Gui has not been set in ConfigLocal.\n'
+                        + ' Please assign the location of the gui executable as '
+                        + ' config.chc_gui in util/ConfigLocal.py')
+        else:
+            return ('CodeHawk C Gui executable not found at ' + location)
+
 class CHCFileNotFoundError(CHCError):
 
     def __init__(self,filename):
         CHCError.__init__(self,'File ' + filename + ' not found')
         self.filename =  filename
+
+class CHCTargetGroupNotFoundError(CHCError):
+
+    def __init__(self,group):
+        CHCError.__init__(self,'Groupname ' + group + ' not found in config.targets')
+        self.group = group
+
+class CHCTargetGroupFileNotFoundError(CHCError):
+
+    def __init__(self,filename):
+        CHCError.__init__(self,'Group file: ' + filename + ' not found')
+        self.filename = filename
+
+class CHCShortCutNameError(CHCError):
+
+    def __init__(self,name):
+        CHCError.__init__(self,'Name: ' + name + ' is not a valid short-cut name')
+        self.name = name
+
+class CHCProjectNameNotFoundError(CHCError):
+
+    def __init__(self,group,name,projects):
+        CHCError.__init__(self,'Project name not found: ' + name)
+        self.group = group
+        self.name = name
+        self.projects = projects
+
+    def __str__(self):
+        msg = ('Project name: ' + self.name + ' not found in file for ' + self.group
+                   + '\nProjects found:\n'
+                   + ('-' * 80)
+                   + ''.join([ '\n  - ' + p for p in self.projects ]))
+        return msg
 
 class CHCSingleCFileNotFoundError(CHCError):
 
@@ -88,6 +135,13 @@ class CHCDirectoryNotFoundError(CHCError):
         CHCError.__init__(self,'Directory ' + dirname + ' not found')
         self.dirname = dirname
 
+class CHCSemanticsNotFoundError(CHCError):
+
+    def __init__(self,path):
+        CHCError.__init__(self,'No semantics directory or tar file found in '
+                              + path)
+        self.dirname = path
+
 class CHCArtifactsNotFoundError(CHCError):
 
     def __init__(self,path):
@@ -98,6 +152,23 @@ class CHCArtifactsNotFoundError(CHCError):
         return ('Directory ' + path + ' is expected to have a directory named '
                     + ' chcartifacts or ktadvance (legacy)')
 
+class CHCAnalysisResultsNotFoundError(CHCError):
+
+    def __init__(self,path):
+        CHCError.__init__(self,'No analysis results found for: ' + path
+                              + '\nPlease analyze project first.')
+        self.path = path
+
+class CHBJSONParseError(CHCError):
+
+    def __init__(self,filename,e):
+        CHCError.__init__(self,'JSON parse error')
+        self.filename = filename
+        self.valueerror = e
+
+    def __str__(self):
+        return ('JSON parse error in file: ' + self.filename + ': '
+                    + str(self.valueerror))
 
 def get_xnode(filename,rootnode,desc,show=True):
     if os.path.isfile(filename):
@@ -127,7 +198,98 @@ def check_parser():
     if not os.path.isfile(config.cparser):
         raise CHCParserNotFoundError(config.cparser)
 
+def check_gui():
+    if (config.chc_gui is None
+            or not os.path.isfile(config.chc_gui)):
+        raise CHCGuiNotFoundError(config.chc_gui)
+
 # ------------------------------------------------------------------------------
+# Short-cut names
+# targettable: group -> project
+#
+# A project can be specified with a short-cut name of the format
+#   <group-name>:<project-name>
+# where the group-name is registered in Config.targets with the file name of
+# a json file that lists the project-name(s) with potentially additional
+# information on those projects (e.g., 32-bit or 64-bit compiled).
+# ------------------------------------------------------------------------------
+
+def get_analysis_target_index(group):
+    """Returns the dictionary referred to by the group name."""
+    filename = config.targets.get(group,None)
+    if filename is None:
+        raise CHCTargetGroupNotFoundError(group)
+    if not os.path.isfile(filename):
+        raise CHCTargetGroupFileNotFoundError(filename)
+    try:
+        with open(filename,"r") as fp:
+            d = json.load(fp)
+    except ValueError as e:
+        raise CHCJSONParseError(filename,e)
+    if 'targets' in d:
+        return d['targets']
+    return {}
+
+def is_shortcut_name(name):
+    """Returns true if the name is a valid short-cut name."""
+    return name.count(config.name_separator) == 1
+
+def get_group_name(name):
+    """Returns the group-name from a short-cut name."""
+    if is_shortcut_name(name):
+        return name.split(config.name_separator)[0]
+    raise CHCShortCutNameError(name)
+
+def get_project_name(name):
+    """Returns the project name from a short-cut name."""
+    if is_shortcut_name(name):
+        return name.split(config.name_separator)[1]
+    raise CHCShortCutNameError(name)
+
+def get_registered_analysis_targets():
+    """Returns a dictionary of group -> (path,project-dictionary)."""
+    result = {}
+    for groupindex in config.targets:
+        result[groupindex] = {}
+        result[groupindex]['path'] = os.path.dirname(config.targets[groupindex])
+        result[groupindex]['projects'] = get_analysis_target_index(groupindex)
+    return result
+
+def get_project_path(name):
+    if is_shortcut_name(name):
+       group = get_group_name(name)
+       if group in config.targets:
+           gpath = os.path.dirname(config.targets[group])
+           grouptargets = get_analysis_target_index(group)
+           projectname = get_project_name(name)
+           if projectname in grouptargets:
+               projectrec = grouptargets[projectname]
+               ppath = projectrec['path']
+               ppath = os.path.join(gpath,ppath)
+               if os.path.isdir(ppath):
+                   return os.path.join(gpath,ppath)
+               else:
+                   raise CHCProjectDirectoryNotFoundError(ppath)
+           else:
+                raise CHCProjectNameNotFoundError(group,projectname,
+                                                      list(grouptargets.keys()))
+       else:
+            raise CHCTargetGroupNotFoundError(group)
+    else:
+        name = os.path.abspath(name)
+        if os.path.isdir(name):
+            return name
+        else:
+            raise CHCDirectoryNotFoundError(name)
+
+# Check presence of analysis results ------------------------------------------
+
+def check_analysis_results(path):
+    """Raises an exception if analysis results are not present."""
+    filename = os.path.join(path,'summaryresults.json')
+    if os.path.isfile(filename):
+        return
+    raise CHCAnalysisResultsNotFoundError(path)
 
 def get_chc_artifacts_path(path):
     dirname = os.path.join(path,'chcartifacts')
@@ -256,7 +418,7 @@ def read_project_summary_results_history(path):
     result = []
     if os.path.isdir(path):
         for fname in os.listdir(path):
-            if fname.startswith('summaryresults'):
+            if fname.startswith('summaryresults') and fname.endswith('json'):
                 fname = os.path.join(path,fname)
                 with open(fname) as fp:
                     result.append(json.load(fp))
@@ -543,6 +705,7 @@ def get_testdata_dict():
             return testdata
     return {}
 
+'''
 def get_project_path(path):
     testdir = Config().testdir
     testdata = get_testdata_dict()
@@ -550,6 +713,7 @@ def get_project_path(path):
         return  os.path.join(testdir,str(testdata[path]['path']))
     else:
         return os.path.abspath(path)
+'''
 
 def get_project_logfilename(path):
     testdir = Config().testdir
@@ -839,6 +1003,11 @@ def unpack_tar_file(path,deletesemantics=False):
         # else:
             # print('Successfully extracted ' + targzfile)
     return os.path.isdir('semantics')
+
+def check_semantics(path,deletesemantics=False):
+    if unpack_tar_file(path,deletesemantics=deletesemantics):
+        return
+    raise CHCSemanticsNotFoundError(path)
         
 
 if __name__ == '__main__':
@@ -862,8 +1031,10 @@ if __name__ == '__main__':
     for id in [ 'id1283', 'id1310' ]:
         print('  ' + id + get_zitser_testpath(id))
 
-    try:
-        print(get_kendra_testpath('id115Q'))
-    except CHCError as e:
-        print(str(e.wrap()))
-                  
+    print('\nRegistered target files:')
+    print('-' * 80)
+    targets = get_registered_analysis_targets()
+    for group in sorted(targets):
+        print(group)
+        for project in sorted(targets[group]['projects']):
+            print('  - ' +  project)
