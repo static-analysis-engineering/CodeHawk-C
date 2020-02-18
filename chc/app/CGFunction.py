@@ -34,12 +34,12 @@ class CGFunction(object):
     def __init__(self,varinfo):
         self.varinfo = varinfo
 
-    def getname(self): return self.varinfo.vname
+    def get_name(self): return self.varinfo.vname
 
-    def gettype(self): return self.varinfo.vtype
+    def get_type(self): return self.varinfo.vtype
 
-    def getlinenr(self): return self.varinfo.getline()
+    def get_line_nr(self): return self.varinfo.get_line()
 
-    def __str__(self): return self.getname() + ': ' + str(self.gettype())
+    def __str__(self): return self.get_name() + ': ' + str(self.get_type())
              
                   

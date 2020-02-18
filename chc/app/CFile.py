@@ -96,7 +96,11 @@ class CFile(object):
             xnode = ET.Element('interface-dictionary')
             self.interfacedictionary.write_xml(xnode)
             UF.save_cfile_interface_dictionary(self.capp.path,self.name,xnode)
-
+        self.gtypes = {}        # name -> CGType
+        self.gcomptagdefs = {}  # key -> CGCompTag
+        self.gcomptagdecls = {} # key -> CGCompTag
+        self.gvardecls = {}     # vid -> CGVarDecl
+        self.gvardefs = {}      # vid -> CGVarDef
 
     def collect_post_assumes(self):
         """For all call sites collect postconditions from callee's contracts and add as assume."""
@@ -160,7 +164,8 @@ class CFile(object):
             vid = self.functionnames[fname]
             return self.functions[vid]
         else:
-            raise CFunctionNotFoundException(self,fname)
+            raise UF.CFunctionNotFoundException(self,fname,
+                                                    list(self.functionnames.keys()))
 
     def get_function_by_index(self,index):
         self._initialize_functions()
@@ -395,6 +400,10 @@ class CFile(object):
         result['functions'] = {}
         self.iter_functions(lambda f:f.export_function_data(result['functions']))
         return result
+
+    def get_gtypes(self):
+        self._initialize_gtypes()
+        return self.gtypes
         
     def _initialize_gtypes(self):
         if len(self.gtypes) > 0: return
@@ -402,11 +411,19 @@ class CFile(object):
             name = t.find('typeinfo').get('tname')
             self.gtypes[name] = CGType(self,t)
 
+    def get_gcomptagdefs(self):
+        self._initialize_gcomptagdefs()
+        return self.gcomptagdefs
+
     def _initialize_gcomptagdefs(self):
         if len(self.gcomptagdefs) > 0: return
         for c in self.xnode.find('global-comptag-definitions').findall('gcomptag'):
             key = int(c.find('compinfo').get('ckey'))
             self.gcomptagdefs[key] = CGCompTag(self,c)
+
+    def get_gcomptagdecls(self):
+        self._initialize_gcomptagdecls()
+        return self.gcomptagdecls
 
     def _initialize_gcomptagdecls(self):
         if len(self.gcomptagdecls) > 0: return
@@ -426,17 +443,29 @@ class CFile(object):
             name = e.find('enuminfo').get('ename')
             self.genumtagdecls[name] = CGEnumTag(self,e)
 
+    def get_gvardecls(self):
+        self._initialize_gvardecls()
+        return self.gvardecls
+
     def _initialize_gvardecls(self):
         if len(self.gvardecls) > 0: return
         for v in self.xnode.find('global-var-declarations').findall('gvardecl'):
             vid = int(v.find('varinfo').get('vid'))
             self.gvardecls[vid] = CGVarDecl(self,v)
 
+    def get_gvardefs(self):
+        self._initialize_gvardefs()
+        return self.gvardefs
+
     def _initialize_gvardefs(self):
         if len(self.gvardefs) > 0: return
         for v in self.xnode.find('global-var-definitions').findall('gvar'):
             vid = int(v.find('varinfo').get('vid'))
             self.gvardefs[vid] = CGVarDef(self,v)
+
+    def get_gfunctions(self):
+        self._initialize_gfunctions()
+        return self.declarations.gfunctions
 
     def _initialize_gfunctions(self):
         if len(self.declarations.gfunctions) > 0: return
@@ -446,7 +475,7 @@ class CFile(object):
 
     def _initialize_function(self,vid):
         if vid in self.functions: return
-        fname = self.declarations.get_gfunction(vid).getname()
+        fname = self.declarations.get_gfunction(vid).get_name()
         f = UF.get_cfun_xnode(self.capp.path,self.name,fname)
         if not f is None:
             self.functions[vid] = CFunction(self,f)
