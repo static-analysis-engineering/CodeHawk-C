@@ -284,7 +284,7 @@ class ParseManager(object):
         shutil.copy('compile_commands.json',self.tgtspath)
 
     def parse_ifiles(self,copyfiles=True):
-        """Run the KT Advance parser on all .i files in the directory."""
+        """Run the CodeHawk C parser on all .i files in the directory."""
 
         os.chdir(self.cpath)
         targetfiles = TargetFiles()
@@ -298,7 +298,7 @@ class ParseManager(object):
         targetfiles.save_xml_file(self.tgtxpath)
 
     def parse_cfiles(self,copyfiles=True):
-        """Preprocess (with gcc) and run KT Advance parser on all .c files in the directory."""
+        """Preprocess (with gcc) and run the CodeHawk C parser on all .c files in the directory."""
 
         os.chdir(self.cpath)
         targetfiles = TargetFiles()
@@ -314,7 +314,7 @@ class ParseManager(object):
 
         
     def parse_ifile(self,ifilename):
-        """Invoke kt advance parser frontend on preprocessed source file
+        """Invoke the CodeHawk C parser frontend on preprocessed source file
 
         Args:
             ifilename: preprocessed source code filename relative to cpath

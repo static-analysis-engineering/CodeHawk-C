@@ -24,6 +24,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Analyzes a c application."""
 
 import argparse
 import logging
@@ -44,24 +45,17 @@ from chc.cmdline.AnalysisManager import AnalysisManager
 from chc.util.IndexedTable import IndexedTableError
 
 def parse():
-    usage = ('\nCall with the directory that holds the semantics files\n\n' +
-                 '  Example: python chc_analyze_project ~/gitrepo/ktadvance/tests/sard/zitser/id1284')
-    description = ('Analyzes a c project for which the semantics files have already been ' +
-                       'produced by the parser front end (use chc_parse_project.py to ' +
-                       'produce the semantics file, if not yet available).')
-    parser = argparse.ArgumentParser(usage=usage,description=description)
+    usage = ('\nCall with the directory that holds the semantics files\n\n')
+    parser = argparse.ArgumentParser(usage=usage,description=__doc__)
     parser.add_argument('path',
                             help=('directory that holds the semantics directory (or tar.gz file)'
                                       + ' or the name of a test application'))
-    parser.add_argument('--list_test_applications',
-                            help='list names of test applications provided',
-                            action='store_true')
     parser.add_argument('--maxprocesses',
                             help='number of files to process in parallel',
                             type=int,
                             default=1)
     parser.add_argument('--wordsize',
-                            help='size of an integer in bits',
+                            help='architecture word size (default 32)',
                             type=int,
                             default=32)
     parser.add_argument('--verbose',
@@ -71,7 +65,7 @@ def parse():
                             help='Unpack a fresh version of the semantics files',
                             action='store_true')
     parser.add_argument('--analysisrounds',
-                            help='Number of times to create secondary proof obligations',
+                            help='Number of times to create supporting proof obligations',
                             type=int, default=2)
     parser.add_argument('--contractpath',help='path to contract files to be used in analysis')
     parser.add_argument('--candidate_contractpath',
@@ -122,7 +116,7 @@ if __name__ == '__main__':
         print(str(e.wrap()))
         exit(1)
 
-    logfilename = os.path.join(cpath,'logfile.txt')
+    logfilename = os.path.join(cpath,'chclogfile.txt')
     
     logging.basicConfig(filename=logfilename,level=loglevel)
         

@@ -4,7 +4,7 @@
 # ------------------------------------------------------------------------------
 # The MIT License (MIT)
 #
-# Copyright (c) 2017-2018 Kestrel Technology LLC
+# Copyright (c) 2017-2020 Kestrel Technology LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,6 +24,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Reports violations for a project that has been analyzed."""
 
 import argparse
 import os
@@ -36,10 +37,9 @@ from chc.app.CApplication import CApplication
 
 def parse():
     usage = ('\nCall with the directory name that contains the semantics directory of a project')
-    description = ('Reports the analysis results for a project that has been analyzed')
-    parser = argparse.ArgumentParser(usage=usage,description=description)
-    parser.add_argument('path',help=('name of the directory that holds the semantics directory'
-                                         + ' or the name of a test application'))
+    parser = argparse.ArgumentParser(usage=usage,description=__doc__)
+    parser.add_argument('path',help=('directory that holds the semantics directory'
+                                         + ' or short-cut name of a test application'))
     parser.add_argument('--showcode',help='show the function code associated with the violations',
                             action='store_true')
     args = parser.parse_args()
