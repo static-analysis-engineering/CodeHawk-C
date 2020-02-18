@@ -142,6 +142,11 @@ class CHCSemanticsNotFoundError(CHCError):
                               + path)
         self.dirname = path
 
+    def __str__(self):
+        return ('Expected to find a semantics directory or semantics tar file in '
+                    + self.dirname + '.\nPlease first parse the c file to produce '
+                    + 'the semantics file/directory')
+
 class CHCArtifactsNotFoundError(CHCError):
 
     def __init__(self,path):
@@ -159,7 +164,7 @@ class CHCAnalysisResultsNotFoundError(CHCError):
                               + '\nPlease analyze project first.')
         self.path = path
 
-class CHBJSONParseError(CHCError):
+class CHCJSONParseError(CHCError):
 
     def __init__(self,filename,e):
         CHCError.__init__(self,'JSON parse error')
@@ -170,6 +175,90 @@ class CHBJSONParseError(CHCError):
         return ('JSON parse error in file: ' + self.filename + ': '
                     + str(self.valueerror))
 
+class CFunctionNotFoundException(CHCError):
+
+    def __init__(self,cfile,targetname,functionnames):
+        self.cfile = cfile
+        self.targetname = targetname
+        self.functionnames = functionnames
+
+    def __str__(self):
+        lines = []
+        lines.append('*' * 80)
+        lines.append(('Function ' + self.targetname + ' not found in file '
+                          + self.cfile.name + '; function names available:'))
+        lines.append('-' * 80)
+        for n in self.functionnames:
+            lines.append('  ' + n)
+        return '\n'.join(lines)
+
+class CHCJulietTestSuiteNotRegisteredError(CHCError):
+
+    def __init__(self):
+        CHCError.__init__(self,'Juliet test suite not registered')
+
+    def __str__(self):
+        lines = []
+        lines.append('Juliet Test Suite repository has not been registered in ConfigLocal.py')
+        lines.append('Please download or clone')
+        lines.append('  ' + 'https://github.com/kestreltechnology/CodeHawk-C-Targets-Juliet')
+        lines.append('and add the path to juliettestcases.json in ConfigLocal.py')
+        return '\n'.join(lines)
+
+class CHCJulietTestSuiteFileNotFoundError(CHCFileNotFoundError):
+
+    def __init__(self,filename):
+        CHCFileNotFoundError.__init__(self,filename)
+
+    def __str__(self):
+        return (CHCFileNotFoundError.__str__(self)
+                    + '\nPlease check path to the CodeHawk-C-Targets-Juliet repository')
+
+class CHCJulietTargetFileCorruptedError(CHCError):
+
+    def __init__(self,key):
+        CHCError.__init__('Expected to find ' + key + ' juliettestcases.json')
+
+class CHCJulietCWENotFoundError(CHCError):
+
+    def __init__(self,cwe,cwes):
+        CHCError.__init__(self,'Cwe ' + cwe + ' not found in juliettestcases.json')
+        self.cwe = cwe
+        self.cwes = cwes
+
+    def __str__(self):
+        lines = []
+        lines.append('Cwe ' + self.cwe + ' not found in juliettestcases.json')
+        lines.append('-' * 80)
+        lines.append('Cwes found: ')
+        for c in sorted(self.cwes):
+            lines.append('  ' + c)
+        return '\n'.join(lines)
+
+class CHCJulietTestNotFoundError(CHCError):
+
+    def __init__(self,cwe,test,tests):
+        CHCError.__init__(self,'Test case ' + test + ' not found for cwe ' + cwe)
+        self.cwe = cwe
+        self.test = test
+        self.tests = tests
+
+    def __str__(self):
+        lines = []
+        lines.append('Test case ' + self.test + ' not found for cwe ' + self.cwe)
+        lines.append('-' * 80)
+        lines.append('test cases available for ' + self.cwe + ':')
+        for t in sorted(self.tests):
+            lines.append('  ' + t)
+        return '\n'.join(lines)
+
+class CHCJulietScoreKeyNotFoundError(CHCError):
+
+    def __init__(self,cwe,test):
+        CHCError.__init__(self,'No score key found for ' + cwe + ' - ' + test)
+        self.cwe = cwe
+        self.test = test
+
 def get_xnode(filename,rootnode,desc,show=True):
     if os.path.isfile(filename):
         try:
@@ -179,8 +268,10 @@ def get_xnode(filename,rootnode,desc,show=True):
         except ET.ParseError as args:
             print('Problem in ' + filename)
             print(args)
+    elif show:
+        raise CHCFileNotFoundError(filename)
     else:
-        if show: print(desc + ' ' + filename + ' not found')
+        return None
 
 def create_backup_file(filename):
     if os.path.isfile(filename):
@@ -290,6 +381,12 @@ def check_analysis_results(path):
     if os.path.isfile(filename):
         return
     raise CHCAnalysisResultsNotFoundError(path)
+
+def check_cfile(path,filename):
+    filename = os.path.join(path,filename)
+    if os.path.isfile(filename):
+        return
+    raise CHCFileNotFoundError(filename)
 
 def get_chc_artifacts_path(path):
     dirname = os.path.join(path,'chcartifacts')
@@ -705,16 +802,6 @@ def get_testdata_dict():
             return testdata
     return {}
 
-'''
-def get_project_path(path):
-    testdir = Config().testdir
-    testdata = get_testdata_dict()
-    if path in testdata:
-        return  os.path.join(testdir,str(testdata[path]['path']))
-    else:
-        return os.path.abspath(path)
-'''
-
 def get_project_logfilename(path):
     testdir = Config().testdir
     testdata = get_testdata_dict()
@@ -781,15 +868,35 @@ def get_zitser_testpath(testname):
 # ------------------------------------------------------------ juliet tests ----
 
 def get_juliet_path():
-    sardpath = os.path.join(Config().testdir,'sard')
-    return os.path.abspath(os.path.join(sardpath,'juliet_v1.3'))
+    juliettarget = config.targets.get('juliet',None)
+    if juliettarget is None:
+        raise CHCJulietTestSuiteNotRegisteredError()
+    if not os.path.isfile(juliettarget):
+        raise CHCJulietTestSuiteFileNotFoundError(juliettarget)
+    return os.path.dirname(juliettarget)
 
-def get_juliet_testcases_list():
+def get_juliet_target_file():
     path = get_juliet_path()
     filename = os.path.join(path,'juliettestcases.json')
     if os.path.isfile(filename):
         with open(filename) as fp:
             return json.load(fp)
+
+def get_juliet_testcases():
+    juliettargetfile = get_juliet_target_file()
+    if 'testcases' in juliettargetfile:
+        return juliettargetfile['testcases']
+    else:
+        raise CHCJulietTargetFileCorruptedError('testcases')
+
+def get_flattened_juliet_testcases():
+    testcases = get_juliet_testcases()
+    result = {}
+    for cwe in testcases:
+        result[cwe] =  []
+        for t in testcases[cwe]:
+            result[cwe].extend(testcases[cwe][t])
+    return result
 
 def get_juliet_summaries():
     path = get_juliet_path()
@@ -797,16 +904,31 @@ def get_juliet_summaries():
     summarypath = os.path.join(summarypath,'julietsummaries')
     return os.path.join(summarypath,'julietsummaries.jar')
 
-def get_juliet_testpath(testname):
-    return os.path.join(get_juliet_path(),testname)
+def get_juliet_testpath(cwe,test):
+    julietpath = get_juliet_path()
+    testcases = get_juliet_testcases()
+    if not cwe in testcases:
+        raise CHCJulietCWENotFoundError(cwe,list(testcases.keys()))
+    cwepath = os.path.join(julietpath,cwe)
+    for subset in testcases[cwe]:
+        if test in testcases[cwe][subset]:
+            if subset == 'top':
+                return os.path.join(cwepath,test)
+            else:
+                subpath = os.path.join(cwepath,subset)
+                return os.path.join(subpath,test)
+    tests = []
+    for s in testcases[cwe]:
+        tests.extend(testcases[cwe][s])
+    raise CHCJulietTestNotFoundError(cwe,test,tests)
 
-def save_juliet_test_summary(testname,d):
-    path = get_juliet_testpath(testname)
+def save_juliet_test_summary(cwe,test,d):
+    path = get_juliet_testpath(cwe,test)
     with open(os.path.join(path,'jsummaryresults.json'),'w') as fp:
         json.dump(d,fp,sort_keys=True)
 
-def read_juliet_test_summary(testname):
-    path = get_juliet_testpath(testname)
+def read_juliet_test_summary(cwe,test):
+    path = get_juliet_testpath(cwe,test)
     if os.path.isdir(path):
         filename = os.path.join(path,'jsummaryresults.json')
         if os.path.isfile(filename):
@@ -814,13 +936,37 @@ def read_juliet_test_summary(testname):
                 d = json.load(fp)
             return d
 
-def get_juliet_reference(testname):
-    path = get_juliet_testpath(testname)
+def get_juliet_scorekey(cwe,test):
+    path = get_juliet_testpath(cwe,test)
     scorekey = os.path.join(path,'scorekey.json')
     if os.path.isfile(scorekey):
         with open(scorekey,'r') as fp:
             d = json.load(fp)
         return d
+    raise CHCJulietScoreKeyNotFoundError(cwe,test)
+
+def chtime(t):
+    if t == 0:
+        return '0'
+    return time.strftime('%Y-%m-%d %H:%m',time.localtime(t))
+
+def get_juliet_result_times(cwe,test):
+    t1 = 0
+    t2 = 0
+    path = get_juliet_testpath(cwe,test)
+    sempath = os.path.join(path,'semantics')
+    if os.path.isdir(sempath):
+        chcpath = os.path.join(sempath,'chcartifacts')
+        if os.path.isdir(chcpath):
+            t1 = os.path.getmtime(chcpath)
+        else:
+            ktapath = os.path.join(sempath,'ktadvance')
+            if os.path.isdir(ktapath):
+                t1 = os.path.getmtime(ktapath)
+    resultsfile = os.path.join(path,'jsummaryresults.json')
+    if os.path.isfile(resultsfile):
+        t2 = os.path.getmtime(resultsfile)
+    return (chtime(t1),chtime(t2))
 
 # ----------------------------------------------------------- itc tests  ------
 
@@ -976,6 +1122,8 @@ def unpack_src_i_tar_file(testname):
 def unpack_tar_file(path,deletesemantics=False):
     linuxtargzfile = 'semantics_linux.tar.gz'
     mactargzfile = 'semantics_mac.tar.gz'
+    if not os.path.isdir(path):
+        raise CHCDirectoryNotFoundError(path)
     os.chdir(path)
 
     if os.path.isfile(linuxtargzfile):
