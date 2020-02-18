@@ -200,6 +200,47 @@ scripts. Separate sets of scripts are provided for different use cases.
   suggestions for contract conditions. A more detailed description
   of these scripts is given [here](chc/cmdline/c-project/README.md).
 
+
+- **Juliet Test Suite** A separate repository,
+  [CodeHawk-C-Targets-Juliet](https://github.com/kestreltechnology/CodeHawk-C-Targets-Juliet),
+  has been prepared with a large number of C-language test cases from
+  the Juliet Test Suite (originally developed by NSA's Center for
+  Assured Software and now maintained by NIST). Scripts customized for
+  these tests are provided in
+  [chc/cmdline/juliet](chc/cmdline/juliet/README.md).
+
+  To run these tests, first obtain the repository:
+  ```
+  > git clone https://github.com/kestreltechnology/CodeHawk-C-Targets-Juliet.git
+  ```
+  and set the path in chc/util/ConfigLocal.py
+  (if not present, copy from ConfigLocal.template)
+  in the targets property, e.g.,
+  ```
+    juliettargets_home = os.path.expanduser('~')
+    config.targets = {
+       "juliet": os.path.join(juliettargets_home,
+	                            "CodeHawk-C-Targets-Juliet/targets/juliettestcases.json")
+        }
+  ```
+  (modify juliettargets_home to reflect your local path to the
+  CodeHawk-C-Targets-Juliet repository).
+
+  To check the configuration and analyze one of the tests:
+  ```
+  > export PYTHONPATH=$HOME/CodeHawk-C
+  > cd CodeHawk-C/chc/cmdline/juliet
+  > python chc_check_config.py
+  > python chc_analyze_juliettest.py CWE121 CWE129_large
+  > python chc_score_juliettest.py CWE121 CWE129_large
+  > python chc_report_juliettest.py CWE121 CWE129_large
+  ```
+  Analysis of individual tests takes a few minutes or less than a
+  minute if using multiple cores (use the --maxprocesses commandline
+  argument to indicate the number of processors). More detailed
+  descriptions of the scripts available for the Juliet tests are
+  available [here](chc/cmdline/juliet/README.md).
+
 ### Source code
 This repository contains the source code of the python infrastructure
 that invokes the parser and analyzer and interprets and reports the
