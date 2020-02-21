@@ -46,14 +46,14 @@ def parse():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('cwe',help='name of cwe, e.g., CWE121')
     parser.add_argument('test',help='name of test case, e.g., CWE129_large')
-    parser.add_argument('--maxprocesses',
+    parser.add_argument('--maxprocesses','-m',
                             help='number of files to process in parallel',
                             type=int, default=1)
     parser.add_argument('--analysisrounds',
-                            help='Number of times to generate secondary proof obligations',
+                            help='Number of times to generate supporting proof obligations',
                             type=int,default=5)
     parser.add_argument('--wordsize',
-                            help='size of an integer in bits',
+                            help='architecture word size in bits',
                             type=int,
                             default=32)
     parser.add_argument('--contractpath',help='path to save the contracts file',default=None)
