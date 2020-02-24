@@ -880,7 +880,12 @@ def get_juliet_target_file():
     filename = os.path.join(path,'juliettestcases.json')
     if os.path.isfile(filename):
         with open(filename) as fp:
-            return json.load(fp)
+            try:
+                return json.load(fp)
+            except ValueError as e:
+                raise CHCJSONParseError(filename,e)
+    else:
+        raise CHCFileNotFoundException(filename)
 
 def get_juliet_testcases():
     juliettargetfile = get_juliet_target_file()
@@ -888,6 +893,13 @@ def get_juliet_testcases():
         return juliettargetfile['testcases']
     else:
         raise CHCJulietTargetFileCorruptedError('testcases')
+
+def get_juliet_variant_descriptions():
+    juliettargetfile = get_juliet_target_file()
+    if 'variants' in juliettargetfile:
+        return juliettargetfile['variants']
+    else:
+        raise CHCJulietTargetFileCorruptedError('variants')
 
 def get_flattened_juliet_testcases():
     testcases = get_juliet_testcases()
