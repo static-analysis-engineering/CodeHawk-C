@@ -3,6 +3,7 @@
 ### Overview
 
 - [chc_analyze_project.py](#chc_analyze_project)
+- [chc_list_missing_summaries.py](#chc_list_missing_summaries)
 - [chc_parse_project.py](#chc_parse_project)
 - [chc_report_project.py](#chc_report_project)
 
@@ -48,7 +49,20 @@ supporting proof obligations.
   - *--logfilename* filename: name of the file to collect log messages
     (default: chc_logfile.txt in the ```path``` directory)	
 
-[top](#Overview)
+[top](#overview)
+
+#### chc_list_missing_summaries
+Prints a list of functions, organized by header file, for which no
+summary is available.
+- positional arguments:
+  - *path*: absolute or relative path to directory that holds the
+    semantics directory, or short-cut name
+
+- keyword arguments:
+  - *--all*: show all functions for which no summary is available,
+  including possibly application functions
+
+[top](#overview)
 
 #### chc_parse_project
 Creates the semantic artifacts for a c application. It first runs
