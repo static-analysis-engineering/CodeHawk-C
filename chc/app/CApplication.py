@@ -68,6 +68,14 @@ class CApplication(object):
 
     def get_filenames(self): return self.filenames.values()
 
+    """Returns true if name is a base filename."""
+    def is_application_header(self,name):
+        for n in self.get_filenames():
+            if name == os.path.basename(n[:-2]):
+                return True
+        else:
+            return False
+
     def get_max_filename_length(self):
         return max([ len(x) for x in self.get_filenames()])
 
