@@ -4,6 +4,7 @@
 
 - [chc_analyze_project.py](#chc_analyze_project)
 - [chc_list_missing_summaries.py](#chc_list_missing_summaries)
+- [chc_make_callgraph.py](#chc_make_callgraph)
 - [chc_parse_project.py](#chc_parse_project)
 - [chc_report_project.py](#chc_report_project)
 
@@ -64,6 +65,14 @@ summary is available.
 
 [top](#overview)
 
+#### chc_make_callgraph
+Creates a JSON file in the project directory that contains the edges
+of the callgraph (to be used to make quick queries about reachability,
+etc.)
+- positional arguments:
+  - *path*: absolute or relative path to directory that holds the
+    semantics directory, or short-cut name
+
 #### chc_parse_project
 Creates the semantic artifacts for a c application. It first runs
 ```bear make``` to record the actions taken by the Makefile, then
@@ -73,7 +82,9 @@ the pre-processed files.
 - positional arguments:
   - *path*: absolute or relative path to directory that holds the Makefile,
     or short-cut name
-  
+
+[top](#overview)
+
 -  keyword arguments:
    - *--targetdir* directoryname: name of a directory to save the semantics
      files; default is ```path```.

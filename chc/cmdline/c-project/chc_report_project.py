@@ -75,6 +75,7 @@ if __name__ == '__main__':
         # summaries = UF.read_project_summary_results(cpath)
         try:
             if summaries == None:
+                sempath = os.path.join(cpath,'semantics')
                 capp = CApplication(sempath)
                 timestamp = os.stat(capp.path).st_ctime
                 result = RP.project_proofobligation_stats_to_dict(capp)

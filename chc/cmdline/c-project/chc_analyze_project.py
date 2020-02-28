@@ -98,7 +98,7 @@ if __name__ == '__main__':
     except UF.CHError as e:
         print(str(e.wrap()))
         exit(1)
-    
+
     if args.logging is None:
         loglevel = logging.WARNING
     else:
@@ -144,9 +144,13 @@ if __name__ == '__main__':
     with timing('analysis'):
 
         am.create_app_primary_proofobligations(processes=args.maxprocesses)
-        capp.collect_post_assumes()
-        capp.reinitialize_tables()
-        capp.update_spos()
+        try:
+            capp.collect_post_assumes()
+            capp.reinitialize_tables()
+            capp.update_spos()
+        except UF.CHCError as e:
+            print(str(e.wrap()))
+            exit(1)
 
         for i in range(1):
             am.generate_and_check_app('vllrisp', processes=args.maxprocesses)

@@ -77,6 +77,8 @@ if __name__ == '__main__':
             for fnrec in fnrecs:
                 pstatic = ' (static)' if fnrec['s'] == 's' else ''
                 print(' - ' + fnrec['f'] +  '.c' + pstatic)
+                if 'n' in fnrec:
+                    print('   Notes: ' + '; '.join(fnrec['n']))
         else:
             print('Function ' + args.functionname + ' not found in the function index')
             print('Did you mean:')

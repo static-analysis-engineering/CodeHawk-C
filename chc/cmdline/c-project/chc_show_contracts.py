@@ -63,16 +63,33 @@ if __name__ == '__main__':
 
     capp = CApplication(sempath,contractpath=contractpath)
 
+
     lines = []
+    result = {}
+    result['pre'] = 0
+    result['post'] = 0
+
     def f(fi):
         if fi.has_file_contracts():
             if (not args.xpost) and fi.contracts.has_postconditions():
                 lines.append(str(fi.contracts.report_postconditions()))
+                result['post'] += fi.contracts.count_postconditions()
             if (not args.xpre)  and fi.contracts.has_preconditions():
                 lines.append(str(fi.contracts.report_preconditions()))
+                result['pre'] += fi.contracts.count_preconditions()
 
-    capp.iter_files(f)
+    try:
+        capp.iter_files(f)
+    except UF.CHCError as e:
+        print(str(e.wrap()))
+        exit(1)
 
     print('\n'.join(lines))
+
+    print('\n')
+    print('=' * 80)
+    print('Postconditions: ' + str(result['post']))
+    print('Preconditions : ' + str(result['pre']))
+    print('=' * 80)
         
 
