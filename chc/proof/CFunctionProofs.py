@@ -78,6 +78,10 @@ class CFunctionProofs(object):
         """For all call sites collect postconditions from callee's contracts and add as assume."""
 
         self._get_spos()
+        if self.spos is None:
+            raise UF.CHCError('No supporting proof obligations found for '
+                                + str(self.cfun.name) + ' in file '
+                                + str(self.cfile.name))
         self.spos.collect_post_assumes()
 
     def reset_spos(self): self.spos = None
