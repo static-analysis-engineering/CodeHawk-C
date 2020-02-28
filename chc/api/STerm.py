@@ -27,6 +27,7 @@
 
 import xml.etree.ElementTree as ET
 
+import chc.util.fileutil as UF
 import chc.app.CDictionaryRecord as CD
 
 printops = {
@@ -191,7 +192,11 @@ class STNumConstant(STerm):
     def __init__(self,cd,index,tags,args):
         STerm.__init__(self,cd,index,tags,args)
 
-    def get_constant(self): return int(self.tags[1])
+    def get_constant(self):
+        try:
+            return int(self.tags[1])
+        except ValueError as e:
+            raise UF.CHCError(str(e))
 
     def is_num_constant(self): return True
 

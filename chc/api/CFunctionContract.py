@@ -27,6 +27,8 @@
 
 import xml.etree.ElementTree as ET
 
+import chc.util.fileutil as UF
+
 class CFunctionContract(object):
     """Representsa user-provided function contract."""
 
@@ -110,14 +112,19 @@ class CFunctionContract(object):
 
     def report_preconditions(self):
         lines = []
-        if len(self.preconditions) == 1:
-            return ('  ' + self.name + ': ' + self.preconditions.values()[0].pretty())
-        elif len(self.preconditions) > 1:
-            lines.append('  ' + self.name)
-            for pc in self.preconditions.values():
-                lines.append('     ' + pc.pretty())
-            return '\n'.join(lines)
-        return ''
+        try:
+            if len(self.preconditions) == 1:
+                return ('  ' + self.name + ': ' + self.preconditions.values()[0].pretty())
+            elif len(self.preconditions) > 1:
+                lines.append('  ' + self.name)
+                for pc in self.preconditions.values():
+                    lines.append('     ' + pc.pretty())
+                return '\n'.join(lines)
+            return ''
+        except UF.CHCError as e:
+            msg = ('Error in contract function: ' + self.name + ' in file: '
+                     + self.cfilecontracts.cfile.name + ': ' + str(e))
+            raise UF.CHCError(msg)
 
     def __str__(self):
         lines = []

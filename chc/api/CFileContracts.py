@@ -73,6 +73,12 @@ class CFileContracts(object):
     def has_preconditions(self):
         return any( [ f.has_preconditions() for f in self.functions.values() ])
 
+    def count_postconditions(self):
+        return sum( [ len(f.postconditions) for f in self.functions.values() ])
+
+    def count_preconditions(self):
+        return sum( [ len(f.preconditions) for f in self.functions.values() ])
+
     def iter_functions(self,f):
         for fn in self.functions: f(self.functions[fn])
 

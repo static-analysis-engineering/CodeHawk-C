@@ -55,10 +55,15 @@ class CFunctionApi(object):
         self.fieldassignments = {}        # nr -> FieldAssignment
         self.librarycalls = {}            # (header,fname) -> count
         self.contractconditionfailures = []
+        self.missingsummaries = []
         self.initialize()
 
     def has_outstanding_postcondition_requests(self):
         return (sum([ len(r.get_open_ppos()) for r in self.postconditionrequests.values() ])) > 0
+
+    def get_missing_summaries(self): return self.missingsummaries
+
+    def has_missing_summaries(self): return len(self.missingsummaries) > 0
 
     def has_outstanding_global_requests(self):
         return (sum([ len(r.get_open_ppos()) for r in self.globalassumptionrequests.values() ])) > 0
@@ -147,6 +152,10 @@ class CFunctionApi(object):
                 lines.append('   ' + k + ':' + v + ' -- ' + str(self.librarycalls[(k,v)]))
         else:
             lines.append('\n  -- no library calls')
+        if len(self.missingsummaries) > 0:
+            lines.append('\n  missing summaries:')
+            for n in self.missingsummaries:
+                lines.append('   ' + n)
         return '\n'.join(lines)
 
     def initialize(self):
@@ -155,6 +164,10 @@ class CFunctionApi(object):
         if xnode is None:
             return
         self.xnode = xnode
+        xmissingsummaries = self.xnode.find('api').find('missing-summaries')
+        if not xmissingsummaries is None:
+            for x in xmissingsummaries.findall('ms'):
+                self.missingsummaries.append(x.get('n'))
         xfailures = self.xnode.find('api').find('contract-condition-failures')
         if not xfailures is None:
             for x in xfailures.findall('failure'):
