@@ -287,8 +287,8 @@ class STArgAddressedValue(STerm):
         return anode
 
     def __str__(self):
-        return ('addressed-value(' + str(self.get_base_term())
-                    + str(self.get_offset()) + ')')
+        return ('addressed-value(' + str(self.get_base_term()) + ')'
+                    + str(self.get_offset()))
 
 
 class STArgNullTerminatorPos(STerm):

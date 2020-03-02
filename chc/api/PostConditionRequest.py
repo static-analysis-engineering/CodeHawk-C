@@ -47,10 +47,12 @@ class PostConditionRequest(object):
     
     def __str__(self):
         dppos = ''
-        if len(self.ppos) > 0:
-            dppos = "\n      --Dependent ppo's: [" + ', '.join(str(i) for i in self.get_open_ppos()) + ']\n'
+        if len(self.ppos) > 0 and len(self.get_open_ppos()) > 0:
+            dppos = ("\n        --Dependent ppo's: ["
+                         + ', '.join(str(i) for i in self.get_open_ppos()) + ']')
         dspos = ''
-        if len(self.spos) > 0:
-            dspos = "\n      --Dependent spo's: [" + ', '.join(str(i) for i in self.get_open_spos()) + ']\n'
+        if len(self.spos) > 0 and len(self.get_open_spos()) > 0:
+            dspos = ("\n        --Dependent spo's: ["
+                         + ', '.join(str(i) for i in self.get_open_spos()) + ']')
         return (str(self.callee.vname) + ':' + str(self.postcondition) + dppos + dspos)
 
