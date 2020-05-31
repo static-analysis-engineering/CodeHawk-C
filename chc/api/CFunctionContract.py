@@ -105,8 +105,10 @@ class CFunctionContract(object):
             return ('  ' + self.name + ': ' + self.postconditions.values()[0].pretty())
         elif len(self.postconditions) > 1:
             lines.append('  ' + self.name)
+            pclines = []
             for pc in self.postconditions.values():
-                lines.append('     ' + pc.pretty())
+                pclines.append('     ' + pc.pretty())
+            lines = lines + sorted(pclines)
             return  '\n'.join(lines)
         return ''
 
@@ -117,8 +119,10 @@ class CFunctionContract(object):
                 return ('  ' + self.name + ': ' + self.preconditions.values()[0].pretty())
             elif len(self.preconditions) > 1:
                 lines.append('  ' + self.name)
+                pclines = []
                 for pc in self.preconditions.values():
-                    lines.append('     ' + pc.pretty())
+                    pclines.append('     ' + pc.pretty())
+                lines = lines + sorted(pclines)
                 return '\n'.join(lines)
             return ''
         except UF.CHCError as e:

@@ -300,7 +300,7 @@ class CFile(object):
         with open(filename,'w') as fp:
             fp.write(UX.doc_to_pretty(ET.ElementTree(xroot)))
 
-    def create_contract(self,contractpath,preservesmemory=False,seed={},ignorefns={}):
+    def create_contract(self,contractpath,preservesmemory=[],seed={},ignorefns={}):
         if UF.has_contracts(contractpath,self.name): return
         cnode = ET.Element('cfile')
         cnode.set('name',self.name)
@@ -359,7 +359,7 @@ class CFile(object):
                         pcnode.append(postnode)
                 fnode.append(pcnode)
 
-            if preservesmemory:
+            if fn.name in preservesmemory:
                 pcnode = ET.Element('postconditions')
                 fnode.append(pcnode)
                 prmnode = ET.Element('preserves-all-memory')

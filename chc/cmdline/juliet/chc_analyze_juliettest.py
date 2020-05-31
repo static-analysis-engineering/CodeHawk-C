@@ -55,7 +55,7 @@ def parse():
     parser.add_argument('--wordsize',
                             help='architecture word size in bits',
                             type=int,
-                            default=32)
+                            default=64)
     parser.add_argument('--contractpath',help='path to save the contracts file',default=None)
     args = parser.parse_args()
     return args

@@ -72,6 +72,15 @@ if __name__ == '__main__':
                 for fn in headers[h]['functions']:
                     ignorefns[fn] = h
 
-    capp.iter_files(lambda f:f.create_contract(contractpath,args.preservesmemory,ignorefns=ignorefns))
-        
+    preserves_memory_functions = UF.load_preserves_memory_functions(cpath)
+
+    def create_contract_file(f):
+        if f.name in preserves_memory_functions:
+            preservesmemory = preserves_memory_functions[f.name]
+        else:
+            preservesmemory = []
+        f.create_contract(contractpath,preservesmemory=preservesmemory)
+
+    # capp.iter_files(lambda f:f.create_contract(contractpath,args.preservesmemory,ignorefns=ignorefns))
+    capp.iter_files(create_contract_file)
 

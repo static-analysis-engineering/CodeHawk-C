@@ -8,6 +8,7 @@
 - [chc_juliet_dashboard.py](#chc_juliet_dashboard)
 - [chc_juliet_dashboard_variant.py](#chc_juliet_dashboard_variant)
 - chc_list_juliettests.py
+- [chc_list_missing_summaries.py](#chc_list_missing_summaries)
 - chc_project_dashboard.py
 - chc_report_juliettest.py
 - chc_report_juliettest_file.py
@@ -103,4 +104,17 @@ dataflow variant. A description of the variants available is given
   - *--cwe* <code>cwe</code>: restrict reporting to given CWE only
     (e.g., CWE121)
   
+[top](#overview)
+
+#### chc_list_missing_summaries
+Prints a list of functions, organized by header file, for which no
+summary is available.
+- positional arguments:
+  - *cwe*: name of cwe, e.g., CWE121
+  - *test*: name of test, e.g., CWE129_large
+  
+- keyword arguments:
+  - *--all*: show all functions for which no summary is available,
+  including possibly application functions
+
 [top](#overview)

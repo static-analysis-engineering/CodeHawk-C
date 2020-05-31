@@ -164,6 +164,19 @@ class CHCAnalysisResultsNotFoundError(CHCError):
                               + '\nPlease analyze project first.')
         self.path = path
 
+class CHCXmlParseError(CHCError):
+
+    def __init__(self,filename,errorcode,position):
+        CHCError.__init__(self,'Xml parse  error')
+        self.filename = filename
+        self.errorcode = errorcode
+        self.position = position
+
+    def __str__(self):
+        return ('XML parse error in ' + filename + ' (errorcode: '
+                    + str(self.errorcode) + ') at position  '
+                    + str(self.position))
+
 class CHCJSONParseError(CHCError):
 
     def __init__(self,filename,e):
@@ -265,9 +278,8 @@ def get_xnode(filename,rootnode,desc,show=True):
             tree = ET.parse(filename)
             root = tree.getroot()
             return root.find(rootnode)
-        except ET.ParseError as args:
-            print('Problem in ' + filename)
-            print(args)
+        except ET.ParseError as e:
+            raise CHCXmlParseError(filename,e.code,e.position)
     elif show:
         raise CHCFileNotFoundError(filename)
     else:
@@ -425,6 +437,21 @@ def save_callgraph(path,d):
 
 def load_callgraph(path):
     filename = get_callgraph_filename(path)
+    if os.path.isfile(filename):
+        with open(filename,'r') as fp:
+            return json.load(fp)
+    return {}
+
+def get_preserves_memory_functions_filename(path):
+    return os.path.join(path,'preserves-memory.json')
+
+def save_preserves_memory_functions(path,d):
+    filename = get_preserves_memory_functions_filename(path)
+    with open(filename,'w') as fp:
+        json.dump(d,fp,indent=2)
+
+def load_preserves_memory_functions(path):
+    filename = get_preserves_memory_functions_filename(path)
     if os.path.isfile(filename):
         with open(filename,'r') as fp:
             return json.load(fp)

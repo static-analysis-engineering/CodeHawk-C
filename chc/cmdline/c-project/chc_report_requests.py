@@ -115,7 +115,17 @@ if __name__ == '__main__':
                 lines.append('\n  ' + fn + freeing )
                 for p in sorted(calleetable[fi][fn],key=lambda p:p.postrequest.get_postcondition().tags[0]):
                     lines.append('      ' + str(p))
-        return '\n'.join(lines)            
+        return '\n'.join(lines)
+
+    def save_preserves_memory_functions():
+        result = {}
+        for fi in sorted(calleetable):
+            result.setdefault(fi,[])
+            for fn in sorted(calleetable[fi]):
+                freeing =  check_preserves_memory(fn,callgraph)
+                if len(freeing) == 0:
+                    result[fi].append(fn)
+        UF.save_preserves_memory_functions(cpath,result)
 
     def report_requests(fi):
         lines.append(fi.name)
@@ -152,6 +162,7 @@ if __name__ == '__main__':
 
     print('\n\nPostcondition requests by callee')
     print(calleetable_to_string())
+    save_preserves_memory_functions()
 
     print('\n' + ('-' * 80))
     print('Postcondition requests: ' + str(stats['npost']).rjust(4))
