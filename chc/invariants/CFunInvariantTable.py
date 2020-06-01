@@ -77,7 +77,7 @@ class CFunInvariantTable(object):
                 if (r.get_non_relational_value().size()
                         < varsets[cvar.get_seqnr()].get_non_relational_value().size()):
                     varsets[cvar.get_seqnr()] = r
-        invs = unrinvs + sorted(nonrsinvs + varsets.values(),key=lambda i:str(i.get_variable()))
+        invs = unrinvs + sorted(nonrsinvs + list(varsets.values()),key=lambda i:str(i.get_variable()))
         return invs
 
     def initialize(self):
