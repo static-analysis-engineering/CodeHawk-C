@@ -111,8 +111,12 @@ if __name__ == '__main__':
 
     with timing('analysis of ' + args.cwe + ' - ' + args.test):
 
-        am.create_app_primary_proofobligations(processes=args.maxprocesses)
-        capp.collect_post_assumes()
+        try:
+            am.create_app_primary_proofobligations(processes=args.maxprocesses)
+            capp.collect_post_assumes()
+        except UF.CHCError as e:
+            print(str(e.wrap()))
+            exit(1)
 
         for i in range(1):
             am.generate_and_check_app('llrvisp',processes=args.maxprocesses)
