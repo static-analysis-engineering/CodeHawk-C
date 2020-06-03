@@ -569,7 +569,8 @@ class InterfaceDictionary(object):
             def f(index,key): return XP.XInitializedRange(self,index,tags,args)
             return self.xpredicate_table.add(IT.get_key(tags,args),f)
         else:
-            print('Parse mathml xpredicate not found for ' + op)
+            print('Parse mathml xpredicate not found for ' + op + ' in file '
+                      + self.cfile.name)
             exit(1)
 
     # ------------------------ Read/write xml services -------------------------

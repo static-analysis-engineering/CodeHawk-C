@@ -28,10 +28,8 @@
 import xml.etree.ElementTree as ET
 
 from chc.proof.CFunctionPPOs import CFunctionPPOs
-# from advance.proof.CFunctionEVs import CFunctionPEVs
-
 from chc.proof.CFunctionSPOs import CFunctionSPOs
-# from advance.proof.CFunctionEVs import CFunctionSEVs
+
 
 import chc.util.fileutil as UF
 
@@ -179,8 +177,8 @@ class CFunctionProofs(object):
             if not xnode is None:
                 self.spos = CFunctionSPOs(self,xnode)
             else:
-                print('Unable to load spos for ' + self.cfun.name + ' in file '
-                          + self.cfile.name)
+                raise UF.CHCError('Unable to load spos for ' + self.cfun.name + ' in file '
+                            + self.cfile.name)
 
     def _save_spos(self,cnode):
         UF.save_spo_file(self.capp.path,self.cfile.name,self.cfun.name,cnode)
