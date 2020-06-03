@@ -33,7 +33,7 @@ import time
 from contextlib import contextmanager
 from multiprocessing import Pool
 
-import advance.cmdline.juliet.JulietTestCases as JTC
+import chc.util.fileutil as UF
 
 def parse():
     parser = argparse.ArgumentParser()
@@ -52,8 +52,8 @@ def timing(activity):
           '\n' + ('=' * 80))
 
 def analyze_juliettest(testdata):
-    (testcase, index) = testdata
-    cmd = [ 'python', 'chc_analyze_juliettest.py', testcase ]
+    (cwe, testcase, index) = testdata
+    cmd = [ 'python', 'chc_analyze_juliettest.py', cwe, testcase ]
     result = subprocess.call(cmd,stderr=subprocess.STDOUT)
     return result
 
@@ -72,13 +72,14 @@ if __name__ == '__main__':
 
     with timing('analysis' + maxptxt):
         count = 0
-        for cwe in sorted(JTC.testcases):
+        juliettests = UF.get_juliet_testcases()
+        for cwe in sorted(juliettests):
            if excluded(cwe): continue
            print('Analyzing testcases for cwe ' + cwe)
-           for t in JTC.testcases[cwe]:
-               testcase = os.path.join(cwe,t)
-               testcases.append((testcase, count))
-               count += 1
+           for subdir in sorted(juliettests[cwe]):
+               for t in juliettests[cwe][subdir]:
+                   testcases.append((cwe,t, count))
+                   count += 1
 
         results = pool.map(analyze_juliettest, testcases)
 
