@@ -36,7 +36,7 @@ from chc.util.Config import Config
 class AnalysisManager(object):
     """Provide the interface to the KT Advance (ocaml) analyzer."""
 
-    def __init__(self,capp,onefile=False,wordsize=0,unreachability=False,
+    def __init__(self,capp,wordsize=0,unreachability=False,
                      thirdpartysummaries=[],nofilter=True,
                      verbose=True):
         """Initialize the analyzer location and target file location.
@@ -45,7 +45,6 @@ class AnalysisManager(object):
             capp (CApplication): application entry point
 
         Keyword args:
-            onefile (bool): analyzing one file at a time (default False)
             wordsize (int): architecture wordsize (0,16,32,64) (default 0 (unspecified))
             unreachability (bool): use unreachability as justification to discharge 
                                    (default False)
@@ -61,7 +60,6 @@ class AnalysisManager(object):
         self.path = self.capp.path
         self.canalyzer = self.config.canalyzer
         self.gui = self.config.chc_gui
-        self.onefile = onefile
         self.nofilter = nofilter
         self.wordsize = wordsize
         self.thirdpartysummaries = thirdpartysummaries

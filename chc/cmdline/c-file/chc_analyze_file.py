@@ -105,7 +105,7 @@ if __name__ == '__main__':
         print(str(e.wrap()))
         exit(1)
     
-    am = AnalysisManager(capp,onefile=True,wordsize=int(args.wordsize),verbose=args.verbose,
+    am = AnalysisManager(capp,wordsize=int(args.wordsize),verbose=args.verbose,
                              unreachability=args.unreachability,
                              thirdpartysummaries=args.thirdpartysummaries)
 
