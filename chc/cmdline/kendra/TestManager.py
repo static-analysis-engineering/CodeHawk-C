@@ -234,7 +234,7 @@ class TestManager(object):
                     raise XmlFileNotFoundError(creffilefilename)
                 capp = CApplication(self.sempath,cfilename=creffilename,
                                         contractpath=self.contractpath)
-                am = AnalysisManager(capp,onefile=True,verbose=self.verbose)
+                am = AnalysisManager(capp,verbose=self.verbose)
                 am.create_file_primary_proofobligations(creffilename)
                 cfile = capp.get_single_file()
                 capp.collect_post_assumes()
@@ -395,7 +395,7 @@ class TestManager(object):
             # only generate invariants if required
             if creffile.has_domains():
                 for d in creffile.get_domains():
-                    am = AnalysisManager(capp,onefile=True,verbose=self.verbose)
+                    am = AnalysisManager(capp,verbose=self.verbose)
                     am.generate_and_check_file(cfilename,d)
             cfile.reinitialize_tables()
             ppos = cfile.get_ppos()
@@ -451,7 +451,7 @@ class TestManager(object):
             cappfile = capp.get_single_file()
             if creffile.has_domains():
                 for d in creffile.get_domains():
-                    am = AnalysisManager(capp,onefile=True,verbose=self.verbose)
+                    am = AnalysisManager(capp,verbose=self.verbose)
                     am.generate_and_check_file(creffilename,d)
             cappfile.reinitialize_tables()
             spos = cappfile.get_spos()
