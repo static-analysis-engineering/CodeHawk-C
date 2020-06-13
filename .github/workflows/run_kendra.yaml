@@ -1,0 +1,15 @@
+name: CI_kendra
+
+on: [pull_request, push]
+
+jobs:
+  run_kendra:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Run kendra tests
+      run: |
+        PYTHONPATH=$PWD python chc/cmdline/kendra/chc_test_kendrasets.py | tee kendra_output.txt
+        diff kendra_output.txt tests/kendra/example_output/test_kendrasets.txt
