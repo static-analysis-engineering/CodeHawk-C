@@ -34,9 +34,9 @@ import chc.util.IndexedTable as IT
 import chc.invariants.CXpr as CX
 
 xcst_constructors = {
-    'ss':lambda x:CX.CXSymSet(*x),
+    'ss':lambda x:CX.CXCSymSet(*x),
     'ic':lambda x:CX.CXIntConst(*x),
-    'bc':lambda x:CX.CXBoolConst(*x),
+    'bc':lambda x:CX.CXCBoolConst(*x),
     'r':lambda x:CX.CXRandom(*x),
     'ui':lambda x:CX.CXUnknownInt(*x),
     'us':lambda x:CX.CXUnknownSet(*x)
