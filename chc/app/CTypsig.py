@@ -90,7 +90,7 @@ class CTypsigEnum(CTypsigTSBase):
 
     def __str__(self): return 'tsenum(' + self.get_name() + ')'
 
-class cTypsigBase(CTypsigTSBase):
+class CTypsigBase(CTypsigTSBase):
 
     def __init__(self,cd,index,tags,args):
         CTypsigTSBase.__init__(self,cd,index,tags,args)
