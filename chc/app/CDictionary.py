@@ -222,8 +222,6 @@ class CDictionary(object):
 
     def get_exp_opt(self,ix): return (self.get_exp(ix) if ix >= 0 else None)
 
-    def get_offset(self,ix): return self.offset_table.retrieve(ix)
-
     def get_typsig(self,ix): return self.typsig_table.retrieve(ix)
 
     def get_typesig_list(self,ix): return self.typsiglist_table.retrieve(ix)
@@ -330,10 +328,6 @@ class CDictionary(object):
         def f(index,key): return CV.CLval(self,index,tags,args)
         return self.lval_table.add(IT.get_key(tags,args),f)
 
-    def mk_offset_index(self,tags,args):
-        def f(index,key): return offset_constructors[tags[0]]((self,index,tags,args))
-        return self.offset_table_add(IT.get_key(tags,args),f)
-
     def varinfo_to_exp_index(self,vinfo):
         lhostix = self.mk_lhost_index([ 'var', vinfo.vname ],[ vinfo.get_real_vid() ])
         offsetix = self.mk_offset_index([ 'n' ],[])
@@ -434,10 +428,6 @@ class CDictionary(object):
         def f(index,key): return CT.CFunArgs(self,index,tags,args)
         return self.funargs_table.add(IT.get_key(tags,args),f)
 
-    def mk_lhost_index(self,tags,args):
-        def f(index,key): return lhost_constructors[tags[0]]((self,index,tags,args))
-        return self.lhost_table.add(IT.get_key(tags,args),f)
-
     def index_lhost(self,h,subst={},fid=-1):
         if h.is_var():
             args = [ self.index_varinfo_vid(h.get_vid(),fid) ]
@@ -447,10 +437,6 @@ class CDictionary(object):
             args = [ self.index_exp(h.get_exp(),subst=subst,fid=fid) ]
             def f(index,key): return CH.CLHostMem(self,index,h.tags,args)
             return self.lhost_table.add(IT.get_key(h.tags,args),f)
-
-    def mk_lval_index(self,tags,args):
-        def f(index,key): return CV.CLval(self,index,tags,args)
-        return self.lval_table.add(IT.get_key(tags,args),f)
 
     def index_lval(self,lval,subst={},fid=-1):
         args = [ self.index_lhost(lval.get_lhost(),subst=subst,fid=fid),
