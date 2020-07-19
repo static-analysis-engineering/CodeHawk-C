@@ -1221,17 +1221,17 @@ if __name__ == '__main__':
     print('\nkendra paths:')
     print('-' * 80)
     for id in range(115,119):
-        id = 'id' + str(id) + '.c'
+        id_str = 'id' + str(id) + '.c'
         try:
-            print('  ' + id + ': ' + get_kendra_cpath(id))
+            print('  ' + id_str + ': ' + get_kendra_cpath(id))
         except CHError as e:
             print(str(e.wrap()))
             exit(1)
 
     print('\nzitser paths:')
     print('-' * 80)
-    for id in [ 'id1283', 'id1310' ]:
-        print('  ' + id + get_zitser_testpath(id))
+    for special_id in [ 'id1283', 'id1310' ]:
+        print('  ' + special_id + get_zitser_testpath(id))
 
     print('\nRegistered target files:')
     print('-' * 80)
