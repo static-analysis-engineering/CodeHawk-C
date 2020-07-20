@@ -31,6 +31,7 @@ import os
 import shutil
 
 import chc.util.fileutil as UF
+from chc.util.Config import Config
 
 from chc.cmdline.ParseManager import ParseManager
 
@@ -113,7 +114,7 @@ if __name__ == '__main__':
         if result != 0:
             print('*' * 80)
             print('Error in parsing ' + cfilename)
-            if config.platform == 'mac':
+            if Config().platform == 'macOS':
                 print('  (Problem may be related to standard header files on macOS)')
             print('*' * 80)
             exit(1)
