@@ -68,9 +68,9 @@ if __name__ == '__main__':
     print(capp.get_line_counts())
 
     request = {
-        'mem': lambda(v):v.is_mem(),
-        'tmp': lambda(v):v.is_tmpvar(),
-        'var': lambda(v):v.is_var and not v.is_tmpvar()
+        'mem': lambda v:v.is_mem(),
+        'tmp': lambda v:v.is_tmpvar(),
+        'var': lambda v:v.is_var and not v.is_tmpvar()
         }
 
     lhosts = {}

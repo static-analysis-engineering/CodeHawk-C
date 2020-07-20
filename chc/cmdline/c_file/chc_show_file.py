@@ -60,7 +60,7 @@ if __name__ == '__main__':
     print('Global struct definitions')
     print('-' * 80)
     gcomptags = cfile.get_gcomptagdefs().values()
-    for gc in sorted(gcomptags,key=lambda(t):t.get_struct().get_name()):
+    for gc in sorted(gcomptags,key=lambda t:t.get_struct().get_name()):
         compinfo = gc.get_struct()
         print(compinfo.get_name() + ' (' + str(len(compinfo.fields)) +
               ' fields)')
@@ -69,7 +69,7 @@ if __name__ == '__main__':
     print('Global struct declarations')
     print('-' * 80)
     gcomptags = cfile.get_gcomptagdecls()
-    for gc in sorted(gcomptags,key=lambda(t):t.get_struct().get_name()):
+    for gc in sorted(gcomptags,key=lambda t:t.get_struct().get_name()):
         compinfo = gc.get_struct()
         print(compinfo.get_name() + ' (' + str(len(compinfo.fields())) +
               ' fields)')   
@@ -78,7 +78,7 @@ if __name__ == '__main__':
     print('Global variable declarations')
     print('-' * 80)
     gvardecls = cfile.get_gvardecls()
-    for vd in sorted(gvardecls,key=lambda(v):v.varinfo.vname):
+    for vd in sorted(gvardecls,key=lambda v:v.varinfo.vname):
         vinfo = vd.varinfo
         print(str(vinfo.vtype) + '  ' + vinfo.vname)
 
@@ -86,7 +86,7 @@ if __name__ == '__main__':
     print('Global variable definitions')
     print('-' * 80)
     gvardefs = cfile.get_gvardefs()
-    for vd in sorted(gvardefs,key=lambda(v):v.varinfo.vname):
+    for vd in sorted(gvardefs,key=lambda v:v.varinfo.vname):
         vinfo = vd.varinfo
         print(str(vinfo.vtype) + '  ' + vinfo.vname)
 
@@ -94,5 +94,5 @@ if __name__ == '__main__':
     print('Function declarations')
     print('-' * 80)
     gfunctions = cfile.get_gfunctions().values()
-    for f in sorted(gfunctions,key=lambda(f):f.varinfo.vname):
+    for f in sorted(gfunctions,key=lambda f:f.varinfo.vname):
         print(str(f))

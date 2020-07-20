@@ -62,9 +62,9 @@ if __name__ == '__main__':
     sempath = os.path.join(cpath,'semantics')    
     capp = CApplication(sempath)
 
-    pofilter = lambda(p):True
+    pofilter = lambda p:True
     if args.predicates:
-        pofilter = lambda(p):p.get_predicate_tag() in args.predicates
+        pofilter = lambda p:p.get_predicate_tag() in args.predicates
 
     openppos = capp.get_open_ppos()
     violations = capp.get_violations()
