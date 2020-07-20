@@ -70,6 +70,7 @@ class XPredicate(CD.CDictionaryRecord):
     def is_initialized(self): return False
     def is_initialized_range(self): return False
     def is_input_formatstring(self): return False
+    def is_invalidated(self): return False
     def is_new_memory(self): return False
     def is_no_overlap(self): return False
     def is_not_zero(self): return False
@@ -294,6 +295,18 @@ class XInputFormatString(XPredicate):
     def is_input_formatstring(self): return True
 
     def __str__(self): return 'input-formatstring(' + str(self.get_term()) + ')'
+
+
+class XInvalidated(XPredicate):
+
+    def __init__(self,cd,index,tags,args):
+        XPredicate.__init__(self,cd,index,tags,args)
+
+    def get_term(self): return self.get_iterm(0)
+
+    def is_invalidated(self): return True
+
+    def __str__(self): return 'invalidated(' + str(self.get_term()) + ')'
 
 
 class XNewMemory(XPredicate):
