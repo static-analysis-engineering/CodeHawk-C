@@ -45,13 +45,14 @@ class CApplication(object):
     """Primary access point for source code and analysis results."""
 
     def __init__(self,path,cfilename=None,srcpath=None,contractpath=None,
-                     candidate_contractpath=None,excludefiles=[]):
+                     candidate_contractpath=None,excludefiles=[],includefiles=None):
         self.singlefile = not (cfilename is None)
         self.path = UF.get_chc_artifacts_path(path)
         self.srcpath = os.path.join(path,'sourcefiles') if srcpath is None else srcpath
         self.contractpath = contractpath
         self.globalcontract = None
-        self.excludefiles = excludefiles
+        self.excludefiles = excludefiles   # files analyzed: all excluding these
+        self.includefiles = includefiles   # files analyzed (if not None): these
         if not self.contractpath is None:
             self.globalcontract = CGlobalContract(self)
         self.candidate_contractpath = candidate_contractpath
@@ -358,13 +359,22 @@ class CApplication(object):
         if fname is None:
             # read target_files.xml file to retrieve application files
             tgtxnode = UF.get_targetfiles_xnode(self.path)
-            for c in tgtxnode.findall('c-file'):
-                if c.get('name') in self.excludefiles: continue
-                id = int(c.get('id'))
-                if id is None:
-                    print('No id found for ' + c.get('name'))
-                else:
-                    self.filenames[int(id)] = c.get('name')
+            if self.includefiles is None:
+                for c in tgtxnode.findall('c-file'):
+                    if c.get('name') in self.excludefiles: continue
+                    id = int(c.get('id'))
+                    if id is None:
+                        print('No id found for ' + c.get('name'))
+                    else:
+                        self.filenames[int(id)] = c.get('name')
+            else:
+                for c in tgtxnode.findall('c-file'):
+                    if c.get('name') in self.includefiles:
+                        id = int(c.get('id'))
+                        if id is None:
+                            print('No id found for ' + c.get('name'))
+                        else:
+                            self.filenames[int(id)] = c.get('name')
         else:
             self._initialize_file(0,fname)            
 
