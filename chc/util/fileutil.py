@@ -173,7 +173,7 @@ class CHCXmlParseError(CHCError):
         self.position = position
 
     def __str__(self):
-        return ('XML parse error in ' + filename + ' (errorcode: '
+        return ('XML parse error in ' + self.filename + ' (errorcode: '
                     + str(self.errorcode) + ') at position  '
                     + str(self.position))
 
@@ -269,6 +269,13 @@ class CHCJulietScoreKeyNotFoundError(CHCError):
 
     def __init__(self,cwe,test):
         CHCError.__init__(self,'No score key found for ' + cwe + ' - ' + test)
+        self.cwe = cwe
+        self.test = test
+
+class CHCJulietScoreFileNotFoundError(CHCError):
+
+    def __init__(self,cwe,test):
+        CHCError.__init__(self,'No score file found for ' + cwe + ' -  ' + test)
         self.cwe = cwe
         self.test = test
 
@@ -989,6 +996,14 @@ def read_juliet_test_summary(cwe,test):
             with open(filename) as fp:
                 d = json.load(fp)
             return d
+
+def check_juliet_test_summary(cwe,test):
+    path = get_juliet_testpath(cwe,test)
+    if os.path.isdir(path):
+        filename = os.path.join(path,'jsummaryresults.json')
+        if os.path.isfile(filename):
+            return
+    raise CHJJulietTestScoreFileNotFoundError(cwe,test)
 
 def get_juliet_scorekey(cwe,test):
     path = get_juliet_testpath(cwe,test)
