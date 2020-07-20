@@ -62,9 +62,9 @@ if __name__ == '__main__':
         print(str(e.wrap()))
         exit(1)
 
-    pofilter = lambda(p):True
+    pofilter = lambda p:True
     if args.predicates:
-        pofilter = lambda(p):p.get_predicate_tag() in args.predicates
+        pofilter = lambda p:p.get_predicate_tag() in args.predicates
 
     openppos = cfile.get_open_ppos()
     violations = cfile.get_violations()
