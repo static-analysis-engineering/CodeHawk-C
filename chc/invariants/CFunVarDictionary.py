@@ -85,6 +85,7 @@ class CFunVarDictionary (object):
         self.memory_reference_data_table = IT.IndexedTable('memory-reference-data-table')
         self.constant_value_variable_table = IT.IndexedTable('constant-value-variable-table')
         self.c_variable_denotation_table = IT.IndexedTable('c-variable-denotation-table')
+        self.memory_regions = {}
         self.tables = [
             (self.memory_base_table,self._read_xml_memory_base_table),
             (self.memory_reference_data_table,self._read_xml_memory_reference_data_table),
@@ -92,9 +93,6 @@ class CFunVarDictionary (object):
             (self.c_variable_denotation_table,self._read_xml_c_variable_denotation_table) ]
 
     # -------------------- Retrieve items from dictionary tables ---------------
-
-    def get_allocated_region_data(self,ix):
-        return self.allocated_region_data_table.retrieve(ix)
 
     def get_memory_base(self,ix):
         return self.memory_base_table.retrieve(ix)
@@ -126,7 +124,11 @@ class CFunVarDictionary (object):
             for (t,f) in self.tables:
                 t.reset()
                 f(xvard.find(t.name))
-
+            xmemregions = xnode.find('memory-regions')
+            for r in xmemregions.findall('region'):
+                rindex = int(r.get('index'))
+                membaseindex = int(r.get('imb'))
+                self.memory_regions[rindex] = self.get_memory_base(membaseindex)
     # ---------------------- Printing ------------------------------------------
 
     def __str__(self):
