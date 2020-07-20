@@ -75,7 +75,7 @@ scripts. Separate sets of scripts are provided for different use cases.
   cfiletest/test.c, first parse the file:
   ```
   > export PYTHONPATH=$HOME/CodeHawk-C
-  > cd CodeHawk-C/chc/cmdline/c-file
+  > cd CodeHawk-C/chc/cmdline/c_file
   > python chc_parse_file.py ~/cfiletest/test.c
   ```
   This produces, in the the same directory as test.c, a
@@ -139,7 +139,7 @@ scripts. Separate sets of scripts are provided for different use cases.
   source files is recorded:
   ```
   > export PYTHONPATH=$HOME/CodeHawk-C
-  > cd CodeHawk-C/chc/cmdline/c-project
+  > cd CodeHawk-C/chc/cmdline/c_project
   > python chc_parse_project.py <path>
   ```
   where ```<path>``` indicates the name of the top-level directory that
@@ -195,10 +195,10 @@ scripts. Separate sets of scripts are provided for different use cases.
   where ```<filename>``` should include the full path relative to
   the ```<path>``` directory.
 
-  More scripts are available in the ```chc/cmdline/c-project```
+  More scripts are available in the ```chc/cmdline/c_project```
   directory to investigate the open proof obligations or generate
   suggestions for contract conditions. A more detailed description
-  of these scripts is given [here](chc/cmdline/c-project/README.md).
+  of these scripts is given [here](chc/cmdline/c_project/README.md).
 
 
 - **Juliet Test Suite** A separate repository,
