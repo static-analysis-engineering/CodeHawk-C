@@ -497,6 +497,22 @@ class MemoryVariable(CVariableDenotation):
         return ('memvar-' + str(self.get_memory_reference_id())
                     + '{' + str(self.get_memory_reference_data()) + '}')
 
+class MemoryRegionVariable(CVariableDenotation):
+
+    def __init__(self,cd,index,tags,args):
+        CVariableDenotation.__init__(self,vd,index,tags,args)
+
+    def is_memory_region_variable(self): return True
+
+    def get_memory_region_id(self): return int(self.args[0])
+
+    def get_memory_base(self):
+        return vd.memory_regions[self.get_memory_region_id()]
+
+    def __str__(self):
+        return ('memreg-' + str(self.get_memory_region_id()))
+
+
 class ReturnVariable(CVariableDenotation):
 
     def __init__(self,vd,index,tags,args):
