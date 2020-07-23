@@ -102,7 +102,8 @@ class CXVariable(XDictionaryRecord):
 
     def __str__(self):
         # return (str(self.get_name()) + '(' + str(self.get_seqnr()) + ')')
-        return (str(self.get_name()))
+        vtype = 'S' if self.get_type() == 'sv' else 'N'
+        return (vtype + ':' + str(self.get_name()))
 
 
 class CXXCstBase(XDictionaryRecord):

@@ -493,9 +493,13 @@ class MemoryVariable(CVariableDenotation):
 
     def get_offset(self): return self.cd.get_offset(int(self.args[1]))
 
+    def has_offset(self): return self.get_offset().has_offset()
+
     def __str__(self):
+        offset = str(self.get_offset())
         return ('memvar-' + str(self.get_memory_reference_id())
-                    + '{' + str(self.get_memory_reference_data()) + '}')
+                    + '{' + str(self.get_memory_reference_data()) + '}'
+                    + offset )
 
 class MemoryRegionVariable(CVariableDenotation):
 
@@ -507,10 +511,11 @@ class MemoryRegionVariable(CVariableDenotation):
     def get_memory_region_id(self): return int(self.args[0])
 
     def get_memory_base(self):
-        return vd.memory_regions[self.get_memory_region_id()]
+        return vd.get_memory_base(self.get_memory_region_id())
 
     def __str__(self):
-        return ('memreg-' + str(self.get_memory_region_id()))
+        return ('memreg-' + str(self.get_memory_region_id())
+            + '{' + str(self.get_memory_base()) + '}')
 
 
 class ReturnVariable(CVariableDenotation):
