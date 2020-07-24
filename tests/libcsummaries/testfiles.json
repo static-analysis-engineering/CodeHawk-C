@@ -1,0 +1,13 @@
+{
+    "headers": {
+	"time": {
+	    "path": "time",
+	    "files": {
+		"localtime": {
+		    "path": "localtime",
+		    "file": "localtime_test.c"
+		}
+	    }
+	}
+    }
+}
