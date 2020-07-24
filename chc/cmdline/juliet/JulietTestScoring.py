@@ -241,6 +241,8 @@ def get_ppo_pairs(julietppos,capp):
 violation/safe-controls -> category -> total count over all files.
 '''
 def get_testsummarytotals(d):
+    if 'total' in d:
+        return d['total']
     totals = {}
     totals[violations] = {}
     totals[safecontrols] = {}

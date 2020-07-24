@@ -88,7 +88,7 @@ if __name__ == '__main__':
         ctotals[safecontrols] = {}
         for c in violationcategories: ctotals[violations][c] = 0
         for c in safecontrolcategories: ctotals[safecontrols][c] = 0
-        for cc in testcases[cwe]:
+        for cc in sorted(testcases[cwe]):
             testtotals = UF.read_juliet_test_summary(cwe,cc)
             if not (testtotals is None):
                 totals = testtotals['total']
