@@ -72,6 +72,7 @@ class Config(object):
         # tests included in this repository
         self.kendradir = os.path.join(self.testdir,'kendra')
         self.zitserdir = os.path.join(self.testdir,'zitser')
+        self.libcsummarytestdir = os.path.join(self.testdir,'libcsummaries')
 
         # analysis targets
         self.name_separator = ':'
