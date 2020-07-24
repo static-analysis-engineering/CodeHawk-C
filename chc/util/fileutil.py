@@ -205,6 +205,37 @@ class CFunctionNotFoundException(CHCError):
             lines.append('  ' + n)
         return '\n'.join(lines)
 
+class CHCSummaryTestNotFound(CHCError):
+
+    def __init__(self,header,fname,fnames):
+        CHCError.__init__(self,'Libc summary test file not found')
+        self.header = header
+        self.fname = fname
+        self.fnames = fnames
+
+    def __str__(self):
+        lines = []
+        lines.append('Libc summary test ' + self.fname + ' not found for header ' + self.header)
+        lines.append('Function tests available for header ' + self.header + ' are:')
+        for name in sorted(self.fnames):
+            lines.append('  - ' + name)
+        return '\n'.join(lines)
+
+class CHCSummaryHeaderNotFound(CHCError):
+
+    def __init__(self,header,headers):
+        CHCError.__init__(self,'Libc header not found')
+        self.header = header
+        self.headers = headers
+
+    def __str__(self):
+        lines = []
+        lines.append('Libc header ' + self.header + ' not found')
+        lines.append('Headers available:')
+        for h in sorted(self.headers):
+            lines.append('  - ' + h)
+        return '\n'.join(lines)
+
 class CHCJulietTestSuiteNotRegisteredError(CHCError):
 
     def __init__(self):
@@ -913,6 +944,35 @@ def get_zitser_summaries():
 
 def get_zitser_testpath(testname):
     return os.path.join(get_zitser_path(),testname)
+
+# --------------------------------------------------------libc summary tests ---
+
+def get_libc_summary_test_path(): return Config().libcsummarytestdir
+
+def get_libc_summary_test_list():
+    path = get_libc_summary_test_path()
+    filename = os.path.join(path,'testfiles.json')
+    try:
+        with open(filename,'r') as fp:
+            return json.load(fp)['headers']
+    except ValueError as e:
+        raise CHCJSONParseError(filename,e)
+
+def get_libc_summary_test(header,functionname):
+    testdir = get_libc_summary_test_path()
+    testfiles = get_libc_summary_test_list()
+    if header in testfiles:
+        summaries = testfiles[header]
+        if functionname in summaries['files']:
+            path = os.path.join(testdir,summaries['path'])
+            path = os.path.join(path,summaries['files'][functionname]['path'])
+            file = summaries['files'][functionname]['file']
+            return (path,file)
+        else:
+            raise CHCSummaryTestNotFound(header,functionname,summaries['files'].keys())
+    else:
+        raise CHCSummaryHeaderNotFound(header,testfiles['headers'].keys())
+
 
 # ------------------------------------------------------------ juliet tests ----
 
