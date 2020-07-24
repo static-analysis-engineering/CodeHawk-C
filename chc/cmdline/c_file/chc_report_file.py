@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # ------------------------------------------------------------------------------
 # CodeHawk C Analyzer
 # Author: Henny Sipma
