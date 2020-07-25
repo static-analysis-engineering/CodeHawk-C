@@ -31,6 +31,7 @@ import os
 import subprocess
 import shutil
 import time
+from typing import List, Optional, Tuple, TYPE_CHECKING
 import xml.etree.ElementTree as ET
 
 import chc.util.xmlutil as UX
@@ -38,9 +39,12 @@ import chc.util.xmlutil as UX
 from chc.util.Config import Config
 config = Config()
 
+if TYPE_CHECKING:
+    from chc.app.CFile import CFile
+
 class CHError(Exception):
 
-    def wrap(self):
+    def wrap(self) -> str:
         lines = []
         lines.append('*' * 80)
         lines.append(self.__str__())
@@ -49,66 +53,66 @@ class CHError(Exception):
 
 class CHCError(CHError):
 
-    def __init__(self,msg):
+    def __init__(self, msg: str) -> None:
         CHError.__init__(self,msg)
 
 class CHCParserNotFoundError(CHCError):
 
-    def __init__(self,location):
+    def __init__(self, location: str) -> None:
         CHCError.__init__(self,'CodeHawk C Parser not found at ' + location)
 
 class CHCAnalyzerNotFoundError(CHCError):
 
-    def __init__(self,location):
+    def __init__(self, location: str) -> None:
         CHCError.__init__(self,'CodeHawk C Analyzer executable not found at ' + location)
 
 class CHCGuiNotFoundError(CHCError):
 
-    def __init__(self,location):
+    def __init__(self, location: str) -> None:
         CHCError.__init__(self,'CodeHawk C Analyzer Gui not found')
         self.location = location
 
-    def __str__(self):
-        if location is None:
+    def __str__(self) -> str:
+        if self.location is None:
             return ('Location of the CodeHawk C Gui has not been set in ConfigLocal.\n'
                         + ' Please assign the location of the gui executable as '
                         + ' config.chc_gui in util/ConfigLocal.py')
         else:
-            return ('CodeHawk C Gui executable not found at ' + location)
+            return ('CodeHawk C Gui executable not found at ' + self.location)
 
 class CHCFileNotFoundError(CHCError):
 
-    def __init__(self,filename):
+    def __init__(self, filename: str) -> None:
         CHCError.__init__(self,'File ' + filename + ' not found')
         self.filename =  filename
 
 class CHCTargetGroupNotFoundError(CHCError):
 
-    def __init__(self,group):
+    def __init__(self, group: str) -> None:
         CHCError.__init__(self,'Groupname ' + group + ' not found in config.targets')
         self.group = group
 
 class CHCTargetGroupFileNotFoundError(CHCError):
 
-    def __init__(self,filename):
+    def __init__(self, filename: str) -> None:
         CHCError.__init__(self,'Group file: ' + filename + ' not found')
         self.filename = filename
 
 class CHCShortCutNameError(CHCError):
 
-    def __init__(self,name):
+    def __init__(self, name: str) -> None:
         CHCError.__init__(self,'Name: ' + name + ' is not a valid short-cut name')
         self.name = name
 
 class CHCProjectNameNotFoundError(CHCError):
 
-    def __init__(self,group,name,projects):
+    def __init__(self, group: str, name: str, projects: List[str]) -> None:
         CHCError.__init__(self,'Project name not found: ' + name)
         self.group = group
         self.name = name
         self.projects = projects
 
-    def __str__(self):
+    def __str__(self) -> str:
         msg = ('Project name: ' + self.name + ' not found in file for ' + self.group
                    + '\nProjects found:\n'
                    + ('-' * 80)
@@ -117,85 +121,85 @@ class CHCProjectNameNotFoundError(CHCError):
 
 class CHCSingleCFileNotFoundError(CHCError):
 
-    def __init__(self,filenames):
+    def __init__(self, filenames: List[str]) -> None:
         CHCError.__init__(self,'Requested file not found')
         self.filenames = filenames
 
-    def __str__(self):
+    def __str__(self) -> str:
         lines = []
         lines.append('Requested file not found; filenames available: ')
-        iines.append('-' * 80)
+        lines.append('-' * 80)
         for n in self.filenames:
             lines.append('  ' +  n)
         return '\n'.join(lines)
 
 class CHCDirectoryNotFoundError(CHCError):
 
-    def __init__(self,dirname):
+    def __init__(self, dirname: str) -> None:
         CHCError.__init__(self,'Directory ' + dirname + ' not found')
         self.dirname = dirname
 
 class CHCSemanticsNotFoundError(CHCError):
 
-    def __init__(self,path):
+    def __init__(self, path: str) -> None:
         CHCError.__init__(self,'No semantics directory or tar file found in '
                               + path)
         self.dirname = path
 
-    def __str__(self):
+    def __str__(self) -> str:
         return ('Expected to find a semantics directory or semantics tar file in '
                     + self.dirname + '.\nPlease first parse the c file to produce '
                     + 'the semantics file/directory')
 
 class CHCArtifactsNotFoundError(CHCError):
 
-    def __init__(self,path):
+    def __init__(self, path: str) -> None:
         CHCError.__init__(self,'Artifacts directory not found in ' + path)
         self.path = path
 
-    def __str__(self):
-        return ('Directory ' + path + ' is expected to have a directory named '
-                    + ' chcartifacts or ktadvance (legacy)')
+    def __str__(self) -> str:
+        return ('Directory ' + self.path + ' is expected to have a directory '
+                    + 'named chcartifacts or ktadvance (legacy)')
 
 class CHCAnalysisResultsNotFoundError(CHCError):
 
-    def __init__(self,path):
+    def __init__(self, path: str) -> None:
         CHCError.__init__(self,'No analysis results found for: ' + path
                               + '\nPlease analyze project first.')
         self.path = path
 
 class CHCXmlParseError(CHCError):
 
-    def __init__(self,filename,errorcode,position):
+    def __init__(self, filename: str, errorcode: int, position: Tuple[int, int]) -> None:
         CHCError.__init__(self,'Xml parse  error')
         self.filename = filename
         self.errorcode = errorcode
         self.position = position
 
-    def __str__(self):
+    def __str__(self) -> str:
         return ('XML parse error in ' + self.filename + ' (errorcode: '
                     + str(self.errorcode) + ') at position  '
                     + str(self.position))
 
 class CHCJSONParseError(CHCError):
 
-    def __init__(self,filename,e):
+    def __init__(self, filename: str, e: ValueError) -> None:
         CHCError.__init__(self,'JSON parse error')
         self.filename = filename
         self.valueerror = e
 
-    def __str__(self):
+    def __str__(self) -> str:
         return ('JSON parse error in file: ' + self.filename + ': '
                     + str(self.valueerror))
 
 class CFunctionNotFoundException(CHCError):
 
-    def __init__(self,cfile,targetname,functionnames):
+    def __init__(self, cfile: 'CFile', targetname: str, functionnames: List[str]) -> None:
         self.cfile = cfile
         self.targetname = targetname
         self.functionnames = functionnames
 
-    def __str__(self):
+    def __str__(self) -> str:
         lines = []
         lines.append('*' * 80)
         lines.append(('Function ' + self.targetname + ' not found in file '
@@ -207,13 +211,13 @@ class CFunctionNotFoundException(CHCError):
 
 class CHCSummaryTestNotFound(CHCError):
 
-    def __init__(self,header,fname,fnames):
+    def __init__(self, header: str, fname: str, fnames: List[str]) -> None:
         CHCError.__init__(self,'Libc summary test file not found')
         self.header = header
         self.fname = fname
         self.fnames = fnames
 
-    def __str__(self):
+    def __str__(self) -> str:
         lines = []
         lines.append('Libc summary test ' + self.fname + ' not found for header ' + self.header)
         lines.append('Function tests available for header ' + self.header + ' are:')
@@ -223,12 +227,12 @@ class CHCSummaryTestNotFound(CHCError):
 
 class CHCSummaryHeaderNotFound(CHCError):
 
-    def __init__(self,header,headers):
+    def __init__(self, header: str, headers: List[str]) -> None:
         CHCError.__init__(self,'Libc header not found')
         self.header = header
         self.headers = headers
 
-    def __str__(self):
+    def __str__(self) -> str:
         lines = []
         lines.append('Libc header ' + self.header + ' not found')
         lines.append('Headers available:')
@@ -238,10 +242,10 @@ class CHCSummaryHeaderNotFound(CHCError):
 
 class CHCJulietTestSuiteNotRegisteredError(CHCError):
 
-    def __init__(self):
+    def __init__(self) -> None:
         CHCError.__init__(self,'Juliet test suite not registered')
 
-    def __str__(self):
+    def __str__(self) -> str:
         lines = []
         lines.append('Juliet Test Suite repository has not been registered in ConfigLocal.py')
         lines.append('Please download or clone')
@@ -251,26 +255,26 @@ class CHCJulietTestSuiteNotRegisteredError(CHCError):
 
 class CHCJulietTestSuiteFileNotFoundError(CHCFileNotFoundError):
 
-    def __init__(self,filename):
+    def __init__(self, filename: str) -> None:
         CHCFileNotFoundError.__init__(self,filename)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return (CHCFileNotFoundError.__str__(self)
                     + '\nPlease check path to the CodeHawk-C-Targets-Juliet repository')
 
 class CHCJulietTargetFileCorruptedError(CHCError):
 
-    def __init__(self,key):
-        CHCError.__init__('Expected to find ' + key + ' juliettestcases.json')
+    def __init__(self, key: str) -> None:
+        CHCError.__init__(self, 'Expected to find ' + key + ' juliettestcases.json')
 
 class CHCJulietCWENotFoundError(CHCError):
 
-    def __init__(self,cwe,cwes):
+    def __init__(self, cwe: str, cwes: List[str]) -> None:
         CHCError.__init__(self,'Cwe ' + cwe + ' not found in juliettestcases.json')
         self.cwe = cwe
         self.cwes = cwes
 
-    def __str__(self):
+    def __str__(self) -> str:
         lines = []
         lines.append('Cwe ' + self.cwe + ' not found in juliettestcases.json')
         lines.append('-' * 80)
@@ -281,13 +285,13 @@ class CHCJulietCWENotFoundError(CHCError):
 
 class CHCJulietTestNotFoundError(CHCError):
 
-    def __init__(self,cwe,test,tests):
+    def __init__(self, cwe: str, test: str, tests: List[str]) -> None:
         CHCError.__init__(self,'Test case ' + test + ' not found for cwe ' + cwe)
         self.cwe = cwe
         self.test = test
         self.tests = tests
 
-    def __str__(self):
+    def __str__(self) -> str:
         lines = []
         lines.append('Test case ' + self.test + ' not found for cwe ' + self.cwe)
         lines.append('-' * 80)
@@ -298,19 +302,19 @@ class CHCJulietTestNotFoundError(CHCError):
 
 class CHCJulietScoreKeyNotFoundError(CHCError):
 
-    def __init__(self,cwe,test):
+    def __init__(self, cwe: str, test: str) -> None:
         CHCError.__init__(self,'No score key found for ' + cwe + ' - ' + test)
         self.cwe = cwe
         self.test = test
 
 class CHCJulietScoreFileNotFoundError(CHCError):
 
-    def __init__(self,cwe,test):
+    def __init__(self, cwe: str, test: str) -> None:
         CHCError.__init__(self,'No score file found for ' + cwe + ' -  ' + test)
         self.cwe = cwe
         self.test = test
 
-def get_xnode(filename,rootnode,desc,show=True):
+def get_xnode(filename: str, rootnode: str, desc: str, show: bool = True) -> Optional[ET.Element]:
     if os.path.isfile(filename):
         try:
             tree = ET.parse(filename)
@@ -323,7 +327,7 @@ def get_xnode(filename,rootnode,desc,show=True):
     else:
         return None
 
-def create_backup_file(filename):
+def create_backup_file(filename: str) -> None:
     if os.path.isfile(filename):
         timestamp = calendar.timegm(time.gmtime())
         backupfilename = filename + '_' + str(timestamp)
