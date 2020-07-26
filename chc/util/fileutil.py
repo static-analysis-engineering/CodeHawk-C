@@ -783,52 +783,52 @@ def save_pod_file(path: str, cfilename: str, fname: str, cnode: ET.Element) -> N
 
 # --------------------------------------------------------------- source code --
 
-def get_src_filename(path,cfilename):
+def get_src_filename(path: str, cfilename: str) -> str:
     return os.path.join(path,cfilename)
 
-def get_srcfile_lines(path,cfilename):
+def get_srcfile_lines(path: str, cfilename: str) -> List[str]:
     filename = get_src_filename(path,cfilename)
     with open(filename,'r') as fp:
         return fp.readlines()
 
 # --------------------------------------------------------------- contracts ----
 
-def has_contracts(path,cfilename):
+def has_contracts(path: str, cfilename: str) -> bool:
     filename = os.path.join(path,cfilename + '_c.xml')
     return os.path.isfile(filename)
 
-def has_candidate_contracts(path,cfilename):
+def has_candidate_contracts(path: str, cfilename: str) -> bool:
     filename = os.path.join(path,cfilename + '_cc.xml')
     return os.path.isfile(filename)
 
-def get_contracts(path,cfilename):
+def get_contracts(path: str, cfilename: str) -> Optional[ET.Element]:
     filename = os.path.join(path,cfilename + '_c.xml')
     return get_xnode(filename,'cfile','Contract file',show=True)
 
-def get_candidate_contracts(path,cfilename):
+def get_candidate_contracts(path: str, cfilename: str) -> Optional[ET.Element]:
     filename = os.path.join(path,cfilename + '_cc.xml')
     return get_xnode(filename,'cfile','Contract file',show=True)
 
-def has_global_contract(path):
+def has_global_contract(path: str) -> bool:
     filename = os.path.join(path,'globaldefs.json')
     return os.path.isfile(filename)
 
-def has_global_xml_contract(path):
+def has_global_xml_contract(path: str) -> bool:
     filename = os.path.join(path,'globaldefs.xml')
     return os.path.isfile(filename)
 
-def get_global_contract(path):
+def get_global_contract(path: str) -> Dict[str, Any]:
     filename = os.path.join(path,'globaldefs.json')
     if os.path.isfile(filename):
         with open(filename,'r') as fp:
             return json.load(fp)
     return {}
 
-def get_global_xml_contract(path):
+def get_global_xml_contract(path: str) -> Optional[ET.Element]:
     filename = os.path.join(path,'globaldefs.xml')
     return get_xnode(filename,'global-definitions','Global contract file')
 
-def _save_contracts_file_aux(path,filename,cnode):
+def _save_contracts_file_aux(path: str, filename: str, cnode: ET.Element) -> None:
     filedir = os.path.dirname(filename)
     if not os.path.isdir(filedir):
         os.makedirs(filedir)
@@ -837,11 +837,11 @@ def _save_contracts_file_aux(path,filename,cnode):
     with open(filename,'w') as fp:
         fp.write(UX.doc_to_pretty(ET.ElementTree(root)))
 
-def save_contracts_file(path,cfilename,cnode):
+def save_contracts_file(path: str, cfilename: str, cnode: ET.Element) -> None:
     filename = os.path.join(path,cfilename + '_c.xml')
     _save_contracts_file_aux(path,filename,cnode)
 
-def save_global_xml_contract(path,cnode):
+def save_global_xml_contract(path: str, cnode: ET.Element) -> None:
     filename = os.path.join(path,'globaldefs.xml')
     root = UX.get_xml_header('codehawk-contract-file','codehawk-contract-file')
     root.append(cnode)
@@ -850,7 +850,7 @@ def save_global_xml_contract(path,cnode):
     with open(filename,'w') as fp:
         fp.write(UX.doc_to_pretty(ET.ElementTree(root)))
 
-def save_candidate_cotracts_file(path,cfilename,cnode):
+def save_candidate_cotracts_file(path: str, cfilename: str, cnode: ET.Element) -> None:
     filename = os.path.join(path,cfilename + '_cc.xml')
     _save_contracts_file_aux(path,filename,cnode)
 
