@@ -31,7 +31,7 @@ import os
 import subprocess
 import shutil
 import time
-from typing import List, Optional, Tuple, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
 import xml.etree.ElementTree as ET
 
 import chc.util.xmlutil as UX
@@ -335,15 +335,15 @@ def create_backup_file(filename: str) -> None:
 
 # --------------------------------------- check presence of parser and analyzer
 
-def check_analyzer():
+def check_analyzer() -> None:
     if not os.path.isfile(config.canalyzer):
         raise CHCAnalyzerNotFoundError(config.canalyzer)
 
-def check_parser():
+def check_parser() -> None:
     if not os.path.isfile(config.cparser):
         raise CHCParserNotFoundError(config.cparser)
 
-def check_gui():
+def check_gui() -> None:
     if (config.chc_gui is None
             or not os.path.isfile(config.chc_gui)):
         raise CHCGuiNotFoundError(config.chc_gui)
@@ -359,7 +359,7 @@ def check_gui():
 # information on those projects (e.g., 32-bit or 64-bit compiled).
 # ------------------------------------------------------------------------------
 
-def get_analysis_target_index(group):
+def get_analysis_target_index(group) -> Dict[Any, Any]:
     """Returns the dictionary referred to by the group name."""
     filename = config.targets.get(group,None)
     if filename is None:
@@ -375,32 +375,32 @@ def get_analysis_target_index(group):
         return d['targets']
     return {}
 
-def is_shortcut_name(name):
+def is_shortcut_name(name: str) -> bool:
     """Returns true if the name is a valid short-cut name."""
     return name.count(config.name_separator) == 1
 
-def get_group_name(name):
+def get_group_name(name: str) -> str:
     """Returns the group-name from a short-cut name."""
     if is_shortcut_name(name):
         return name.split(config.name_separator)[0]
     raise CHCShortCutNameError(name)
 
-def get_project_name(name):
+def get_project_name(name: str) -> str:
     """Returns the project name from a short-cut name."""
     if is_shortcut_name(name):
         return name.split(config.name_separator)[1]
     raise CHCShortCutNameError(name)
 
-def get_registered_analysis_targets():
+def get_registered_analysis_targets() -> Dict[str, Any]:
     """Returns a dictionary of group -> (path,project-dictionary)."""
-    result = {}
+    result: Dict[str, Any] = {}
     for groupindex in config.targets:
         result[groupindex] = {}
         result[groupindex]['path'] = os.path.dirname(config.targets[groupindex])
         result[groupindex]['projects'] = get_analysis_target_index(groupindex)
     return result
 
-def get_project_path(name):
+def get_project_path(name: str) -> str:
     if is_shortcut_name(name):
        group = get_group_name(name)
        if group in config.targets:
@@ -414,7 +414,7 @@ def get_project_path(name):
                if os.path.isdir(ppath):
                    return os.path.join(gpath,ppath)
                else:
-                   raise CHCProjectDirectoryNotFoundError(ppath)
+                   raise CHCDirectoryNotFoundError(ppath)
            else:
                 raise CHCProjectNameNotFoundError(group,projectname,
                                                       list(grouptargets.keys()))
@@ -429,20 +429,20 @@ def get_project_path(name):
 
 # Check presence of analysis results ------------------------------------------
 
-def check_analysis_results(path):
+def check_analysis_results(path: str) -> None:
     """Raises an exception if analysis results are not present."""
     filename = os.path.join(path,'summaryresults.json')
     if os.path.isfile(filename):
         return
     raise CHCAnalysisResultsNotFoundError(path)
 
-def check_cfile(path,filename):
+def check_cfile(path: str, filename: str) -> None:
     filename = os.path.join(path,filename)
     if os.path.isfile(filename):
         return
     raise CHCFileNotFoundError(filename)
 
-def get_chc_artifacts_path(path):
+def get_chc_artifacts_path(path: str) -> str:
     dirname = os.path.join(path,'chcartifacts')
     if os.path.isdir(dirname):
         return dirname
@@ -451,70 +451,70 @@ def get_chc_artifacts_path(path):
         return dirname
     raise CHCArtifactsNotFoundError(path)
 
-def get_targetfiles_filename(path):
+def get_targetfiles_filename(path: str) -> str:
     return os.path.join(path,'target_files.xml')
 
-def get_functionindex_filename(path):
+def get_functionindex_filename(path: str) -> str:
     return os.path.join(path,'functionindex.json')
 
-def save_functionindex(path,d):
+def save_functionindex(path: str, d: Dict[str, Any]) -> None:
     filename = get_functionindex_filename(path)
     with open(filename,'w') as fp:
         json.dump(d,fp)
 
-def load_functionindex(path):
+def load_functionindex(path: str) -> Dict[str, Any]:
     filename = get_functionindex_filename(path)
     if os.path.isfile(filename):
         with open(filename,'r') as fp:
             return json.load(fp)
     return {}
 
-def get_callgraph_filename(path):
+def get_callgraph_filename(path: str):
     return os.path.join(path,'callgraph.json')
 
-def save_callgraph(path,d):
+def save_callgraph(path: str, d: Dict[str, Any]) -> None:
     filename = get_callgraph_filename(path)
     with open(filename,'w') as fp:
         json.dump(d,fp)
 
-def load_callgraph(path):
+def load_callgraph(path: str) -> Dict[str, Any]:
     filename = get_callgraph_filename(path)
     if os.path.isfile(filename):
         with open(filename,'r') as fp:
             return json.load(fp)
     return {}
 
-def get_preserves_memory_functions_filename(path):
+def get_preserves_memory_functions_filename(path: str) -> str:
     return os.path.join(path,'preserves-memory.json')
 
-def save_preserves_memory_functions(path,d):
+def save_preserves_memory_functions(path: str, d: Dict[str, Any]) -> None:
     filename = get_preserves_memory_functions_filename(path)
     with open(filename,'w') as fp:
         json.dump(d,fp,indent=2)
 
-def load_preserves_memory_functions(path):
+def load_preserves_memory_functions(path: str) -> Dict[str, Any]:
     filename = get_preserves_memory_functions_filename(path)
     if os.path.isfile(filename):
         with open(filename,'r') as fp:
             return json.load(fp)
     return {}
 
-def get_targetfiles_xnode(path):
+def get_targetfiles_xnode(path: str) -> Optional[ET.Element]:
     filename = get_targetfiles_filename(path)
     return get_xnode(filename,'c-files','File that holds the names of source files')
 
-def get_targetfiles_list(path):
-    result = []
+def get_targetfiles_list(path: str) -> List[Tuple[Optional[str], Optional[str]]]:
+    result: List[Tuple[Optional[str], Optional[str]]] = []
     node = get_targetfiles_xnode(path)
     if not node is None:
         for f in node.findall('c-file'):
-            lines.append((f.get('id'),f.get('name')))
+            result.append((f.get('id'),f.get('name')))
     return result
 
-def get_global_definitions_filename(path):
+def get_global_definitions_filename(path: str) -> str:
     return os.path.join(path,'globaldefinitions.xml')
 
-def archive_project_summary_results(path):
+def archive_project_summary_results(path: str) -> None:
     if os.path.isdir(path):
         filename = os.path.join(path,'summaryresults.json')
         if os.path.isfile(filename):
@@ -530,12 +530,12 @@ def archive_project_summary_results(path):
                     json.dump(d,fp)
                 
 
-def save_project_summary_results(path,d):
+def save_project_summary_results(path: str, d: Dict[str, Any]) -> None:
     archive_project_summary_results(path)
     with open(os.path.join(path,'summaryresults.json'),'w') as fp:
         json.dump(d,fp)
 
-def save_project_summary_results_as_xml(path, d):
+def save_project_summary_results_as_xml(path: str, d: Dict[str, Any]) -> None:
     xml_file = os.path.join(path, 'summaryresults.xml')
     tags = d['tagresults']
     ppos = tags['ppos']
@@ -583,7 +583,7 @@ def save_project_summary_results_as_xml(path, d):
     tree = ET.ElementTree(xml_root)
     tree.write(xml_file)
 
-def read_project_summary_results(path):
+def read_project_summary_results(path: str) -> Optional[Dict[str, Any]]:
     if os.path.isdir(path):
         filename = os.path.join(path,'summaryresults.json')
         if os.path.isfile(filename):
@@ -594,9 +594,10 @@ def read_project_summary_results(path):
             print('Warning: ' + filename + ' not found: summarize results first')
     else:
         print('Warning: ' + path + ' not found: please check path name')
+    return None
 
-def read_project_summary_results_history(path):
-    result = []
+def read_project_summary_results_history(path: str) -> List[Dict[str, Any]]:
+    result: List[Dict[str, Any]] = []
     if os.path.isdir(path):
         for fname in os.listdir(path):
             if fname.startswith('summaryresults') and fname.endswith('json'):
@@ -605,15 +606,16 @@ def read_project_summary_results_history(path):
                     result.append(json.load(fp))
     return result
 
-def get_global_declarations_xnode(path):
+def get_global_declarations_xnode(path: str) -> Optional[ET.Element]:
     filename = get_global_definitions_filename(path)
     return get_xnode(filename,'globals','Global type dictionary file',show=False)
 
-def get_global_dictionary_xnode(path):
+def get_global_dictionary_xnode(path: str) -> Optional[ET.Element]:
     filename = get_global_definitions_filename(path)
     gnode = get_xnode(filename,'globals','Global type declarations file',show=False)
     if not gnode is None:
         return gnode.find('dictionary')
+    return None
         
 # ------------------------------------------------------------------- files ----
 
