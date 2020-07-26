@@ -619,88 +619,88 @@ def get_global_dictionary_xnode(path: str) -> Optional[ET.Element]:
         
 # ------------------------------------------------------------------- files ----
 
-def get_cfilenamebase(cfilename):
+def get_cfilenamebase(cfilename: str) -> str:
     if cfilename.endswith('.c'): return cfilename[:-2]
     return cfilename
 
-def get_cfile_filename(path,cfilename):
+def get_cfile_filename(path: str, cfilename: str) -> str:
     cfilename = get_cfilenamebase(cfilename)
     return os.path.join(path,cfilename + '_cfile.xml')
 
-def get_cfile_xnode(path,cfilename):
+def get_cfile_xnode(path,cfilename: str) -> Optional[ET.Element]:
     filename = get_cfile_filename(path,cfilename)
     return get_xnode(filename,'c-file','C source file')
 
-def get_cfile_dictionaryname(path,cfilename):
+def get_cfile_dictionaryname(path: str, cfilename: str) -> str:
     cfilename = get_cfilenamebase(cfilename)
     return os.path.join(path,cfilename + '_cdict.xml')
 
-def get_cfile_dictionary_xnode(path,cfilename):
+def get_cfile_dictionary_xnode(path: str, cfilename: str) -> Optional[ET.Element]:
     filename = get_cfile_dictionaryname(path,cfilename)
     return get_xnode(filename,'cfile','C dictionary file')
 
-def get_cfile_predicate_dictionaryname(path,cfilename):
+def get_cfile_predicate_dictionaryname(path: str, cfilename: str) -> str:
     cfilename = get_cfilenamebase(cfilename)
     return os.path.join(path,cfilename + '_prd.xml')
 
-def get_cfile_predicate_dictionary_xnode(path,cfilename):
+def get_cfile_predicate_dictionary_xnode(path: str, cfilename: str) -> Optional[ET.Element]:
     filename = get_cfile_predicate_dictionaryname(path,cfilename)
     return get_xnode(filename,'po-dictionary','PO predicate dictionary file',show=False)
 
-def get_cfile_assignment_dictionaryname(path,cfilename):
+def get_cfile_assignment_dictionaryname(path: str, cfilename: str) -> str:
     cfilename = get_cfilenamebase(cfilename)
     return os.path.join(path,cfilename + '_cgl.xml')
 
-def get_cfile_assignment_dictionary_xnode(path,cfilename):
+def get_cfile_assignment_dictionary_xnode(path: str, cfilename: str) -> Optional[ET.Element]:
     filename = get_cfile_assignment_dictionaryname(path,cfilename)
     return get_xnode(filename,'assignment-dictionary','Global assignments dictionary file',show=False)
 
-def get_cfile_interface_dictionaryname(path,cfilename):
+def get_cfile_interface_dictionaryname(path: str, cfilename: str) -> str:
     cfilename = get_cfilenamebase(cfilename)
     return os.path.join(path,cfilename + '_ixf.xml')
 
-def get_cfile_interface_dictionary_xnode(path,cfilename):
+def get_cfile_interface_dictionary_xnode(path: str, cfilename: str) -> Optional[ET.Element]:
     filename = get_cfile_interface_dictionaryname(path,cfilename)
     return get_xnode(filename,'interface-dictionary','Interface objects dictionary file',show=False)
 
-def save_cfile_interface_dictionary(path,cfilename,xnode):
+def save_cfile_interface_dictionary(path: str, cfilename: str, xnode: ET.Element) -> None:
     filename = get_cfile_interface_dictionaryname(path,cfilename)
     header = UX.get_xml_header(filename,'interfacedictionary')
     header.append(xnode)
     with open(filename,'w') as fp:
         fp.write(UX.doc_to_pretty(ET.ElementTree(header)))
 
-def get_cfile_contexttablename(path,cfilename):
+def get_cfile_contexttablename(path: str, cfilename: str) -> str:
     cfilename = get_cfilenamebase(cfilename)
     return os.path.join(path,cfilename + '_ctxt.xml')
 
-def get_cfile_contexttable_xnode(path,cfilename):
+def get_cfile_contexttable_xnode(path: str, cfilename: str) -> Optional[ET.Element]:
     filename = get_cfile_contexttablename(path,cfilename)
     return get_xnode(filename,'c-contexts','C contexts file',show=False)
 
-def get_cfile_directory(path,cfilename):
+def get_cfile_directory(path: str, cfilename: str) -> str:
     return os.path.join(path,get_cfilenamebase(cfilename))
 
-def get_cfile_logfiles_directory(path,cfilename):
+def get_cfile_logfiles_directory(path: str, cfilename: str) -> str:
     logpath = os.path.join(path,'logfiles')
     return os.path.join(logpath,get_cfilenamebase(cfilename))
 
-def get_cxreffile_filename(path,cfilename):
+def get_cxreffile_filename(path: str, cfilename: str) -> str:
     if cfilename.endswith('.c'):
         cfilename = cfilename[:-2]
     return os.path.join(path,cfilename + '_gxrefs.xml')
 
-def get_cxreffile_xnode(path,cfilename):
+def get_cxreffile_xnode(path: str, cfilename: str) -> Optional[ET.Element]:
     filename = get_cxreffile_filename(path,cfilename)
     return get_xnode(filename,'global-xrefs','File with global cross references',show=False)
 
-def get_global_invs_filename(path,cfilename,objectname):
+def get_global_invs_filename(path: str, cfilename: str, objectname: str) -> str:
     if cfilename.endswith('.c'):
         cfilename = cfilename[:-2]
     objectname = '' if objectname == 'all' else '_' + objectname 
     return os.path.join(path,cfilename + objectname + '_ginvs.xml')
 
-def get_cfile_usr_filename(path,cfilename):
+def get_cfile_usr_filename(path: str, cfilename: str) -> str:
     return os.path.join(path,(get_cfilenamebase(cfilename) + '_usr.xml'))
 
 # ----------------------------------------------------------------- functions --
