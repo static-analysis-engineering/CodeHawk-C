@@ -781,16 +781,6 @@ def save_pod_file(path: str, cfilename: str, fname: str, cnode: ET.Element) -> N
     with open(filename,'w') as fp:
         fp.write(UX.doc_to_pretty(ET.ElementTree(header)))
 
-def get_results_filenames(path,cfilename,fname):
-    result = [
-        get_ppo_filename(path,cfilename,fname),
-        get_spo_filename(path,cfilename,fname),
-        get_pev_filename(path,cfilename,fname),
-        get_sev_filename(path,cfilename,fname),
-        get_api_filename(path,cfilename,fname),
-        get_invs_filename(path,cfilename,fname) ]
-    return result
-
 # --------------------------------------------------------------- source code --
 
 def get_src_filename(path,cfilename):
