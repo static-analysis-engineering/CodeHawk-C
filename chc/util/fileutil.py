@@ -856,7 +856,7 @@ def save_candidate_cotracts_file(path: str, cfilename: str, cnode: ET.Element) -
 
 # ------------------------------------------------------------ exported --------
 
-def save_cx_file(path,cfilename,d):
+def save_cx_file(path: str, cfilename: str, d: Dict[str, Any]) -> None:
     cxdir = os.path.join(path,'exportfiles')
     if not os.path.isdir(cxdir):
         os.makedirs(cxdir)
@@ -869,7 +869,7 @@ def save_cx_file(path,cfilename,d):
 
 # ------------------------------------------------------------ projects --------
 
-def get_testdata_dict():
+def get_testdata_dict() -> Dict[str, Any]:
     testdatapath = os.path.join(Config().testdir,'testdata')
     testdatafile = os.path.join(testdatapath,'testprojects.json')
     if os.path.isfile(testdatafile):
@@ -878,7 +878,7 @@ def get_testdata_dict():
             return testdata
     return {}
 
-def get_project_logfilename(path):
+def get_project_logfilename(path: str) -> str:
     testdir = Config().testdir
     testdata = get_testdata_dict()
     if path in testdata:
@@ -889,7 +889,7 @@ def get_project_logfilename(path):
         logfile = os.path.join(path,'log.chc_analysis_log')
         return logfile
 
-def list_test_applications():
+def list_test_applications() -> str:
     testdata = get_testdata_dict()
     lines = []
     lines.append('*' * 80)
@@ -905,47 +905,47 @@ def list_test_applications():
 
 # ------------------------------------------------------------ kendra tests ----
 
-def get_kendra_path(): return Config().kendradir
+def get_kendra_path() -> str: return Config().kendradir
 
-def get_kendra_testpath(testname):
+def get_kendra_testpath(testname: str) -> str:
     dirname = os.path.join(get_kendra_path(),testname)
     if not os.path.isdir(dirname):
         raise CHCDirectoryNotFoundError(dirname)
     return dirname
 
-def get_kendra_testpath_byid(testid):
+def get_kendra_testpath_byid(testid: int) -> str:
     testname = 'id' + str(testid) + 'Q'
     testpath = get_kendra_testpath(testname)
     if os.path.isdir(testpath):
         return testpath
     raise CHCDirectoryNotFoundError(testpath)
 
-def get_kendra_cpath(cfilename):
+def get_kendra_cpath(cfilename: str) -> str:
     if cfilename.endswith('.c'):
         testid = int(cfilename[2:-2])
         testbase  = (((testid - 115) / 4) * 4) + 115
-        return get_kendra_testpath_byid(testbase)
+        return get_kendra_testpath_byid(int(testbase))
     else:
         raise CHCFileNotFoundError(cfilename)
 
 # ------------------------------------------------------------ zitser tests ----
 
-def get_zitser_path(): return Config().zitserdir
+def get_zitser_path() -> str: return Config().zitserdir
 
-def get_zitser_summaries():
+def get_zitser_summaries() -> str:
     path = get_zitser_path()
     summarypath = os.path.join(path,'testcasesupport')
     summarypath = os.path.join(summarypath,'zitsersummaries')
     return os.path.join(summarypath,'zitsersummaries.jar')
 
-def get_zitser_testpath(testname):
+def get_zitser_testpath(testname: str) -> str:
     return os.path.join(get_zitser_path(),testname)
 
 # --------------------------------------------------------libc summary tests ---
 
-def get_libc_summary_test_path(): return Config().libcsummarytestdir
+def get_libc_summary_test_path() -> str: return Config().libcsummarytestdir
 
-def get_libc_summary_test_list():
+def get_libc_summary_test_list() -> Dict[str, Any]:
     path = get_libc_summary_test_path()
     filename = os.path.join(path,'testfiles.json')
     try:
@@ -954,7 +954,7 @@ def get_libc_summary_test_list():
     except ValueError as e:
         raise CHCJSONParseError(filename,e)
 
-def get_libc_summary_test(header,functionname):
+def get_libc_summary_test(header: str, functionname: str) -> Tuple[str, str]:
     testdir = get_libc_summary_test_path()
     testfiles = get_libc_summary_test_list()
     if header in testfiles:
@@ -972,7 +972,7 @@ def get_libc_summary_test(header,functionname):
 
 # ------------------------------------------------------------ juliet tests ----
 
-def get_juliet_path():
+def get_juliet_path() -> str:
     juliettarget = config.targets.get('juliet',None)
     if juliettarget is None:
         raise CHCJulietTestSuiteNotRegisteredError()
@@ -980,7 +980,7 @@ def get_juliet_path():
         raise CHCJulietTestSuiteFileNotFoundError(juliettarget)
     return os.path.dirname(juliettarget)
 
-def get_juliet_target_file():
+def get_juliet_target_file() -> Dict[str, Any]:
     path = get_juliet_path()
     filename = os.path.join(path,'juliettestcases.json')
     if os.path.isfile(filename):
@@ -990,38 +990,38 @@ def get_juliet_target_file():
             except ValueError as e:
                 raise CHCJSONParseError(filename,e)
     else:
-        raise CHCFileNotFoundException(filename)
+        raise CHCFileNotFoundError(filename)
 
-def get_juliet_testcases():
+def get_juliet_testcases() -> Dict[str, Any]:
     juliettargetfile = get_juliet_target_file()
     if 'testcases' in juliettargetfile:
         return juliettargetfile['testcases']
     else:
         raise CHCJulietTargetFileCorruptedError('testcases')
 
-def get_juliet_variant_descriptions():
+def get_juliet_variant_descriptions() -> Dict[str, Any]:
     juliettargetfile = get_juliet_target_file()
     if 'variants' in juliettargetfile:
         return juliettargetfile['variants']
     else:
         raise CHCJulietTargetFileCorruptedError('variants')
 
-def get_flattened_juliet_testcases():
+def get_flattened_juliet_testcases() -> Dict[str, Any]:
     testcases = get_juliet_testcases()
-    result = {}
+    result: Dict[str, Any] = {}
     for cwe in testcases:
         result[cwe] =  []
         for t in testcases[cwe]:
             result[cwe].extend(testcases[cwe][t])
     return result
 
-def get_juliet_summaries():
+def get_juliet_summaries() -> str:
     path = get_juliet_path()
     summarypath = os.path.join(path,'testcasesupport')
     summarypath = os.path.join(summarypath,'julietsummaries')
     return os.path.join(summarypath,'julietsummaries.jar')
 
-def get_juliet_testpath(cwe,test):
+def get_juliet_testpath(cwe: str, test: str) -> str:
     julietpath = get_juliet_path()
     testcases = get_juliet_testcases()
     if not cwe in testcases:
@@ -1034,17 +1034,17 @@ def get_juliet_testpath(cwe,test):
             else:
                 subpath = os.path.join(cwepath,subset)
                 return os.path.join(subpath,test)
-    tests = []
+    tests: List[Any] = []
     for s in testcases[cwe]:
         tests.extend(testcases[cwe][s])
     raise CHCJulietTestNotFoundError(cwe,test,tests)
 
-def save_juliet_test_summary(cwe,test,d):
+def save_juliet_test_summary(cwe: str, test: str, d: Dict[str, Any]) -> None:
     path = get_juliet_testpath(cwe,test)
     with open(os.path.join(path,'jsummaryresults.json'),'w') as fp:
         json.dump(d,fp,sort_keys=True)
 
-def read_juliet_test_summary(cwe,test):
+def read_juliet_test_summary(cwe: str, test: str) -> Optional[Dict[str, Any]]:
     path = get_juliet_testpath(cwe,test)
     if os.path.isdir(path):
         filename = os.path.join(path,'jsummaryresults.json')
@@ -1052,16 +1052,17 @@ def read_juliet_test_summary(cwe,test):
             with open(filename) as fp:
                 d = json.load(fp)
             return d
+    return None
 
-def check_juliet_test_summary(cwe,test):
+def check_juliet_test_summary(cwe: str, test: str) -> None:
     path = get_juliet_testpath(cwe,test)
     if os.path.isdir(path):
         filename = os.path.join(path,'jsummaryresults.json')
         if os.path.isfile(filename):
             return
-    raise CHJJulietTestScoreFileNotFoundError(cwe,test)
+    raise CHCJulietScoreFileNotFoundError(cwe,test)
 
-def get_juliet_scorekey(cwe,test):
+def get_juliet_scorekey(cwe: str, test: str) -> Dict[str, Any]:
     path = get_juliet_testpath(cwe,test)
     scorekey = os.path.join(path,'scorekey.json')
     if os.path.isfile(scorekey):
@@ -1070,14 +1071,14 @@ def get_juliet_scorekey(cwe,test):
         return d
     raise CHCJulietScoreKeyNotFoundError(cwe,test)
 
-def chtime(t):
+def chtime(t: float) -> str:
     if t == 0:
         return '0'
     return time.strftime('%Y-%m-%d %H:%m',time.localtime(t))
 
-def get_juliet_result_times(cwe,test):
-    t1 = 0
-    t2 = 0
+def get_juliet_result_times(cwe: str, test: str) -> Tuple[str, str]:
+    t1 = 0.
+    t2 = 0.
     path = get_juliet_testpath(cwe,test)
     sempath = os.path.join(path,'semantics')
     if os.path.isdir(sempath):
@@ -1095,19 +1096,19 @@ def get_juliet_result_times(cwe,test):
 
 # ----------------------------------------------------------- itc tests  ------
 
-def get_itc_path():
+def get_itc_path() -> str:
     sardpath = os.path.join(Config().testdir,'sard')
     return os.path.abspath(os.path.join(sardpath,'itc'))
 
-def get_itc_testpath(testname):
+def get_itc_testpath(testname: str) -> str:
     return os.path.join(get_itc_path(),testname)
 
 # ----------------------------------------------------------- cgc tests  ------
 
-def get_cgc_path():
+def get_cgc_path() -> str:
     return os.path.join(Config().testdir,'cgc')
 
-def make_cgc_challenge_path(testname,targetname):
+def make_cgc_challenge_path(testname: str, targetname: str) -> str:
     challengepath = os.path.join(get_cgc_path(),'challenges')
     testpath = os.path.join(challengepath,testname)
     if not os.path.isdir(testpath): os.mkdir(testpath)
@@ -1115,13 +1116,13 @@ def make_cgc_challenge_path(testname,targetname):
     if not os.path.isdir(tgtpath): os.mkdir(tgtpath)
     return tgtpath
 
-def get_cgc_challenge_path(testname,targetname):
+def get_cgc_challenge_path(testname: str, targetname: str) -> str:
     challengepath = os.path.join(get_cgc_path(),'challenges')
     testpath = os.path.join(challengepath,testname)
     tgtpath = os.path.join(testpath,targetname)
     return tgtpath
 
-def get_cgc_challenges():
+def get_cgc_challenges() -> Dict[str, Any]:
     challenges = os.path.join(get_cgc_path(),'challenges.json')
     with open(challenges,'r') as fp:
         tests = json.load(fp)
@@ -1129,14 +1130,14 @@ def get_cgc_challenges():
             return tests['challenges']
     return {}
 
-def get_cgc_test_targets(t):
+def get_cgc_test_targets(t: str) -> List[Any]:
     challenges = get_cgc_challenges()
     if t in challenges:
         return challenges[t]['targets']
     else:
         return []
 
-def read_cgc_summary_results(testname,targetname):
+def read_cgc_summary_results(testname: str, targetname: str) -> Optional[Dict[str, Any]]:
     path = get_cgc_challenge_path(testname,targetname)
     if os.path.isdir(path):
         filename = os.path.join(path,'summaryresults.json')
@@ -1144,33 +1145,35 @@ def read_cgc_summary_results(testname,targetname):
             with open(filename) as fp:
                 d = json.load(fp)
             return d
+    return None
 
-def get_cgc_summaries():
+def get_cgc_summaries() -> str:
     cgcpath = get_cgc_path()
     summarypath = os.path.join(cgcpath,'cgcsummaries')
     return os.path.join(summarypath,'cgcsummaries.jar')
 
 # ---------------------------------------------------- functional tests  ------
 
-def get_functional_tests_path():
+def get_functional_tests_path() -> str:
     return os.path.join(Config().testdir,'functional')
 
-def get_functional_testpath(testpath):
+def get_functional_testpath(testpath: str) -> str:
     return os.path.join(get_functional_tests_path(),testpath)
 
 # ---------------------------------------------------- workshop files  ------
 
-def get_workshop_path():
+def get_workshop_path() -> str:
     return os.path.join(Config().testdir,'workshop')
 
-def get_workshop_list():
+def get_workshop_list() -> Optional[Dict[str, Any]]:
     filename =  os.path.join(get_workshop_path(),'workshop.json')
     if os.path.isfile(filename):
         with open(filename) as fp:
             workshoplist = json.load(fp)
             return workshoplist
+    return None
 
-def get_workshop_file_data(project,wfile):
+def get_workshop_file_data(project: str, wfile: str) -> Optional[Dict[str, Any]]:
     wspath = get_workshop_path()
     workshoplist = get_workshop_list()
     if not workshoplist is None:
@@ -1178,7 +1181,7 @@ def get_workshop_file_data(project,wfile):
             projectlist = workshoplist[project]
             if wfile in projectlist:
                 wsdata = projectlist[wfile]
-                filedata = {}
+                filedata: Dict[str, Any] = {}
                 filedata['summaries'] = []
                 filedata['file'] = wsdata['file']
                 filedata['path'] = os.path.join(wspath,wsdata['path'])
@@ -1203,10 +1206,11 @@ def get_workshop_file_data(project,wfile):
                 print(name)
             print('-' * 80)
             exit(0)
+    return None
 
 # ------------------------------------------------------------ my cfiles ------
 
-def get_my_cfiles(testname):
+def get_my_cfiles(testname: str) -> Tuple[str, str]:
     config = Config()
     if testname in config.mycfiles:
         testdata = config.mycfiles[testname]
@@ -1294,7 +1298,7 @@ if __name__ == '__main__':
     for id in range(115,119):
         id_str = 'id' + str(id) + '.c'
         try:
-            print('  ' + id_str + ': ' + get_kendra_cpath(id))
+            print('  ' + id_str + ': ' + get_kendra_cpath(str(id)))
         except CHError as e:
             print(str(e.wrap()))
             exit(1)
@@ -1302,7 +1306,7 @@ if __name__ == '__main__':
     print('\nzitser paths:')
     print('-' * 80)
     for special_id in [ 'id1283', 'id1310' ]:
-        print('  ' + special_id + get_zitser_testpath(id))
+        print('  ' + special_id + get_zitser_testpath(special_id))
 
     print('\nRegistered target files:')
     print('-' * 80)
