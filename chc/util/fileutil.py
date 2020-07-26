@@ -1208,15 +1208,6 @@ def get_workshop_file_data(project: str, wfile: str) -> Optional[Dict[str, Any]]
             exit(0)
     return None
 
-# ------------------------------------------------------------ my cfiles ------
-
-def get_my_cfiles(testname: str) -> Tuple[str, str]:
-    config = Config()
-    if testname in config.mycfiles:
-        testdata = config.mycfiles[testname]
-        return (testdata['path'],testdata['file'])
-    
-
 # ------------------------------------------------------------ svcomp ----------
 
 def get_svcomp_path():
