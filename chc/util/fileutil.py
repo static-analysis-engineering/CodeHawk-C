@@ -1210,7 +1210,7 @@ def get_workshop_file_data(project: str, wfile: str) -> Optional[Dict[str, Any]]
 
 # ------------------------------------------------------------ unzip tar file --
 
-def unpack_tar_file(path,deletesemantics=False):
+def unpack_tar_file(path: str, deletesemantics: bool = False) -> bool:
     linuxtargzfile = 'semantics_linux.tar.gz'
     mactargzfile = 'semantics_mac.tar.gz'
     if not os.path.isdir(path):
@@ -1243,7 +1243,7 @@ def unpack_tar_file(path,deletesemantics=False):
             # print('Successfully extracted ' + targzfile)
     return os.path.isdir('semantics')
 
-def check_semantics(path,deletesemantics=False):
+def check_semantics(path: str, deletesemantics: bool = False) -> None:
     if unpack_tar_file(path,deletesemantics=deletesemantics):
         return
     raise CHCSemanticsNotFoundError(path)
