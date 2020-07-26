@@ -705,76 +705,76 @@ def get_cfile_usr_filename(path: str, cfilename: str) -> str:
 
 # ----------------------------------------------------------------- functions --
 
-def get_cfun_basename(path,cfilename,fname):
+def get_cfun_basename(path: str, cfilename: str, fname: str) -> str:
     cfilename = get_cfilenamebase(cfilename)
     cfiledir = os.path.join(path,cfilename)
     basename = os.path.basename(cfilename)
     return os.path.join(cfiledir,basename + '_' + fname)
 
-def get_cfun_filename(path,cfilename,fname):
+def get_cfun_filename(path: str, cfilename: str, fname: str) -> str:
     return (get_cfun_basename(path,cfilename,fname) + '_cfun.xml')
 
-def get_cfun_xnode(path,cfilename,fname):
+def get_cfun_xnode(path: str, cfilename: str, fname: str) -> Optional[ET.Element]:
     filename = get_cfun_filename(path,cfilename,fname)
     return get_xnode(filename,'function','C source function file')
 
-def get_api_filename(path,cfilename,fname):
+def get_api_filename(path: str, cfilename: str, fname: str) -> str:
     return (get_cfun_basename(path,cfilename,fname) + '_api.xml')
 
-def get_api_xnode(path,cfilename,fname):
+def get_api_xnode(path: str, cfilename: str, fname: str) -> Optional[ET.Element]:
     filename = get_api_filename(path,cfilename,fname)
     return get_xnode(filename,'function','Function api file',show=False)
 
-def save_api(path,cfilename,fname,xnode):
+def save_api(path: str, cfilename: str, fname: str, xnode: ET.Element) -> None:
     filename = get_api_filename(path,cfilename,fname)
     header = UX.get_xml_header(filename,'api')
     header.append(xnode)
     with open(filename,'w') as fp:
         fp.write(UX.doc_to_pretty(ET.ElementTree(header)))
 
-def get_vars_filename(path,cfilename,fname):
+def get_vars_filename(path: str, cfilename: str, fname: str) -> str:
     return (get_cfun_basename(path,cfilename,fname) + '_vars.xml')
 
-def get_vars_xnode(path,cfilename,fname):
+def get_vars_xnode(path: str, cfilename: str, fname: str) -> Optional[ET.Element]:
     filename = get_vars_filename(path,cfilename,fname)
     return get_xnode(filename,'function','Function variable dictionary',show=False)
 
-def get_invs_filename(path,cfilename,fname):
+def get_invs_filename(path: str, cfilename: str, fname: str) -> str:
     return (get_cfun_basename(path,cfilename,fname) + '_invs.xml')
 
-def get_invs_xnode(path,cfilename,fname):
+def get_invs_xnode(path: str, cfilename: str, fname: str) -> Optional[ET.Element]:
     filename = get_invs_filename(path,cfilename,fname)
     return get_xnode(filename,'function','Function invariants',show=False)
 
-def get_pod_filename(path,cfilename,fname):
+def get_pod_filename(path: str, cfilename: str, fname: str) -> str:
     return (get_cfun_basename(path,cfilename,fname) + '_pod.xml')
 
-def get_pod_xnode(path,cfilename,fname):
+def get_pod_xnode(path: str, cfilename: str, fname: str) -> Optional[ET.Element]:
     filename = get_pod_filename(path,cfilename,fname)
     return get_xnode(filename,'function','Function proof obligation types',show=False)
 
-def get_ppo_filename(path,cfilename,fname):
+def get_ppo_filename(path: str, cfilename: str, fname: str) -> str:
     return (get_cfun_basename(path,cfilename,fname) + '_ppo.xml')
 
-def get_ppo_xnode(path,cfilename,fname):
+def get_ppo_xnode(path: str, cfilename: str, fname: str) -> Optional[ET.Element]:
     filename = get_ppo_filename(path,cfilename,fname)
     return get_xnode(filename,'function','Primary proof obligations file')
 
-def get_spo_filename(path,cfilename,fname):
+def get_spo_filename(path: str, cfilename: str, fname: str) -> str:
     return (get_cfun_basename(path,cfilename,fname) + '_spo.xml')
 
-def get_spo_xnode(path,cfilename,fname):
+def get_spo_xnode(path: str, cfilename: str, fname: str) -> Optional[ET.Element]:
     filename = get_spo_filename(path,cfilename,fname)
     return get_xnode(filename,'function','Secondary proof obligations file',show=False)
 
-def save_spo_file(path,cfilename,fname,cnode):
+def save_spo_file(path: str, cfilename: str, fname: str, cnode: ET.Element) -> None:
     filename = get_spo_filename(path,cfilename,fname)
     header = UX.get_xml_header(filename,'spos')
     header.append(cnode)
     with open(filename,'w') as fp:
         fp.write(UX.doc_to_pretty(ET.ElementTree(header)))
 
-def save_pod_file(path,cfilename,fname,cnode):
+def save_pod_file(path: str, cfilename: str, fname: str, cnode: ET.Element) -> None:
     filename = get_pod_filename(path,cfilename,fname)
     header = UX.get_xml_header(filename,'pod')
     header.append(cnode)
