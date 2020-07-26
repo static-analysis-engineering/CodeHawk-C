@@ -1208,35 +1208,6 @@ def get_workshop_file_data(project: str, wfile: str) -> Optional[Dict[str, Any]]
             exit(0)
     return None
 
-# ------------------------------------------------------------ svcomp ----------
-
-def get_svcomp_path():
-    return Config().svcompdir
-
-def get_svcomp_testpath(testname):
-    svcomppath = get_svcomp_path()
-    return os.path.join(os.path.join(svcomppath,'c'),testname)
-
-def get_svcomp_srcpath(testname):
-    return get_svcomp_testpath(testname)
-
-def unpack_src_i_tar_file(testname):
-    path = get_svcomp_testpath(testname)
-    os.chdir(path)
-    srctar = testname + '_src_i.tar.gz'
-    if os.path.isfile(srctar):
-        cmd = [ 'tar', 'xfz', srctar ]
-        result = subprocess.call(cmd,cwd=path,stderr=subprocess.STDOUT)
-        if result != 0:
-            print('Error in ' + ' '.join(cmd))
-            return False
-        else:
-            print('Successfully extracted ' + srctar)
-    else:
-        print('File ' + srctar + ' not found')
-        return False
-    return True
-
 # ------------------------------------------------------------ unzip tar file --
 
 def unpack_tar_file(path,deletesemantics=False):
