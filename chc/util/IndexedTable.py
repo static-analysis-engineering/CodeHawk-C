@@ -58,7 +58,7 @@ def get_rep(node: ET.Element) -> Tuple[int, List[str], List[int]]:
         print(e)
         raise
 
-def get_key(tags,args) -> Tuple[str, str]:
+def get_key(tags: List[str], args: List[str]) -> Tuple[str, str]:
     return (','.join(tags), ','.join([str(x) for x in args]))
 
 class IndexedTableValue(object):
@@ -104,7 +104,7 @@ class IndexedTable(Generic[V]):
         raise IndexedTableError("Checkpoint has already been set at "
                                        + str(self.checkpoint))
 
-    def iter(self, f: Callable[[int, V], None]):
+    def iter(self, f: Callable[[int, V], None]) -> None:
         for (i,v) in self.items(): f(i,v)
 
     def reset_to_checkpoint(self) -> int:
@@ -192,7 +192,7 @@ class IndexedTable(Generic[V]):
 
     def read_xml(
             self,
-            node: ET.Element,
+            node: Optional[ET.Element],
             tag: str,
             get_value: Callable[[ET.Element], V],
             get_key: Callable[[V], Tuple[str, str]] = lambda x:x.get_key(),
