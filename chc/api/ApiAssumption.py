@@ -25,19 +25,34 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
+from typing import List, TYPE_CHECKING
+
+if TYPE_CHECKING:
+	from chc.api.CFunctionApi import CFunctionApi
+	from chc.app.CFunction import CFunction
+	from chc.proof.CPOPredicate import CPOPredicate
+
 class ApiAssumption(object):
 
-    def __init__(self,capi,id,predicate,ppos,spos,isglobal=False,isfile=False):
+    def __init__(
+            self,
+            capi: 'CFunctionApi',
+            id: int,
+            predicate: 'CPOPredicate',
+            ppos: List[int],
+            spos: List[int],
+            isglobal:bool = False,
+            isfile:bool = False):
         self.id = id
-        self.capi = capi                # api/CFunctionAPI
-        self.cfun = self.capi.cfun      # app/CFunction
-        self.predicate = predicate      # proof/CPOPredicate
+        self.capi = capi                           # api/CFunctionAPI
+        self.cfun: 'CFunction' = self.capi.cfun    # app/CFunction
+        self.predicate = predicate                 # proof/CPOPredicate
         self.ppos = ppos
         self.spos = spos
-        self.isglobal = isglobal        # assumption includes global variable
+        self.isglobal = isglobal                   # assumption includes global variable
         self.isfile = isfile
 
-    def __str__(self):
+    def __str__(self) -> str:
         strppos = ''
         strspos = ''
         if len(self.ppos) > 0:
