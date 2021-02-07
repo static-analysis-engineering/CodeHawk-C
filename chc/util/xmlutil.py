@@ -25,6 +25,7 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
+from typing import Dict, List
 import xml.etree.ElementTree as ET
 import datetime
 import os
@@ -32,16 +33,16 @@ import os
 replace_lst = [ ('&', "&amp;") , ('<',"&lt;")  , ('>',"&gt;") ,
                 ('"',"&quot;") , ('\'',"&apos;") ]
 
-def sanitize(str):
+def sanitize(str: str) -> str:
     for (c,r) in replace_lst:
         str = str.replace(c,r)
     return str
 
-def attributes_to_pretty (attr,indent=0): 
+def attributes_to_pretty (attr: Dict[str, str],indent: int = 0) -> str:
     if len(attr) == 0:
         return ''
     if len(attr) > 4:
-        lines = []
+        lines: List[str] = []
         for key in sorted(attr):
             lines.append(((' ' * (indent + 2)) + key
                               + '="' + sanitize(str(attr[key])) + '"'))
@@ -50,8 +51,8 @@ def attributes_to_pretty (attr,indent=0):
         return (' ' + ' '.join(key + '="' + sanitize(str(attr[key]))
                                    + '"' for key in sorted(attr)))
 
-def element_to_pretty (e,indent=0):
-    lines = []
+def element_to_pretty (e: ET.Element,indent:int = 0) -> List[str]:
+    lines: List[str] = []
     attrs = attributes_to_pretty(e.attrib,indent)
     ind = ' ' * indent
     if e.text is None:
@@ -70,12 +71,12 @@ def element_to_pretty (e,indent=0):
     return lines
 
 
-def doc_to_pretty (t):
+def doc_to_pretty (t: ET.ElementTree) -> str:
     lines = [ '<?xml version="1.0" encoding="UTF-8"?>\n' ]
     lines.extend(element_to_pretty(t.getroot()))
     return ''.join(lines)
 
-def get_xml_header(filename,info):
+def get_xml_header(filename: str,info: str) -> ET.Element:
     root = ET.Element('c-analysis')
     tree = ET.ElementTree(root)
     header = ET.Element('header')
