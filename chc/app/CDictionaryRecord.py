@@ -25,19 +25,24 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
+from typing import List, Tuple, TYPE_CHECKING
+import xml.etree.ElementTree as ET
+
+if TYPE_CHECKING:
+    import chc.app.CDictionary
 
 class CDictionaryRecord(object):
     """Base class for all objects kept in the CDictionary."""
 
-    def __init__(self,cd,index,tags,args):
+    def __init__(self, cd: 'chc.app.CDictionary.CDictionary', index: int, tags: List[str], args: List[int]) -> None:
         self.cd = cd
         self.index = index
         self.tags = tags
         self.args = args
 
-    def get_key(self): return (','.join(self.tags), ','.join([str(x) for x in self.args]))
+    def get_key(self) -> Tuple[str, str]: return (','.join(self.tags), ','.join([str(x) for x in self.args]))
 
-    def write_xml(self,node):
+    def write_xml(self, node: ET.Element) -> None:
         (tagstr,argstr) = self.get_key()
         if len(tagstr) > 0: node.set('t',tagstr)
         if len(argstr) > 0: node.set('a',argstr)
