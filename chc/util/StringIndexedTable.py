@@ -25,9 +25,10 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
+from typing import Any, Dict, Optional, Tuple
 import xml.etree.ElementTree as ET
 
-def has_control_characters(s):
+def has_control_characters(s: str) -> bool:
     for c in s:
         if ord(c) < 32 or ord(c) > 126:
             return True
@@ -35,21 +36,21 @@ def has_control_characters(s):
     else:
         return False
 
-def byte_to_string(b): return '{:02x}'.format(b)
+def byte_to_string(b: int) -> str: return '{:02x}'.format(b)
 
-def value_from_hex(s): return int(s,16)
+def value_from_hex(s: str) -> int: return int(s,16)
 
-def hexstring(s):
+def hexstring(s: str) -> str:
     result = ''
     for c in s:
         result += byte_to_string(ord(c))
     return result
 
-def dehexstring(h):
+def dehexstring(h: str) -> str:
     h = h[:]
     result = ''
     try:
-        for i in range(len(h)/2):
+        for i in range(int(len(h)/2)):
             result += chr(int(h[:2],16))
             h = h[2:]
         return result
@@ -57,13 +58,13 @@ def dehexstring(h):
         print('Error in dehexing string: ' + h)
         exit(1)
 
-def decode(ishex,h):
+def decode(ishex: bool, h: str) -> str:
     if ishex:
         return dehexstring(h)
     else:
         return h
 
-def encode(s):
+def encode(s: str) -> Tuple[bool, str]:
     if has_control_characters(s):
         return (True,hexstring(s))
     else:
@@ -71,26 +72,26 @@ def encode(s):
 
 class IndexedTableError(Exception):
 
-    def __init__(self,msg):
+    def __init__(self, msg: str) -> None:
         self.msg = msg
 
-    def __str__(self): return self.msg
+    def __str__(self) -> str: return self.msg
 
 
 class StringIndexedTable(object):
 
-    def __init__(self,name):
+    def __init__(self, name: str) -> None:
         self.name = name
-        self.stringtable= {}      # string -> index
-        self.indextable = {}      # index -> string
+        self.stringtable: Dict[str, int] = {}      # string -> index
+        self.indextable: Dict[int, str]  = {}      # index -> string
         self.next = 1
 
-    def reset(self):
+    def reset(self) -> None:
         self.stringtable = {}
         self.indextable = {}
         self.next = 1
 
-    def add(self,s):
+    def add(self, s: Optional[str]) -> int:
         if s is None:
             print('Attempt to index None in string table')
             raise  IndexedTableError(self.name + ': Attempt to index None')
@@ -103,9 +104,9 @@ class StringIndexedTable(object):
             self.next += 1
             return index
 
-    def size(self): return (self.next - 1)
+    def size(self) -> int: return (self.next - 1)
 
-    def retrieve(self,index):
+    def retrieve(self, index: int) -> str:
         if index in self.indextable:
             return self.indextable[index]
         else:
@@ -115,20 +116,26 @@ class StringIndexedTable(object):
             raise IndexedTableError(msg + '\n' + self.name
                                         + ', size: ' + str(self.size()))
 
-    def read_xml(self,node):
+    def read_xml(self, node: Optional[ET.Element]) -> None:
         if node is None:
             print('Xml node not present in string table')
             raise IndexedTableError('string table')
         for snode in node.findall('n'):
-            index = int(snode.get('ix'))
+            xml_ix = snode.get('ix')
+            if xml_ix is None:
+                raise IndexedTableError('`ix` missing from element')
+            index = int(xml_ix)
             ishex = snode.get('hex','no') == 'yes'
-            s = decode(ishex,snode.get('v'))
+            xml_v = snode.get('v')
+            if xml_v is None:
+                raise IndexedTableError('`v` missing from element')
+            s = decode(ishex,xml_v)
             self.stringtable[s] = index
             self.indextable[index] = s
             if index >= self.next:
                 self.next = index + 1
 
-    def write_xml(self,node):
+    def write_xml(self,node: ET.Element) -> None:
         for index in sorted(self.indextable):
             s = self.indextable[index]
             (ishex,sencoded) = encode(s)
@@ -137,7 +144,7 @@ class StringIndexedTable(object):
             snode.set('ix',str(index))
             node.append(snode)
 
-    def __str__(self):
+    def __str__(self) -> str:
         lines = []
         lines.append('\nstring-table')
         for ix in sorted(self.indextable):
