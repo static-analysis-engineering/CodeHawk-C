@@ -25,6 +25,8 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
+from typing import Callable, Dict
+
 import xml.etree.ElementTree as ET
 
 import chc.util.fileutil as UF
