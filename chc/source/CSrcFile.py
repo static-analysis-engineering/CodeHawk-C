@@ -26,27 +26,32 @@
 # ------------------------------------------------------------------------------
 
 import os
+from typing import Dict, TYPE_CHECKING, Optional
 
 import chc.util.fileutil as UF
+
+if TYPE_CHECKING:
+    import chc.app.CApplication
 
 class CSrcFile(object):
     """Represents the text file that holds the C source code."""
 
-    def __init__(self,capp,fname):
+    def __init__(self, capp: 'chc.app.CApplication.CApplication', fname: str) -> None:
         self.capp = capp
         self.fname = fname
-        self.lines = {}
+        self.lines: Dict[int, str] = {}
         if not self.fname.endswith('.c'): self.fname = fname + '.c'
 
-    def get_line_count(self):
+    def get_line_count(self) -> int:
         return sum(1 for line in open(self.fname))
 
-    def get_line(self,n):
+    def get_line(self, n: int) -> Optional[str]:
         self._initialize()
         if n <= len(self.lines):
             return (str(n) + '  ' + self.lines[n])
+        return None
 
-    def _initialize(self):
+    def _initialize(self) -> None:
         if len(self.lines) > 0: return
         if os.path.isfile(self.fname):
             print('Reading file ' + self.fname)
