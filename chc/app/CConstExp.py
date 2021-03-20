@@ -25,23 +25,28 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
+from typing import List, Tuple, TYPE_CHECKING
+
 import chc.app.CDictionaryRecord as CD
+
+if TYPE_CHECKING:
+    import chc.app.CDictionary
 
 class CConstBase(CD.CDictionaryRecord):
     """Constant expression."""
 
-    def __init__(self,cd,index,tags,args):
+    def __init__(self, cd: 'chc.app.CDictionary.CDictionary', index: int, tags: List[str], args: List[int]) -> None:
         CD.CDictionaryRecord.__init__(self,cd,index,tags,args)
 
     def get_exp(self,ix): return self.cd.get_exp(ix)
     def get_strings(self): return []
 
-    def is_int(self): return False
-    def is_str(self): return False
-    def is_chr(self): return False
-    def is_real(self): return False
+    def is_int(self) -> bool: return False
+    def is_str(self) -> bool: return False
+    def is_chr(self) -> bool: return False
+    def is_real(self) -> bool: return False
 
-    def __str__(self): return 'constantbase:' + self.tags[0]
+    def __str__(self) -> str: return 'constantbase:' + self.tags[0]
 
 class CConstInt(CConstBase):
     '''
@@ -53,16 +58,16 @@ class CConstInt(CConstBase):
     args: -
     '''
 
-    def __init__(self,cd,index,tags,args):
+    def __init__(self, cd: 'chc.app.CDictionary.CDictionary', index: int, tags: List[str], args: List[int]) -> None:
         CConstBase.__init__(self,cd,index,tags,args)
 
-    def get_int(self): return int(self.tags[1])
+    def get_int(self) -> int: return int(self.tags[1])
 
-    def get_kind(self): return self.tags[2]
+    def get_kind(self) -> str: return self.tags[2]
 
-    def is_int(self): return True
+    def is_int(self) -> bool: return True
 
-    def __str__(self): return str(self.get_int())
+    def __str__(self) -> str: return str(self.get_int())
         
 
 class CConstStr(CConstBase):
@@ -74,16 +79,16 @@ class CConstStr(CConstBase):
         0: string index
     '''
 
-    def __init__(self,cd,index,tags,args):
+    def __init__(self, cd: 'chc.app.CDictionary.CDictionary', index: int, tags: List[str], args: List[int]) -> None:
         CConstBase.__init__(self,cd,index,tags,args)
 
     def get_string(self): return self.cd.get_string(self.args[0])
 
     def get_strings(self): return [ self.get_string() ]
 
-    def is_str(self): return True
+    def is_str(self) -> bool: return True
 
-    def __str__(self):
+    def __str__(self) -> str:
         strg = str(self.get_string())
         if len(strg) > 25:
             strg = str(len(strg)) + '-char string'
@@ -99,12 +104,12 @@ class CConstWStr(CConstBase):
     args: -
     '''
 
-    def __init__(self,cd,index,tags,args):
+    def __init__(self, cd: 'chc.app.CDictionary.CDictionary', index: int, tags: List[str], args: List[int]) -> None:
         CConstBase.__init__(self,cd,index,tags,args)
 
     def get_string(self): return '-'.join(self.tags[1:])
 
-    def __str__(self): return 'wstr(' + self.get_string() + ')'
+    def __str__(self) -> str: return 'wstr(' + self.get_string() + ')'
         
 
 class CConstChr(CConstBase):
@@ -116,14 +121,14 @@ class CConstChr(CConstBase):
         0: char code
     '''
 
-    def __init__(self,cd,index,tags,args):
+    def __init__(self, cd: 'chc.app.CDictionary.CDictionary', index: int, tags: List[str], args: List[int]) -> None:
         CConstBase.__init__(self,cd,index,tags,args)
 
     def get_chr(self): return "'" + str(chr(self.args[0])) + "'"
 
-    def is_chr(self): return True
+    def is_chr(self) -> bool: return True
 
-    def __str__(self): return 'chr(' + self.get_chr() + ')'
+    def __str__(self) -> str: return 'chr(' + self.get_chr() + ')'
         
 
 class CConstReal(CConstBase):
@@ -135,16 +140,16 @@ class CConstReal(CConstBase):
     args: -
     '''
 
-    def __init__(self,cd,index,tags,args):
+    def __init__(self, cd: 'chc.app.CDictionary.CDictionary', index: int, tags: List[str], args: List[int]) -> None:
         CConstBase.__init__(self,cd,index,tags,args)
 
-    def get_real(self): return float(self.tags[1])
+    def get_real(self) -> float: return float(self.tags[1])
 
-    def get_kind(self): return self.tags[2]
+    def get_kind(self) -> str: return self.tags[2]
 
-    def is_real(self): return True
+    def is_real(self) -> bool: return True
 
-    def __str__(self): return str(self.get_real())
+    def __str__(self) -> str: return str(self.get_real())
         
 
 class CConstEnum(CConstBase):
@@ -158,17 +163,17 @@ class CConstEnum(CConstBase):
         0: exp
     '''
 
-    def __init__(self,cd,index,tags,args):
+    def __init__(self, cd: 'chc.app.CDictionary.CDictionary', index: int, tags: List[str], args: List[int]) -> None:
         CConstBase.__init__(self,cd,index,tags,args)
 
-    def get_enum_name(self): return self.tags[1]
+    def get_enum_name(self) -> str: return self.tags[1]
 
-    def get_item_name(self): return self.tags[2]
+    def get_item_name(self) -> str: return self.tags[2]
 
     def get_exp(self): return CConstBase.getexp(self,self.args[0])
 
-    def __str__(self):
-        return (self.get_enum_name + ':' + self.get_item_name
+    def __str__(self) -> str:
+        return (self.get_enum_name() + ':' + self.get_item_name()
                     + '(' + str(self.get_exp()) + ')')
 
 
@@ -182,20 +187,20 @@ class CStringConstant(CD.CDictionaryRecord):
     args:
         0: length of original string
     '''
-    def __init__(self,cd,index,tags,args):
+    def __init__(self, cd: 'chc.app.CDictionary.CDictionary', index: int, tags: List[str], args: List[int]) -> None:
         CD.CDictionaryRecord.__init__(self,cd,index,tags,args)
 
-    def get_string(self):
+    def get_string(self) -> str:
         if len(self.tags) > 0:
             return self.tags[0]
         else:                              # empty string is filtered out
             return ''
 
-    def get_string_length(self): return self.args[0]
+    def get_string_length(self) -> int: return self.args[0]
 
-    def is_hex(self): return len(self.tags) > 1
+    def is_hex(self) -> bool: return len(self.tags) > 1
 
-    def __str__(self):
+    def __str__(self) -> str:
         if self.is_hex():
             return ('(' + str(self.get_string_length()) + '-char string')
         else:
