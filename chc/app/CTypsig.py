@@ -28,6 +28,7 @@
 from typing import List, Tuple, TYPE_CHECKING
 
 import chc.app.CDictionaryRecord as CD
+import chc.util.IndexedTable as IT
 
 if TYPE_CHECKING:
     import chc.app.CDictionary
@@ -105,7 +106,7 @@ class CTypsigBase(CTypsigTSBase):
     def __str__(self) -> str: return 'tsbase(' + str(self.get_type()) + ')'
         
 
-class CTypsigList(object):
+class CTypsigList(IT.IndexedTableValue):
 
     def __init__(self,cd,index,tags,args):
         self.cd = cd
@@ -114,7 +115,7 @@ class CTypsigList(object):
         self.tags = tags
         self.args = args
 
-    def getkey(self): return (','.join(self.tags), ','.join([str(x) for x in self.args]))
+    def get_key(self): return (','.join(self.tags), ','.join([str(x) for x in self.args]))
 
     def get_typsig_list(self): return [ self.cd.get_typsig(ix) for ix in args ]
 

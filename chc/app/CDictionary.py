@@ -25,7 +25,7 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
-from typing import Callable, Dict
+from typing import Callable, Dict, Optional
 
 import xml.etree.ElementTree as ET
 
@@ -127,20 +127,20 @@ typsig_constructors: Dict[str, Callable[..., CS.CTypsigTSBase]] = {
 class CDictionary(object):
     '''Indexed types.'''
 
-    def __init__(self):
-        self.attrparam_table = IT.IndexedTable('attrparam-table')
-        self.attribute_table = IT.IndexedTable('attribute-table')
-        self.attributes_table = IT.IndexedTable('attributes-table')
-        self.constant_table = IT.IndexedTable('constant-table')
-        self.exp_table = IT.IndexedTable('exp-table')
-        self.funarg_table = IT.IndexedTable('funarg-table')
-        self.funargs_table = IT.IndexedTable('funargs-table')
-        self.lhost_table = IT.IndexedTable('lhost-table')
-        self.lval_table = IT.IndexedTable('lval-table')
-        self.offset_table = IT.IndexedTable('offset-table')
-        self.typ_table = IT.IndexedTable('typ-table')
-        self.typsig_table = IT.IndexedTable('typsig-table')
-        self.typsiglist_table = IT.IndexedTable('typsiglist-table')
+    def __init__(self) -> None:
+        self.attrparam_table: IT.IndexedTable[CA.CAttrBase] = IT.IndexedTable('attrparam-table')
+        self.attribute_table: IT.IndexedTable[CA.CAttribute] = IT.IndexedTable('attribute-table')
+        self.attributes_table: IT.IndexedTable[CA.CAttributes] = IT.IndexedTable('attributes-table')
+        self.constant_table: IT.IndexedTable[CC.CConstBase] = IT.IndexedTable('constant-table')
+        self.exp_table: IT.IndexedTable[CE.CExpBase] = IT.IndexedTable('exp-table')
+        self.funarg_table: IT.IndexedTable[CT.CFunArg] = IT.IndexedTable('funarg-table')
+        self.funargs_table: IT.IndexedTable[CT.CFunArgs] = IT.IndexedTable('funargs-table')
+        self.lhost_table: IT.IndexedTable[CH.CLHostBase] = IT.IndexedTable('lhost-table')
+        self.lval_table: IT.IndexedTable[CV.CLval] = IT.IndexedTable('lval-table')
+        self.offset_table: IT.IndexedTable[CO.COffsetBase] = IT.IndexedTable('offset-table')
+        self.typ_table: IT.IndexedTable[CT.CTypBase] = IT.IndexedTable('typ-table')
+        self.typsig_table: IT.IndexedTable[CS.CTypsigTSBase] = IT.IndexedTable('typsig-table')
+        self.typsiglist_table: IT.IndexedTable[CS.CTypsigList] = IT.IndexedTable('typsiglist-table')
         self.string_table = SI.StringIndexedTable ('string-table')
         self.tables = [
             (self.attrparam_table,self._read_xml_attrparam_table),
@@ -195,40 +195,39 @@ class CDictionary(object):
 
     # -------------- Retrieve items from dictionary tables ---------------------
 
-    def get_attrparam(self,ix): return self.attrparam_table.retrieve(ix)
+    def get_attrparam(self,ix: int) -> CA.CAttrBase: return self.attrparam_table.retrieve(ix)
 
-    def get_attribute(self,ix): return self.attribute_table.retrieve(ix)
+    def get_attribute(self,ix: int) -> CA.CAttribute: return self.attribute_table.retrieve(ix)
 
-    def get_attributes(self,ix):
-        if ix == -1: return []
+    def get_attributes(self,ix: int) -> CA.CAttributes:
         return self.attributes_table.retrieve(ix)
 
-    def get_constant(self,ix): return self.constant_table.retrieve(ix)
+    def get_constant(self,ix: int) -> CC.CConstBase: return self.constant_table.retrieve(ix)
 
-    def get_funarg(self,ix): return self.funarg_table.retrieve(ix)
+    def get_funarg(self,ix: int) -> CT.CFunArg: return self.funarg_table.retrieve(ix)
 
-    def get_funargs(self,ix): return self.funargs_table.retrieve(ix)
+    def get_funargs(self,ix: int) -> CT.CFunArgs: return self.funargs_table.retrieve(ix)
 
-    def get_funargs_opt(self,ix):
+    def get_funargs_opt(self,ix: int) -> Optional[CT.CFunArgs]:
         return (self.get_funargs(ix) if ix >= 0 else None)
 
-    def get_lhost(self,ix): return self.lhost_table.retrieve(ix)
+    def get_lhost(self,ix: int) -> CH.CLHostBase: return self.lhost_table.retrieve(ix)
 
-    def get_lval(self,ix): return self.lval_table.retrieve(ix)
+    def get_lval(self,ix: int) -> CV.CLval: return self.lval_table.retrieve(ix)
 
-    def get_offset(self,ix): return self.offset_table.retrieve(ix)
+    def get_offset(self,ix: int) -> CO.COffsetBase: return self.offset_table.retrieve(ix)
 
-    def get_typ(self,ix): return self.typ_table.retrieve(ix)
+    def get_typ(self,ix: int) -> CT.CTypBase: return self.typ_table.retrieve(ix)
 
-    def get_exp(self,ix): return self.exp_table.retrieve(ix)
+    def get_exp(self,ix: int) -> CE.CExpBase: return self.exp_table.retrieve(ix)
 
-    def get_exp_opt(self,ix): return (self.get_exp(ix) if ix >= 0 else None)
+    def get_exp_opt(self,ix: int) -> Optional[CE.CExpBase]: return (self.get_exp(ix) if ix >= 0 else None)
 
-    def get_typsig(self,ix): return self.typsig_table.retrieve(ix)
+    def get_typsig(self,ix: int) -> CS.CTypsigTSBase: return self.typsig_table.retrieve(ix)
 
-    def get_typesig_list(self,ix): return self.typsiglist_table.retrieve(ix)
+    def get_typesig_list(self,ix: int) -> CS.CTypsigList: return self.typsiglist_table.retrieve(ix)
 
-    def get_string(self,ix): return self.string_table.retrieve(ix)
+    def get_string(self,ix: int) -> str: return self.string_table.retrieve(ix)
 
     # --------Provide read_xml/write_xml service for semantics files ----------
 
@@ -559,102 +558,102 @@ class CDictionary(object):
                 lines.append(str(t))
         return '\n'.join(lines)
 
-    def _read_xml_attrparam_table(self,txnode):
-        def get_value(node):
+    def _read_xml_attrparam_table(self,txnode: ET.Element) -> None:
+        def get_value(node: ET.Element) -> CA.CAttrBase:
             rep = IT.get_rep(node)
             tag = rep[1][0]
             args = (self,) + rep
             return attrparam_constructors[tag](args)
         self.attrparam_table.read_xml(txnode,'n',get_value)
 
-    def _read_xml_attribute_table(self,txnode):
-        def get_value(node):
+    def _read_xml_attribute_table(self,txnode: ET.Element) -> None:
+        def get_value(node: ET.Element) -> CA.CAttribute:
             rep = IT.get_rep(node)
             args = (self,) + rep
             return CA.CAttribute(*args)
         self.attribute_table.read_xml(txnode,'n',get_value)
 
-    def _read_xml_attributes_table(self,txnode):
-        def get_value(node):
+    def _read_xml_attributes_table(self,txnode: ET.Element) -> None:
+        def get_value(node: ET.Element) -> CA.CAttributes:
             rep = IT.get_rep(node)
             args = (self,) + rep
             return CA.CAttributes(*args)
         self.attributes_table.read_xml(txnode,'n',get_value)
 
-    def _read_xml_constant_table(self,txnode):
-        def get_value(node):
+    def _read_xml_constant_table(self,txnode: ET.Element) -> None:
+        def get_value(node: ET.Element) -> CC.CConstBase:
             rep = IT.get_rep(node)
             tag = rep[1][0]
             args = (self,) + rep
             return constant_constructors[tag](args)
         self.constant_table.read_xml(txnode,'n',get_value)
 
-    def _read_xml_exp_table(self,txnode):
-        def get_value(node):
+    def _read_xml_exp_table(self,txnode: ET.Element) -> None:
+        def get_value(node: ET.Element) -> CE.CExpBase:
             rep = IT.get_rep(node)
             tag = rep[1][0]
             args = (self,) + rep
             return exp_constructors[tag](args)
         self.exp_table.read_xml(txnode,'n',get_value)
 
-    def _read_xml_funarg_table(self,txnode):
-        def get_value(node):
+    def _read_xml_funarg_table(self,txnode: ET.Element) -> None:
+        def get_value(node: ET.Element) -> CT.CFunArg:
             rep = IT.get_rep(node)
             args = (self,) + rep
             return CT.CFunArg(*args)
         self.funarg_table.read_xml(txnode,'n',get_value)
 
-    def _read_xml_funargs_table(self,txnode):
-        def get_value(node):
+    def _read_xml_funargs_table(self,txnode: ET.Element) -> None:
+        def get_value(node: ET.Element) -> CT.CFunArgs:
             rep = IT.get_rep(node)
             args = (self,) + rep
             return CT.CFunArgs(*args)
         self.funargs_table.read_xml(txnode,'n',get_value)
 
-    def _read_xml_lhost_table(self,txnode):
-        def get_value(node):
+    def _read_xml_lhost_table(self,txnode: ET.Element) -> None:
+        def get_value(node: ET.Element) -> CH.CLHostBase:
             rep = IT.get_rep(node)
             tag = rep[1][0]
             args = (self,) + rep
             return lhost_constructors[tag](args)
         self.lhost_table.read_xml(txnode,'n',get_value)
 
-    def _read_xml_lval_table(self,txnode):
-        def get_value(node):
+    def _read_xml_lval_table(self,txnode: ET.Element) -> None:
+        def get_value(node: ET.Element) -> CV.CLval:
             rep = IT.get_rep(node)
             args = (self,) + rep
             return CV.CLval(*args)
         self.lval_table.read_xml(txnode,'n',get_value)
 
-    def _read_xml_offset_table(self,txnode):
-        def get_value(node):
+    def _read_xml_offset_table(self,txnode: ET.Element) -> None:
+        def get_value(node: ET.Element) -> CO.COffsetBase:
             rep = IT.get_rep(node)
             tag = rep[1][0]
             args = (self,) + rep
             return offset_constructors[tag](args)
         self.offset_table.read_xml(txnode,'n',get_value)
 
-    def _read_xml_typ_table(self,txnode):
-        def get_value(node):
+    def _read_xml_typ_table(self,txnode: ET.Element) -> None:
+        def get_value(node: ET.Element) -> CT.CTypBase:
             rep = IT.get_rep(node)
             tag = rep[1][0]
             args = (self,) + rep
             return typ_constructors[tag](args)
         self.typ_table.read_xml(txnode,'n',get_value)
 
-    def _read_xml_typsig_table(self,txnode):
-        def get_value(node):
+    def _read_xml_typsig_table(self,txnode: ET.Element) -> None:
+        def get_value(node: ET.Element) -> CS.CTypsigTSBase:
             rep = IT.get_rep(node)
             tag = rep[1][0]
             args = (self,) + rep
             return typsig_constructors[tag](args)
         self.typsig_table.read_xml(txnode,'n',get_value)
 
-    def _read_xml_typsiglist_table(self,txnode):
-        def get_value(node):
+    def _read_xml_typsiglist_table(self,txnode) -> None:
+        def get_value(node: ET.Element) -> CS.CTypsigList:
             rep = IT.get_rep(node)
             args = (self,) + rep
             return CS.CTypsigList(*args)
         self.typsiglist_table.read_xml(txnode,'n',get_value)
 
-    def _read_xml_string_table(self,txnode): self.string_table.read_xml(txnode)
+    def _read_xml_string_table(self,txnode: ET.Element) -> None: self.string_table.read_xml(txnode)
