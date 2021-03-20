@@ -25,7 +25,7 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
-from typing import Callable, Dict, Optional
+from typing import Callable, Dict, List, Optional, Tuple
 
 import xml.etree.ElementTree as ET
 
@@ -43,7 +43,7 @@ import chc.app.CTyp as CT
 import chc.app.CTypsig as CS
 
 
-attrparam_constructors: Dict[str, Callable[..., CA.CAttrBase]] = {
+attrparam_constructors: Dict[str, Callable[[Tuple['CDictionary', int, List[str], List[int]]], CA.CAttrBase]] = {
     'aint': lambda x:CA.CAttrInt(*x),
     'astr': lambda x:CA.CAttrStr(*x),
     'acons': lambda x:CA.CAttrCons(*x),
@@ -62,7 +62,7 @@ attrparam_constructors: Dict[str, Callable[..., CA.CAttrBase]] = {
     'aquestion': lambda x:CA.CAttrQuestion(*x)
     }
 
-constant_constructors: Dict[str, Callable[..., CC.CConstBase]] = {
+constant_constructors: Dict[str, Callable[[Tuple['CDictionary', int, List[str], List[int]]], CC.CConstBase]] = {
     'int': lambda x:CC.CConstInt(*x),
     'str': lambda x:CC.CConstStr(*x),
     'wstr': lambda x:CC.CConstWStr(*x),
@@ -71,7 +71,7 @@ constant_constructors: Dict[str, Callable[..., CC.CConstBase]] = {
     'enum': lambda x:CC.CConstEnum(*x)
     }
 
-exp_constructors: Dict[str, Callable[..., CE.CExpBase]] = {
+exp_constructors: Dict[str, Callable[[Tuple['CDictionary', int, List[str], List[int]]], CE.CExpBase]] = {
     'const': lambda x:CE.CExpConst(*x),
     'lval': lambda x:CE.CExpLval(*x),
     'sizeof': lambda x:CE.CExpSizeOf(*x),
@@ -90,18 +90,18 @@ exp_constructors: Dict[str, Callable[..., CE.CExpBase]] = {
     'cnapp': lambda x:CE.CExpCnApp(*x)
     }
 
-lhost_constructors: Dict[str, Callable[..., CH.CLHostBase]] = {
+lhost_constructors: Dict[str, Callable[[Tuple['CDictionary', int, List[str], List[int]]], CH.CLHostBase]] = {
     'var': lambda x:CH.CLHostVar(*x),
     'mem': lambda x:CH.CLHostMem(*x)
     }
 
-offset_constructors: Dict[str, Callable[..., CO.COffsetBase]] = {
+offset_constructors: Dict[str, Callable[[Tuple['CDictionary', int, List[str], List[int]]], CO.COffsetBase]] = {
     'n': lambda x:CO.CNoOffset(*x),
     'f': lambda x:CO.CFieldOffset(*x),
     'i': lambda x:CO.CIndexOffset(*x)
     }
 
-typ_constructors: Dict[str, Callable[..., CT.CTypBase]] = {
+typ_constructors: Dict[str, Callable[[Tuple['CDictionary', int, List[str], List[int]]], CT.CTypBase]] = {
     'tvoid': lambda x:CT.CTypVoid(*x),
     'tint': lambda x:CT.CTypInt(*x),
     'tfloat': lambda x:CT.CTypFloat(*x),
@@ -115,7 +115,7 @@ typ_constructors: Dict[str, Callable[..., CT.CTypBase]] = {
     'tfun': lambda x:CT.CTypFun(*x)
     }
 
-typsig_constructors: Dict[str, Callable[..., CS.CTypsigTSBase]] = {
+typsig_constructors: Dict[str, Callable[[Tuple['CDictionary', int, List[str], List[int]]], CS.CTypsigTSBase]] = {
     'tsarray': lambda x:CS.CTypsigArray(*x),
     'tsptr': lambda x:CS.CTypsigPtr(*x),
     'tscomp': lambda x:CS.CTypsigComp(*x),
