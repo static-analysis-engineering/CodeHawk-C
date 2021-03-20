@@ -25,39 +25,44 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
+from typing import List, Tuple, TYPE_CHECKING
+
 import chc.app.CDictionaryRecord as CD
+
+if TYPE_CHECKING:
+    import chc.app.CDictionary
 
 class COffsetBase(CD.CDictionaryRecord):
     """Base class for an expression offset."""
 
-    def __init__(self,cd,index,tags,args):
+    def __init__(self, cd: 'chc.app.CDictionary.CDictionary', index: int, tags: List[str], args: List[int]) -> None:
         CD.CDictionaryRecord.__init__(self,cd,index,tags,args)
 
-    def has_offset(self): return True
-    def is_field(self): return False
-    def is_index(self): return False
+    def has_offset(self) -> bool: return True
+    def is_field(self) -> bool: return False
+    def is_index(self) -> bool: return False
 
     def get_strings(self): return []
     def get_variable_uses(self,vid): return 0
 
     def to_dict(self): return { 'base': 'offset' }
 
-    def __str__(self): return 'offsetbase:' + self.tags[0]
+    def __str__(self) -> str: return 'offsetbase:' + self.tags[0]
 
 class CNoOffset(COffsetBase):
 
-    def __init__(self,cd,index,tags,args):
+    def __init__(self, cd: 'chc.app.CDictionary.CDictionary', index: int, tags: List[str], args: List[int]) -> None:
         COffsetBase.__init__(self,cd,index,tags,args)
 
-    def has_offset(self): return False
+    def has_offset(self) -> bool: return False
 
     def to_dict(self): return { 'base': 'no-offset' }
 
-    def __str__(self): return ""
+    def __str__(self) -> str: return ""
 
 class CFieldOffset(COffsetBase):
 
-    def __init__(self,cd,index,tags,args):
+    def __init__(self, cd: 'chc.app.CDictionary.CDictionary', index: int, tags: List[str], args: List[int]) -> None:
         COffsetBase.__init__(self,cd,index,tags,args)
 
     def get_fieldname(self): return self.tags[1]
@@ -66,7 +71,7 @@ class CFieldOffset(COffsetBase):
 
     def get_offset(self): return self.cd.get_offset(self.args[1])
 
-    def is_field(self): return True
+    def is_field(self) -> bool: return True
 
     def to_dict(self):
         result = { 'base': 'field-offset',
@@ -74,13 +79,13 @@ class CFieldOffset(COffsetBase):
         if self.get_offset().has_offset():
             result['offset'] = self.get_offset().to_dict()
 
-    def __str__(self):
+    def __str__(self) -> str:
         offset = str(self.get_offset()) if self.has_offset() else ''
         return '.' + self.get_fieldname() + offset
 
 class CIndexOffset(COffsetBase):
 
-    def __init__(self,cd,index,tags,args):
+    def __init__(self, cd: 'chc.app.CDictionary.CDictionary', index: int, tags: List[str], args: List[int]) -> None:
         COffsetBase.__init__(self,cd,index,tags,args)
 
     def get_index_exp(self): return self.cd.get_exp(self.args[0])
@@ -92,7 +97,7 @@ class CIndexOffset(COffsetBase):
     def get_variable_uses(self,vid):
         return self.get_index_exp().get_variable_uses(vid)
 
-    def is_index(self): return True
+    def is_index(self) -> bool: return True
 
     def to_dict(self):
         result = { 'base': 'index-offset',
@@ -101,6 +106,6 @@ class CIndexOffset(COffsetBase):
             result['offset'] = self.get_offset().to_dict()
         return result
 
-    def __str__(self):
+    def __str__(self) -> str:
         offset = str(self.get_offset()) if self.has_offset() else ''
         return '[' + str(self.get_index_exp()) + ']' + offset
