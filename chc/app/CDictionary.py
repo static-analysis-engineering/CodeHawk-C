@@ -41,7 +41,7 @@ import chc.app.CTyp as CT
 import chc.app.CTypsig as CS
 
 
-attrparam_constructors = {
+attrparam_constructors: Dict[str, Callable[..., CA.CAttrBase]] = {
     'aint': lambda x:CA.CAttrInt(*x),
     'astr': lambda x:CA.CAttrStr(*x),
     'acons': lambda x:CA.CAttrCons(*x),
@@ -60,7 +60,7 @@ attrparam_constructors = {
     'aquestion': lambda x:CA.CAttrQuestion(*x)
     }
 
-constant_constructors = {
+constant_constructors: Dict[str, Callable[..., CC.CConstBase]] = {
     'int': lambda x:CC.CConstInt(*x),
     'str': lambda x:CC.CConstStr(*x),
     'wstr': lambda x:CC.CConstWStr(*x),
@@ -69,7 +69,7 @@ constant_constructors = {
     'enum': lambda x:CC.CConstEnum(*x)
     }
 
-exp_constructors = {
+exp_constructors: Dict[str, Callable[..., CE.CExpBase]] = {
     'const': lambda x:CE.CExpConst(*x),
     'lval': lambda x:CE.CExpLval(*x),
     'sizeof': lambda x:CE.CExpSizeOf(*x),
@@ -88,18 +88,18 @@ exp_constructors = {
     'cnapp': lambda x:CE.CExpCnApp(*x)
     }
 
-lhost_constructors = {
+lhost_constructors: Dict[str, Callable[..., CH.CLHostBase]] = {
     'var': lambda x:CH.CLHostVar(*x),
     'mem': lambda x:CH.CLHostMem(*x)
     }
 
-offset_constructors = {
+offset_constructors: Dict[str, Callable[..., CO.COffsetBase]] = {
     'n': lambda x:CO.CNoOffset(*x),
     'f': lambda x:CO.CFieldOffset(*x),
     'i': lambda x:CO.CIndexOffset(*x)
     }
 
-typ_constructors = {
+typ_constructors: Dict[str, Callable[..., CT.CTypBase]] = {
     'tvoid': lambda x:CT.CTypVoid(*x),
     'tint': lambda x:CT.CTypInt(*x),
     'tfloat': lambda x:CT.CTypFloat(*x),
@@ -113,7 +113,7 @@ typ_constructors = {
     'tfun': lambda x:CT.CTypFun(*x)
     }
 
-typsig_constructors = {
+typsig_constructors: Dict[str, Callable[..., CS.CTypsigTSBase]] = {
     'tsarray': lambda x:CS.CTypsigArray(*x),
     'tsptr': lambda x:CS.CTypsigPtr(*x),
     'tscomp': lambda x:CS.CTypsigComp(*x),
