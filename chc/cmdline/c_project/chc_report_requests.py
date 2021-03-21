@@ -27,6 +27,7 @@
 
 import argparse
 import os
+from typing import Any, Dict
 
 import chc.util.fileutil as UF
 
@@ -79,7 +80,7 @@ if __name__ == '__main__':
 
     sempath = os.path.join(cpath,'semantics')
     if not os.path.isdir(sempath):
-        print(UP.semantics_not_found_err_msg(cpath))
+        print('semantics_not_found_err_msg: ' + cpath)
         exit(1)
         
     capp = CApplication(sempath)
@@ -91,7 +92,7 @@ if __name__ == '__main__':
     stats['ndepppo'] = 0
     stats['ndepspo'] = 0
 
-    calleetable = {}  # file -> function -> postcondition request list
+    calleetable: Dict[Any, Any] = {}  # file -> function -> postcondition request list
 
     def record_callee(callerfile,p):
         calleefn = callerfile.capp.resolve_vid_function(callerfile.index,p.callee.get_vid())

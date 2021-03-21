@@ -58,7 +58,7 @@ if __name__ == '__main__':
     try:
         cfapp = CApplication(sempath,args.cfile)
         cfile = cfapp.get_cfile()
-    except CFileNotFoundException as e:
+    except UF.CFileNotFoundException as e:
         print(str(e))
         exit(1)
 

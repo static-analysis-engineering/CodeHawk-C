@@ -30,6 +30,7 @@ import logging
 import time
 import os
 import subprocess
+from typing import Any, Dict
 
 from contextlib import contextmanager
 
@@ -54,7 +55,7 @@ def timing(activity):
           '\nCompleted ' + activity + ' in ' + str(time.time() - t0) + ' secs' +
           '\n' + ('=' * 80))
 
-functionindex = {}
+functionindex: Dict[Any, Any] = {}
 
 if __name__ == '__main__':
 

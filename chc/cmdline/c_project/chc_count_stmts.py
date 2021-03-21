@@ -27,6 +27,7 @@
 
 import argparse
 import os
+from typing import Any, Dict, List
 
 import chc.util.fileutil as UF
 
@@ -55,8 +56,8 @@ if __name__ == '__main__':
     sempath = os.path.join(cpath,'semantics')
     capp = CApplication(sempath)
 
-    result = {}
-    asminstrs = []
+    result: Dict[Any, Any] = {}
+    asminstrs: List[Any] = []
 
     def f(fi):
         if not fi.name in result: result[fi.name] = {}

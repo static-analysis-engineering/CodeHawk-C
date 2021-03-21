@@ -28,6 +28,7 @@
 import argparse
 import os
 import time
+from typing import Any, Dict, List
 
 import chc.util.fileutil as UF
 import chc.reporting.ProofObligations as RP
@@ -36,14 +37,14 @@ if __name__ == '__main__':
 
     targets =  UF.get_registered_analysis_targets()
 
-    projectstats = {}   # project -> (linecount, clinecount, cfuncount)
+    projectstats: Dict[Any, Any] = {}   # project -> (linecount, clinecount, cfuncount)
 
-    ppoprojecttotals = {}   # project -> dm -> dmtotal
-    spoprojecttotals = {}
-    ppotagtotals = {}       # tag -> dm -> dmtotal
-    spotagtotals = {}
-    nosummary = []
-    analysistimes = {}
+    ppoprojecttotals: Dict[Any, Any] = {}   # project -> dm -> dmtotal
+    spoprojecttotals: Dict[Any, Any] = {}
+    ppotagtotals: Dict[Any, Any] = {}       # tag -> dm -> dmtotal
+    spotagtotals: Dict[Any, Any] = {}
+    nosummary: List[Any] = []
+    analysistimes: Dict[Any, Any] = {}
     
     dsmethods = RP.get_dsmethods([])
 
@@ -63,7 +64,7 @@ if __name__ == '__main__':
                 ppoprojecttotals[project] = {}
                 spoprojecttotals[project] = {}
             except:
-                print('Problem with ' + str(p))
+                print('Problem with ' + str(project))
                 continue
             if 'stats' in pd:
                 projectstats[project] = pd['stats']

@@ -69,7 +69,8 @@ if __name__ == '__main__':
     if args.history:
         summarieslist = UF.read_project_summary_results_history(cpath)
     else:
-        summarieslist = [ UF.read_project_summary_results(cpath) ]
+        summaries = UF.read_project_summary_results(cpath)
+        summarieslist = [ summaries ] if summaries else []
    
     for summaries in summarieslist:
         # summaries = UF.read_project_summary_results(cpath)

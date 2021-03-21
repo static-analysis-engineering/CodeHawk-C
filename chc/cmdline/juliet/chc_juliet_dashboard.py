@@ -27,6 +27,7 @@
 
 import argparse
 import os
+from typing import Any, Dict
 
 import chc.util.fileutil as UF
 
@@ -57,7 +58,7 @@ if __name__ == '__main__':
         print(str(e.wrap()))
         exit(1)
 
-    stotals = {}
+    stotals : Dict[Any, Any] = {}
     stotals[violations] = {}
     stotals[safecontrols] = {}
     for c in violationcategories: stotals[violations][c] = 0
@@ -83,7 +84,7 @@ if __name__ == '__main__':
     for cwe in sorted(testcases):
         if not (cwe == cwerequested or cwerequested == 'all'): continue
         print('\n'+cwe)
-        ctotals = {}
+        ctotals: Dict[Any, Any] = {}
         ctotals[violations] = {}
         ctotals[safecontrols] = {}
         for c in violationcategories: ctotals[violations][c] = 0
@@ -107,8 +108,8 @@ if __name__ == '__main__':
                     sppototals += totals[safecontrols][c]
                     if c in shandled: sppohandled += totals[safecontrols][c]
             else:
-                print(cc.ljust(tnamelength) + ('-'  * (44 - (tnamelength/2))) + ' not found ' +
-                        ('-' * (44 - (tnamelength/2))))
+                print(cc.ljust(tnamelength) + ('-'  * (44 - int(tnamelength/2))) + ' not found ' +
+                        ('-' * (44 - int(tnamelength/2))))
 
         print('-' * (tnamelength + 64))
         print('total'.ljust(tnamelength) +
