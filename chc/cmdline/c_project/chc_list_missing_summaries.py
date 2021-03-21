@@ -27,6 +27,7 @@
 
 import argparse
 import os
+from typing import Any, Dict
 
 import chc.util.fileutil as UF
 
@@ -56,8 +57,8 @@ if __name__ == '__main__':
     sempath = os.path.join(cpath,'semantics')
     capp = CApplication(sempath)
 
-    resultheaders = {}
-    result = {}
+    resultheaders: Dict[Any, Any] = {}
+    result: Dict[Any, Any] = {}
 
     def get_fn_missing_summaries(fn):
         missingsummaries = fn.api.get_missing_summaries()

@@ -28,6 +28,7 @@
 import argparse
 import os
 import time
+from typing import Any, Dict, List
 
 import chc.util.fileutil as UF
 import chc.reporting.ProofObligations as RP
@@ -57,12 +58,12 @@ if __name__ == '__main__':
 
     projectstats = {}   # project -> (linecount, clinecount, cfuncount)
 
-    ppoprojecttotals = {}   # project -> dm -> dmtotal
-    spoprojecttotals = {}
-    ppotagtotals = {}       # tag -> dm -> dmtotal
-    spotagtotals = {}
-    nosummary = []
-    analysistimes = {}
+    ppoprojecttotals: Dict[Any, Any] = {}   # project -> dm -> dmtotal
+    spoprojecttotals: Dict[Any, Any] = {}
+    ppotagtotals: Dict[Any, Any] = {}       # tag -> dm -> dmtotal
+    spotagtotals: Dict[Any, Any] = {}
+    nosummary: List[Any] = []
+    analysistimes: Dict[Any, Any] = {}
     
     dsmethods = RP.get_dsmethods([])
 

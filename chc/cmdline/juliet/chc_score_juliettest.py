@@ -27,8 +27,10 @@
 
 import argparse
 import os
+from typing import Any, Dict
 
 import chc.util.fileutil as UF
+import chc.util.IndexedTable as IT
 
 import chc.cmdline.juliet.JulietTestScoring as JTS
 from chc.cmdline.juliet.JulietTestSetRef import JulietTestSetRef
@@ -69,14 +71,14 @@ if __name__ == '__main__':
     
         ppopairs = JTS.get_ppo_pairs(julietppos,capp)
         print(JTS.testppo_results_tostring(ppopairs,capp))
-    except IndexedTableError as e:
+    except IT.IndexedTableError as e:
         print(
             '\n' + ('*' * 80) + '\nThe format of the analysis results has changed'
             + '\nPlease re-run the analysis first'
             + '\n' + ('*' * 80))
         exit(1)
     
-    testsummary = {}
+    testsummary: Dict[Any, Any] = {}
     JTS.initialize_testsummary(testset,testsummary)
     JTS.fill_testsummary(ppopairs,testsummary,capp)
     totals = JTS.get_testsummarytotals(testsummary)

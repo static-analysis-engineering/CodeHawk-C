@@ -65,7 +65,7 @@ if __name__ == '__main__':
 
     sempath = os.path.join(cpath,'semantics')
     if not os.path.isdir(sempath):
-        print(UP.semantics_not_found_err_msg(cpath))
+        print('semantics_not_found_err_msg: ' + cpath)
         exit(1)
 
     try:
