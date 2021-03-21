@@ -15,4 +15,4 @@ jobs:
       run: cp chc/util/ConfigLocal.template chc/util/ConfigLocal.py
     - name: Run mypy
       run: |
-        PYTHONPATH=$PWD mypy chc/api chc/app chc/invariants chc/linker chc/proof chc/reporting chc/source chc/util
+        PYTHONPATH=$PWD mypy chc
