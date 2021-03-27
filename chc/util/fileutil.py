@@ -363,7 +363,7 @@ def check_gui() -> None:
 # information on those projects (e.g., 32-bit or 64-bit compiled).
 # ------------------------------------------------------------------------------
 
-def get_analysis_target_index(group) -> Dict[Any, Any]:
+def get_analysis_target_index(group: str) -> Dict[Any, Any]:
     """Returns the dictionary referred to by the group name."""
     filename = config.targets.get(group,None)
     if filename is None:
@@ -473,7 +473,7 @@ def load_functionindex(path: str) -> Dict[str, Any]:
             return json.load(fp)
     return {}
 
-def get_callgraph_filename(path: str):
+def get_callgraph_filename(path: str) -> str:
     return os.path.join(path,'callgraph.json')
 
 def save_callgraph(path: str, d: Dict[str, Any]) -> None:
@@ -631,7 +631,7 @@ def get_cfile_filename(path: str, cfilename: str) -> str:
     cfilename = get_cfilenamebase(cfilename)
     return os.path.join(path,cfilename + '_cfile.xml')
 
-def get_cfile_xnode(path,cfilename: str) -> Optional[ET.Element]:
+def get_cfile_xnode(path: str,cfilename: str) -> Optional[ET.Element]:
     filename = get_cfile_filename(path,cfilename)
     return get_xnode(filename,'c-file','C source file')
 

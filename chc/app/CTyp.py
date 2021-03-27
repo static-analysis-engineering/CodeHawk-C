@@ -112,7 +112,7 @@ class CTypBase(CD.CDictionaryRecord):
         else:
             return ''
 
-    def equal(self,other) -> bool:
+    def equal(self,other: 'CTypBase') -> bool:
         return self.expand().index == other.expand().index
 
     def is_array(self) -> bool: return False
