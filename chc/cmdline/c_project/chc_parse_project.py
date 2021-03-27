@@ -149,7 +149,10 @@ if __name__ == '__main__':
             print('*' * 80)
             exit(1)
 
-    bearcmd = [ 'bear' ] if config.bear == None else [ config.bear ]
+    if config.bear is None:
+        bearcmd = [ 'bear' ]
+    else:
+        bearcmd = [ config.bear ]
     if config.libear: bearcmd.extend(['--libear', config.libear])   
     bearcmd.append('make')
     if not args.maketarget is None: bearcmd.append(args.maketarget)

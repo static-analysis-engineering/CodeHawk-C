@@ -68,7 +68,7 @@ class CHCAnalyzerNotFoundError(CHCError):
 
 class CHCGuiNotFoundError(CHCError):
 
-    def __init__(self, location: str) -> None:
+    def __init__(self, location: Optional[str]) -> None:
         CHCError.__init__(self,'CodeHawk C Analyzer Gui not found')
         self.location = location
 

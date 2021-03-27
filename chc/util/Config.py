@@ -26,6 +26,7 @@
 # ------------------------------------------------------------------------------
 
 import os
+from typing import Dict
 
 if os.path.isfile(os.path.join(os.path.dirname(os.path.abspath(__file__)), "ConfigLocal.py")):
     import chc.util.ConfigLocal as ConfigLocal
@@ -36,7 +37,7 @@ else:
 
 class Config(object):
 
-    def __init__(self):
+    def __init__(self) -> None:
         # platform settings
         if os.uname()[0] == 'Linux': self.platform = 'linux'
         elif os.uname()[0] == 'Darwin': self.platform = 'macOS'
@@ -76,12 +77,12 @@ class Config(object):
 
         # analysis targets
         self.name_separator = ':'
-        self.targets = {}
+        self.targets: Dict[str, str] = {}
 
         # personalization
         if localconfig: ConfigLocal.getLocals(self)
 
-    def __str__(self):
+    def __str__(self) -> str:
         lines = []
         parserfound = ' (found)' if os.path.isfile(self.cparser) else ' (not found)'
         analyzerfound = ' (found)' if os.path.isfile(self.canalyzer) else ' (not found)'
