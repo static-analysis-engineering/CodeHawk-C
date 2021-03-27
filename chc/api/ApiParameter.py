@@ -25,38 +25,43 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
+from typing import List, TYPE_CHECKING
+
 import chc.app.CDictionaryRecord as CD
+
+if TYPE_CHECKING:
+    import chc.app.CDictionary
 
 class ApiParameter(CD.CDictionaryRecord):
 
-    def __init__(self,cd,index,tags,args):
+    def __init__(self, cd: 'chc.app.CDictionary.CDictionary', index: int, tags: List[str], args: List[int]) -> None:
         CD.CDictionaryRecord.__init__(self,cd,index,tags,args)
 
-    def is_formal(self): return False
-    def is_global(self): return False
+    def is_formal(self) -> bool: return False
+    def is_global(self) -> bool: return False
 
-    def __str__(self): return 'api-parameter ' + self.tags[0]
+    def __str__(self) -> str: return 'api-parameter ' + self.tags[0]
 
 
 class APFormal(ApiParameter):
 
-    def __init__(self,cd,index,tags,args):
+    def __init__(self, cd: 'chc.app.CDictionary.CDictionary', index: int, tags: List[str], args: List[int]) -> None:
         ApiParameter.__init__(self,cd,index,tags,args)
 
-    def get_seq_number(self): return int(self.args[0])
+    def get_seq_number(self) -> int: return int(self.args[0])
 
-    def is_formal(self): return True
+    def is_formal(self) -> bool: return True
 
-    def __str__(self): return 'par-' + str(self.get_seq_number())
+    def __str__(self) -> str: return 'par-' + str(self.get_seq_number())
 
 
 class APGlobal(ApiParameter):
 
-    def __init__(self,cd,index,tags,args):
+    def __init__(self, cd: 'chc.app.CDictionary.CDictionary', index: int, tags: List[str], args: List[int]) -> None:
         ApiParameter.__init__(self,cd,index,tags,args)
 
-    def get_name(self): return self.tags[1]
+    def get_name(self) -> str: return self.tags[1]
 
-    def is_global(self): return True
+    def is_global(self) -> bool: return True
 
-    def __str__(self): return 'par-' + self.get_name()
+    def __str__(self) -> str: return 'par-' + self.get_name()
