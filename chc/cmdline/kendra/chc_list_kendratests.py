@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -29,7 +29,7 @@ import os
 
 import chc.util.fileutil as UF
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     path = UF.get_kendra_path()
 
@@ -37,10 +37,10 @@ if __name__ == '__main__':
 
     if os.path.isdir(path):
         for d1 in os.listdir(path):
-            if d1.startswith('id'):
+            if d1.startswith("id"):
                 result.append(d1)
 
-    print('Kendra test sets currently provided (' + str(len(result)) + '):')
-    print('~' * 80)
+    print("Kendra test sets currently provided (" + str(len(result)) + "):")
+    print("~" * 80)
     for d in sorted(result):
-        print('  ' + d)
+        print("  " + d)

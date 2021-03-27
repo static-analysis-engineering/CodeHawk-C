@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -27,18 +27,28 @@
 
 import multiprocessing
 
-import subprocess, os, shutil
+import subprocess
+import os
+import shutil
 
 import chc.util.fileutil as UF
 from chc.util.Config import Config
+
 # from chc.invariants.CGlobalInvariants import CGlobalInvariants
+
 
 class AnalysisManager(object):
     """Provide the interface to the KT Advance (ocaml) analyzer."""
 
-    def __init__(self,capp,wordsize=0,unreachability=False,
-                     thirdpartysummaries=[],nofilter=True,
-                     verbose=True):
+    def __init__(
+        self,
+        capp,
+        wordsize=0,
+        unreachability=False,
+        thirdpartysummaries=[],
+        nofilter=True,
+        verbose=True,
+    ):
         """Initialize the analyzer location and target file location.
 
         Args:
@@ -46,7 +56,7 @@ class AnalysisManager(object):
 
         Keyword args:
             wordsize (int): architecture wordsize (0,16,32,64) (default 0 (unspecified))
-            unreachability (bool): use unreachability as justification to discharge 
+            unreachability (bool): use unreachability as justification to discharge
                                    (default False)
             thirdpartysummaries (string list): names of function summary jars
             verbose (bool): display analyzer output (default True)
@@ -63,42 +73,48 @@ class AnalysisManager(object):
         self.nofilter = nofilter
         self.wordsize = wordsize
         self.thirdpartysummaries = thirdpartysummaries
-        self.unreachability = unreachability 
+        self.unreachability = unreachability
         self.verbose = verbose
 
     def reset(self):
         """Remove all file- and function-level files produced by the analysis."""
-        
+
         def remove(f):
-            if os.path.isfile(f): os.remove(f)
+            if os.path.isfile(f):
+                os.remove(f)
+
         def g(fi):
-            cfiledir = UF.get_cfile_directory(self.path,fi.name)
+            cfiledir = UF.get_cfile_directory(self.path, fi.name)
             if os.path.isdir(cfiledir):
                 for f in os.listdir(cfiledir):
-                    if (len(f) > 10
-                            and (f[-8:-4] in [ '_api', '_ppo', '_spo', '_pod' ]
-                                     or f[-9:-4] in [ '_invs', '_vars' ])):
-                        os.remove(os.path.join(cfiledir,f))
-            remove(UF.get_cfile_predicate_dictionaryname(self.capp.path,fi.name))
-            remove(UF.get_cfile_interface_dictionaryname(self.capp.path,fi.name))
-            remove(UF.get_cfile_assignment_dictionaryname(self.capp.path,fi.name))
-            remove(UF.get_cxreffile_filename(self.capp.path,fi.name))
-            remove(UF.get_cfile_contexttablename(self.capp.path,fi.name))
+                    if len(f) > 10 and (
+                        f[-8:-4] in ["_api", "_ppo", "_spo", "_pod"]
+                        or f[-9:-4] in ["_invs", "_vars"]
+                    ):
+                        os.remove(os.path.join(cfiledir, f))
+            remove(UF.get_cfile_predicate_dictionaryname(self.capp.path, fi.name))
+            remove(UF.get_cfile_interface_dictionaryname(self.capp.path, fi.name))
+            remove(UF.get_cfile_assignment_dictionaryname(self.capp.path, fi.name))
+            remove(UF.get_cxreffile_filename(self.capp.path, fi.name))
+            remove(UF.get_cfile_contexttablename(self.capp.path, fi.name))
+
         self.capp.iter_files(g)
         remove(UF.get_global_definitions_filename(self.capp.path))
-
 
     def reset_logfiles(self):
         """Remove all log files from semantics directory."""
 
         def g(fi):
-            logfiledir = UF.get_cfile_logfiles_directory(self.path,fi.name)
+            logfiledir = UF.get_cfile_logfiles_directory(self.path, fi.name)
             if os.path.isdir(logfiledir):
                 for f in os.listdir(logfiledir):
-                    if (f.endswith('chlog')
-                            or f.endswith('infolog')
-                            or f.endswith('errorlog')):
-                        os.remove(os.path.join(logfiledir,f))
+                    if (
+                        f.endswith("chlog")
+                        or f.endswith("infolog")
+                        or f.endswith("errorlog")
+                    ):
+                        os.remove(os.path.join(logfiledir, f))
+
         self.capp.iter_files(g)
 
     def reset_tables(self, cfilename):
@@ -113,64 +129,82 @@ class AnalysisManager(object):
         try:
             print(CMD)
             result = subprocess.check_output(CMD)
-            print(result.decode('utf-8'))
+            print(result.decode("utf-8"))
         except subprocess.CalledProcessError as args:
             print(args.output)
             print(args)
             exit(1)
 
     def _create_file_primary_proofobligations_cmd_partial(self):
-        cmd = [ self.canalyzer, '-summaries', self.chsummaries,
-                    '-command', 'primary' ]
+        cmd = [self.canalyzer, "-summaries", self.chsummaries, "-command", "primary"]
         if not (self.thirdpartysummaries is None):
             for s in self.thirdpartysummaries:
-                cmd.extend(['-summaries',s])
+                cmd.extend(["-summaries", s])
         if not (self.contractpath is None):
-            cmd.extend(['-contractpath',self.contractpath])
+            cmd.extend(["-contractpath", self.contractpath])
 
-        if self.nofilter: cmd.append('-nofilter')
-        if self.wordsize > 0: cmd.extend(['-wordsize',str(self.wordsize)])
+        if self.nofilter:
+            cmd.append("-nofilter")
+        if self.wordsize > 0:
+            cmd.extend(["-wordsize", str(self.wordsize)])
         cmd.append(self.path)
-        cmd.append('-cfile')
+        cmd.append("-cfile")
         return cmd
 
-    def rungui(self,name,outputpath=None):
+    def rungui(self, name, outputpath=None):
         semdir = os.path.dirname(self.path)
         analysisdir = os.path.dirname(semdir)
         if outputpath is None:
             outputpath = analysisdir
-        cmd = [ self.gui, '-summaries', self.chsummaries,
-                    '-output', outputpath,
-                    '-name', name,
-                    '-xpm', self.config.utildir,
-                    '-analysisdir', analysisdir, '-contractpath',
-                    self.contractpath ]
+        cmd = [
+            self.gui,
+            "-summaries",
+            self.chsummaries,
+            "-output",
+            outputpath,
+            "-name",
+            name,
+            "-xpm",
+            self.config.utildir,
+            "-analysisdir",
+            analysisdir,
+            "-contractpath",
+            self.contractpath,
+        ]
         print(cmd)
         try:
-            result = subprocess.call(cmd,cwd=self.path,stdout=open(os.devnull,'w'),
-                                        stderr=subprocess.STDOUT)
+            result = subprocess.call(
+                cmd,
+                cwd=self.path,
+                stdout=open(os.devnull, "w"),
+                stderr=subprocess.STDOUT,
+            )
         except subprocess.CalledProcessError as args:
             print(args.output)
             print(args)
             exit(1)
 
-    def create_file_primary_proofobligations(self,cfilename):
+    def create_file_primary_proofobligations(self, cfilename):
         """Call analyzer to create primary proof obligations for a single application file."""
 
         try:
             cmd = self._create_file_primary_proofobligations_cmd_partial()
             cmd.append(cfilename)
             if self.verbose:
-                print('Creating primary proof obligations for ' + cfilename)
+                print("Creating primary proof obligations for " + cfilename)
                 print(str(cmd))
-                result = subprocess.call(cmd,cwd=self.path,stderr=subprocess.STDOUT)
-                print('\nResult: ' + str(result))
+                result = subprocess.call(cmd, cwd=self.path, stderr=subprocess.STDOUT)
+                print("\nResult: " + str(result))
                 self.capp.get_file(cfilename).predicatedictionary.initialize()
             else:
-                result = subprocess.call(cmd,cwd=self.path,stdout=open(os.devnull, 'w'),
-                                             stderr=subprocess.STDOUT)
+                result = subprocess.call(
+                    cmd,
+                    cwd=self.path,
+                    stdout=open(os.devnull, "w"),
+                    stderr=subprocess.STDOUT,
+                )
             if result != 0:
-                print('Error in creating primary proof obligations')
+                print("Error in creating primary proof obligations")
                 exit(1)
             cfile = self.capp.get_file(cfilename)
             cfile.reinitialize_tables()
@@ -185,50 +219,70 @@ class AnalysisManager(object):
         """Call analyzer to create primary proof obligations for all application files."""
 
         if processes > 1:
+
             def f(cfile):
                 cmd = self._create_file_primary_proofobligations_cmd_partial()
                 cmd.append(cfile)
                 self._execute_cmd(cmd)
+
             self.capp.iter_filenames_parallel(f, processes)
         else:
+
             def f(cfile):
                 self.create_file_primary_proofobligations(cfile)
+
             self.capp.iter_filenames(f)
 
     def _generate_and_check_file_cmd_partial(self, domains):
-        cmd = [ self.canalyzer, '-summaries', self.chsummaries,
-                    '-command', 'generate_and_check',
-                    '-domains', domains ]
+        cmd = [
+            self.canalyzer,
+            "-summaries",
+            self.chsummaries,
+            "-command",
+            "generate_and_check",
+            "-domains",
+            domains,
+        ]
         if not (self.thirdpartysummaries is None):
             for s in self.thirdpartysummaries:
-                cmd.extend(['-summaries',s])
+                cmd.extend(["-summaries", s])
         if not (self.contractpath is None):
-            cmd.extend(['-contractpath',self.contractpath])
-        if self.nofilter: cmd.append('-nofilter')
-        if self.wordsize > 0: cmd.extend(['-wordsize',str(self.wordsize)])
-        if self.unreachability: cmd.append('-unreachability')
-        if self.verbose: cmd.append('-verbose')
+            cmd.extend(["-contractpath", self.contractpath])
+        if self.nofilter:
+            cmd.append("-nofilter")
+        if self.wordsize > 0:
+            cmd.extend(["-wordsize", str(self.wordsize)])
+        if self.unreachability:
+            cmd.append("-unreachability")
+        if self.verbose:
+            cmd.append("-verbose")
         cmd.append(self.path)
-        cmd.append('-cfile')
+        cmd.append("-cfile")
         return cmd
 
-    def generate_and_check_file(self,cfilename,domains):
+    def generate_and_check_file(self, cfilename, domains):
         """Generate invariants and check proof obligations for a single file."""
 
         try:
             cmd = self._generate_and_check_file_cmd_partial(domains)
             cmd.append(cfilename)
-            if self.verbose: 
-                print('Generating invariants and checking proof obligations for '
-                          + cfilename)
+            if self.verbose:
+                print(
+                    "Generating invariants and checking proof obligations for "
+                    + cfilename
+                )
                 print(cmd)
-                result = subprocess.call(cmd,cwd=self.path,stderr=subprocess.STDOUT)
-                print('\nResult: ' + str(result))
+                result = subprocess.call(cmd, cwd=self.path, stderr=subprocess.STDOUT)
+                print("\nResult: " + str(result))
             else:
-                result = subprocess.call(cmd,cwd=self.path,stdout=open(os.devnull,'w'),
-                                             stderr=subprocess.STDOUT)
+                result = subprocess.call(
+                    cmd,
+                    cwd=self.path,
+                    stdout=open(os.devnull, "w"),
+                    stderr=subprocess.STDOUT,
+                )
             if result != 0:
-                print('Error in generating invariants or checking proof obligations')
+                print("Error in generating invariants or checking proof obligations")
                 exit(1)
         except subprocess.CalledProcessError as args:
             print(args.output)
@@ -239,18 +293,22 @@ class AnalysisManager(object):
         """Generate invariants and check proof obligations for application."""
 
         if processes > 1:
+
             def f(cfile):
                 cmd = self._generate_and_check_file_cmd_partial(domains)
                 cmd.append(cfile)
                 self._execute_cmd(cmd)
+
             self.capp.iter_filenames_parallel(f, processes)
         else:
+
             def f(cfile):
-                self.generate_and_check_file(cfile,domains)
+                self.generate_and_check_file(cfile, domains)
+
             self.capp.iter_filenames(f)
         self.capp.iter_filenames(self.reset_tables)
 
-            
-if __name__ == '__main__':
+
+if __name__ == "__main__":
 
     pass

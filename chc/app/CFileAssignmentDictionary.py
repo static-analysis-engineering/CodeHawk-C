@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -32,60 +32,73 @@ import chc.util.IndexedTable as IT
 import chc.app.GlobalAssignment as GA
 
 assignment_constructors = {
-    'init': lambda x:GA.InitAssignment(*x),
-    'g': lambda x:GA.GlobalAssignment(*x),
-    'gi': lambda x:GA.GlobalIndexAssignment(*x),
-    's': lambda x:GA.StaticAssignment(*x),
-    'si': lambda x:GA.StaticIndexAssignment(*x),
-    'f': lambda x:GA.FieldAssignment(*x),
-    'u': lambda x:GA.UnknownAssignment(*x)
-    }
+    "init": lambda x: GA.InitAssignment(*x),
+    "g": lambda x: GA.GlobalAssignment(*x),
+    "gi": lambda x: GA.GlobalIndexAssignment(*x),
+    "s": lambda x: GA.StaticAssignment(*x),
+    "si": lambda x: GA.StaticIndexAssignment(*x),
+    "f": lambda x: GA.FieldAssignment(*x),
+    "u": lambda x: GA.UnknownAssignment(*x),
+}
+
 
 class CFileAssignmentDictionary(object):
-    '''Dictionary that encodes assignments to global and static variables and fields.'''
+    """Dictionary that encodes assignments to global and static variables and fields."""
 
-    def __init__(self,cfile):
+    def __init__(self, cfile):
         self.cfile = cfile
         self.declarations = self.cfile.declarations
         self.dictionary = self.declarations.dictionary
-        self.assignment_table = IT.IndexedTable('assignment-table')
-        self.function_name_table = IT.IndexedTable('function-name-table')
+        self.assignment_table = IT.IndexedTable("assignment-table")
+        self.function_name_table = IT.IndexedTable("function-name-table")
         self.tables = [
             (self.function_name_table, self._read_xml_function_name_table),
-            (self.assignment_table, self._read_xml_assignment_table) ]
+            (self.assignment_table, self._read_xml_assignment_table),
+        ]
         self.initialize()
 
-    def get_function_name(self,ix): return self.function_name_table.retrieve(ix)
+    def get_function_name(self, ix):
+        return self.function_name_table.retrieve(ix)
 
-    def get_assignment(self,ix): return self.assignment_table.retrieve(ix)
+    def get_assignment(self, ix):
+        return self.assignment_table.retrieve(ix)
 
-    def mk_assignment_index(self,tags,args):
-        def f(index,key): return assignment_constructors[tags[0]]((self,index,tags,args))
-        return self.assignment_table.add(IT.get_key(tags,args),f)
+    def mk_assignment_index(self, tags, args):
+        def f(index, key):
+            return assignment_constructors[tags[0]]((self, index, tags, args))
+
+        return self.assignment_table.add(IT.get_key(tags, args), f)
 
     def initialize(self):
-        if self.assignment_table.size() > 0: return
-        xnode = UF.get_cfile_assignment_dictionary_xnode(self.cfile.capp.path,self.cfile.name)
-        if xnode is None: return
-        for (t,f) in self.tables: f(xnode.find(t.name))
+        if self.assignment_table.size() > 0:
+            return
+        xnode = UF.get_cfile_assignment_dictionary_xnode(
+            self.cfile.capp.path, self.cfile.name
+        )
+        if xnode is None:
+            return
+        for (t, f) in self.tables:
+            f(xnode.find(t.name))
 
     def __str__(self):
         lines = []
-        for (t,_) in self.tables:
+        for (t, _) in self.tables:
             lines.append(str(t))
-        return '\n'.join(lines)
+        return "\n".join(lines)
 
-    def _read_xml_function_name_table (self,txnode):
+    def _read_xml_function_name_table(self, txnode):
         def get_value(node):
             rep = IT.get_rep(node)
             args = (self,) + rep
             return GA.GlobalAssignmentFunctionName(*args)
-        self.function_name_table.read_xml(txnode,'n',get_value)
 
-    def _read_xml_assignment_table(self,txnode):
+        self.function_name_table.read_xml(txnode, "n", get_value)
+
+    def _read_xml_assignment_table(self, txnode):
         def get_value(node):
             rep = IT.get_rep(node)
             tag = rep[1][0]
             args = (self,) + rep
             return assignment_constructors[tag](args)
-        self.assignment_table.read_xml(txnode,'n',get_value)
+
+        self.assignment_table.read_xml(txnode, "n", get_value)

@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -27,12 +27,14 @@
 
 import chc.app.CDictionaryRecord as CD
 
-class CTypeInfo(CD.CDeclarationsRecord):
-    '''Type definition.'''
 
-    def __init__(self,cdecls,index,tags,args):
-        CD.CDeclarationsRecord.__init__(self,cdecls,index,tags,args)
+class CTypeInfo(CD.CDeclarationsRecord):
+    """Type definition."""
+
+    def __init__(self, cdecls, index, tags, args):
+        CD.CDeclarationsRecord.__init__(self, cdecls, index, tags, args)
         self.name = tags[0]
         self.type = self.get_dictionary().get_typ(self.args[0])
 
-    def __str__(self): return self.name + ':' + str(self.type)
+    def __str__(self):
+        return self.name + ":" + str(self.type)

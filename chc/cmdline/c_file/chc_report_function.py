@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -33,18 +33,27 @@ import chc.reporting.ProofObligations as RP
 
 from chc.app.CApplication import CApplication
 
+
 def parse():
     parser = argparse.ArgumentParser()
-    parser.add_argument('path',help='path to directory that holds the semantics directory')
-    parser.add_argument('cfile',help='filename of c file')
-    parser.add_argument('cfunction',help='name of function to report on')
-    parser.add_argument('--open',help='only show open proof obligations',action='store_true')
-    parser.add_argument('--violations',help='only show proof obligations that are violated',
-                            action='store_true')
+    parser.add_argument(
+        "path", help="path to directory that holds the semantics directory"
+    )
+    parser.add_argument("cfile", help="filename of c file")
+    parser.add_argument("cfunction", help="name of function to report on")
+    parser.add_argument(
+        "--open", help="only show open proof obligations", action="store_true"
+    )
+    parser.add_argument(
+        "--violations",
+        help="only show proof obligations that are violated",
+        action="store_true",
+    )
     args = parser.parse_args()
     return args
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
 
     args = parse()
     cpath = os.path.abspath(args.path)
@@ -54,10 +63,10 @@ if __name__ == '__main__':
     except UF.CHError as e:
         print(str(e.wrap()))
         exit(1)
-        
-    sempath = os.path.join(args.path, 'semantics')
-        
-    cfapp = CApplication(sempath,args.cfile)
+
+    sempath = os.path.join(args.path, "semantics")
+
+    cfapp = CApplication(sempath, args.cfile)
     cfile = cfapp.get_cfile()
 
     try:
@@ -67,12 +76,23 @@ if __name__ == '__main__':
         exit(1)
 
     if args.open and args.violations:
-        def pofilter(po):return not po.is_closed() or po.is_violated()
-    elif args.open:
-        def pofilter(po):return not po.is_closed()
-    elif args.violations:
-        def pofilter(po):return po.is_violated()
-    else:
-        def pofilter(po):return True
 
-    print(RP.function_code_tostring(cfunction,pofilter=pofilter))
+        def pofilter(po):
+            return not po.is_closed() or po.is_violated()
+
+    elif args.open:
+
+        def pofilter(po):
+            return not po.is_closed()
+
+    elif args.violations:
+
+        def pofilter(po):
+            return po.is_violated()
+
+    else:
+
+        def pofilter(po):
+            return True
+
+    print(RP.function_code_tostring(cfunction, pofilter=pofilter))

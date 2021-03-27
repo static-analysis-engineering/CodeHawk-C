@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -34,26 +34,28 @@ import chc.util.xmlutil as UX
 
 from chc.app.CApplication import CApplication
 
+
 def parse():
     parser = argparse.ArgumentParser()
-    parser.add_argument('cfilename',help='name of kendra c file (e.g. id115.c)')
+    parser.add_argument("cfilename", help="name of kendra c file (e.g. id115.c)")
     args = parser.parse_args()
     return args
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
 
     args = parse()
     cfilename = args.cfilename
     cpath = UF.get_kendra_cpath(cfilename)
 
     if cpath is None:
-        print('*' * 80)
-        print('Unable to find the test set for file ' + cfilename)
-        print('*' * 80)
+        print("*" * 80)
+        print("Unable to find the test set for file " + cfilename)
+        print("*" * 80)
         exit(1)
 
-    sempath = os.path.join(cpath,'semantics')
-    cfapp = CApplication(sempath,cfilename)
+    sempath = os.path.join(cpath, "semantics")
+    cfapp = CApplication(sempath, cfilename)
     cfile = cfapp.get_cfile()
 
-    cfile.create_contract(os.path.join(cpath,'ktacontracts'))
+    cfile.create_contract(os.path.join(cpath, "ktacontracts"))

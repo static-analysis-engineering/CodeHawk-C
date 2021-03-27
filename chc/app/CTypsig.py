@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -33,94 +33,143 @@ import chc.util.IndexedTable as IT
 if TYPE_CHECKING:
     import chc.app.CDictionary
 
-class CTypsigTSBase(CD.CDictionaryRecord):
 
-    def __init__(self, cd: 'chc.app.CDictionary.CDictionary', index: int, tags: List[str], args: List[int]) -> None:
-        CD.CDictionaryRecord.__init__(self,cd,index,tags,args)
- 
+class CTypsigTSBase(CD.CDictionaryRecord):
+    def __init__(
+        self,
+        cd: "chc.app.CDictionary.CDictionary",
+        index: int,
+        tags: List[str],
+        args: List[int],
+    ) -> None:
+        CD.CDictionaryRecord.__init__(self, cd, index, tags, args)
+
 
 class CTypsigArray(CTypsigTSBase):
-
-    def __init__(self, cd: 'chc.app.CDictionary.CDictionary', index: int, tags: List[str], args: List[int]) -> None:
-        CTypsigTSBase.__init__(self,cd,index,tags,args)
+    def __init__(
+        self,
+        cd: "chc.app.CDictionary.CDictionary",
+        index: int,
+        tags: List[str],
+        args: List[int],
+    ) -> None:
+        CTypsigTSBase.__init__(self, cd, index, tags, args)
 
     def get_len_opt(self):
-        return (None if self.tags[1] == "" else int(self.tags[1]))
+        return None if self.tags[1] == "" else int(self.tags[1])
 
-    def get_typsig(self): return self.cd.get_typsig(self.args[0])
+    def get_typsig(self):
+        return self.cd.get_typsig(self.args[0])
 
-    def get_attributes(self): return self.cd.get_attributes(self.args[1])
+    def get_attributes(self):
+        return self.cd.get_attributes(self.args[1])
 
-    def __str__(self) -> str: return ('tsarray(' + str(self.get_typsig())
-                                   + ',' + str(self.get_len_opt))
+    def __str__(self) -> str:
+        return "tsarray(" + str(self.get_typsig()) + "," + str(self.get_len_opt)
+
 
 class CTypsigPtr(CTypsigTSBase):
+    def __init__(
+        self,
+        cd: "chc.app.CDictionary.CDictionary",
+        index: int,
+        tags: List[str],
+        args: List[int],
+    ) -> None:
+        CTypsigTSBase.__init__(self, cd, index, tags, args)
 
-    def __init__(self, cd: 'chc.app.CDictionary.CDictionary', index: int, tags: List[str], args: List[int]) -> None:
-        CTypsigTSBase.__init__(self,cd,index,tags,args)
+    def get_typsig(self):
+        return self.cd.get_typsig(self.args[0])
 
-    def get_typsig(self): return self.cd.get_typsig(self.args[0])
+    def __str__(self) -> str:
+        return "tsptr(" + str(self.get_typsig()) + ")"
 
-    def __str__(self) -> str: return ('tsptr(' + str(self.get_typsig()) + ')')
 
 class CTypsigComp(CTypsigTSBase):
+    def __init__(
+        self,
+        cd: "chc.app.CDictionary.CDictionary",
+        index: int,
+        tags: List[str],
+        args: List[int],
+    ) -> None:
+        CTypsigTSBase.__init__(self, cd, index, tags, args)
 
-    def __init__(self, cd: 'chc.app.CDictionary.CDictionary', index: int, tags: List[str], args: List[int]) -> None:
-        CTypsigTSBase.__init__(self,cd,index,tags,args)
+    def get_name(self):
+        return self.tags[1]
 
-    def get_name(self): return self.tags[1]
+    def __str__(self) -> str:
+        return "tscomp(" + str(self.get_name()) + ")"
 
-    def __str__(self) -> str: return ('tscomp(' + str(self.get_name()) + ')')
 
 class CTypsigFun(CTypsigTSBase):
+    def __init__(
+        self,
+        cd: "chc.app.CDictionary.CDictionary",
+        index: int,
+        tags: List[str],
+        args: List[int],
+    ) -> None:
+        CTypsigTSBase.__init__(self, cd, index, tags, args)
 
-    def __init__(self, cd: 'chc.app.CDictionary.CDictionary', index: int, tags: List[str], args: List[int]) -> None:
-        CTypsigTSBase.__init__(self,cd,index,tags,args)
-
-    def get_typsig(self): return self.cd.get_typsig(self.args[0])
+    def get_typsig(self):
+        return self.cd.get_typsig(self.args[0])
 
     def get_typsig_list_opt(self):
         ix = self.args[1]
-        return (self.cd.get_typsig_list(ix) if ix >= 0 else None)
+        return self.cd.get_typsig_list(ix) if ix >= 0 else None
 
     def __str__(self) -> str:
-        return ('(' + str(self.get_typsig_list_opt) + '):'
-                    + str(self.get_typsig()) + ')')
+        return "(" + str(self.get_typsig_list_opt) + "):" + str(self.get_typsig()) + ")"
+
 
 class CTypsigEnum(CTypsigTSBase):
+    def __init__(
+        self,
+        cd: "chc.app.CDictionary.CDictionary",
+        index: int,
+        tags: List[str],
+        args: List[int],
+    ) -> None:
+        CTypsigTSBase.__init__(self, cd, index, tags, args)
 
-    def __init__(self, cd: 'chc.app.CDictionary.CDictionary', index: int, tags: List[str], args: List[int]) -> None:
-        CTypsigTSBase.__init__(self,cd,index,tags,args)
+    def get_name(self):
+        return self.tags[1]
 
-    def get_name(self): return self.tags[1]
+    def __str__(self) -> str:
+        return "tsenum(" + self.get_name() + ")"
 
-    def __str__(self) -> str: return 'tsenum(' + self.get_name() + ')'
 
 class CTypsigBase(CTypsigTSBase):
+    def __init__(
+        self,
+        cd: "chc.app.CDictionary.CDictionary",
+        index: int,
+        tags: List[str],
+        args: List[int],
+    ) -> None:
+        CTypsigTSBase.__init__(self, cd, index, tags, args)
 
-    def __init__(self, cd: 'chc.app.CDictionary.CDictionary', index: int, tags: List[str], args: List[int]) -> None:
-        CTypsigTSBase.__init__(self,cd,index,tags,args)
+    def get_type(self):
+        return self.cd.get_typ(self.args[0])
 
-    def get_type(self): return self.cd.get_typ(self.args[0])
+    def __str__(self) -> str:
+        return "tsbase(" + str(self.get_type()) + ")"
 
-    def __str__(self) -> str: return 'tsbase(' + str(self.get_type()) + ')'
-        
 
 class CTypsigList(IT.IndexedTableValue):
-
-    def __init__(self,cd,index,tags,args):
+    def __init__(self, cd, index, tags, args):
         self.cd = cd
         self.cfile = cd.cfile
         self.index = index
         self.tags = tags
         self.args = args
 
-    def get_key(self): return (','.join(self.tags), ','.join([str(x) for x in self.args]))
+    def get_key(self):
+        return (",".join(self.tags), ",".join([str(x) for x in self.args]))
 
-    def get_typsig_list(self): return [ self.cd.get_typsig(ix) for ix in args ]
+    def get_typsig_list(self):
+        return [self.cd.get_typsig(ix) for ix in args]
 
     def __str__(self) -> str:
-        return ','.join([str(x) for x in self.get_typsig_list()])
-
-
-    
+        return ",".join([str(x) for x in self.get_typsig_list()])

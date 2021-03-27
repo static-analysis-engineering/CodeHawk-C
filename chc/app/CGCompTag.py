@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -29,14 +29,18 @@
 class CGCompTag(object):
     """File-level definition of a struct."""
 
-    def __init__(self,compinfo,location):
+    def __init__(self, compinfo, location):
         self.compinfo = compinfo
         self.location = location
 
-    def get_struct(self): return self.compinfo
+    def get_struct(self):
+        return self.compinfo
 
-    def get_name(self): return self.compinfo.get_name()
+    def get_name(self):
+        return self.compinfo.get_name()
 
-    def is_struct(self): return self.compinfo.is_struct
+    def is_struct(self):
+        return self.compinfo.is_struct
 
-    def __str__(self): return str(self.compinfo)
+    def __str__(self):
+        return str(self.compinfo)

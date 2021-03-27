@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -33,22 +33,31 @@ from multiprocessing import Pool
 
 import chc.util.fileutil as UF
 
+
 def parse():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--maxprocesses',type=int,help='maximum number of processors to use',
-                            default='1')
-    parser.add_argument('--cwe',help='only score the given cwe')
+    parser.add_argument(
+        "--maxprocesses",
+        type=int,
+        help="maximum number of processors to use",
+        default="1",
+    )
+    parser.add_argument("--cwe", help="only score the given cwe")
     args = parser.parse_args()
     return args
 
+
 def score_juliettest(testcase):
-    (cwe,t) = testcase
-    cmd = ['python', 'chc_score_juliettest.py', cwe, t ]
-    print('Scoring ' + ':'.join(testcase) + ' ...')
-    result = subprocess.call(cmd, stdout=open(os.devnull, 'w'), stderr=subprocess.STDOUT)
+    (cwe, t) = testcase
+    cmd = ["python", "chc_score_juliettest.py", cwe, t]
+    print("Scoring " + ":".join(testcase) + " ...")
+    result = subprocess.call(
+        cmd, stdout=open(os.devnull, "w"), stderr=subprocess.STDOUT
+    )
     return result
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
 
     args = parse()
 
@@ -57,25 +66,27 @@ if __name__ == '__main__':
     results = []
 
     def excluded(cwe):
-        if args.cwe is None: return False
+        if args.cwe is None:
+            return False
         return not (args.cwe == cwe)
 
     juliettests = UF.get_juliet_testcases()
     for cwe in sorted(juliettests):
-            if excluded(cwe): continue        
-            for subdir in juliettests[cwe]:
-                for t in juliettests[cwe][subdir]:
-                    testcases.append((cwe,t))
-            
+        if excluded(cwe):
+            continue
+        for subdir in juliettests[cwe]:
+            for t in juliettests[cwe][subdir]:
+                testcases.append((cwe, t))
+
     results = pool.map(score_juliettest, testcases)
 
-    print('\n\n' + ('=' * 80))
+    print("\n\n" + ("=" * 80))
     if results.count(0) < len(results):
         for x in range(len(results)):
             if results[x] != 0:
-                print('Error in testcase ' + ':'.join(testcases[x]))
+                print("Error in testcase " + ":".join(testcases[x]))
     else:
-        cmd = [ 'python', 'chc_juliet_dashboard.py' ]
-        result = subprocess.call(cmd,stderr=subprocess.STDOUT)
-        print('All Juliet test cases were scored successfully.')
-    print(('=' * 80) + '\n')
+        cmd = ["python", "chc_juliet_dashboard.py"]
+        result = subprocess.call(cmd, stderr=subprocess.STDOUT)
+        print("All Juliet test cases were scored successfully.")
+    print(("=" * 80) + "\n")

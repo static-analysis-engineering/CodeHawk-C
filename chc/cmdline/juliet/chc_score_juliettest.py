@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -38,52 +38,55 @@ from chc.cmdline.juliet.JulietTestSetRef import JulietTestSetRef
 from chc.app.CApplication import CApplication
 
 
-
 def parse():
     parser = argparse.ArgumentParser()
-    parser.add_argument('cwe',help='name of cwe, e.g., CWE121')
-    parser.add_argument('test',help='name of test case, e.g., CWE129_large')
+    parser.add_argument("cwe", help="name of cwe, e.g., CWE121")
+    parser.add_argument("test", help="name of test case, e.g., CWE129_large")
     args = parser.parse_args()
     return args
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
 
     args = parse()
 
     try:
-        cpath = UF.get_juliet_testpath(args.cwe,args.test)
+        cpath = UF.get_juliet_testpath(args.cwe, args.test)
         UF.check_analysis_results(cpath)
-        d = UF.get_juliet_scorekey(args.cwe,args.test)        
+        d = UF.get_juliet_scorekey(args.cwe, args.test)
     except UF.CHError as e:
         print(str(e.wrap()))
         exit(1)
 
-    sempath = os.path.join(cpath,'semantics')
+    sempath = os.path.join(cpath, "semantics")
 
-    excludefiles = [ 'io.c', 'main_linux.c', 'std_thread.c' ]
-    
-    capp = CApplication(sempath,excludefiles=excludefiles)
+    excludefiles = ["io.c", "main_linux.c", "std_thread.c"]
+
+    capp = CApplication(sempath, excludefiles=excludefiles)
 
     testset = JulietTestSetRef(d)
 
     try:
         julietppos = JTS.get_julietppos(testset)
-    
-        ppopairs = JTS.get_ppo_pairs(julietppos,capp)
-        print(JTS.testppo_results_tostring(ppopairs,capp))
+
+        ppopairs = JTS.get_ppo_pairs(julietppos, capp)
+        print(JTS.testppo_results_tostring(ppopairs, capp))
     except IT.IndexedTableError as e:
         print(
-            '\n' + ('*' * 80) + '\nThe format of the analysis results has changed'
-            + '\nPlease re-run the analysis first'
-            + '\n' + ('*' * 80))
+            "\n"
+            + ("*" * 80)
+            + "\nThe format of the analysis results has changed"
+            + "\nPlease re-run the analysis first"
+            + "\n"
+            + ("*" * 80)
+        )
         exit(1)
-    
+
     testsummary: Dict[Any, Any] = {}
-    JTS.initialize_testsummary(testset,testsummary)
-    JTS.fill_testsummary(ppopairs,testsummary,capp)
+    JTS.initialize_testsummary(testset, testsummary)
+    JTS.fill_testsummary(ppopairs, testsummary, capp)
     totals = JTS.get_testsummarytotals(testsummary)
 
-    print(JTS.testsummary_tostring(testsummary,totals))
-    
-    UF.save_juliet_test_summary(args.cwe,args.test,totals)
+    print(JTS.testsummary_tostring(testsummary, totals))
 
+    UF.save_juliet_test_summary(args.cwe, args.test, totals)

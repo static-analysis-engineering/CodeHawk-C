@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -27,42 +27,52 @@
 
 import chc.app.CDictionaryRecord as CD
 
+
 class CLval(CD.CDictionaryRecord):
-    '''
+    """
     tags: -
 
     args:
         0: lhost
         1: offset
-    '''
+    """
 
-    def __init__(self,cd,index,tags,args):
-        CD.CDictionaryRecord.__init__(self,cd,index,tags,args)
+    def __init__(self, cd, index, tags, args):
+        CD.CDictionaryRecord.__init__(self, cd, index, tags, args)
 
-    def get_lhost(self): return self.cd.get_lhost(self.args[0])
+    def get_lhost(self):
+        return self.cd.get_lhost(self.args[0])
 
-    def get_offset(self): return self.cd.get_offset(self.args[1])
+    def get_offset(self):
+        return self.cd.get_offset(self.args[1])
 
-    def has_variable(self,vid): return self.get_lhost().has_variable(vid)
+    def has_variable(self, vid):
+        return self.get_lhost().has_variable(vid)
 
     def get_strings(self):
         hostresult = self.get_lhost().get_strings()
         offsetresult = self.get_offset().get_strings()
         return hostresult + offsetresult
-    
-    def get_variable_uses(self,vid):
+
+    def get_variable_uses(self, vid):
         hostresult = self.get_lhost().get_variable_uses(vid)
         offsetresult = self.get_offset().get_variable_uses(vid)
         return hostresult + offsetresult
 
-    def has_variable_deref(self,vid): return self.get_lhost().has_variable_deref(vid)
+    def has_variable_deref(self, vid):
+        return self.get_lhost().has_variable_deref(vid)
 
-    def has_ref_type(self): return self.get_lhost().has_ref_type()
+    def has_ref_type(self):
+        return self.get_lhost().has_ref_type()
 
     def to_dict(self):
-        return { 'lhost': self.get_lhost().to_dict(),
-                     'offset': self.get_offset().to_dict() }
+        return {
+            "lhost": self.get_lhost().to_dict(),
+            "offset": self.get_offset().to_dict(),
+        }
 
-    def to_idict(self): return { 't': self.tags, 'a': self.args }
+    def to_idict(self):
+        return {"t": self.tags, "a": self.args}
 
-    def __str__(self): return (str(self.get_lhost()) + str(self.get_offset()))
+    def __str__(self):
+        return str(self.get_lhost()) + str(self.get_offset())

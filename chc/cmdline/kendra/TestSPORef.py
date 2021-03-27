@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -27,25 +27,31 @@
 
 
 class TestSPORef(object):
-
-    def __init__(self,testcfunctionref,r):
+    def __init__(self, testcfunctionref, r):
         self.testcfunctionref = testcfunctionref
         self.r = r
 
-    def get_line(self): return int(self.r['line'])
+    def get_line(self):
+        return int(self.r["line"])
 
-    def get_context(self): return self.r['cfgctxt']
+    def get_context(self):
+        return self.r["cfgctxt"]
 
-    def get_tgt_status(self): return self.r['tgtstatus']
+    def get_tgt_status(self):
+        return self.r["tgtstatus"]
 
-    def get_status(self): return self.r['status']
+    def get_status(self):
+        return self.r["status"]
 
-    def get_predicate(self): return self.r['predicate']
+    def get_predicate(self):
+        return self.r["predicate"]
 
-    def get_type(self): return self.r['type']
+    def get_type(self):
+        return self.r["type"]
 
-    def get_argnr(self): return self.r['argnr']
+    def get_argnr(self):
+        return self.r["argnr"]
 
     def get_id(self):
-        if self.get_type() == 'callsite':
-            return (self.get_predicate(),self.get_argnr())
+        if self.get_type() == "callsite":
+            return (self.get_predicate(), self.get_argnr())

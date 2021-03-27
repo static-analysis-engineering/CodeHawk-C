@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -33,15 +33,17 @@ import chc.reporting.DictionaryTables as DT
 
 from chc.app.CApplication import CApplication
 
+
 def parse():
     parser = argparse.ArgumentParser()
-    parser.add_argument('path',help='directory that holds the semantics directory')
-    parser.add_argument('cfile',help='name of c file')
-    parser.add_argument('tablename',help='name of the table to be shown')
+    parser.add_argument("path", help="directory that holds the semantics directory")
+    parser.add_argument("cfile", help="name of c file")
+    parser.add_argument("tablename", help="name of the table to be shown")
     args = parser.parse_args()
     return args
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
 
     args = parse()
 
@@ -51,11 +53,11 @@ if __name__ == '__main__':
     except UF.CHError as e:
         print(str(e.wrap()))
         exit(1)
-    
-    sempath = os.path.join(cpath,'semantics')
-       
+
+    sempath = os.path.join(cpath, "semantics")
+
     try:
-        cfapp = CApplication(sempath,args.cfile)
+        cfapp = CApplication(sempath, args.cfile)
         cfile = cfapp.get_cfile()
     except UF.CFileNotFoundException as e:
         print(str(e.wrap()))
@@ -63,5 +65,4 @@ if __name__ == '__main__':
 
     cfile = cfapp.get_cfile()
 
-    print(DT.get_file_table(cfile,args.tablename))
-
+    print(DT.get_file_table(cfile, args.tablename))

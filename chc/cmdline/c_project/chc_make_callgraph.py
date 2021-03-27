@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -33,36 +33,42 @@ import chc.util.fileutil as UF
 
 from chc.app.CApplication import CApplication
 
+
 def parse():
     parser = argparse.ArgumentParser()
-    parser.add_argument('path',
-                            help=('directory that holds the semantics directory (or tar.gz file)'
-                                      + ' or the name of a test application'))
+    parser.add_argument(
+        "path",
+        help=(
+            "directory that holds the semantics directory (or tar.gz file)"
+            + " or the name of a test application"
+        ),
+    )
     args = parser.parse_args()
     return args
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
 
     args = parse()
-    
+
     try:
         cpath = UF.get_project_path(args.path)
-        UF.check_analysis_results(cpath)        
+        UF.check_analysis_results(cpath)
     except UF.CHError as e:
         print(str(e.wrap()))
         exit(1)
 
-    sempath = os.path.join(cpath,'semantics')
+    sempath = os.path.join(cpath, "semantics")
     capp = CApplication(sempath)
 
     result = {}
 
     def collect_fn_callees(fn):
-        callees = [ str(i.get_callee()) for i in fn.get_call_instrs() ]
+        callees = [str(i.get_callee()) for i in fn.get_call_instrs()]
         fnresult = result[fn.name] = {}
-        fncallees = fnresult['callees'] = {}
+        fncallees = fnresult["callees"] = {}
         for c in callees:
-            fncallees.setdefault(c,0)
+            fncallees.setdefault(c, 0)
             fncallees[c] += 1
 
     def collect_fi_callees(fi):
@@ -70,11 +76,9 @@ if __name__ == '__main__':
 
     capp.iter_files(collect_fi_callees)
 
-    UF.save_callgraph(cpath,result)
+    UF.save_callgraph(cpath, result)
 
     for name in sorted(result):
-        print('\n' + name)
-        for c in sorted(result[name]['callees']):
-            print('  ' + str(result[name]['callees'][c]).rjust(4)
-                      + '  ' + str(c))
-    
+        print("\n" + name)
+        for c in sorted(result[name]["callees"]):
+            print("  " + str(result[name]["callees"][c]).rjust(4) + "  " + str(c))

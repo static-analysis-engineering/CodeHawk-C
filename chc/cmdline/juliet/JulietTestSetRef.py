@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -27,24 +27,24 @@
 
 from chc.cmdline.juliet.JulietTestRef import JulietTestRef
 
-class JulietTestSetRef(object):
 
-    def __init__(self,d):
+class JulietTestSetRef(object):
+    def __init__(self, d):
         self.d = d
-        self.tests = {}      # testindex (str) -> JulietTestRef
+        self.tests = {}  # testindex (str) -> JulietTestRef
         self.macros = {}
         self._initialize()
 
-    def expand(self,m):
-        if m.startswith('PPO'):
+    def expand(self, m):
+        if m.startswith("PPO"):
             if m in self.macros:
                 return self.macros[m]
             else:
                 return m
-        if m.startswith('PS'):
+        if m.startswith("PS"):
             if m in self.macros:
                 lst = self.macros[m]
-                return [ self.expand(x) for x in lst ]
+                return [self.expand(x) for x in lst]
             else:
                 return m
         return m
@@ -52,18 +52,20 @@ class JulietTestSetRef(object):
     def get_predicates(self):
         result = []
         for p in self.macros:
-            if p.startswith('PPO'):
-                result.append(self.macros[p]['P'])
+            if p.startswith("PPO"):
+                result.append(self.macros[p]["P"])
         return result
 
-    def get_tests(self): return self.tests.items()
+    def get_tests(self):
+        return self.tests.items()
 
     def get_predicate_violations(self):
         result = {}
         violations = self.get_violations()
         for v in violations:
             p = v.predicate
-            if not p in result: result[p] = 0
+            if p not in result:
+                result[p] = 0
             result[p] += 1
         return result
 
@@ -72,37 +74,42 @@ class JulietTestSetRef(object):
         safecontrols = self.get_safe_controls()
         for s in safecontrols:
             p = s.predicate
-            if not p in result: result[p] = 0
+            if p not in result:
+                result[p] = 0
             result[p] += 1
         return result
 
     def get_violations(self):
         result = []
-        def f(i,test):
+
+        def f(i, test):
             result.extend(test.get_violations())
+
         self.iter(f)
         return result
 
     def get_safe_controls(self):
         result = []
-        def f(i,test):
+
+        def f(i, test):
             result.extend(test.get_safe_controls())
+
         self.iter(f)
         return result
 
-    def iter(self,f):
-        for (t,test) in self.get_tests():
-            f(t,test)
+    def iter(self, f):
+        for (t, test) in self.get_tests():
+            f(t, test)
 
     def __str__(self):
         lines = []
         for test in sorted(self.tests):
-            lines.append('\nTest ' + test)
+            lines.append("\nTest " + test)
             lines.append(str(self.tests[test]))
-        return '\n'.join(lines)
+        return "\n".join(lines)
 
     def _initialize(self):
-        for m in self.d['macros']:
-            self.macros[m] = self.d['macros'][m]
-        for test in self.d['tests']:
-            self.tests[test] = JulietTestRef(self,test,self.d['tests'][test])
+        for m in self.d["macros"]:
+            self.macros[m] = self.d["macros"][m]
+        for test in self.d["tests"]:
+            self.tests[test] = JulietTestRef(self, test, self.d["tests"][test])

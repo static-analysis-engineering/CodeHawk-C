@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -27,8 +27,9 @@
 
 import chc.app.CDictionaryRecord as CD
 
+
 class CVarInfo(CD.CDeclarationsRecord):
-    '''Global variable.
+    """Global variable.
 
     tags:
         0: vname
@@ -44,24 +45,29 @@ class CVarInfo(CD.CDeclarationsRecord):
         6: vaddrof
         7: vparam
         8: vinit        (optional)
-    '''
+    """
 
-    def __init__(self,cdecls,index,tags,args):
-        CD.CDeclarationsRecord.__init__(self,cdecls,index,tags,args)
+    def __init__(self, cdecls, index, tags, args):
+        CD.CDeclarationsRecord.__init__(self, cdecls, index, tags, args)
         self.vname = tags[0]
         self.vtype = self.get_dictionary().get_typ(args[1])
         self.vglob = args[3] == 1
         self.vinline = args[4] == 1
-        self.vdecl = self.decls.get_location(self.args[5]) if not (self.args[5] == -1) else None
+        self.vdecl = (
+            self.decls.get_location(self.args[5]) if not (self.args[5] == -1) else None
+        )
         self.vaddrof = args[6] == 1
         self.vparam = args[7]
-        self.vinit = self.decls.get_initinfo(self.args[8]) if len(self.args) == 9 else None
+        self.vinit = (
+            self.decls.get_initinfo(self.args[8]) if len(self.args) == 9 else None
+        )
 
     def get_vid(self):
         vid = int(self.args[0])
-        return (vid if vid >= 0 else self.index)
+        return vid if vid >= 0 else self.index
 
-    def get_real_vid(self): return int(self.args[0])
+    def get_real_vid(self):
+        return int(self.args[0])
 
     def get_vstorage(self):
         if len(self.tags) > 1:
@@ -69,13 +75,25 @@ class CVarInfo(CD.CDeclarationsRecord):
         vid = self.get_vid()
         if vid in self.decls.varinfo_storage_classes:
             return self.decls.varinfo_storage_classes[vid]
-        return 'n'
+        return "n"
 
-    def get_initializer(self): return self.vinit
+    def get_initializer(self):
+        return self.vinit
 
-    def has_initializer(self): return not self.vinit is None
+    def has_initializer(self):
+        return self.vinit is not None
 
-    def get_line(self):return self.vdecl.get_line()
+    def get_line(self):
+        return self.vdecl.get_line()
 
     def __str__(self):
-        return self.vname + ':' + str(self.vtype) + '  ' + str(self.vdecl) + ' (' + str(self.args[0]) + ')'
+        return (
+            self.vname
+            + ":"
+            + str(self.vtype)
+            + "  "
+            + str(self.vdecl)
+            + " ("
+            + str(self.args[0])
+            + ")"
+        )

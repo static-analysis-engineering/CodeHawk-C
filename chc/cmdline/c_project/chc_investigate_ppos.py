@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -33,59 +33,75 @@ import chc.util.fileutil as UF
 from chc.app.CApplication import CApplication
 import chc.reporting.ProofObligations as RP
 
+
 def parse():
-    usage = ('\nCall with the name of a directory that holds the semantics directory'
-                 + ' with analysis results')
-    description = ('Shows a list of open, delegated, and violated proof obligations'
-                       + ' per proof obligation type, file, and function. '
-                       + ' The proof obligation types can be restricted by listing the'
-                       + ' desired predicates (e.g., initialized not-null)')
-    parser = argparse.ArgumentParser(usage=usage,description=description)
-    parser.add_argument('path',help=('directory that holds semantics directory'
-                                         + ' or the name of a test application'))
-    parser.add_argument('--predicates',nargs='*',
-                            help='predicates of interest (default: all)')
+    usage = (
+        "\nCall with the name of a directory that holds the semantics directory"
+        + " with analysis results"
+    )
+    description = (
+        "Shows a list of open, delegated, and violated proof obligations"
+        + " per proof obligation type, file, and function. "
+        + " The proof obligation types can be restricted by listing the"
+        + " desired predicates (e.g., initialized not-null)"
+    )
+    parser = argparse.ArgumentParser(usage=usage, description=description)
+    parser.add_argument(
+        "path",
+        help=(
+            "directory that holds semantics directory"
+            + " or the name of a test application"
+        ),
+    )
+    parser.add_argument(
+        "--predicates", nargs="*", help="predicates of interest (default: all)"
+    )
     args = parser.parse_args()
     return args
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
 
     args = parse()
 
     try:
         cpath = UF.get_project_path(args.path)
-        UF.check_analysis_results(cpath)        
+        UF.check_analysis_results(cpath)
     except UF.CHError as e:
         print(str(e.wrap()))
         exit(1)
-        
-    sempath = os.path.join(cpath,'semantics')    
+
+    sempath = os.path.join(cpath, "semantics")
     capp = CApplication(sempath)
 
-    pofilter = lambda p:True
+    def pofilter(p):
+        return True
+
     if args.predicates:
-        pofilter = lambda p:p.get_predicate_tag() in args.predicates
+
+        def pofilter(p):
+            return p.get_predicate_tag() in args.predicates
 
     openppos = capp.get_open_ppos()
     violations = capp.get_violations()
     delegated = capp.get_delegated()
 
     if len(openppos) > 0:
-        print('Open proof obligations:\n' + ('=' * 80))
-        print(RP.tag_file_function_pos_tostring(openppos,pofilter=pofilter))
+        print("Open proof obligations:\n" + ("=" * 80))
+        print(RP.tag_file_function_pos_tostring(openppos, pofilter=pofilter))
     else:
-        print('No open proof obligations found')
+        print("No open proof obligations found")
 
     if len(delegated) > 0:
-        print('\n\nDelegated proof obligations:\n' +  ('=' * 80))
-        print(RP.tag_file_function_pos_tostring(delegated,pofilter=pofilter))
+        print("\n\nDelegated proof obligations:\n" + ("=" * 80))
+        print(RP.tag_file_function_pos_tostring(delegated, pofilter=pofilter))
     else:
-        print('No delegated proof obligations found')
+        print("No delegated proof obligations found")
 
     if len(violations) > 0:
-        print('\n\nViolations:\n' + ('=' * 80))
-        print(RP.tag_file_function_pos_tostring(violations,pofilter=pofilter))
+        print("\n\nViolations:\n" + ("=" * 80))
+        print(RP.tag_file_function_pos_tostring(violations, pofilter=pofilter))
     else:
-        print('\n' + ('=' * 80) + '\nNo violations found')
-        print('Note: any open proof obligation can be a violation!')
-        print('=' * 80)
+        print("\n" + ("=" * 80) + "\nNo violations found")
+        print("Note: any open proof obligation can be a violation!")
+        print("=" * 80)

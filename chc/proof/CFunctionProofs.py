@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -33,7 +33,7 @@ from chc.proof.CFunctionSPOs import CFunctionSPOs
 
 import chc.util.fileutil as UF
 
-'''
+"""
 CFunctionProofs is the root of a data structure that provides access to
 all proof obligations and associated evidence. Relationships between
 proof obligation and evidence are established through the CFunctionProofs
@@ -48,19 +48,19 @@ object.
                                      - id -> CFunctionCallsiteSPO
           - returnsitespos: context -> CFunctionReturnsiteSPOs
                                        id -> CFunctionReturnsiteSPO
-'''
+"""
+
 
 class CFunctionProofs(object):
-
-    def __init__(self,cfun):
+    def __init__(self, cfun):
         self.cfun = cfun
         self.cfile = self.cfun.cfile
         self.capp = self.cfile.capp
         self.cfile.predicatedictionary.initialize()
-        self.ppos = None           # CFunctionPPOs
-        self.spos = None           # CFunctionSPOs
+        self.ppos = None  # CFunctionPPOs
+        self.spos = None  # CFunctionSPOs
 
-    def add_returnsite_postcondition(self,postcondition):
+    def add_returnsite_postcondition(self, postcondition):
         self._get_spos()
         self.spos.add_returnsite_postcondition(postcondition)
 
@@ -77,109 +77,143 @@ class CFunctionProofs(object):
 
         self._get_spos()
         if self.spos is None:
-            raise UF.CHCError('No supporting proof obligations found for '
-                                + str(self.cfun.name) + ' in file '
-                                + str(self.cfile.name))
+            raise UF.CHCError(
+                "No supporting proof obligations found for "
+                + str(self.cfun.name)
+                + " in file "
+                + str(self.cfile.name)
+            )
         self.spos.collect_post_assumes()
 
-    def reset_spos(self): self.spos = None
+    def reset_spos(self):
+        self.spos = None
 
     def save_spos(self):
-        cnode = ET.Element('function')
-        cnode.set('name',self.cfun.name)
+        cnode = ET.Element("function")
+        cnode.set("name", self.cfun.name)
         self.spos.write_xml(cnode)
         self._save_spos(cnode)
 
-    def get_ppo(self,id):
+    def get_ppo(self, id):
         self._get_ppos()
         return self.ppos.get_ppo(id)
 
-    def get_spo(self,id):
+    def get_spo(self, id):
         self._get_spos()
         return self.spos.get_spo(id)
 
-    def iter_ppos(self,f): 
+    def iter_ppos(self, f):
         self._get_ppos()
         self.ppos.iter(f)
 
-    def iter_spos(self,f):
+    def iter_spos(self, f):
         self._get_spos()
         self.spos.iter(f)
 
-    def iter_callsites(self,f):
+    def iter_callsites(self, f):
         self._get_spos()
         self.spos.iter_callsites(f)
 
-    def reload_ppos(self): self._get_ppos(force=True)
+    def reload_ppos(self):
+        self._get_ppos(force=True)
 
-    def reload_spos(self): self._get_spos(force=True)
+    def reload_spos(self):
+        self._get_spos(force=True)
 
     def get_ppos(self):
         result = []
-        def f(ppo): result.append(ppo)
+
+        def f(ppo):
+            result.append(ppo)
+
         self.iter_ppos(f)
         return result
 
     def get_spos(self):
         self._get_spos()
         result = []
-        def f(spo): result.append(spo)
+
+        def f(spo):
+            result.append(spo)
+
         self.iter_spos(f)
         return result
 
     def get_open_ppos(self):
         result = []
+
         def f(ppo):
-            if not ppo.is_closed(): result.append(ppo)
+            if not ppo.is_closed():
+                result.append(ppo)
+
         self.iter_ppos(f)
         return result
 
     def get_open_spos(self):
         result = []
+
         def f(spo):
-            if  not spo.is_closed(): result.append(spo)
+            if not spo.is_closed():
+                result.append(spo)
+
         self.iter_spos(f)
         return result
 
     def get_violations(self):
         result = []
+
         def f(ppo):
-            if ppo.is_violated(): result.append(ppo)
+            if ppo.is_violated():
+                result.append(ppo)
+
         self.iter_ppos(f)
         return result
 
     def get_spo_violations(self):
         result = []
+
         def f(spo):
-            if spo.is_violated(): result.append(spo)
+            if spo.is_violated():
+                result.append(spo)
+
         self.iter_spos(f)
         return result
 
     def get_delegated(self):
         result = []
+
         def f(ppo):
-            if ppo.is_delegated(): result.append(ppo)
+            if ppo.is_delegated():
+                result.append(ppo)
+
         self.iter_ppos(f)
         return result
 
-    def _get_ppos(self,force=False):
+    def _get_ppos(self, force=False):
         if self.ppos is None or force:
-            xnode = UF.get_ppo_xnode(self.capp.path,self.cfile.name,self.cfun.name)
-            if not xnode is None:
-                self.ppos = CFunctionPPOs(self,xnode)
+            xnode = UF.get_ppo_xnode(self.capp.path, self.cfile.name, self.cfun.name)
+            if xnode is not None:
+                self.ppos = CFunctionPPOs(self, xnode)
             else:
-                print('Unable to load ppos for ' + self.cfun.name + ' in file '
-                          + self.cfile.name)
+                print(
+                    "Unable to load ppos for "
+                    + self.cfun.name
+                    + " in file "
+                    + self.cfile.name
+                )
 
-    def _get_spos(self,force=False):
+    def _get_spos(self, force=False):
         if self.spos is None or force:
-            xnode = UF.get_spo_xnode(self.capp.path,self.cfile.name,self.cfun.name)
-            if not xnode is None:
-                self.spos = CFunctionSPOs(self,xnode)
+            xnode = UF.get_spo_xnode(self.capp.path, self.cfile.name, self.cfun.name)
+            if xnode is not None:
+                self.spos = CFunctionSPOs(self, xnode)
             else:
-                raise UF.CHCError('Unable to load spos for ' + self.cfun.name + ' in file '
-                            + self.cfile.name)
+                raise UF.CHCError(
+                    "Unable to load spos for "
+                    + self.cfun.name
+                    + " in file "
+                    + self.cfile.name
+                )
 
-    def _save_spos(self,cnode):
-        UF.save_spo_file(self.capp.path,self.cfile.name,self.cfun.name,cnode)
-
+    def _save_spos(self, cnode):
+        UF.save_spo_file(self.capp.path, self.cfile.name, self.cfun.name, cnode)

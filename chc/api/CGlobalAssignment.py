@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -27,15 +27,18 @@
 
 from chc.app.CLocation import CLocation
 
-class CGlobalAssignment(object):
 
-    def __init__(self,cfunction,xnode):
+class CGlobalAssignment(object):
+    def __init__(self, cfunction, xnode):
         self.cfunction = cfunction
         self.xnode = xnode
         self.ctxt = CC.makefunctioncontext(self.cfunction)
 
-    def getlhs(self): return TX.getlhost(self.ctxt,self.xnode.find('lhs').find('lhost'))
+    def getlhs(self):
+        return TX.getlhost(self.ctxt, self.xnode.find("lhs").find("lhost"))
 
-    def getrhs(self,subst={}): return TX.getexp(self.ctxt,self.xnode.find('rhs'),subst)
+    def getrhs(self, subst={}):
+        return TX.getexp(self.ctxt, self.xnode.find("rhs"), subst)
 
-    def getlocation(self): return CLocation(self.xnode.find('loc'))
+    def getlocation(self):
+        return CLocation(self.xnode.find("loc"))

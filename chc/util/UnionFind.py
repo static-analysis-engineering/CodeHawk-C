@@ -6,7 +6,8 @@ with significant additional changes by D. Eppstein.
 """
 from typing import Dict, Iterator, TypeVar, Generic
 
-T = TypeVar('T')
+T = TypeVar("T")
+
 
 class UnionFind(Generic[T]):
     """Union-find data structure.
@@ -50,7 +51,7 @@ class UnionFind(Generic[T]):
         for ancestor in path:
             self.parents[ancestor] = root
         return root
-        
+
     def __iter__(self) -> Iterator[T]:
         """Iterate through all items ever found or unioned by this structure."""
         return iter(self.parents)
@@ -58,7 +59,7 @@ class UnionFind(Generic[T]):
     def union(self, *objects: T) -> None:
         """Find the sets containing the objects and merge them all."""
         roots = [self[x] for x in objects]
-        heaviest = max([(self.weights[r],r) for r in roots])[1]
+        heaviest = max([(self.weights[r], r) for r in roots])[1]
         for r in roots:
             if r != heaviest:
                 self.weights[heaviest] += self.weights[r]

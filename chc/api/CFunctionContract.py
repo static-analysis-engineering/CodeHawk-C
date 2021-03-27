@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -29,23 +29,24 @@ import xml.etree.ElementTree as ET
 
 import chc.util.fileutil as UF
 
+
 class CFunctionContract(object):
     """Representsa user-provided function contract."""
 
-    def __init__(self,cfilecontracts,xnode):
+    def __init__(self, cfilecontracts, xnode):
         self.cfilecontracts = cfilecontracts
         self.ixd = self.cfilecontracts.cfile.interfacedictionary
         self.prd = self.cfilecontracts.cfile.predicatedictionary
         self.xnode = xnode
-        self.name  = self.xnode.get('name')
+        self.name = self.xnode.get("name")
         self.cfun = self.cfilecontracts.cfile.get_function_by_name(self.name)
         self.api = self.cfun.api
-        self.ignore = self.xnode.get('ignore','no') == 'yes'
-        self.signature = {}                   # name -> index nr
-        self.rsignature = {}                  # index nr -> name
-        self.postconditions = {}              # index -> XPredicate
-        self.preconditions = {}               # index -> XPredicate
-        self.sideeffects = {}                 # index -> XPredicate
+        self.ignore = self.xnode.get("ignore", "no") == "yes"
+        self.signature = {}  # name -> index nr
+        self.rsignature = {}  # index nr -> name
+        self.postconditions = {}  # index -> XPredicate
+        self.preconditions = {}  # index -> XPredicate
+        self.sideeffects = {}  # index -> XPredicate
         self._initialize(self.xnode)
 
     def has_assertions(self):
@@ -56,89 +57,105 @@ class CFunctionContract(object):
 
     def has_preconditions(self):
         return len(self.preconditions) > 0
-        
-    def _initialize_signature(self,ppnode):
-        if ppnode is None:
-            print('Problem with function contract signature: ' + self.name)
-            return
-        for pnode in ppnode.findall('par'):
-            self.signature[pnode.get('name')] = int(pnode.get('nr'))
-            self.rsignature[int(pnode.get('nr'))] = pnode.get('name')
 
-    def _initialize_postconditions(self,pcsnode):
-        if pcsnode is None: return
-        for pcnode in pcsnode.findall('post'):
-            ipc = self.ixd.parse_mathml_xpredicate(pcnode,self.signature)
+    def _initialize_signature(self, ppnode):
+        if ppnode is None:
+            print("Problem with function contract signature: " + self.name)
+            return
+        for pnode in ppnode.findall("par"):
+            self.signature[pnode.get("name")] = int(pnode.get("nr"))
+            self.rsignature[int(pnode.get("nr"))] = pnode.get("name")
+
+    def _initialize_postconditions(self, pcsnode):
+        if pcsnode is None:
+            return
+        for pcnode in pcsnode.findall("post"):
+            ipc = self.ixd.parse_mathml_xpredicate(pcnode, self.signature)
             pc = self.ixd.get_xpredicate(ipc)
             self.postconditions[ipc] = pc
 
-    def _initialize_preconditions(self,prenode):
-        if prenode is None: return
+    def _initialize_preconditions(self, prenode):
+        if prenode is None:
+            return
         gvars = self.cfilecontracts.globalvariables
-        for pnode in prenode.findall('pre'):
-            ipre = self.ixd.parse_mathml_xpredicate(pnode,self.signature,gvars=gvars)
+        for pnode in prenode.findall("pre"):
+            ipre = self.ixd.parse_mathml_xpredicate(pnode, self.signature, gvars=gvars)
             pre = self.ixd.get_xpredicate(ipre)
             self.preconditions[ipre] = pre
 
-    def _initialize_sideeffects(self,sidenode):
-        if sidenode is None: return
+    def _initialize_sideeffects(self, sidenode):
+        if sidenode is None:
+            return
         gvars = self.cfilecontracts.globalvariables
-        for snode in sidenode.findall('sideeffect'):
-            iside = self.ixd.parse_mathml_xpredicate(snode,self.signature,gvars=gvars)
+        for snode in sidenode.findall("sideeffect"):
+            iside = self.ixd.parse_mathml_xpredicate(snode, self.signature, gvars=gvars)
             se = self.ixd.get_xpredicate(iside)
             self.sideeffects[iside] = se
 
-    def _initialize(self,xnode):
+    def _initialize(self, xnode):
         try:
-            self._initialize_signature(xnode.find('parameters'))
-            self._initialize_postconditions(xnode.find('postconditions'))
-            self._initialize_preconditions(xnode.find('preconditions'))
-            self._initialize_sideeffects(xnode.find('sideeffects'))
+            self._initialize_signature(xnode.find("parameters"))
+            self._initialize_postconditions(xnode.find("postconditions"))
+            self._initialize_preconditions(xnode.find("preconditions"))
+            self._initialize_sideeffects(xnode.find("sideeffects"))
         except Exception as e:
-            print('Error in reading function contract ' + self.name
-                      + ' in file ' + self.cfun.cfile.name + ': ' + str(e))
+            print(
+                "Error in reading function contract "
+                + self.name
+                + " in file "
+                + self.cfun.cfile.name
+                + ": "
+                + str(e)
+            )
             exit(1)
 
     def report_postconditions(self):
         lines = []
         if len(self.postconditions) == 1:
-            return ('  ' + self.name + ': ' + self.postconditions.values()[0].pretty())
+            return "  " + self.name + ": " + self.postconditions.values()[0].pretty()
         elif len(self.postconditions) > 1:
-            lines.append('  ' + self.name)
+            lines.append("  " + self.name)
             pclines = []
             for pc in self.postconditions.values():
-                pclines.append('     ' + pc.pretty())
+                pclines.append("     " + pc.pretty())
             lines = lines + sorted(pclines)
-            return  '\n'.join(lines)
-        return ''
+            return "\n".join(lines)
+        return ""
 
     def report_preconditions(self):
         lines = []
         try:
             if len(self.preconditions) == 1:
-                return ('  ' + self.name + ': ' + self.preconditions.values()[0].pretty())
+                return "  " + self.name + ": " + self.preconditions.values()[0].pretty()
             elif len(self.preconditions) > 1:
-                lines.append('  ' + self.name)
+                lines.append("  " + self.name)
                 pclines = []
                 for pc in self.preconditions.values():
-                    pclines.append('     ' + pc.pretty())
+                    pclines.append("     " + pc.pretty())
                 lines = lines + sorted(pclines)
-                return '\n'.join(lines)
-            return ''
+                return "\n".join(lines)
+            return ""
         except UF.CHCError as e:
-            msg = ('Error in contract function: ' + self.name + ' in file: '
-                     + self.cfilecontracts.cfile.name + ': ' + str(e))
+            msg = (
+                "Error in contract function: "
+                + self.name
+                + " in file: "
+                + self.cfilecontracts.cfile.name
+                + ": "
+                + str(e)
+            )
             raise UF.CHCError(msg)
 
     def __str__(self):
         lines = []
-        lines.append('Contract for ' + self.name)
+        lines.append("Contract for " + self.name)
+
         def add(t, pl):
             if len(pl) > 0:
                 lines.append(t)
-                for p in pl: lines.append('     ' + (p.pretty()))
-        add('  Postconditions:', self.postconditions.values())
-        add('  Preconditions :', self.preconditions.values())
-        return '\n'.join(lines)
-                                            
+                for p in pl:
+                    lines.append("     " + (p.pretty()))
 
+        add("  Postconditions:", self.postconditions.values())
+        add("  Preconditions :", self.preconditions.values())
+        return "\n".join(lines)

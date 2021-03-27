@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -32,51 +32,60 @@ import chc.util.fileutil as UF
 
 from chc.app.CApplication import CApplication
 
+
 def parse():
     parser = argparse.ArgumentParser()
-    parser.add_argument('path',
-                            help=('directory that holds the semantics directory'
-                                      + ' or the name of a test application'))
-    parser.add_argument('--contractpath',help='path to the contracts file',default=None)
-    parser.add_argument('--xpre',help="don't show preconditions",action='store_true')
-    parser.add_argument('--xpost',help="don't show postconditions",action='store_true')
+    parser.add_argument(
+        "path",
+        help=(
+            "directory that holds the semantics directory"
+            + " or the name of a test application"
+        ),
+    )
+    parser.add_argument(
+        "--contractpath", help="path to the contracts file", default=None
+    )
+    parser.add_argument("--xpre", help="don't show preconditions", action="store_true")
+    parser.add_argument(
+        "--xpost", help="don't show postconditions", action="store_true"
+    )
     args = parser.parse_args()
     return args
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
 
     args = parse()
 
     try:
         cpath = UF.get_project_path(args.path)
-        UF.check_semantics(cpath,deletesemantics=False)
+        UF.check_semantics(cpath, deletesemantics=False)
     except UF.CHError as e:
         print(str(e.wrap()))
         exit(1)
 
-    sempath = os.path.join(cpath,'semantics')
-       
+    sempath = os.path.join(cpath, "semantics")
+
     if args.contractpath is None:
-        contractpath = os.path.join(cpath,'chc_contracts')
+        contractpath = os.path.join(cpath, "chc_contracts")
     else:
         contractpath = args.contractpath
 
-    capp = CApplication(sempath,contractpath=contractpath)
-
+    capp = CApplication(sempath, contractpath=contractpath)
 
     lines = []
     result = {}
-    result['pre'] = 0
-    result['post'] = 0
+    result["pre"] = 0
+    result["post"] = 0
 
     def f(fi):
         if fi.has_file_contracts():
             if (not args.xpost) and fi.contracts.has_postconditions():
                 lines.append(str(fi.contracts.report_postconditions()))
-                result['post'] += fi.contracts.count_postconditions()
-            if (not args.xpre)  and fi.contracts.has_preconditions():
+                result["post"] += fi.contracts.count_postconditions()
+            if (not args.xpre) and fi.contracts.has_preconditions():
                 lines.append(str(fi.contracts.report_preconditions()))
-                result['pre'] += fi.contracts.count_preconditions()
+                result["pre"] += fi.contracts.count_preconditions()
 
     try:
         capp.iter_files(f)
@@ -84,12 +93,10 @@ if __name__ == '__main__':
         print(str(e.wrap()))
         exit(1)
 
-    print('\n'.join(lines))
+    print("\n".join(lines))
 
-    print('\n')
-    print('=' * 80)
-    print('Postconditions: ' + str(result['post']))
-    print('Preconditions : ' + str(result['pre']))
-    print('=' * 80)
-        
-
+    print("\n")
+    print("=" * 80)
+    print("Postconditions: " + str(result["post"]))
+    print("Preconditions : " + str(result["pre"]))
+    print("=" * 80)

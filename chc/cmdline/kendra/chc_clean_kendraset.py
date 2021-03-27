@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -32,13 +32,15 @@ import chc.util.fileutil as UF
 
 from chc.cmdline.kendra.TestManager import TestManager
 
+
 def parse():
     parser = argparse.ArgumentParser()
-    parser.add_argument('testset',help='name of test directory')
+    parser.add_argument("testset", help="name of test directory")
     args = parser.parse_args()
     return args
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
 
     args = parse()
     testname = args.testset
@@ -47,6 +49,6 @@ if __name__ == '__main__':
     except UF.CHError as e:
         print(str(e.wrap()))
         exit(1)
-    
-    testmanager = TestManager(cpath,cpath,testname)
+
+    testmanager = TestManager(cpath, cpath, testname)
     testmanager.clean()

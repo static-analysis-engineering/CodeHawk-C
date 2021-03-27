@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -25,27 +25,35 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
-class ContractAssumption(object):
 
-    def __init__(self,capi,id,callee,xpredicate,ppos,spos):
+class ContractAssumption(object):
+    def __init__(self, capi, id, callee, xpredicate, ppos, spos):
         self.id = id
         self.callee = callee
-        self.capi = capi          # api/CFunctionAPI
+        self.capi = capi  # api/CFunctionAPI
         self.cfun = self.capi.cfun
         self.xpredicate = xpredicate
         self.ppos = ppos
         self.spos = spos
 
-
     def __str__(self):
-        strppos = ''
-        strspos = ''
-        calleename = 'global'
+        strppos = ""
+        strspos = ""
+        calleename = "global"
         if self.callee >= 0:
-            calleename = self.capi.cfile.declarations.get_global_varinfo(self.callee).vname
+            calleename = self.capi.cfile.declarations.get_global_varinfo(
+                self.callee
+            ).vname
         if len(self.ppos) > 0:
-            strppos = "\n      --Dependent ppo's: [" + ','.join(str(i) for i in self.ppos) + ']'
+            strppos = (
+                "\n      --Dependent ppo's: ["
+                + ",".join(str(i) for i in self.ppos)
+                + "]"
+            )
         if len(self.spos) > 0:
-            strspos = "\n      --Dependent spo's: [" + ','.join(str(i) for i in self.spos) + ']'
-        return (calleename + ': ' + str(self.xpredicate)
-                    + strppos + strspos)
+            strspos = (
+                "\n      --Dependent spo's: ["
+                + ",".join(str(i) for i in self.spos)
+                + "]"
+            )
+        return calleename + ": " + str(self.xpredicate) + strppos + strspos

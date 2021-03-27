@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -33,14 +33,16 @@ import chc.util.fileutil as UF
 if TYPE_CHECKING:
     import chc.app.CApplication
 
+
 class CSrcFile(object):
     """Represents the text file that holds the C source code."""
 
-    def __init__(self, capp: 'chc.app.CApplication.CApplication', fname: str) -> None:
+    def __init__(self, capp: "chc.app.CApplication.CApplication", fname: str) -> None:
         self.capp = capp
         self.fname = fname
         self.lines: Dict[int, str] = {}
-        if not self.fname.endswith('.c'): self.fname = fname + '.c'
+        if not self.fname.endswith(".c"):
+            self.fname = fname + ".c"
 
     def get_line_count(self) -> int:
         return sum(1 for line in open(self.fname))
@@ -48,17 +50,18 @@ class CSrcFile(object):
     def get_line(self, n: int) -> Optional[str]:
         self._initialize()
         if n <= len(self.lines):
-            return (str(n) + '  ' + self.lines[n])
+            return str(n) + "  " + self.lines[n]
         return None
 
     def _initialize(self) -> None:
-        if len(self.lines) > 0: return
+        if len(self.lines) > 0:
+            return
         if os.path.isfile(self.fname):
-            print('Reading file ' + self.fname)
+            print("Reading file " + self.fname)
             n = 1
             with open(self.fname) as f:
                 for line in f:
                     self.lines[n] = line
                     n += 1
         else:
-            print('Source file ' + self.fname + ' not found')
+            print("Source file " + self.fname + " not found")

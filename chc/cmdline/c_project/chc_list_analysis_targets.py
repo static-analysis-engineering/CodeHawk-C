@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -30,19 +30,19 @@ import os
 
 import chc.util.fileutil as UF
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     targets = UF.get_registered_analysis_targets()
 
     for group in sorted(targets):
-        gpath = targets[group]['path']
-        print('=' * 80)
+        gpath = targets[group]["path"]
+        print("=" * 80)
         print(group)
-        print('-' * 80)
-        for project in sorted(targets[group]['projects']):
-            ppath = os.path.join(gpath,targets[group]['projects'][project]['path'])
-            semfilename = os.path.join(ppath,'semantics_linux.tar.gz')
-            semfound = ' present' if os.path.isfile(semfilename) else ' not found'
-            print('\n  ' + project)
-            print('    path: ' + ppath)
-            print('    semantics file: '  + semfound)
+        print("-" * 80)
+        for project in sorted(targets[group]["projects"]):
+            ppath = os.path.join(gpath, targets[group]["projects"][project]["path"])
+            semfilename = os.path.join(ppath, "semantics_linux.tar.gz")
+            semfound = " present" if os.path.isfile(semfilename) else " not found"
+            print("\n  " + project)
+            print("    path: " + ppath)
+            print("    semantics file: " + semfound)

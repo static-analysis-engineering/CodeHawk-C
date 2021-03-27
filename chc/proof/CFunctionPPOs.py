@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -31,81 +31,83 @@ from chc.proof.CFunctionPO import CProofDependencies
 from chc.proof.CFunctionPO import CProofDiagnostic
 
 
-po_status = {
-    'g': 'safe',
-    'o': 'open',
-    'r': 'violation',
-    'x': 'dead-code'
-    }
+po_status = {"g": "safe", "o": "open", "r": "violation", "x": "dead-code"}
+
 
 class CFunctionPPOs(CFunctionPOs):
 
-    '''Represents the set of primary proof obligations for a function.'''
+    """Represents the set of primary proof obligations for a function."""
 
-    def __init__(self,cproofs,xnode):
-        CFunctionPOs.__init__(self,cproofs)
+    def __init__(self, cproofs, xnode):
+        CFunctionPOs.__init__(self, cproofs)
         self.xnode = xnode
-        self.ppos = {}                   # ppoid -> CFunctionPPO
+        self.ppos = {}  # ppoid -> CFunctionPPO
         self._initialize()
 
-    def get_ppo(self,id):
-        if id in self.ppos: return self.ppos[id]
+    def get_ppo(self, id):
+        if id in self.ppos:
+            return self.ppos[id]
 
-    def iter(self,f): 
-        for ppo in sorted(self.ppos,key=lambda p:(self.ppos[p].location.get_line(),
-                                                       int(self.ppos[p].id))): 
+    def iter(self, f):
+        for ppo in sorted(
+            self.ppos,
+            key=lambda p: (self.ppos[p].location.get_line(), int(self.ppos[p].id)),
+        ):
             f(self.ppos[ppo])
 
     def __str__(self):
         lines = []
-        def f(ppo): lines.append(str(ppo))
+
+        def f(ppo):
+            lines.append(str(ppo))
+
         self.iter(f)
-        return '\n'.join(lines)
+        return "\n".join(lines)
 
     def _initialize(self):
-        for p in self.xnode.find('ppos').findall('ppo'):
+        for p in self.xnode.find("ppos").findall("ppo"):
             ppotype = self.cfun.podictionary.read_xml_ppo_type(p)
             id = ppotype.index
             deps = None
-            status = po_status[p.get('s','o')]
-            if 'deps' in p.attrib:
-                level = p.get('deps')
-                if level == 'a':
-                    ids = p.get('ids')
+            status = po_status[p.get("s", "o")]
+            if "deps" in p.attrib:
+                level = p.get("deps")
+                if level == "a":
+                    ids = p.get("ids")
                     if len(ids) > 0:
-                        ids = [int(x) for x in p.get('ids').split(',') ]
+                        ids = [int(x) for x in p.get("ids").split(",")]
                     else:
                         ids = []
-                    invs = p.get('invs')
+                    invs = p.get("invs")
                     if len(invs) > 0:
-                        invs = [ int(x) for x in invs.split(',') ]
+                        invs = [int(x) for x in invs.split(",")]
                     else:
                         invs = []
-                    deps = CProofDependencies(self,level,ids,invs)
+                    deps = CProofDependencies(self, level, ids, invs)
                 else:
-                    deps = CProofDependencies(self,level)
+                    deps = CProofDependencies(self, level)
             expl = None
-            enode = p.find('e')
-            if not enode is None:
-                expl = enode.get('txt')
+            enode = p.find("e")
+            if enode is not None:
+                expl = enode.get("txt")
             diag = None
-            dnode = p.find('d')
-            if not dnode is None:
+            dnode = p.find("d")
+            if dnode is not None:
                 pinvs = {}
                 amsgs = {}
                 kmsgs = {}
-                for n in dnode.find('invs').findall('arg'):
-                    pinvs[int(n.get('a'))] = [ int(x) for x in n.get('i').split(',') ]
-                pmsgs =  [ x.get('t') for x in dnode.find('msgs').findall('msg') ]
-                for n in dnode.find('amsgs').findall('arg'):
-                    arg = int(n.get('a'))
-                    msgs = [ x.get('t') for x in n.findall('msg') ]
+                for n in dnode.find("invs").findall("arg"):
+                    pinvs[int(n.get("a"))] = [int(x) for x in n.get("i").split(",")]
+                pmsgs = [x.get("t") for x in dnode.find("msgs").findall("msg")]
+                for n in dnode.find("amsgs").findall("arg"):
+                    arg = int(n.get("a"))
+                    msgs = [x.get("t") for x in n.findall("msg")]
                     amsgs[arg] = msgs
-                knode = dnode.find('kmsgs')
-                if not knode is None:
-                    for n in knode.findall('key'):
-                        key = n.get('k')
-                        msgs = [  x.get('t') for x in n.findall('msg') ]
+                knode = dnode.find("kmsgs")
+                if knode is not None:
+                    for n in knode.findall("key"):
+                        key = n.get("k")
+                        msgs = [x.get("t") for x in n.findall("msg")]
                         kmsgs[key] = msgs
-                diag = CProofDiagnostic(pinvs,pmsgs,amsgs,kmsgs)
-            self.ppos[id] = CFunctionPPO(self,ppotype,status,deps,expl,diag)
+                diag = CProofDiagnostic(pinvs, pmsgs, amsgs, kmsgs)
+            self.ppos[id] = CFunctionPPO(self, ppotype, status, deps, expl, diag)

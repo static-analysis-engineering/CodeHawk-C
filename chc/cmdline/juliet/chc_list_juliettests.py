@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -32,17 +32,20 @@ import time
 import chc.util.fileutil as UF
 import chc.reporting.reportutil as UR
 
+
 def parse():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--cwe',help='only list tests for this CWE')
+    parser.add_argument("--cwe", help="only list tests for this CWE")
     args = parser.parse_args()
     return args
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
 
     args = parse()
-    cwerequested = 'all'
-    if args.cwe is not None: cwerequested = args.cwe
+    cwerequested = "all"
+    if args.cwe is not None:
+        cwerequested = args.cwe
 
     try:
         testcases = UF.get_flattened_juliet_testcases()
@@ -51,22 +54,26 @@ if __name__ == '__main__':
         exit(1)
 
     result = {}
-    
+
     for cwe in sorted(testcases):
-        if not (cwerequested == 'all' or cwerequested == cwe):
+        if not (cwerequested == "all" or cwerequested == cwe):
             continue
         for t in sorted(testcases[cwe]):
-            name = cwe + ':' + t
-            result[name] = UF.get_juliet_result_times(cwe,t)
-            
-    print(UR.reportheader('Juliet test sets currently provided (' + str(len(result)) + ')'))
-    print('\n  ' + 'directory'.ljust(44) + 'analysis time    score time')
-    print('-' * 80)
+            name = cwe + ":" + t
+            result[name] = UF.get_juliet_result_times(cwe, t)
+
+    print(
+        UR.reportheader(
+            "Juliet test sets currently provided (" + str(len(result)) + ")"
+        )
+    )
+    print("\n  " + "directory".ljust(44) + "analysis time    score time")
+    print("-" * 80)
     for name in sorted(result):
-        (ktmodtime,scmodtime) = result[name]
-        if ktmodtime == '0': ktmodtime = 'no results'
-        if scmodtime == '0': scmodtime = 'no results'
-        print('  ' + name.ljust(44)
-                  + ktmodtime.rjust(16) + '  '
-                  + scmodtime.rjust(16))
-    print(('-' * 80) + '\n')
+        (ktmodtime, scmodtime) = result[name]
+        if ktmodtime == "0":
+            ktmodtime = "no results"
+        if scmodtime == "0":
+            scmodtime = "no results"
+        print("  " + name.ljust(44) + ktmodtime.rjust(16) + "  " + scmodtime.rjust(16))
+    print(("-" * 80) + "\n")
