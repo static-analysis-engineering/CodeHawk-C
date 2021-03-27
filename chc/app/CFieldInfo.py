@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -27,8 +27,9 @@
 
 import chc.app.CDictionaryRecord as CD
 
+
 class CFieldInfo(CD.CDeclarationsRecord):
-    '''Definition of a struct field.
+    """Definition of a struct field.
 
     tags:
         0: fname
@@ -39,20 +40,24 @@ class CFieldInfo(CD.CDeclarationsRecord):
         2: fbitfield
         3: fattr       (-1 for global structs)
         4: floc        (-1 for global structs)
-    '''
+    """
 
-    def __init__(self,cdecls,index,tags,args):
-        CD.CDeclarationsRecord.__init__(self,cdecls,index,tags,args)
+    def __init__(self, cdecls, index, tags, args):
+        CD.CDeclarationsRecord.__init__(self, cdecls, index, tags, args)
         self.fname = self.tags[0]
         self.ftype = self.get_dictionary().get_typ(self.args[1])
         self.bitfield = self.args[2]
 
-    def get_size(self): return self.ftype.get_size()
+    def get_size(self):
+        return self.ftype.get_size()
 
     def get_location(self):
-        if self.args[4] >= 0: return self.decls.get_location(self.args[4])
+        if self.args[4] >= 0:
+            return self.decls.get_location(self.args[4])
 
     def get_attributes(self):
-        if self.args[3] >= 0: return self.decls.get_attributes(self.args[3])
+        if self.args[3] >= 0:
+            return self.decls.get_attributes(self.args[3])
 
-    def __str__(self): return self.fname + ':' + str(self.ftype)
+    def __str__(self):
+        return self.fname + ":" + str(self.ftype)

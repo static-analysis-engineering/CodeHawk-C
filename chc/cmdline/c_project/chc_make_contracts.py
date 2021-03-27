@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -33,43 +33,57 @@ import chc.util.fileutil as UF
 
 from chc.app.CApplication import CApplication
 
+
 def parse():
     parser = argparse.ArgumentParser()
-    parser.add_argument('path',help=('path to directory that holds the semantics directory'
-                                         + ' (or the name of a test application)'))
-    parser.add_argument('--contractpath',help='path to save the contracts file',default=None)
-    parser.add_argument('--preservesmemory',help='initialize with preserves-memory postcondition',
-                            action='store_true')
-    parser.add_argument('--ignorefile',help='json file that lists functions included from header files')
+    parser.add_argument(
+        "path",
+        help=(
+            "path to directory that holds the semantics directory"
+            + " (or the name of a test application)"
+        ),
+    )
+    parser.add_argument(
+        "--contractpath", help="path to save the contracts file", default=None
+    )
+    parser.add_argument(
+        "--preservesmemory",
+        help="initialize with preserves-memory postcondition",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--ignorefile", help="json file that lists functions included from header files"
+    )
     args = parser.parse_args()
     return args
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
 
     args = parse()
 
     try:
         cpath = UF.get_project_path(args.path)
-        UF.check_semantics(cpath,deletesemantics=False)
+        UF.check_semantics(cpath, deletesemantics=False)
     except UF.CHError as e:
         print(str(e.wrap()))
         exit(1)
 
-    sempath = os.path.join(cpath,'semantics')
+    sempath = os.path.join(cpath, "semantics")
     capp = CApplication(sempath)
     if args.contractpath is None:
-        contractpath = os.path.join(cpath,'chc_contracts')
+        contractpath = os.path.join(cpath, "chc_contracts")
     else:
         contractpath = args.contractpath
 
     ignorefns = {}
 
-    if not args.ignorefile is None:
+    if args.ignorefile is not None:
         if os.path.isfile(args.ignorefile):
-            with open(args.ignorefile,'r') as fp:
+            with open(args.ignorefile, "r") as fp:
                 headers = json.load(fp)
             for h in headers:
-                for fn in headers[h]['functions']:
+                for fn in headers[h]["functions"]:
                     ignorefns[fn] = h
 
     preserves_memory_functions = UF.load_preserves_memory_functions(cpath)
@@ -79,8 +93,7 @@ if __name__ == '__main__':
             preservesmemory = preserves_memory_functions[f.name]
         else:
             preservesmemory = []
-        f.create_contract(contractpath,preservesmemory=preservesmemory)
+        f.create_contract(contractpath, preservesmemory=preservesmemory)
 
     # capp.iter_files(lambda f:f.create_contract(contractpath,args.preservesmemory,ignorefns=ignorefns))
     capp.iter_files(create_contract_file)
-

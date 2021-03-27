@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -29,29 +29,30 @@ import chc.util.fileutil as UF
 
 
 class CFunInvariantTable(object):
-    '''Function-level invariants.'''
+    """Function-level invariants."""
 
-    def __init__(self,invd):
+    def __init__(self, invd):
         self.invd = invd
         self.cfun = self.invd.cfun
-        self.invariants = {}          # context -> CInvariantFact list
+        self.invariants = {}  # context -> CInvariantFact list
 
-    def get_invariants(self,context):
+    def get_invariants(self, context):
         ictxt = self.cfun.cfile.contexttable.index_cfg_projection(context)
         if ictxt in self.invariants:
             return self.invariants[ictxt]
         else:
             return []
 
-    def get_sorted_invariants(self,context):
+    def get_sorted_invariants(self, context):
         invs = self.get_invariants(context)
-        nrvinvs = [ inv for inv in invs if inv.is_nrv_fact() ]
-        otherinvs = [ inv for inv in invs if not inv.is_nrv_fact() ]
-        nrvinvs = sorted(nrvinvs,key=lambda i:str(i.get_variable()))
+        nrvinvs = [inv for inv in invs if inv.is_nrv_fact()]
+        otherinvs = [inv for inv in invs if not inv.is_nrv_fact()]
+        nrvinvs = sorted(nrvinvs, key=lambda i: str(i.get_variable()))
         return otherinvs + nrvinvs
 
-    def get_po_invariants(self,context,poId):
+    def get_po_invariants(self, context, poId):
         invs = self.get_invariants(context)
+
         def filter(inv):
             if inv.is_nrv_fact():
                 var = inv.get_variable()
@@ -62,28 +63,42 @@ class CFunInvariantTable(object):
                     return True
             else:
                 return True
-        invs = [ inv for inv in invs if filter(inv) ]
-        unrinvs = [ inv for inv in invs if inv.is_unreachable_fact() ]
-        nonrsinvs = [ inv for inv in invs if inv.is_nrv_fact ()
-                          and (not inv.get_non_relational_value().is_region_set()) ]
-        rsinvs = [ inv for inv in invs if inv.is_nrv_fact()
-                       and inv.get_non_relational_value().is_region_set() ]
+
+        invs = [inv for inv in invs if filter(inv)]
+        unrinvs = [inv for inv in invs if inv.is_unreachable_fact()]
+        nonrsinvs = [
+            inv
+            for inv in invs
+            if inv.is_nrv_fact()
+            and (not inv.get_non_relational_value().is_region_set())
+        ]
+        rsinvs = [
+            inv
+            for inv in invs
+            if inv.is_nrv_fact() and inv.get_non_relational_value().is_region_set()
+        ]
         varsets = {}
         for r in rsinvs:
             cvar = r.get_variable()
             if not cvar.get_seqnr() in varsets:
-                varsets[cvar.get_seqnr() ] = r
+                varsets[cvar.get_seqnr()] = r
             else:
-                if (r.get_non_relational_value().size()
-                        < varsets[cvar.get_seqnr()].get_non_relational_value().size()):
+                if (
+                    r.get_non_relational_value().size()
+                    < varsets[cvar.get_seqnr()].get_non_relational_value().size()
+                ):
                     varsets[cvar.get_seqnr()] = r
-        invs = unrinvs + sorted(nonrsinvs + list(varsets.values()),key=lambda i:str(i.get_variable()))
+        invs = unrinvs + sorted(
+            nonrsinvs + list(varsets.values()), key=lambda i: str(i.get_variable())
+        )
         return invs
 
     def initialize(self):
-        xnode = UF.get_invs_xnode(self.cfun.cfile.capp.path,self.cfun.cfile.name,self.cfun.name)
-        if not xnode is None:
-            xinvt = xnode.find('location-invariants')
+        xnode = UF.get_invs_xnode(
+            self.cfun.cfile.capp.path, self.cfun.cfile.name, self.cfun.name
+        )
+        if xnode is not None:
+            xinvt = xnode.find("location-invariants")
             self._read_xml(xinvt)
 
     def __str__(self):
@@ -92,19 +107,17 @@ class CFunInvariantTable(object):
         for i in self.invariants:
             ctxt = self.cfun.cfile.contexttable.get_program_context(i)
             ctxt = str(ctxt.get_cfg_context().get_rev_repr())
-            contexts.append((ctxt,self.invariants[i]))
-        for (ctxt,invs) in sorted(contexts):
-            lines.append('\n' + ctxt)
+            contexts.append((ctxt, self.invariants[i]))
+        for (ctxt, invs) in sorted(contexts):
+            lines.append("\n" + ctxt)
             for inv in invs:
-                lines.append('  ' + str(inv))
-        return '\n'.join(lines)
+                lines.append("  " + str(inv))
+        return "\n".join(lines)
 
-    def _read_xml(self,xnode):
-        for xloc in xnode.findall('loc'):
-            ictxt = int(xloc.get('ictxt'))
+    def _read_xml(self, xnode):
+        for xloc in xnode.findall("loc"):
+            ictxt = int(xloc.get("ictxt"))
             self.invariants[ictxt] = []
-            if 'ifacts' in xloc.attrib:
-                for findex in [ int(x) for x in xloc.get('ifacts').split(',') ]:
+            if "ifacts" in xloc.attrib:
+                for findex in [int(x) for x in xloc.get("ifacts").split(",")]:
                     self.invariants[ictxt].append(self.invd.get_invariant_fact(findex))
-
-            

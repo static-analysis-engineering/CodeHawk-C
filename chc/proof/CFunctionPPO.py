@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -29,12 +29,15 @@ from chc.app.CLocation import CLocation
 
 import chc.proof.CFunctionPO as S
 
+
 class CFunctionPPO(S.CFunctionPO):
     """Represents a primary proof obligation within a function."""
 
-    def __init__(self,cpos,ppotype,status,deps,expl,diag):
-        S.CFunctionPO.__init__(self,cpos,ppotype,status,deps,expl,diag)
+    def __init__(self, cpos, ppotype, status, deps, expl, diag):
+        S.CFunctionPO.__init__(self, cpos, ppotype, status, deps, expl, diag)
 
-    def is_ppo(self): return True
+    def is_ppo(self):
+        return True
 
-    def get_predicate_tag(self): return self.predicate.get_tag()
+    def get_predicate_tag(self):
+        return self.predicate.get_tag()

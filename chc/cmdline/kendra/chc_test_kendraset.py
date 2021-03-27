@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -38,30 +38,37 @@ from chc.cmdline.kendra.TestManager import TestManager
 from chc.cmdline.kendra.TestManager import FileParseError
 from chc.cmdline.kendra.TestManager import AnalyzerMissingError
 
+
 def parse():
     usage = (
-        '\nCall with the directory name of one of the subdirectories in\n' +
-        'tests/sard/kendra\n\n  Example: python chc_test_kendraset.py id115Q\n')
+        "\nCall with the directory name of one of the subdirectories in\n"
+        + "tests/sard/kendra\n\n  Example: python chc_test_kendraset.py id115Q\n"
+    )
     description = (
-        'Parses and analyzes a set of 4 test cases from the NIST Software Assurance\n ' +
-        'Reference Dataset (SARD) and compares the results with a set of reference\n ' +
-        'results\n')
-    parser = argparse.ArgumentParser(usage=usage,description=description)
-    parser.add_argument('testset',help='name of the test case (e.g., id115Q)')
-    parser.add_argument('--saveref',help='save ppo specs',action='store_true')
-    parser.add_argument('--savesemantics',help='save tar file with semantics files',
-                            action='store_true')
-    parser.add_argument('--verbose',help='print verbose output',action='store_true')
+        "Parses and analyzes a set of 4 test cases from the NIST Software Assurance\n "
+        + "Reference Dataset (SARD) and compares the results with a set of reference\n "
+        + "results\n"
+    )
+    parser = argparse.ArgumentParser(usage=usage, description=description)
+    parser.add_argument("testset", help="name of the test case (e.g., id115Q)")
+    parser.add_argument("--saveref", help="save ppo specs", action="store_true")
+    parser.add_argument(
+        "--savesemantics",
+        help="save tar file with semantics files",
+        action="store_true",
+    )
+    parser.add_argument("--verbose", help="print verbose output", action="store_true")
     args = parser.parse_args()
     return args
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
 
     args = parse()
     testname = args.testset
     loglevel = logging.WARNING
-    logfilename =  args.testset + '_log.txt'
-    logging.basicConfig(filename=logfilename,level=loglevel)
+    logfilename = args.testset + "_log.txt"
+    logging.basicConfig(filename=logfilename, level=loglevel)
 
     try:
         UF.check_parser()
@@ -76,16 +83,18 @@ if __name__ == '__main__':
         print(str(e.wrap()))
         exit(1)
 
-    testfilename = os.path.join(cpath,testname + '.json')
+    testfilename = os.path.join(cpath, testname + ".json")
     if not os.path.isfile(testfilename):
-        print('*' * 80)
-        print('Test directory does not contain a test specification.')
-        print('Expected to find the file')
-        print('    ' + testfilename + '.')
-        print('*' * 80)
+        print("*" * 80)
+        print("Test directory does not contain a test specification.")
+        print("Expected to find the file")
+        print("    " + testfilename + ".")
+        print("*" * 80)
         exit(1)
 
-    testmanager = TestManager(cpath,cpath,testname,saveref=args.saveref,verbose=args.verbose)
+    testmanager = TestManager(
+        cpath, cpath, testname, saveref=args.saveref, verbose=args.verbose
+    )
     testmanager.clean()
     try:
         if testmanager.test_parser(savesemantics=args.savesemantics):
@@ -105,13 +114,13 @@ if __name__ == '__main__':
             else:
                 testmanager.print_test_results_summary()
     except FileParseError as e:
-        print(': Unable to parse ' + str(e))
+        print(": Unable to parse " + str(e))
         exit(1)
 
     except OSError as e:
-        print('*' * 80)
-        print('OS Error: ' + str(e) + ': Please check the platform settings in Config.py')
-        print('*' * 80)
+        print("*" * 80)
+        print(
+            "OS Error: " + str(e) + ": Please check the platform settings in Config.py"
+        )
+        print("*" * 80)
         exit(1)
-        
-        

@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -33,16 +33,20 @@ import chc.reporting.ProofObligations as RP
 
 from chc.app.CApplication import CApplication
 
+
 def parse():
     parser = argparse.ArgumentParser()
-    parser.add_argument('cfilename',help='name of kendra c file (e.g., id115.c)')
-    parser.add_argument('--show_invariants',
-                            help='show invariants in addition to diagnostic',
-                            action='store_true')
+    parser.add_argument("cfilename", help="name of kendra c file (e.g., id115.c)")
+    parser.add_argument(
+        "--show_invariants",
+        help="show invariants in addition to diagnostic",
+        action="store_true",
+    )
     args = parser.parse_args()
     return args
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
 
     args = parse()
     cfilename = args.cfilename
@@ -52,11 +56,9 @@ if __name__ == '__main__':
         print(str(e.wrap()))
         exit(1)
 
-    sempath = os.path.join(cpath,'semantics')
-    cfapp = CApplication(sempath,cfilename)
+    sempath = os.path.join(cpath, "semantics")
+    cfapp = CApplication(sempath, cfilename)
     cfile = cfapp.get_cfile()
 
-    print(RP.file_code_tostring(cfile,showinvs=args.show_invariants))
+    print(RP.file_code_tostring(cfile, showinvs=args.show_invariants))
     print(RP.file_proofobligation_stats_tostring(cfile))
-
-

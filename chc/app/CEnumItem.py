@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -27,12 +27,13 @@
 
 import chc.app.CDictionaryRecord as CD
 
-class CEnumItem(CD.CDeclarationsRecord):
 
-    def __init__(self,decls,index,tags,args):
-        CD.CDeclarationsRecord.__init__(self,decls,index,tags,args)
+class CEnumItem(CD.CDeclarationsRecord):
+    def __init__(self, decls, index, tags, args):
+        CD.CDeclarationsRecord.__init__(self, decls, index, tags, args)
         self.name = self.tags[0]
         self.exp = self.get_dictionary().get_exp(self.args[0])
         self.loc = self.decls.get_location(self.args[1])
 
-    def __str__(self): return self.name + ':' + str(self.exp)
+    def __str__(self):
+        return self.name + ":" + str(self.exp)

@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -33,38 +33,53 @@ import chc.util.IndexedTable as IT
 if TYPE_CHECKING:
     import chc.app.CDictionary
 
+
 class CDictionaryRecord(IT.IndexedTableValue):
     """Base class for all objects kept in the CDictionary."""
 
-    def __init__(self, cd: 'chc.app.CDictionary.CDictionary', index: int, tags: List[str], args: List[int]) -> None:
+    def __init__(
+        self,
+        cd: "chc.app.CDictionary.CDictionary",
+        index: int,
+        tags: List[str],
+        args: List[int],
+    ) -> None:
         self.cd = cd
         self.index = index
         self.tags = tags
         self.args = args
 
-    def get_key(self) -> Tuple[str, str]: return (','.join(self.tags), ','.join([str(x) for x in self.args]))
+    def get_key(self) -> Tuple[str, str]:
+        return (",".join(self.tags), ",".join([str(x) for x in self.args]))
 
     def write_xml(self, node: ET.Element) -> None:
-        (tagstr,argstr) = self.get_key()
-        if len(tagstr) > 0: node.set('t',tagstr)
-        if len(argstr) > 0: node.set('a',argstr)
-        node.set('ix',str(self.index))
-    
-class CDeclarationsRecord(object):
-    '''Base class for all objects kept in the CFileDeclarations.'''
+        (tagstr, argstr) = self.get_key()
+        if len(tagstr) > 0:
+            node.set("t", tagstr)
+        if len(argstr) > 0:
+            node.set("a", argstr)
+        node.set("ix", str(self.index))
 
-    def __init__(self,decls,index,tags,args):
+
+class CDeclarationsRecord(object):
+    """Base class for all objects kept in the CFileDeclarations."""
+
+    def __init__(self, decls, index, tags, args):
         self.decls = decls
         self.index = index
         self.tags = tags
         self.args = args
 
-    def get_key(self): return (','.join(self.tags), ','.join([str(x) for x in self.args]))
+    def get_key(self):
+        return (",".join(self.tags), ",".join([str(x) for x in self.args]))
 
-    def get_dictionary(self): return self.decls.dictionary
-    
-    def write_xml(self,node):
-        (tagstr,argstr) = self.get_key()
-        if len(tagstr) > 0: node.set('t',tagstr)
-        if len(argstr) > 0: node.set('a',argstr)
-        node.set('ix',str(self.index))
+    def get_dictionary(self):
+        return self.decls.dictionary
+
+    def write_xml(self, node):
+        (tagstr, argstr) = self.get_key()
+        if len(tagstr) > 0:
+            node.set("t", tagstr)
+        if len(argstr) > 0:
+            node.set("a", argstr)
+        node.set("ix", str(self.index))

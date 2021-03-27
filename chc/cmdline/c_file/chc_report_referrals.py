@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -33,14 +33,18 @@ import chc.util.fileutil as UF
 from chc.app.CApplication import CApplication
 import chc.reporting.ProofObligations as RP
 
+
 def parse():
     parser = argparse.ArgumentParser()
-    parser.add_argument('path',help='name of the directory that holds the semantics directory')
-    parser.add_argument('cfile',help='filename of a c file')
+    parser.add_argument(
+        "path", help="name of the directory that holds the semantics directory"
+    )
+    parser.add_argument("cfile", help="filename of a c file")
     args = parser.parse_args()
     return args
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
 
     args = parse()
     cpath = os.path.abspath(args.path)
@@ -50,10 +54,10 @@ if __name__ == '__main__':
     except UF.CHError as e:
         print(str(e.wrap()))
         exit(1)
-    
-    sempath = os.path.join(cpath,'semantics')
 
-    capp = CApplication(sempath,args.cfile)
+    sempath = os.path.join(cpath, "semantics")
+
+    capp = CApplication(sempath, args.cfile)
     cfile = capp.get_cfile()
 
     openppos = cfile.get_open_ppos()
@@ -61,11 +65,10 @@ if __name__ == '__main__':
     result = []
 
     for ppo in openppos:
-        if  ppo.has_referral_diagnostic():
+        if ppo.has_referral_diagnostic():
             result.append(ppo)
 
     for ppo in result:
         referral = ppo.get_referral_diagnostics()
         for k in referral:
-            print('  ' + k + ': ' + str(referral[k]))
-                
+            print("  " + k + ": " + str(referral[k]))

@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -33,17 +33,24 @@ import chc.util.fileutil as UF
 
 from chc.app.CApplication import CApplication
 
+
 def parse():
     parser = argparse.ArgumentParser()
-    parser.add_argument('path',
-                            help=('directory that holds the semantics directory'
-                                      + ' or the name of a test application'))
-    parser.add_argument('--all',help='show all, including application headers',
-                            action='store_true')
+    parser.add_argument(
+        "path",
+        help=(
+            "directory that holds the semantics directory"
+            + " or the name of a test application"
+        ),
+    )
+    parser.add_argument(
+        "--all", help="show all, including application headers", action="store_true"
+    )
     args = parser.parse_args()
     return args
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
 
     args = parse()
 
@@ -54,7 +61,7 @@ if __name__ == '__main__':
         print(str(e.wrap()))
         exit(1)
 
-    sempath = os.path.join(cpath,'semantics')
+    sempath = os.path.join(cpath, "semantics")
     capp = CApplication(sempath)
 
     resultheaders: Dict[Any, Any] = {}
@@ -63,13 +70,13 @@ if __name__ == '__main__':
     def get_fn_missing_summaries(fn):
         missingsummaries = fn.api.get_missing_summaries()
         for s in missingsummaries:
-            names = s.split('/')
+            names = s.split("/")
             if len(names) == 2:
-                resultheaders.setdefault(names[0],{})
-                resultheaders[names[0]].setdefault(names[1],0)
+                resultheaders.setdefault(names[0], {})
+                resultheaders[names[0]].setdefault(names[1], 0)
                 resultheaders[names[0]][names[1]] += 1
             else:
-                result.setdefault(s,0)
+                result.setdefault(s, 0)
                 result[s] += 1
 
     def get_fi_missing_summaries(fi):
@@ -78,13 +85,13 @@ if __name__ == '__main__':
     capp.iter_files(get_fi_missing_summaries)
 
     for h in sorted(resultheaders):
-        if capp.is_application_header(h) and not args.all: continue        
-        print('\n' + h)
+        if capp.is_application_header(h) and not args.all:
+            continue
+        print("\n" + h)
         for m in sorted(resultheaders[h]):
-            print('  ' + str(resultheaders[h][m]).rjust(4) + '  ' + m)
+            print("  " + str(resultheaders[h][m]).rjust(4) + "  " + m)
 
     if len(result) > 0:
-        print('\n\nOthers:')
+        print("\n\nOthers:")
         for m in sorted(result):
-            print(str(result[m]).rjust(4) + '  ' + m)
-
+            print(str(result[m]).rjust(4) + "  " + m)

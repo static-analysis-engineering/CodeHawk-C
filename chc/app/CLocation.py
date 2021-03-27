@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -29,6 +29,7 @@ import xml.etree.ElementTree as ET
 
 import chc.app.CDictionaryRecord as CD
 
+
 class CLocation(CD.CDeclarationsRecord):
     """Location in a C source program.
 
@@ -40,30 +41,38 @@ class CLocation(CD.CDeclarationsRecord):
         2: line number
     """
 
-    def __init__(self,decls,index,tags,args):
-        CD.CDeclarationsRecord.__init__(self,decls,index,tags,args)
+    def __init__(self, decls, index, tags, args):
+        CD.CDeclarationsRecord.__init__(self, decls, index, tags, args)
 
-    def get_byte(self): return int(self.args[1])
+    def get_byte(self):
+        return int(self.args[1])
 
-    def get_line(self): return int(self.args[2])
+    def get_line(self):
+        return int(self.args[2])
 
-    def get_file(self): return self.decls.get_filename(int(self.args[0]))
+    def get_file(self):
+        return self.decls.get_filename(int(self.args[0]))
 
     def get_loc(self):
         return (self.get_file(), self.get_line(), self.get_byte())
 
+    def __ge__(self, loc):
+        return self.get_loc >= loc.get_loc()
 
-    def __ge__(self,loc): return self.get_loc >= loc.get_loc()
+    def __gt__(self, loc):
+        return self.get_loc > loc.get_loc()
 
-    def __gt__(self,loc): return self.get_loc > loc.get_loc()
+    def __le__(self, loc):
+        return self.get_loc <= loc.get_loc()
 
-    def __le__(self,loc): return self.get_loc <= loc.get_loc()
+    def __lt__(self, loc):
+        return self.get_loc < loc.get_loc()
 
-    def __lt__(self,loc): return self.get_loc < loc.get_loc()
+    def __eq__(self, loc):
+        return self.get_loc == loc.get_loc()
 
-    def __eq__(self,loc): return self.get_loc == loc.get_loc()
+    def __ne__(self, loc):
+        return self.get_loc != loc.get_loc()
 
-    def __ne__(self,loc): return self.get_loc != loc.get_loc()
-        
     def __str__(self):
-        return (str(self.get_file()) + ':' + str(self.get_line()))
+        return str(self.get_file()) + ":" + str(self.get_line())

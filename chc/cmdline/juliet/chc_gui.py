@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -33,35 +33,39 @@ import chc.util.fileutil as UF
 from chc.app.CApplication import CApplication
 from chc.cmdline.AnalysisManager import AnalysisManager
 
+
 def parse():
     parser = argparse.ArgumentParser()
-    parser.add_argument('cwe',help='name of cwe, e.g., CWE121')
-    parser.add_argument('test',help='name of test case, e.g., CWE129_large')
-    parser.add_argument('--contractpath',help='path to save the contracts file',default=None)
-    parser.add_argument('--outputpath',help='path to save system displays')    
+    parser.add_argument("cwe", help="name of cwe, e.g., CWE121")
+    parser.add_argument("test", help="name of test case, e.g., CWE129_large")
+    parser.add_argument(
+        "--contractpath", help="path to save the contracts file", default=None
+    )
+    parser.add_argument("--outputpath", help="path to save system displays")
     args = parser.parse_args()
     return args
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
 
     args = parse()
 
     try:
         UF.check_gui()
-        cpath = UF.get_juliet_testpath(args.cwe,args.test)
-        UF.check_analysis_results(cpath)        
+        cpath = UF.get_juliet_testpath(args.cwe, args.test)
+        UF.check_analysis_results(cpath)
     except UF.CHError as e:
         print(str(e.wrap()))
         exit(1)
 
-    sempath = os.path.join(cpath,'semantics')
+    sempath = os.path.join(cpath, "semantics")
 
     if args.contractpath is None:
-        contractpath = os.path.join(cpath,'chc_contracts')
+        contractpath = os.path.join(cpath, "chc_contracts")
     else:
         contractpath = args.contractpath
 
-    capp = CApplication(sempath,contractpath=contractpath)
+    capp = CApplication(sempath, contractpath=contractpath)
     am = AnalysisManager(capp)
 
-    am.rungui(cpath,outputpath=args.outputpath)
+    am.rungui(cpath, outputpath=args.outputpath)

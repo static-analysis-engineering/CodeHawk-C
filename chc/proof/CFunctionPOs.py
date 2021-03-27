@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -27,22 +27,27 @@
 
 
 class CFunctionPOs(object):
-    '''Superclass of CFunctionPPOs and CFunctionSPOs.'''
+    """Superclass of CFunctionPPOs and CFunctionSPOs."""
 
-    def __init__(self,cproofs):
+    def __init__(self, cproofs):
         self.cproofs = cproofs
         self.cfun = self.cproofs.cfun
         self.cfile = self.cfun.cfile
 
+    def is_ppo_discharged(self, id):
+        return self.cproofs.is_ppo_discharged(id)
 
-    def is_ppo_discharged(self,id): return self.cproofs.is_ppo_discharged(id)
+    def is_spo_discharged(self, id):
+        return self.cproofs.is_spo_discharged(id)
 
-    def is_spo_discharged(self,id): return self.cproofs.is_spo_discharged(id)
+    def is_ppo_violated(self, id):
+        return self.cproofs.is_ppo_violated(id)
 
-    def is_ppo_violated(self,id): return self.cproofs.is_ppo_violated(id)
+    def is_spo_violated(self, id):
+        return self.cproofs.is_spo_violated(id)
 
-    def is_spo_violated(self,id): return self.cproofs.is_spo_violated(id)
+    def get_ppo_evidence(self, id):
+        return self.cproofs.get_ppo_evidence(id)
 
-    def get_ppo_evidence(self,id): return self.cproofs.get_ppo_evidence(id)
-
-    def get_spo_evidence(self,id): return self.cproofs.get_spo_evidence(id)
+    def get_spo_evidence(self, id):
+        return self.cproofs.get_spo_evidence(id)

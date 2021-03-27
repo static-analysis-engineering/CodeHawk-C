@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -29,19 +29,19 @@ import xml.etree.ElementTree as ET
 
 from chc.proof.CFunctionPO import CFunctionPO
 
-class CFunctionReturnsiteSPO(CFunctionPO):
-    '''Represents a secondary proof obligation associated with a return site.'''
 
-    def __init__(self,crspos,potype,status='open',deps=None,expl=None,diag=None):
-        CFunctionPO.__init__(self,crspos.cspos,potype,status,deps,expl,diag)
-        self.crspos = crspos      # CFunctionReturnsiteSPOs
+class CFunctionReturnsiteSPO(CFunctionPO):
+    """Represents a secondary proof obligation associated with a return site."""
+
+    def __init__(self, crspos, potype, status="open", deps=None, expl=None, diag=None):
+        CFunctionPO.__init__(self, crspos.cspos, potype, status, deps, expl, diag)
+        self.crspos = crspos  # CFunctionReturnsiteSPOs
         self.external_id = self.potype.get_external_id()
 
-
-    def write_xml(self,cnode):
-        self.pod.write_xml_spo_type(cnode,self.potype)
-        CFunctionPO.write_xml(self,cnode)
+    def write_xml(self, cnode):
+        self.pod.write_xml_spo_type(cnode, self.potype)
+        CFunctionPO.write_xml(self, cnode)
         # cnode.set('id',str(self.id))
 
     def __str__(self):
-        return (CFunctionPO.__str__(self) + ' (' + str(self.external_id) + ')')
+        return CFunctionPO.__str__(self) + " (" + str(self.external_id) + ")"

@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -28,11 +28,13 @@
 from chc.app.CTypeInfo import CTypeInfo
 from chc.app.CLocation import CLocation
 
-class CGType(object):
-    '''A type definition that associates a name with a type.'''
 
-    def __init__(self,typeinfo,location):
+class CGType(object):
+    """A type definition that associates a name with a type."""
+
+    def __init__(self, typeinfo, location):
         self.typeinfo = typeinfo
         self.location = location
 
-    def __str__(self): return str(self.typeinfo)
+    def __str__(self):
+        return str(self.typeinfo)

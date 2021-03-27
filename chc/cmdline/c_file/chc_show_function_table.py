@@ -16,7 +16,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -34,29 +34,31 @@ import chc.reporting.DictionaryTables as DT
 
 from chc.app.CApplication import CApplication
 
+
 def parse():
     parser = argparse.ArgumentParser()
-    parser.add_argument('path',help='name of a zitser test, e.g., id1284')
-    parser.add_argument('cfile',help='name of c file that is part of the test')
-    parser.add_argument('cfunction',help='name of function in c file')
-    parser.add_argument('tablename',help='name of table to be shown')
+    parser.add_argument("path", help="name of a zitser test, e.g., id1284")
+    parser.add_argument("cfile", help="name of c file that is part of the test")
+    parser.add_argument("cfunction", help="name of function in c file")
+    parser.add_argument("tablename", help="name of table to be shown")
     args = parser.parse_args()
     return args
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
 
     args = parse()
     cpath = os.path.abspath(args.path)
-    
+
     try:
         UF.check_semantics(cpath)
     except UF.CHError as e:
         print(str(e.wrap()))
         exit(1)
 
-    sempath = os.path.join(cpath,'semantics')
+    sempath = os.path.join(cpath, "semantics")
     try:
-        cfapp = CApplication(sempath,args.cfile)
+        cfapp = CApplication(sempath, args.cfile)
         cfile = cfapp.get_cfile()
     except UF.CFileNotFoundException as e:
         print(str(e))
@@ -68,4 +70,4 @@ if __name__ == '__main__':
         print(str(e.wrap()))
         exit(1)
 
-    print(str(DT.get_function_table(cfile,args.cfunction,args.tablename)))
+    print(str(DT.get_function_table(cfile, args.cfunction, args.tablename)))

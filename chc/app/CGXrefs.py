@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -27,31 +27,32 @@
 
 
 class CGXrefs(object):
-
-    def __init__(self,cfile,xnode):
+    def __init__(self, cfile, xnode):
         self.cfile = cfile
         self.xnode = xnode
-        self.compkeys = {}      # local id -> global id
-        self.varinfos = {}      # local id -> global id
+        self.compkeys = {}  # local id -> global id
+        self.varinfos = {}  # local id -> global id
         self._initialize()
 
-    def getglobalkey(self,localkey):
-        if self.xnode is None: return localkey
+    def getglobalkey(self, localkey):
+        if self.xnode is None:
+            return localkey
         if localkey in self.compkeys:
             return self.compkeys[localkey]
         return localkey
 
-    def getglobalvid(self,localvid):
-        if self.xnode is None: return localvid
+    def getglobalvid(self, localvid):
+        if self.xnode is None:
+            return localvid
         if localvid in self.varinfos:
             return self.varinfos[localvid]
         return localvid
 
     def _initialize(self):
-        if self.xnode is None: return
+        if self.xnode is None:
+            return
         if len(self.compkeys) == 0 or len(self.varinfos) == 0:
-            for c in self.xnode.find('compinfo-xrefs').findall('cxref'):
-                self.compkeys[int(c.get('ckey'))] = int(c.get('gckey'))
-            for v in self.xnode.find('varinfo-xrefs').findall('vxref'):
-                self.varinfos[int(v.get('vid'))] = int(v.get('gvid'))
-                
+            for c in self.xnode.find("compinfo-xrefs").findall("cxref"):
+                self.compkeys[int(c.get("ckey"))] = int(c.get("gckey"))
+            for v in self.xnode.find("varinfo-xrefs").findall("vxref"):
+                self.varinfos[int(v.get("vid"))] = int(v.get("gvid"))

@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -33,116 +33,140 @@ from typing import Any, Dict, List
 import chc.util.fileutil as UF
 import chc.reporting.ProofObligations as RP
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
-    targets =  UF.get_registered_analysis_targets()
+    targets = UF.get_registered_analysis_targets()
 
-    projectstats: Dict[Any, Any] = {}   # project -> (linecount, clinecount, cfuncount)
+    # project -> (linecount, clinecount, cfuncount)
+    projectstats: Dict[Any, Any] = {}
 
-    ppoprojecttotals: Dict[Any, Any] = {}   # project -> dm -> dmtotal
+    ppoprojecttotals: Dict[Any, Any] = {}  # project -> dm -> dmtotal
     spoprojecttotals: Dict[Any, Any] = {}
-    ppotagtotals: Dict[Any, Any] = {}       # tag -> dm -> dmtotal
+    ppotagtotals: Dict[Any, Any] = {}  # tag -> dm -> dmtotal
     spotagtotals: Dict[Any, Any] = {}
     nosummary: List[Any] = []
     analysistimes: Dict[Any, Any] = {}
-    
+
     dsmethods = RP.get_dsmethods([])
 
     for group in targets:
-        gpath = targets[group]['path']
+        gpath = targets[group]["path"]
 
-        for project in targets[group]['projects']:
-            path = os.path.join(gpath,targets[group]['projects'][project]['path'])
+        for project in targets[group]["projects"]:
+            path = os.path.join(gpath, targets[group]["projects"][project]["path"])
             results = UF.read_project_summary_results(path)
             if results is None:
                 nosummary.append(project)
                 continue
             pd = results
             try:
-                ppod = pd['tagresults']['ppos']
-                spod = pd['tagresults']['spos']
+                ppod = pd["tagresults"]["ppos"]
+                spod = pd["tagresults"]["spos"]
                 ppoprojecttotals[project] = {}
                 spoprojecttotals[project] = {}
-            except:
-                print('Problem with ' + str(project))
+            except BaseException:
+                print("Problem with " + str(project))
                 continue
-            if 'stats' in pd:
-                projectstats[project] = pd['stats']
-                analysistimes[project] = pd['timestamp']
+            if "stats" in pd:
+                projectstats[project] = pd["stats"]
+                analysistimes[project] = pd["timestamp"]
             else:
-                projectstats[project] = (0,0,0)
+                projectstats[project] = (0, 0, 0)
 
             for t in ppod:
-                if not 'violated' in ppod[t]: ppod[t]['violated'] = -1
+                if "violated" not in ppod[t]:
+                    ppod[t]["violated"] = -1
             for t in spod:
-                if not 'violated' in spod[t]: spod[t]['violated'] = -1
+                if "violated" not in spod[t]:
+                    spod[t]["violated"] = -1
 
-        
             for t in ppod:
-                if not 'contract' in ppod[t]: ppod[t]['contract'] = -1
+                if "contract" not in ppod[t]:
+                    ppod[t]["contract"] = -1
             for t in spod:
-                if not 'contract' in spod[t]: spod[t]['contract'] = -1
-        
+                if "contract" not in spod[t]:
+                    spod[t]["contract"] = -1
+
             for t in ppod:
-                if not t in ppotagtotals: ppotagtotals[t] = {}
+                if t not in ppotagtotals:
+                    ppotagtotals[t] = {}
                 for dm in ppod[t]:
-                    if not dm in ppotagtotals[t]: ppotagtotals[t][dm] = 0
+                    if dm not in ppotagtotals[t]:
+                        ppotagtotals[t][dm] = 0
                     ppotagtotals[t][dm] += ppod[t][dm]
             for dm in dsmethods:
                 ppoprojecttotals[project][dm] = sum([ppod[t][dm] for t in ppod])
             for t in spod:
-                if not t in spotagtotals: spotagtotals[t] = {}
+                if t not in spotagtotals:
+                    spotagtotals[t] = {}
                 for dm in spod[t]:
-                    if not dm in spotagtotals[t]: spotagtotals[t][dm] = 0
+                    if dm not in spotagtotals[t]:
+                        spotagtotals[t][dm] = 0
                     spotagtotals[t][dm] += spod[t][dm]
             for dm in dsmethods:
                 spoprojecttotals[project][dm] = sum([spod[t][dm] for t in spod])
 
-    print('Primary Proof Obligations')
-    print('\n'.join(RP.totals_to_string(ppoprojecttotals)))
-    print('\nPrimary Proof Obligations (in percentages)')
-    print('\n'.join(RP.totals_to_string(ppoprojecttotals,False)))
-    print('\nSupporting Proof Obligations')
-    print('\n'.join(RP.totals_to_string(spoprojecttotals)))
-    print('\nSupporting Proof Obligations (in percentages)')
-    print('\n'.join(RP.totals_to_string(spoprojecttotals,False)))
+    print("Primary Proof Obligations")
+    print("\n".join(RP.totals_to_string(ppoprojecttotals)))
+    print("\nPrimary Proof Obligations (in percentages)")
+    print("\n".join(RP.totals_to_string(ppoprojecttotals, False)))
+    print("\nSupporting Proof Obligations")
+    print("\n".join(RP.totals_to_string(spoprojecttotals)))
+    print("\nSupporting Proof Obligations (in percentages)")
+    print("\n".join(RP.totals_to_string(spoprojecttotals, False)))
 
-    print('\n\nPrimary Proof Obligations')
-    print('\n'.join(RP.totals_to_string(ppotagtotals)))
-    print('\nSupporting Proof Obligations')
-    print('\n'.join(RP.totals_to_string(spotagtotals)))
+    print("\n\nPrimary Proof Obligations")
+    print("\n".join(RP.totals_to_string(ppotagtotals)))
+    print("\nSupporting Proof Obligations")
+    print("\n".join(RP.totals_to_string(spotagtotals)))
 
     if len(nosummary) > 0:
-        print('\n\nNo summary results found for:')
-        print('-' * 28)
+        print("\n\nNo summary results found for:")
+        print("-" * 28)
         for p in nosummary:
-            print('  ' + p)
-            print('-' * 28)
+            print("  " + p)
+            print("-" * 28)
 
-    print('\n\nProject statistics:')
-    print('analysis time'.ljust(16) + '  ' +  'project'.ljust(28)
-              +  'LOC '.rjust(10) + 'CLOC '.rjust(10)
-              + 'functions'.rjust(10))
-    print('-' * 80)
+    print("\n\nProject statistics:")
+    print(
+        "analysis time".ljust(16)
+        + "  "
+        + "project".ljust(28)
+        + "LOC ".rjust(10)
+        + "CLOC ".rjust(10)
+        + "functions".rjust(10)
+    )
+    print("-" * 80)
     lctotal = 0
     clctotal = 0
     fctotal = 0
-    for p in sorted(analysistimes,key=lambda p:analysistimes[p]):
-        (lc,clc,fc) = projectstats[p]
+    for p in sorted(analysistimes, key=lambda p: analysistimes[p]):
+        (lc, clc, fc) = projectstats[p]
         lctotal += lc
         clctotal += clc
         fctotal += fc
-        print(time.strftime('%Y-%m-%d %H:%M',time.localtime(analysistimes[p]))
-                  + '  ' + p.ljust(28) + str(lc).rjust(10) + str(clc).rjust(10)
-                  + str(fc).rjust(10))
-    print('-' * 80)
-    print('Total'.ljust(46) + str(lctotal).rjust(10) + str(clctotal).rjust(10)
-              + str(fctotal).rjust(10))
+        print(
+            time.strftime("%Y-%m-%d %H:%M", time.localtime(analysistimes[p]))
+            + "  "
+            + p.ljust(28)
+            + str(lc).rjust(10)
+            + str(clc).rjust(10)
+            + str(fc).rjust(10)
+        )
+    print("-" * 80)
+    print(
+        "Total".ljust(46)
+        + str(lctotal).rjust(10)
+        + str(clctotal).rjust(10)
+        + str(fctotal).rjust(10)
+    )
 
-    print('\n\nProof obligation transfer')
+    print("\n\nProof obligation transfer")
 
-    print('\n'.join(RP.totals_to_presentation_string(ppoprojecttotals,spoprojecttotals,projectstats)))
-
-
-    
-        
+    print(
+        "\n".join(
+            RP.totals_to_presentation_string(
+                ppoprojecttotals, spoprojecttotals, projectstats
+            )
+        )
+    )

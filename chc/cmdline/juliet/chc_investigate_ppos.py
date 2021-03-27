@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -33,65 +33,74 @@ import chc.util.fileutil as UF
 from chc.app.CApplication import CApplication
 import chc.reporting.ProofObligations as RP
 
+
 def parse():
     parser = argparse.ArgumentParser()
-    parser.add_argument('cwe',help='name of cwe, e.g., CWE121')
-    parser.add_argument('test',help='name of test case, e.g., CWE129_large')
-    parser.add_argument('--xdelegated',help="exclude delegated ppo's",
-                            action='store_true')
-    parser.add_argument('--xviolated',help="exclude violated ppo's",
-                            action='store_true')
-    parser.add_argument('--predicates',nargs='*',
-                            help='predicates of interest (default: all)')
+    parser.add_argument("cwe", help="name of cwe, e.g., CWE121")
+    parser.add_argument("test", help="name of test case, e.g., CWE129_large")
+    parser.add_argument(
+        "--xdelegated", help="exclude delegated ppo's", action="store_true"
+    )
+    parser.add_argument(
+        "--xviolated", help="exclude violated ppo's", action="store_true"
+    )
+    parser.add_argument(
+        "--predicates", nargs="*", help="predicates of interest (default: all)"
+    )
     args = parser.parse_args()
     return args
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
 
     args = parse()
     try:
-        cpath = UF.get_juliet_testpath(args.cwe,args.test)
+        cpath = UF.get_juliet_testpath(args.cwe, args.test)
         UF.check_analysis_results(cpath)
     except UF.CHError as e:
         print(str(e.wrap()))
         exit(1)
-    
-    sempath = os.path.join(cpath,'semantics')
 
-    excludefiles = [ 'io.c', 'main_linux.c', 'std_thread.c' ]        
+    sempath = os.path.join(cpath, "semantics")
 
-    capp = CApplication(sempath,excludefiles=excludefiles)
+    excludefiles = ["io.c", "main_linux.c", "std_thread.c"]
 
-    pofilter = lambda p:True
+    capp = CApplication(sempath, excludefiles=excludefiles)
+
+    def pofilter(p):
+        return True
+
     if args.predicates:
-        pofilter = lambda p:p.get_predicate_tag() in args.predicates
+
+        def pofilter(p):
+            return p.get_predicate_tag() in args.predicates
 
     openppos = capp.get_open_ppos()
     violations = capp.get_violations()
     delegated = capp.get_delegated()
 
     if len(openppos) > 0:
-        print('Open proof obligations:\n' + ('=' * 80))
-        print(RP.tag_file_function_pos_tostring(openppos,pofilter=pofilter))
+        print("Open proof obligations:\n" + ("=" * 80))
+        print(RP.tag_file_function_pos_tostring(openppos, pofilter=pofilter))
     else:
-        print('No open proof obligations found')
+        print("No open proof obligations found")
 
     if len(delegated) > 0:
         if args.xdelegated:
             print("Number of delegated ppo's: " + (str(len(delegated))))
         else:
-            print('\n\nDelegated proof obligations:\n' +  ('=' * 80))
-            print(RP.tag_file_function_pos_tostring(delegated,pofilter=pofilter))
+            print("\n\nDelegated proof obligations:\n" + ("=" * 80))
+            print(RP.tag_file_function_pos_tostring(delegated, pofilter=pofilter))
     else:
-        print('No delegated proof obligations found')
+        print("No delegated proof obligations found")
 
     if len(violations) > 0:
         if args.xviolated:
             print("Number of violations: " + str(len(violations)))
         else:
-            print('\n\nViolations:\n' + ('=' * 80))
-            print(RP.tag_file_function_pos_tostring(violations,pofilter=pofilter))
+            print("\n\nViolations:\n" + ("=" * 80))
+            print(RP.tag_file_function_pos_tostring(violations, pofilter=pofilter))
     else:
-        print('\n' + ('=' * 80) + '\nNo violations found')
-        print('Note: any open proof obligation can be a violation!')
-        print('=' * 80)
+        print("\n" + ("=" * 80) + "\nNo violations found")
+        print("Note: any open proof obligation can be a violation!")
+        print("=" * 80)

@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -29,11 +29,10 @@
 class CGVarDef(object):
     """Global variable definition."""
 
-    def __init__(self,varinfo,location,initializer=None):
+    def __init__(self, varinfo, location, initializer=None):
         self.varinfo = varinfo
         self.location = location
         self.initializer = initializer
 
-    def __str__(self): return str(self.varinfo)
-
-                                
+    def __str__(self):
+        return str(self.varinfo)

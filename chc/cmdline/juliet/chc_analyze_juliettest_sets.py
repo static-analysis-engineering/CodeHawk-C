@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -35,59 +35,77 @@ from multiprocessing import Pool
 
 import chc.util.fileutil as UF
 
+
 def parse():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--maxprocesses',type=int,help='maximum number of processors to use',
-                            default='1')
-    parser.add_argument('--cwe',help='only analyze the given cwe')
+    parser.add_argument(
+        "--maxprocesses",
+        type=int,
+        help="maximum number of processors to use",
+        default="1",
+    )
+    parser.add_argument("--cwe", help="only analyze the given cwe")
     args = parser.parse_args()
     return args
+
 
 @contextmanager
 def timing(activity):
     t0 = time.time()
     yield
-    print('\n' + ('=' * 80) + 
-          '\nCompleted ' + activity + ' in ' + str(time.time() - t0) + ' secs' +
-          '\n' + ('=' * 80))
+    print(
+        "\n"
+        + ("=" * 80)
+        + "\nCompleted "
+        + activity
+        + " in "
+        + str(time.time() - t0)
+        + " secs"
+        + "\n"
+        + ("=" * 80)
+    )
+
 
 def analyze_juliettest(testdata):
     (cwe, testcase, index) = testdata
-    cmd = [ 'python', 'chc_analyze_juliettest.py', cwe, testcase ]
-    result = subprocess.call(cmd,stderr=subprocess.STDOUT)
+    cmd = ["python", "chc_analyze_juliettest.py", cwe, testcase]
+    result = subprocess.call(cmd, stderr=subprocess.STDOUT)
     return result
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
 
     args = parse()
     maxp = args.maxprocesses
-    maxptxt = '' if maxp == 1 else ' (with ' + str(maxp) + ' processors)'
+    maxptxt = "" if maxp == 1 else " (with " + str(maxp) + " processors)"
 
     pool = Pool(maxp)
     testcases = []
 
     def excluded(cwe):
-        if args.cwe is None: return False
+        if args.cwe is None:
+            return False
         return not (args.cwe == cwe)
 
-    with timing('analysis' + maxptxt):
+    with timing("analysis" + maxptxt):
         count = 0
         juliettests = UF.get_juliet_testcases()
         for cwe in sorted(juliettests):
-           if excluded(cwe): continue
-           print('Analyzing testcases for cwe ' + cwe)
-           for subdir in sorted(juliettests[cwe]):
-               for t in juliettests[cwe][subdir]:
-                   testcases.append((cwe,t, count))
-                   count += 1
+            if excluded(cwe):
+                continue
+            print("Analyzing testcases for cwe " + cwe)
+            for subdir in sorted(juliettests[cwe]):
+                for t in juliettests[cwe][subdir]:
+                    testcases.append((cwe, t, count))
+                    count += 1
 
         results = pool.map(analyze_juliettest, testcases)
 
-    print('\n' + ('=' * 80))
+    print("\n" + ("=" * 80))
     if len(results) == results.count(0):
-        print('All Juliet test cases ran successfully.')
+        print("All Juliet test cases ran successfully.")
     else:
         for x in range(len(results)):
             if results[x] != 0:
-                print('Error in testcase ' + testcases[x][0])
-    print(('=' * 80) + '\n')
+                print("Error in testcase " + testcases[x][0])
+    print(("=" * 80) + "\n")

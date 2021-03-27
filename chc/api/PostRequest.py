@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -27,10 +27,10 @@
 
 import chc.app.CDictionaryRecord as CD
 
-class PostRequest(CD.CDictionaryRecord):
 
-    def __init__(self,cd,index,tags,args):
-        CD.CDictionaryRecord.__init__(self,cd,index,tags,args)
+class PostRequest(CD.CDictionaryRecord):
+    def __init__(self, cd, index, tags, args):
+        CD.CDictionaryRecord.__init__(self, cd, index, tags, args)
 
     def get_callee(self):
         return self.cd.cfile.declarations.get_global_varinfo(int(self.args[0]))
@@ -39,5 +39,4 @@ class PostRequest(CD.CDictionaryRecord):
         return self.cd.get_xpredicate(int(self.args[1]))
 
     def __str__(self):
-        return str(self.get_callee()) + ':' + str(self.get_postcondition())
-
+        return str(self.get_callee()) + ":" + str(self.get_postcondition())

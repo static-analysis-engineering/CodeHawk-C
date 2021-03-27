@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -29,17 +29,29 @@ import xml.etree.ElementTree as ET
 
 from chc.proof.CFunctionPO import CFunctionPO
 
+
 class CFunctionCallsiteSPO(CFunctionPO):
     """Represents a supporting proof obligation associated with a call site."""
 
-    def __init__(self,csspos,potype,status='open',deps=None,expl=None,diag=None):
-        CFunctionPO.__init__(self,csspos.cspos,potype,status,deps,expl,diag)
-        self.csspos = csspos                            # CFunctionCallsiteSPOs
-        self.apiid = potype.get_external_id()           # int    (predicate id of the callee)
+    def __init__(self, csspos, potype, status="open", deps=None, expl=None, diag=None):
+        CFunctionPO.__init__(self, csspos.cspos, potype, status, deps, expl, diag)
+        self.csspos = csspos  # CFunctionCallsiteSPOs
+        # int    (predicate id of the callee)
+        self.apiid = potype.get_external_id()
 
-    def is_spo(self): return True
+    def is_spo(self):
+        return True
 
     def __str__(self):
-        return (str(self.id).rjust(4) + ' ' + str(self.apiid).rjust(4) + ' '
-                    + str(self.location.get_line()).rjust(4) + '   ' 
-                    + str(self.predicate) + ' (' + self.status + ')')
+        return (
+            str(self.id).rjust(4)
+            + " "
+            + str(self.apiid).rjust(4)
+            + " "
+            + str(self.location.get_line()).rjust(4)
+            + "   "
+            + str(self.predicate)
+            + " ("
+            + self.status
+            + ")"
+        )

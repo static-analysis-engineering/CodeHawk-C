@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -31,26 +31,29 @@ import chc.app.CTyp as CT
 
 from chc.app.CDictionary import CDictionary
 
-class CGlobalDictionary(CDictionary):
 
-    def __init__(self,decls):
+class CGlobalDictionary(CDictionary):
+    def __init__(self, decls):
         CDictionary.__init__(self)
         self.decls = decls
         self.capp = decls.capp
         self._initialize()
 
-    def index_compinfo_key(self,compinfo,fid):
-        return self.decls.index_compinfo_key(compinfo,fid)
+    def index_compinfo_key(self, compinfo, fid):
+        return self.decls.index_compinfo_key(compinfo, fid)
 
-    def index_varinfo_vid(self,varinfo,fid):
-        return self.decls.index_varinfo_vid(varinfo,fid)
+    def index_varinfo_vid(self, varinfo, fid):
+        return self.decls.index_varinfo_vid(varinfo, fid)
 
-    def index_funarg(self,funarg):
-        tags = [ 'arg' ]
-        args = [ self.index_typ(funarg.get_type()) ]
-        def f(index,key): return CT.CFunArg(self,index,tags,args)
-        return self.funarg_table.add(IT.get_key(tags,args),f)
+    def index_funarg(self, funarg):
+        tags = ["arg"]
+        args = [self.index_typ(funarg.get_type())]
+
+        def f(index, key):
+            return CT.CFunArg(self, index, tags, args)
+
+        return self.funarg_table.add(IT.get_key(tags, args), f)
 
     def _initialize(self):
         xnode = UF.get_global_dictionary_xnode(self.capp.path)
-        CDictionary.initialize(self,xnode)
+        CDictionary.initialize(self, xnode)

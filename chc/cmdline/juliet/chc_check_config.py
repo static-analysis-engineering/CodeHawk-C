@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -33,7 +33,8 @@ from chc.util.Config import Config
 
 width = 15
 
-def itemstr(name,item,checkfilepresence=False,checkdirpresence=False):
+
+def itemstr(name, item, checkfilepresence=False, checkdirpresence=False):
     if checkfilepresence:
         checkpresence = os.path.isfile
     elif checkdirpresence:
@@ -41,26 +42,26 @@ def itemstr(name,item,checkfilepresence=False,checkdirpresence=False):
     else:
         checkpresence = None
     if checkpresence is None:
-        found = ''
+        found = ""
     else:
         if checkpresence(item):
-            found = ' (found)'
+            found = " (found)"
         else:
-            found = ' (** not found **)'
-    return name.ljust(width) + ': ' + str(item) + found
-    
+            found = " (** not found **)"
+    return name.ljust(width) + ": " + str(item) + found
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
 
     config = Config()
 
-    print('\nAnalyzer configuration:')
-    print('-' * 80)
-    print(itemstr('base directory',config.topdir))
-    print(itemstr('C parser',config.cparser,checkfilepresence=True))
-    print(itemstr('C analyzer',config.canalyzer,checkfilepresence=True))
-    print(itemstr('summaries',config.summaries,checkfilepresence=True))
-    print('-' * 80)
+    print("\nAnalyzer configuration:")
+    print("-" * 80)
+    print(itemstr("base directory", config.topdir))
+    print(itemstr("C parser", config.cparser, checkfilepresence=True))
+    print(itemstr("C analyzer", config.canalyzer, checkfilepresence=True))
+    print(itemstr("summaries", config.summaries, checkfilepresence=True))
+    print("-" * 80)
 
     try:
         testcases = UF.get_juliet_testcases()
@@ -69,17 +70,16 @@ if __name__ == '__main__':
         exit(1)
 
     total = 0
-    print('Juliet Tests:')    
+    print("Juliet Tests:")
     for cwe in sorted(testcases):
-        print('  ' + cwe.ljust(10))
+        print("  " + cwe.ljust(10))
         for subset in sorted(testcases[cwe]):
             total += len(testcases[cwe][subset])
-            print('    '
-                    + subset.ljust(10)
-                    + str(len(testcases[cwe][subset])).rjust(4)
-                    + (' tests' if len(testcases[cwe][subset]) > 1 else ' test'))
-    print('-' * 80)
-    print('  Total:'.ljust(12)
-              + str(total).rjust(4)
-              + ' test sets\n')
-              
+            print(
+                "    "
+                + subset.ljust(10)
+                + str(len(testcases[cwe][subset])).rjust(4)
+                + (" tests" if len(testcases[cwe][subset]) > 1 else " test")
+            )
+    print("-" * 80)
+    print("  Total:".ljust(12) + str(total).rjust(4) + " test sets\n")

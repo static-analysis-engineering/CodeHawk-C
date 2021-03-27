@@ -15,7 +15,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -33,16 +33,20 @@ import os
 import chc.util.fileutil as UF
 from chc.cmdline.kendra.TestSetRef import TestSetRef
 
+
 def parse():
-    usage = ('\nCall with the directory name of one of the subdirectories in\n' +
-                 'tests/kendra\n\n' +
-                 '   Example: python chc_show_kendraset.py id115Q\n')
-    parser = argparse.ArgumentParser(usage=usage,description=__doc__)
-    parser.add_argument('testset',help='name of test directory')
+    usage = (
+        "\nCall with the directory name of one of the subdirectories in\n"
+        + "tests/kendra\n\n"
+        + "   Example: python chc_show_kendraset.py id115Q\n"
+    )
+    parser = argparse.ArgumentParser(usage=usage, description=__doc__)
+    parser.add_argument("testset", help="name of test directory")
     args = parser.parse_args()
     return args
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
 
     args = parse()
 
@@ -53,15 +57,14 @@ if __name__ == '__main__':
         print(str(e.wrap()))
         exit(1)
 
-    testfilename = os.path.join(cpath,testname + '.json')
+    testfilename = os.path.join(cpath, testname + ".json")
     if not os.path.isfile(testfilename):
-        print('*' * 80)
-        print('Test directory does not contain a test specification.')
-        print('Expected to find the file')
-        print('   ' + testfilename)
-        print('*' * 80)
+        print("*" * 80)
+        print("Test directory does not contain a test specification.")
+        print("Expected to find the file")
+        print("   " + testfilename)
+        print("*" * 80)
         exit(1)
-        
+
     testsetref = TestSetRef(testfilename)
     print(str(testsetref))
-        
