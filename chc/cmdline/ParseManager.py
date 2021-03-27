@@ -178,7 +178,7 @@ class ParseManager(object):
 
         filename = os.path.normpath(filename)
         if filename.startswith(self.cpath):
-            return filename[len(self.cpath) + 1 :]
+            return filename[(len(self.cpath) + 1):]
         else:
             return filename
 
