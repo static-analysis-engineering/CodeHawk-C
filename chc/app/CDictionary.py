@@ -649,7 +649,7 @@ class CDictionary(object):
             return typsig_constructors[tag](args)
         self.typsig_table.read_xml(txnode,'n',get_value)
 
-    def _read_xml_typsiglist_table(self,txnode) -> None:
+    def _read_xml_typsiglist_table(self,txnode: ET.Element) -> None:
         def get_value(node: ET.Element) -> CS.CTypsigList:
             rep = IT.get_rep(node)
             args = (self,) + rep
