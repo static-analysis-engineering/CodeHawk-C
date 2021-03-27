@@ -95,5 +95,6 @@ if __name__ == "__main__":
             preservesmemory = []
         f.create_contract(contractpath, preservesmemory=preservesmemory)
 
-    # capp.iter_files(lambda f:f.create_contract(contractpath,args.preservesmemory,ignorefns=ignorefns))
+    # capp.iter_files(lambda f:f.create_contract(
+    # contractpath,args.preservesmemory,ignorefns=ignorefns))
     capp.iter_files(create_contract_file)

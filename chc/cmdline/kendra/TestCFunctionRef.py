@@ -40,8 +40,8 @@ class TestCFunctionRef(object):
 
     def get_ppos(self):
         result = []
-        for l in self.ppos:
-            result.extend(self.ppos[l])
+        for ppo in self.ppos:
+            result.extend(self.ppos[ppo])
         return result
 
     def add_ppo(self, ppo):
@@ -60,8 +60,8 @@ class TestCFunctionRef(object):
 
     def get_spos(self):
         result = []
-        for l in self.spos:
-            result.extend(self.spos[l])
+        for spo in self.spos:
+            result.extend(self.spos[spo])
         return result
 
     def has_spos(self):
