@@ -25,16 +25,27 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
+from typing import List, TYPE_CHECKING
+
 import chc.app.CDictionaryRecord as CD
+
+if TYPE_CHECKING:
+    import chc.app.CDictionary
 
 
 class CTypeInfo(CD.CDeclarationsRecord):
     """Type definition."""
 
-    def __init__(self, cdecls, index, tags, args):
-        CD.CDeclarationsRecord.__init__(self, cdecls, index, tags, args)
+    def __init__(
+        self,
+        cd: "chc.app.CDictionary.CDictionary",
+        index: int,
+        tags: List[str],
+        args: List[int],
+    ) -> None:
+        CD.CDeclarationsRecord.__init__(self, cd, index, tags, args)
         self.name = tags[0]
         self.type = self.get_dictionary().get_typ(self.args[0])
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name + ":" + str(self.type)
