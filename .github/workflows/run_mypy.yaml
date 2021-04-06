@@ -10,7 +10,9 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: Install mypy
-      run: sudo apt-get install -y mypy python3-mypy
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y mypy python3-mypy
     - name: Create default local config
       run: cp chc/util/ConfigLocal.template chc/util/ConfigLocal.py
     - name: Run mypy
