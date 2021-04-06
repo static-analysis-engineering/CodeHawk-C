@@ -73,10 +73,21 @@ class IndexedTableValue(object):
         raise NotImplementedError("get_key not overridden")
 
 
+class IndexedTableSuperclass:
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+    def size(self) -> int:
+        raise NotImplementedError("size not overridden")
+
+    def reset(self) -> None:
+        raise NotImplementedError("reset not overridden")
+
+
 V = TypeVar("V", bound=IndexedTableValue)
 
 
-class IndexedTable(Generic[V]):
+class IndexedTable(Generic[V], IndexedTableSuperclass):
     """Table to provide unique indices to objects represented by a key string.
 
     The table can be checkpointed and reset to that checkpoint with
@@ -88,7 +99,7 @@ class IndexedTable(Generic[V]):
     """
 
     def __init__(self, name: str) -> None:
-        self.name = name
+        IndexedTableSuperclass.__init__(self, name)
         self.keytable: Dict[Tuple[str, str], int] = {}  # key -> index
         self.indextable: Dict[int, V] = {}  # index -> object
         self.next = 1
