@@ -3,7 +3,7 @@ name: CI_pycodestyle
 on: [pull_request, push]
 
 jobs:
-  run_mypy:
+  run_pycodestyle:
 
     runs-on: ubuntu-20.04
 
