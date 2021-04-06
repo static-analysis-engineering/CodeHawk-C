@@ -172,7 +172,7 @@ class CDictionary(object):
             "typsiglist-table"
         )
         self.string_table = SI.StringIndexedTable("string-table")
-        self.tables = [
+        self.tables: List[Tuple[IT.IndexedTableSuperclass, Callable[[ET.Element], None]]] = [
             (self.attrparam_table, self._read_xml_attrparam_table),
             (self.attribute_table, self._read_xml_attribute_table),
             (self.attributes_table, self._read_xml_attributes_table),
@@ -187,18 +187,20 @@ class CDictionary(object):
             (self.typsig_table, self._read_xml_typsig_table),
             (self.typsiglist_table, self._read_xml_typsiglist_table),
         ]
-        self.string_tables = [(self.string_table, self._read_xml_string_table)]
+        self.string_tables: List[Tuple[IT.IndexedTableSuperclass, Callable[[ET.Element], None]]] = [
+            (self.string_table, self._read_xml_string_table)
+        ]
 
     # --------------- Statistics ---------------------------------------------
 
-    def get_stats(self):
+    def get_stats(self) -> str:
         lines = []
         for (t, _) in self.tables + self.string_tables:
             if t.size() > 0:
                 lines.append(t.name.ljust(25) + str(t.size()).rjust(4))
         return "\n".join(lines)
 
-    def get_table(self, n):
+    def get_table(self, n: str) -> IT.IndexedTableSuperclass:
         return next(
             x[0]
             for x in (self.tables + self.string_tables)
@@ -216,14 +218,6 @@ class CDictionary(object):
         for c in cases:
             result[c] = len([v for v in table.values() if cases[c](v)])
         return result
-
-    # collect all objects from table with name tname that satisfy f
-    def collect(self, tname, f):
-        table = self.get_table(tname)
-        if table is None:
-            print("No table found for " + tname)
-            return
-        return [v for v in table.values() if f(v)]
 
     # -------------- Retrieve items from dictionary tables -------------------
 
@@ -277,14 +271,22 @@ class CDictionary(object):
 
     # --------Provide read_xml/write_xml service for semantics files ----------
 
-    def read_xml_funargs(self, node, tag="iargs"):
-        return self.get_funargs(int(node.get(tag)))
+    def read_xml_funargs(self, node: ET.Element, tag: str = "iargs") -> CT.CFunArgs:
+        xml_value = node.get(tag)
+        if xml_value:
+            return self.get_funargs(int(xml_value))
+        else:
+            raise Exception("xml node was missing the tag \"" + tag + "\"")
 
     def write_xml_exp(self, node, exp, tag="iexp"):
         node.set(tag, str(self.index_exp(exp)))
 
-    def read_xml_exp(self, node, tag="iexp"):
-        return self.get_exp(int(node.get(tag)))
+    def read_xml_exp(self, node: ET.Element, tag: str = "iexp") -> CE.CExpBase:
+        xml_value = node.get(tag)
+        if xml_value:
+            return self.get_exp(int(xml_value))
+        else:
+            raise Exception("xml node was missing the tag \"" + tag + "\"")
 
     def write_xml_exp_opt(self, node, exp, tag="iexp"):
         if exp is None:

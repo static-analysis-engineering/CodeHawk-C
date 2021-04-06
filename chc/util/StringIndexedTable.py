@@ -28,6 +28,8 @@
 from typing import Any, Dict, Optional, Tuple
 import xml.etree.ElementTree as ET
 
+import chc.util.IndexedTable as IT
+
 
 def has_control_characters(s: str) -> bool:
     for c in s:
@@ -88,9 +90,9 @@ class IndexedTableError(Exception):
         return self.msg
 
 
-class StringIndexedTable(object):
+class StringIndexedTable(IT.IndexedTableSuperclass):
     def __init__(self, name: str) -> None:
-        self.name = name
+        IT.IndexedTableSuperclass.__init__(self, name)
         self.stringtable: Dict[str, int] = {}  # string -> index
         self.indextable: Dict[int, str] = {}  # index -> string
         self.next = 1
