@@ -150,7 +150,7 @@ class CAttrCons(CAttrBase):
     def get_cons(self) -> str:
         return self.tags[1]
 
-    def get_params(self):
+    def get_params(self) -> List[CAttrBase]:
         return [self.cd.get_attrparam(int(i)) for i in self.args]
 
     def is_cons(self) -> bool:
@@ -467,7 +467,7 @@ class CAttribute(CD.CDictionaryRecord):
     def get_name(self) -> str:
         return self.tags[0]
 
-    def get_params(self):
+    def get_params(self) -> List[CAttrBase]:
         return [self.cd.get_attrparam(int(i)) for i in self.args]
 
     def __str__(self) -> str:
@@ -484,7 +484,7 @@ class CAttributes(CD.CDictionaryRecord):
     ) -> None:
         CD.CDictionaryRecord.__init__(self, cd, index, tags, args)
 
-    def get_attributes(self):
+    def get_attributes(self) -> List[CAttribute]:
         return [self.cd.get_attribute(int(i)) for i in self.args]
 
     def length(self) -> int:
