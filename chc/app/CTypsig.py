@@ -25,13 +25,16 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
-from typing import List, Tuple, TYPE_CHECKING
+from typing import cast, List, Tuple, Optional, TYPE_CHECKING
 
 import chc.app.CDictionaryRecord as CD
 import chc.util.IndexedTable as IT
 
 if TYPE_CHECKING:
     import chc.app.CDictionary
+    import chc.app.CFileDictionary
+    import chc.app.CAttributes as CA
+    import chc.app.CTyp as CT
 
 
 class CTypsigTSBase(CD.CDictionaryRecord):
@@ -55,13 +58,13 @@ class CTypsigArray(CTypsigTSBase):
     ) -> None:
         CTypsigTSBase.__init__(self, cd, index, tags, args)
 
-    def get_len_opt(self):
+    def get_len_opt(self) -> Optional[int]:
         return None if self.tags[1] == "" else int(self.tags[1])
 
-    def get_typsig(self):
+    def get_typsig(self) -> CTypsigTSBase:
         return self.cd.get_typsig(self.args[0])
 
-    def get_attributes(self):
+    def get_attributes(self) -> "CA.CAttributes":
         return self.cd.get_attributes(self.args[1])
 
     def __str__(self) -> str:
@@ -78,7 +81,7 @@ class CTypsigPtr(CTypsigTSBase):
     ) -> None:
         CTypsigTSBase.__init__(self, cd, index, tags, args)
 
-    def get_typsig(self):
+    def get_typsig(self) -> CTypsigTSBase:
         return self.cd.get_typsig(self.args[0])
 
     def __str__(self) -> str:
@@ -95,7 +98,7 @@ class CTypsigComp(CTypsigTSBase):
     ) -> None:
         CTypsigTSBase.__init__(self, cd, index, tags, args)
 
-    def get_name(self):
+    def get_name(self) -> str:
         return self.tags[1]
 
     def __str__(self) -> str:
@@ -112,12 +115,12 @@ class CTypsigFun(CTypsigTSBase):
     ) -> None:
         CTypsigTSBase.__init__(self, cd, index, tags, args)
 
-    def get_typsig(self):
+    def get_typsig(self) -> CTypsigTSBase:
         return self.cd.get_typsig(self.args[0])
 
-    def get_typsig_list_opt(self):
+    def get_typsig_list_opt(self) -> Optional["CTypsigList"]:
         ix = self.args[1]
-        return self.cd.get_typsig_list(ix) if ix >= 0 else None
+        return self.cd.get_typesig_list(ix) if ix >= 0 else None
 
     def __str__(self) -> str:
         return "(" + str(self.get_typsig_list_opt) + "):" + str(self.get_typsig()) + ")"
@@ -133,7 +136,7 @@ class CTypsigEnum(CTypsigTSBase):
     ) -> None:
         CTypsigTSBase.__init__(self, cd, index, tags, args)
 
-    def get_name(self):
+    def get_name(self) -> str:
         return self.tags[1]
 
     def __str__(self) -> str:
@@ -150,7 +153,7 @@ class CTypsigBase(CTypsigTSBase):
     ) -> None:
         CTypsigTSBase.__init__(self, cd, index, tags, args)
 
-    def get_type(self):
+    def get_type(self) -> "CT.CTypBase":
         return self.cd.get_typ(self.args[0])
 
     def __str__(self) -> str:
@@ -158,18 +161,24 @@ class CTypsigBase(CTypsigTSBase):
 
 
 class CTypsigList(IT.IndexedTableValue):
-    def __init__(self, cd, index, tags, args):
+    def __init__(
+        self,
+        cd: "chc.app.CDictionary.CDictionary",
+        index: int,
+        tags: List[str],
+        args: List[int],
+    ) -> None:
         self.cd = cd
-        self.cfile = cd.cfile
+        self.cfile = cast(chc.app.CFileDictionary.CFileDictionary, cd).cfile
         self.index = index
         self.tags = tags
         self.args = args
 
-    def get_key(self):
+    def get_key(self) -> Tuple[str, str]:
         return (",".join(self.tags), ",".join([str(x) for x in self.args]))
 
-    def get_typsig_list(self):
-        return [self.cd.get_typsig(ix) for ix in args]
+    def get_typsig_list(self) -> List[CTypsigTSBase]:
+        return [self.cd.get_typsig(ix) for ix in self.args]
 
     def __str__(self) -> str:
         return ",".join([str(x) for x in self.get_typsig_list()])

@@ -25,7 +25,14 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
+from typing import Any, Dict, List, Tuple, TYPE_CHECKING
+
 import chc.app.CDictionaryRecord as CD
+
+if TYPE_CHECKING:
+    import chc.app.CDictionary
+    import chc.app.CLHost as CH
+    import chc.app.COffsetExp as CO
 
 
 class CLval(CD.CDictionaryRecord):
@@ -37,42 +44,48 @@ class CLval(CD.CDictionaryRecord):
         1: offset
     """
 
-    def __init__(self, cd, index, tags, args):
+    def __init__(
+        self,
+        cd: "chc.app.CDictionary.CDictionary",
+        index: int,
+        tags: List[str],
+        args: List[int],
+    ) -> None:
         CD.CDictionaryRecord.__init__(self, cd, index, tags, args)
 
-    def get_lhost(self):
+    def get_lhost(self) -> "CH.CLHostBase":
         return self.cd.get_lhost(self.args[0])
 
-    def get_offset(self):
+    def get_offset(self) -> "CO.COffsetBase":
         return self.cd.get_offset(self.args[1])
 
-    def has_variable(self, vid):
+    def has_variable(self, vid: int) -> bool:
         return self.get_lhost().has_variable(vid)
 
-    def get_strings(self):
+    def get_strings(self) -> List[str]:
         hostresult = self.get_lhost().get_strings()
         offsetresult = self.get_offset().get_strings()
         return hostresult + offsetresult
 
-    def get_variable_uses(self, vid):
+    def get_variable_uses(self, vid: int) -> int:
         hostresult = self.get_lhost().get_variable_uses(vid)
         offsetresult = self.get_offset().get_variable_uses(vid)
         return hostresult + offsetresult
 
-    def has_variable_deref(self, vid):
+    def has_variable_deref(self, vid: int) -> bool:
         return self.get_lhost().has_variable_deref(vid)
 
-    def has_ref_type(self):
+    def has_ref_type(self) -> bool:
         return self.get_lhost().has_ref_type()
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         return {
             "lhost": self.get_lhost().to_dict(),
             "offset": self.get_offset().to_dict(),
         }
 
-    def to_idict(self):
+    def to_idict(self) -> Dict[str, Any]:
         return {"t": self.tags, "a": self.args}
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self.get_lhost()) + str(self.get_offset())
