@@ -25,12 +25,13 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
-from typing import List, Tuple, TYPE_CHECKING
+from typing import Any, Dict, List, Tuple, TYPE_CHECKING
 
 import chc.app.CDictionaryRecord as CD
 
 if TYPE_CHECKING:
     import chc.app.CDictionary
+    import chc.app.CExp as CE
 
 
 class CLHostBase(CD.CDictionaryRecord):
@@ -54,20 +55,23 @@ class CLHostBase(CD.CDictionaryRecord):
     def is_tmpvar(self) -> bool:
         return False
 
-    def get_strings(self):
+    def get_strings(self) -> List[str]:
         return []
 
-    def has_variable(self, vid):
+    def has_variable(self, vid: int) -> bool:
         return False
 
-    def has_variable_deref(self, vid):
+    def has_variable_deref(self, vid: int) -> bool:
         return False
 
-    def has_ref_type(self):
+    def has_ref_type(self) -> bool:
         return self.is_mem()
 
-    def to_dict(self):
-        {"base": "lhost"}
+    def get_variable_uses(self, vid: int) -> int:
+        raise NotImplementedError("Subclass needs to override get_variable_uses")
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"base": "lhost"}
 
     def __str__(self) -> str:
         return "lhostbase:" + self.tags[0]
@@ -92,25 +96,25 @@ class CLHostVar(CLHostBase):
     ) -> None:
         CLHostBase.__init__(self, cd, index, tags, args)
 
-    def get_name(self):
+    def get_name(self) -> str:
         return self.tags[1]
 
-    def get_vid(self):
+    def get_vid(self) -> int:
         return self.args[0]
 
     def is_var(self) -> bool:
         return True
 
-    def is_tmpvar(self):
+    def is_tmpvar(self) -> bool:
         return self.get_name().startswith("tmp___")
 
-    def has_variable(self, vid):
+    def has_variable(self, vid: int) -> bool:
         return self.get_vid() == vid
 
-    def get_variable_uses(self, vid):
+    def get_variable_uses(self, vid: int) -> int:
         return 1 if self.has_variable(vid) else 0
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         return {"base": "var", "var": self.get_name()}
 
     def __str__(self) -> str:
@@ -136,25 +140,25 @@ class CLHostMem(CLHostBase):
     ) -> None:
         CLHostBase.__init__(self, cd, index, tags, args)
 
-    def get_exp(self):
+    def get_exp(self) -> "CE.CExpBase":
         return self.cd.get_exp(self.args[0])
 
     def is_mem(self) -> bool:
         return True
 
-    def has_variable(self, vid):
+    def has_variable(self, vid: int) -> bool:
         return self.get_exp().has_variable(vid)
 
-    def get_strings(self):
+    def get_strings(self) -> List[str]:
         return self.get_exp().get_strings()
 
-    def get_variable_uses(self, vid):
+    def get_variable_uses(self, vid: int) -> int:
         return self.get_exp().get_variable_uses(vid)
 
-    def has_variable_deref(self, vid):
+    def has_variable_deref(self, vid: int) -> bool:
         return self.get_exp().has_variable(vid)
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         return {"base": "mem", "exp": self.get_exp().to_dict()}
 
     def __str__(self) -> str:

@@ -47,11 +47,11 @@ class CCompInfo(CD.CDeclarationsRecord):
         self.isstruct = self.args[1] == 1
         self.cattr = self.get_dictionary().get_attributes(args[2])
 
-    def get_ckey(self):
+    def get_ckey(self) -> int:
         ckey = int(self.args[0])
         return ckey if ckey >= 0 else self.index
 
-    def get_size(self):
+    def get_size(self) -> int:
         return sum([f.get_size() for f in self.fields])
 
     def get_name(self):

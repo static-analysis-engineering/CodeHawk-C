@@ -31,6 +31,8 @@ import chc.app.CDictionaryRecord as CD
 
 if TYPE_CHECKING:
     import chc.app.CDictionary
+    import chc.app.CTyp as CT
+    import chc.app.CTypsig as CS
 
 
 class CAttrBase(CD.CDictionaryRecord):
@@ -170,7 +172,7 @@ class CAttrSizeOf(CAttrBase):
     ) -> None:
         CAttrBase.__init__(self, cd, index, tags, args)
 
-    def get_type(self):
+    def get_type(self) -> 'CT.CTypBase':
         return self.cd.get_typ(int(self.args[0]))
 
     def is_sizeof(self) -> bool:
@@ -190,7 +192,7 @@ class CAttrSizeOfE(CAttrBase):
     ) -> None:
         CAttrBase.__init__(self, cd, index, tags, args)
 
-    def get_param(self):
+    def get_param(self) -> CAttrBase:
         return self.cd.get_attrparam(int(self.args[0]))
 
     def is_sizeofe(self) -> bool:
@@ -210,7 +212,7 @@ class CAttrSizeOfS(CAttrBase):
     ) -> None:
         CAttrBase.__init__(self, cd, index, tags, args)
 
-    def get_typsig(self):
+    def get_typsig(self) -> 'CS.CTypsigTSBase':
         return self.cd.get_typsig(int(self.args[0]))
 
     def is_sizeofs(self) -> bool:
@@ -230,7 +232,7 @@ class CAttrAlignOf(CAttrBase):
     ) -> None:
         CAttrBase.__init__(self, cd, index, tags, args)
 
-    def get_type(self):
+    def get_type(self) -> 'CT.CTypBase':
         return self.cd.get_typ(int(self.args[0]))
 
     def is_alignof(self) -> bool:
@@ -250,7 +252,7 @@ class CAttrAlignOfE(CAttrBase):
     ) -> None:
         CAttrBase.__init__(self, cd, index, tags, args)
 
-    def get_param(self):
+    def get_param(self) -> CAttrBase:
         return self.cd.get_attrparam(int(self.args[0]))
 
     def is_alignofe(self) -> bool:
@@ -270,7 +272,7 @@ class CAttrAlignOfS(CAttrBase):
     ) -> None:
         CAttrBase.__init__(self, cd, index, tags, args)
 
-    def get_typsig(self):
+    def get_typsig(self) -> 'CS.CTypsigTSBase':
         return self.cd.get_typsig(int(self.args[0]))
 
     def is_alignofs(self) -> bool:
@@ -293,7 +295,7 @@ class CAttrUnOp(CAttrBase):
     def get_op(self) -> str:
         return self.tags[1]
 
-    def get_param(self):
+    def get_param(self) -> CAttrBase:
         return self.cd.get_attrparam(int(self.args[0]))
 
     def is_unop(self) -> bool:
@@ -316,10 +318,10 @@ class CAttrBinOp(CAttrBase):
     def get_op(self) -> str:
         return self.tags[1]
 
-    def get_param1(self):
+    def get_param1(self) -> CAttrBase:
         return self.cd.get_attrparam(int(self.args[0]))
 
-    def get_param2(self):
+    def get_param2(self) -> CAttrBase:
         return self.cd.get_attrparam(int(self.args[1]))
 
     def is_binop(self) -> bool:
@@ -350,7 +352,7 @@ class CAttrDot(CAttrBase):
     def get_name(self) -> str:
         return self.tags[1]
 
-    def get_param(self):
+    def get_param(self) -> CAttrBase:
         return self.cd.get_attrparam(int(self.args[0]))
 
     def is_dot(self) -> bool:
@@ -370,7 +372,7 @@ class CAttrStar(CAttrBase):
     ) -> None:
         CAttrBase.__init__(self, cd, index, tags, args)
 
-    def get_param(self):
+    def get_param(self) -> CAttrBase:
         return self.cd.get_attrparam(int(self.args[0]))
 
     def is_star(self) -> bool:
@@ -390,7 +392,7 @@ class CAttrAddrOf(CAttrBase):
     ) -> None:
         CAttrBase.__init__(self, cd, index, tags, args)
 
-    def get_param(self):
+    def get_param(self) -> CAttrBase:
         return self.cd.get_attrparam(int(self.args[0]))
 
     def is_addrof(self) -> bool:
@@ -410,11 +412,11 @@ class CAttrIndex(CAttrBase):
     ) -> None:
         CAttrBase.__init__(self, cd, index, tags, args)
 
-    def get_param1(self):
-        return self.cd.get_param(int(self.args[0]))
+    def get_param1(self) -> CAttrBase:
+        return self.cd.get_attrparam(int(self.args[0]))
 
-    def get_param2(self):
-        return self.cd.get_param(int(self.args[1]))
+    def get_param2(self) -> CAttrBase:
+        return self.cd.get_attrparam(int(self.args[1]))
 
     def is_index(self) -> bool:
         return True
@@ -433,14 +435,14 @@ class CAttrQuestion(CAttrBase):
     ) -> None:
         CAttrBase.__init__(self, cd, index, tags, args)
 
-    def get_param1(self):
-        return self.cd.get_param(int(self.args[0]))
+    def get_param1(self) -> CAttrBase:
+        return self.cd.get_attrparam(int(self.args[0]))
 
-    def get_param2(self):
-        return self.cd.get_param(int(self.args[1]))
+    def get_param2(self) -> CAttrBase:
+        return self.cd.get_attrparam(int(self.args[1]))
 
-    def get_param3(self):
-        return self.cd.get_param(int(self.args[2]))
+    def get_param3(self) -> CAttrBase:
+        return self.cd.get_attrparam(int(self.args[2]))
 
     def __str__(self) -> str:
         return (
