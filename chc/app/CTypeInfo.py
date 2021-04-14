@@ -30,7 +30,7 @@ from typing import List, TYPE_CHECKING
 import chc.app.CDictionaryRecord as CD
 
 if TYPE_CHECKING:
-    import chc.app.CDictionary
+    from chc.app.CDeclarations import CDeclarations
 
 
 class CTypeInfo(CD.CDeclarationsRecord):
@@ -38,12 +38,12 @@ class CTypeInfo(CD.CDeclarationsRecord):
 
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
+        cdecls: "CDeclarations",
         index: int,
         tags: List[str],
         args: List[int],
     ) -> None:
-        CD.CDeclarationsRecord.__init__(self, cd, index, tags, args)
+        CD.CDeclarationsRecord.__init__(self, cdecls, index, tags, args)
         self.name = tags[0]
         self.type = self.get_dictionary().get_typ(self.args[0])
 

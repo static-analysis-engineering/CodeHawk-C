@@ -1,10 +1,10 @@
 # ------------------------------------------------------------------------------
-# CodeHawk C Analyze
-# Author: Henny Sipma
+# CodeHawk C Analyzer
+# Author: A. Cody Schuffelen
 # ------------------------------------------------------------------------------
 # The MIT License (MIT)
 #
-# Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2021 Google LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,50 +25,20 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
-from typing import List, TYPE_CHECKING
+from abc import ABC, abstractmethod
 
-import chc.app.CDictionaryRecord as CD
-
-if TYPE_CHECKING:
-    from chc.app.CDeclarations import CDeclarations
+from chc.app.CDictionary import CDictionary
 
 
-class CFieldInfo(CD.CDeclarationsRecord):
-    """Definition of a struct field.
+class CDeclarations(ABC):
 
-    tags:
-        0: fname
+    def __init__(self, dictionary: CDictionary) -> None:
+        self.dictionary = dictionary
 
-    args:
-        0: fcomp.ckey  (-1 for global structs)
-        1: ftype
-        2: fbitfield
-        3: fattr       (-1 for global structs)
-        4: floc        (-1 for global structs)
-    """
+    @abstractmethod
+    def get_location(self, ix):
+        ...
 
-    def __init__(
-        self,
-        cdecls: "CDeclarations",
-        index: int,
-        tags: List[str],
-        args: List[int],
-    ) -> None:
-        CD.CDeclarationsRecord.__init__(self, cdecls, index, tags, args)
-        self.fname = self.tags[0]
-        self.ftype = self.get_dictionary().get_typ(self.args[1])
-        self.bitfield = self.args[2]
-
-    def get_size(self) -> int:
-        return self.ftype.get_size()
-
-    def get_location(self):
-        if self.args[4] >= 0:
-            return self.decls.get_location(self.args[4])
-
-    def get_attributes(self):
-        if self.args[3] >= 0:
-            return self.decls.get_attributes(self.args[3])
-
-    def __str__(self) -> str:
-        return self.fname + ":" + str(self.ftype)
+    @abstractmethod
+    def get_initinfo(self, ix):
+        ...
