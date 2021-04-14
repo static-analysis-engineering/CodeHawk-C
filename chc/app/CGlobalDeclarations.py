@@ -32,6 +32,7 @@ import chc.util.fileutil as UF
 import chc.util.IndexedTable as IT
 import chc.app.CInitInfo as CI
 
+from chc.app.CDeclarations import CDeclarations
 from chc.app.CGlobalDictionary import CGlobalDictionary
 from chc.app.CCompInfo import CCompInfo
 from chc.app.CFieldInfo import CFieldInfo
@@ -58,7 +59,7 @@ class ConjectureFailure(Exception):
         )
 
 
-class CGlobalDeclarations(object):
+class CGlobalDeclarations(CDeclarations):
     """Dictionary that indexes global variables and struct definitions from all files.
 
      The indexing of struct definitions may involve backtracking in the case of
@@ -89,9 +90,9 @@ class CGlobalDeclarations(object):
     """
 
     def __init__(self, capp):
-        self.capp = capp
         # Basic types dictionary
-        self.dictionary = CGlobalDictionary(self)
+        CDeclarations.__init__(self, CGlobalDictionary(self))
+        self.capp = capp
 
         # Global definitions and declarations dictionary
         self.fieldinfo_table = IT.IndexedTable("fieldinfo-table")

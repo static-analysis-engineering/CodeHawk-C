@@ -34,6 +34,7 @@ import chc.util.StringIndexedTable as SI
 import chc.app.CDictionaryRecord as CD
 import chc.app.CInitInfo as CI
 
+from chc.app.CDeclarations import CDeclarations
 from chc.app.CFileDictionary import CFileDictionary
 
 from chc.app.CGCompTag import CGCompTag
@@ -76,13 +77,13 @@ class CFilename(CD.CDeclarationsRecord):
         return self.get_filename()
 
 
-class CFileDeclarations(object):
+class CFileDeclarations(CDeclarations):
     """C File level definitions and declarations."""
 
     def __init__(self, cfile):
         self.cfile = cfile
+        CDeclarations.__init__(self, CFileDictionary(self))
         # Basic types dictionary
-        self.dictionary = CFileDictionary(self)
 
         # File definitions and declarations
         self.gtypes = {}  # name -> CGType
