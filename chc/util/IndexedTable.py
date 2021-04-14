@@ -61,7 +61,7 @@ def get_rep(node: ET.Element) -> Tuple[int, List[str], List[int]]:
         raise
 
 
-def get_key(tags: List[str], args: List[str]) -> Tuple[str, str]:
+def get_key(tags: List[str], args: List[int]) -> Tuple[str, str]:
     return (",".join(tags), ",".join([str(x) for x in args]))
 
 

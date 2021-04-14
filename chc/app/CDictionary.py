@@ -327,42 +327,37 @@ class CDictionary(object):
             def f_int(index: int, key: Tuple[str, str]) -> CA.CAttrInt:
                 return CA.CAttrInt(self, index, a.tags, a.args)
 
-            arg_strs = [str(arg) for arg in a.args]
-            return self.attrparam_table.add(IT.get_key(a.tags, arg_strs), f_int)
+            return self.attrparam_table.add(IT.get_key(a.tags, a.args), f_int)
         if a.is_str():
 
             def f_str(index: int, key: Tuple[str, str]) -> CA.CAttrStr:
                 return CA.CAttrStr(self, index, a.tags, a.args)
 
-            arg_strs = [str(arg) for arg in a.args]
-            return self.attrparam_table.add(IT.get_key(a.tags, arg_strs), f_str)
+            return self.attrparam_table.add(IT.get_key(a.tags, a.args), f_str)
         if a.is_cons():
             args = [self.index_attrparam(p) for p in cast(CA.CAttrCons, a).get_params()]
 
             def f_cons(index: int, key: Tuple[str, str]) -> CA.CAttrCons:
                 return CA.CAttrCons(self, index, a.tags, args)
 
-            arg_strs = [str(arg) for arg in a.args]
-            return self.attrparam_table.add(IT.get_key(a.tags, arg_strs), f_cons)
+            return self.attrparam_table.add(IT.get_key(a.tags, a.args), f_cons)
         raise Exception("No case yet for attrparam \"" + str(a) + "\"")
 
     def index_attribute(self, a: CA.CAttribute) -> int:
         args = [self.index_attrparam(p) for p in a.get_params()]
-        arg_strs = [str(arg) for arg in args]
 
         def f(index: int, key: Tuple[str, str]) -> CA.CAttribute:
             return CA.CAttribute(self, index, a.tags, args)
 
-        return self.attribute_table.add(IT.get_key(a.tags, arg_strs), f)
+        return self.attribute_table.add(IT.get_key(a.tags, a.args), f)
 
     def index_attributes(self, aa: CA.CAttributes) -> int:
         args = [self.index_attribute(a) for a in aa.get_attributes()]
-        arg_strs = [str(arg) for arg in args]
 
         def f(index: int, key: Tuple[str, str]) -> CA.CAttributes:
             return CA.CAttributes(self, index, aa.tags, args)
 
-        return self.attributes_table.add(IT.get_key(aa.tags, arg_strs), f)
+        return self.attributes_table.add(IT.get_key(aa.tags, aa.args), f)
 
     def index_constant(self, c: CC.CConstBase) -> int:  # TBF
         if c.is_int():
@@ -370,58 +365,54 @@ class CDictionary(object):
             def f_int(index: int, key: Tuple[str, str]) -> CC.CConstInt:
                 return CC.CConstInt(self, index, c.tags, c.args)
 
-            arg_strs = [str(arg) for arg in c.args]
-            return self.constant_table.add(IT.get_key(c.tags, arg_strs), f_int)
+            return self.constant_table.add(IT.get_key(c.tags, c.args), f_int)
         if c.is_str():
             args = [self.index_string(cast(CC.CConstStr, c).get_string())]
 
             def f_str(index: int, key: Tuple[str, str]) -> CC.CConstStr:
                 return CC.CConstStr(self, index, c.tags, args)
 
-            arg_strs = [str(arg) for arg in args]
-            return self.constant_table.add(IT.get_key(c.tags, arg_strs), f_str)
+            return self.constant_table.add(IT.get_key(c.tags, c.args), f_str)
         if c.is_chr():
 
             def f_chr(index: int, key: Tuple[str, str]) -> CC.CConstChr:
                 return CC.CConstChr(self, index, c.tags, c.args)
 
-            arg_strs = [str(arg) for arg in c.args]
-            return self.constant_table.add(IT.get_key(c.tags, arg_strs), f_chr)
+            return self.constant_table.add(IT.get_key(c.tags, c.args), f_chr)
         if c.is_real():
 
             def f_real(index: int, key: Tuple[str, str]) -> CC.CConstReal:
                 return CC.CConstReal(self, index, c.tags, c.args)
 
-            arg_strs = [str(arg) for arg in c.args]
-            return self.constant_table.add(IT.get_key(c.tags, arg_strs), f_real)
+            return self.constant_table.add(IT.get_key(c.tags, c.args), f_real)
         raise Exception("No case yet for const \"" + str(c) + "\"")
 
-    def mk_exp_index(self, tags, args):
-        def f(index, key):
+    def mk_exp_index(self, tags: List[str], args: List[int]) -> int:
+        def f(index: int, key: Tuple[str, str]) -> CE.CExpBase:
             return exp_constructors[tags[0]]((self, index, tags, args))
 
         return self.exp_table.add(IT.get_key(tags, args), f)
 
-    def mk_constant_index(self, tags, args):
-        def f(index, key):
+    def mk_constant_index(self, tags: List[str], args: List[int]) -> int:
+        def f(index: int, key: Tuple[str, str]) -> CC.CConstBase:
             return constant_constructors[tags[0]]((self, index, tags, args))
 
         return self.constant_table.add(IT.get_key(tags, args), f)
 
-    def mk_typ_index(self, tags, args):
-        def f(index, key):
+    def mk_typ_index(self, tags: List[str], args: List[int]) -> int:
+        def f(index: int, key: Tuple[str, str]) -> CT.CTypBase:
             return typ_constructors[tags[0]]((self, index, tags, args))
 
         return self.typ_table.add(IT.get_key(tags, args), f)
 
-    def mk_lhost_index(self, tags, args):
-        def f(index, key):
+    def mk_lhost_index(self, tags: List[str], args: List[int]) -> int:
+        def f(index: int, key: Tuple[str, str]) -> CH.CLHostBase:
             return lhost_constructors[tags[0]]((self, index, tags, args))
 
         return self.lhost_table.add(IT.get_key(tags, args), f)
 
-    def mk_lval_index(self, tags, args):
-        def f(index, key):
+    def mk_lval_index(self, tags: List[str], args: List[int]) -> int:
+        def f(index: int, key: Tuple[str, str]) -> CV.CLval:
             return CV.CLval(self, index, tags, args)
 
         return self.lval_table.add(IT.get_key(tags, args), f)
