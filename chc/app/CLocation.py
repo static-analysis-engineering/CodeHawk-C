@@ -25,9 +25,15 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
+from typing import cast, List, Tuple, TYPE_CHECKING
+
 import xml.etree.ElementTree as ET
 
 import chc.app.CDictionaryRecord as CD
+
+if TYPE_CHECKING:
+    from chc.app.CDeclarations import CDeclarations
+    from chc.app.CFileDeclarations import CFileDeclarations
 
 
 class CLocation(CD.CDeclarationsRecord):
@@ -41,38 +47,42 @@ class CLocation(CD.CDeclarationsRecord):
         2: line number
     """
 
-    def __init__(self, decls, index, tags, args):
+    def __init__(self, decls: "CDeclarations", index: int, tags: List[str], args: List[int]):
         CD.CDeclarationsRecord.__init__(self, decls, index, tags, args)
 
-    def get_byte(self):
+    def get_byte(self) -> int:
         return int(self.args[1])
 
-    def get_line(self):
+    def get_line(self) -> int:
         return int(self.args[2])
 
-    def get_file(self):
-        return self.decls.get_filename(int(self.args[0]))
+    def get_file(self) -> str:
+        return cast("CFileDeclarations", self.decls).get_filename(int(self.args[0]))
 
-    def get_loc(self):
+    def get_loc(self) -> Tuple[str, int, int]:
         return (self.get_file(), self.get_line(), self.get_byte())
 
-    def __ge__(self, loc):
-        return self.get_loc >= loc.get_loc()
+    def __ge__(self, loc: "CLocation") -> bool:
+        return self.get_loc() >= loc.get_loc()
 
-    def __gt__(self, loc):
-        return self.get_loc > loc.get_loc()
+    def __gt__(self, loc: "CLocation") -> bool:
+        return self.get_loc() > loc.get_loc()
 
-    def __le__(self, loc):
-        return self.get_loc <= loc.get_loc()
+    def __le__(self, loc: "CLocation") -> bool:
+        return self.get_loc() <= loc.get_loc()
 
-    def __lt__(self, loc):
-        return self.get_loc < loc.get_loc()
+    def __lt__(self, loc: "CLocation") -> bool:
+        return self.get_loc() < loc.get_loc()
 
-    def __eq__(self, loc):
-        return self.get_loc == loc.get_loc()
+    def __eq__(self, loc: object) -> bool:
+        if not isinstance(loc, CLocation):
+            return NotImplemented
+        return self.get_loc() == loc.get_loc()
 
-    def __ne__(self, loc):
-        return self.get_loc != loc.get_loc()
+    def __ne__(self, loc: object) -> bool:
+        if not isinstance(loc, CLocation):
+            return NotImplemented
+        return self.get_loc() != loc.get_loc()
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self.get_file()) + ":" + str(self.get_line())
