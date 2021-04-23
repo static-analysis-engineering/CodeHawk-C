@@ -26,7 +26,7 @@
 # ------------------------------------------------------------------------------
 import os
 import xml.etree.ElementTree as ET
-from typing import Callable
+from typing import Any, Callable, Dict, Iterable, Tuple, TYPE_CHECKING
 
 import chc.util.fileutil as UF
 import chc.util.xmlutil as UX
@@ -52,13 +52,16 @@ from chc.app.CFileAssignmentDictionary import CFileAssignmentDictionary
 
 from chc.proof.CFilePredicateDictionary import CFilePredicateDictionary
 
+if TYPE_CHECKING:
+    from chc.app.CApplication import CApplication
+
 
 class CFunctionNotFoundException(Exception):
-    def __init__(self, cfile, functionname):
+    def __init__(self, cfile: "CFile", functionname: str) -> None:
         self.cfile = cfile
         self.functionname = functionname
 
-    def __str__(self):
+    def __str__(self) -> str:
         lines = []
         lines.append("*" * 80)
         lines.append(
@@ -80,19 +83,22 @@ class CFunctionNotFoundException(Exception):
 class CFile(object):
     """C File level declarations."""
 
-    def __init__(self, capp, index, xnode):
+    def __init__(self, capp: "CApplication", index: int, xnode: ET.Element) -> None:
         self.index = index
         self.capp = capp
         self.xnode = xnode
-        self.name = self.xnode.get("filename")
+        found_name = self.xnode.get("filename")
+        if found_name is None:
+            raise Exception("xml missing \"filename\"")
+        self.name = found_name
         self.declarations = CFileDeclarations(self)
         self.contexttable = CContextTable(self)
         self.predicatedictionary = CFilePredicateDictionary(self)
         self.interfacedictionary = InterfaceDictionary(self)
         self.assigndictionary = CFileAssignmentDictionary(self)
-        self.functions = {}  # vid -> CFunction
-        self.functionnames = {}  # functionname -> vid
-        self.strings = {}  # string-index -> (len,string)
+        self.functions: Dict[int, CFunction] = {}  # vid -> CFunction
+        self.functionnames: Dict[str, int] = {}  # functionname -> vid
+        self.strings: Dict[int, Tuple[int, str]] = {}  # string-index -> (len,string)
         self.sourcefile = None  # CSrcFile
         self.contracts = None
         self.candidate_contracts = None
@@ -110,13 +116,13 @@ class CFile(object):
             xnode = ET.Element("interface-dictionary")
             self.interfacedictionary.write_xml(xnode)
             UF.save_cfile_interface_dictionary(self.capp.path, self.name, xnode)
-        self.gtypes = {}  # name -> CGType
-        self.gcomptagdefs = {}  # key -> CGCompTag
-        self.gcomptagdecls = {}  # key -> CGCompTag
-        self.gvardecls = {}  # vid -> CGVarDecl
-        self.gvardefs = {}  # vid -> CGVarDef
+        self.gtypes: Dict[Any, Any] = {}  # name -> CGType
+        self.gcomptagdefs: Dict[Any, Any] = {}  # key -> CGCompTag
+        self.gcomptagdecls: Dict[Any, Any] = {}  # key -> CGCompTag
+        self.gvardecls: Dict[Any, Any] = {}  # vid -> CGVarDecl
+        self.gvardefs: Dict[Any, Any] = {}  # vid -> CGVarDef
 
-    def collect_post_assumes(self):
+    def collect_post_assumes(self) -> None:
         """For all call sites collect postconditions from callee's contracts and add as assume."""
 
         self.iter_functions(lambda fn: fn.collect_post_assumes())
@@ -124,19 +130,19 @@ class CFile(object):
         self.save_predicate_dictionary()
         self.save_declarations()
 
-    def save_candidate_contracts(self):
+    def save_candidate_contracts(self) -> None:
         if self.contracts is not None:
             self.contracts.save_mathml_contract()
         self.save_predicate_dictionary()
         self.save_interface_dictionary()
 
-    def has_file_contracts(self):
+    def has_file_contracts(self) -> bool:
         return not (self.contracts is None)
 
-    def has_file_candidate_contracts(self):
+    def has_file_candidate_contracts(self) -> bool:
         return not (self.candidate_contracts is None)
 
-    def has_function_contract(self, name):
+    def has_function_contract(self, name: str) -> bool:
         return (not (self.contracts is None)) and (
             self.contracts.has_function_contract(name)
         )
@@ -145,7 +151,7 @@ class CFile(object):
         if not (self.contracts is None):
             return self.contracts.get_function_contract(name)
 
-    def get_max_functionname_length(self):
+    def get_max_functionname_length(self) -> int:
         if len(self.functionnames) > 0:
             return max([len(x) for x in self.functionnames])
         else:
@@ -156,7 +162,7 @@ class CFile(object):
         if self.sourcefile is not None:
             return self.sourcefile.get_line(n)
 
-    def reinitialize_tables(self):
+    def reinitialize_tables(self) -> None:
         self.declarations.initialize()
         self.contexttable.initialize()
         self.predicatedictionary.initialize(force=True)
@@ -173,11 +179,11 @@ class CFile(object):
         self._initialize_functions()
         return self.functionnames.keys()
 
-    def has_function_by_name(self, fname):
+    def has_function_by_name(self, fname: str) -> bool:
         self._initialize_functions()
         return fname in self.functionnames
 
-    def get_function_by_name(self, fname):
+    def get_function_by_name(self, fname: str) -> CFunction:
         self._initialize_functions()
         if fname in self.functionnames:
             vid = self.functionnames[fname]
@@ -187,20 +193,19 @@ class CFile(object):
                 self, fname, list(self.functionnames.keys())
             )
 
-    def get_function_by_index(self, index):
+    def get_function_by_index(self, index: int) -> CFunction:
         self._initialize_functions()
         index = int(index)
         if index in self.functions:
             return self.functions[index]
         else:
-            print("Unable to find function with global vid " + str(index))
-            # raise FunctionMissingError('Unable to find function with global vid ' + str(index))
+            raise Exception('Unable to find function with global vid ' + str(index))
 
-    def has_function_by_index(self, index):
+    def has_function_by_index(self, index: int) -> bool:
         self._initialize_functions()
         return index in self.functions
 
-    def get_functions(self):
+    def get_functions(self) -> Iterable[CFunction]:
         self._initialize_functions()
         return self.functions.values()
 
