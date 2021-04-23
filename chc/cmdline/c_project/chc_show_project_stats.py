@@ -71,7 +71,8 @@ if __name__ == "__main__":
 
     capp = CApplication(sempath)
     print("Global entities")
-    print(str(capp.declarations.get_stats()))
+    if capp.declarations:
+        print(str(capp.declarations.get_stats()))
     print("\nFile line and function counts\n")
     print(capp.get_line_counts())
 

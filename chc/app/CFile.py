@@ -26,6 +26,7 @@
 # ------------------------------------------------------------------------------
 import os
 import xml.etree.ElementTree as ET
+from typing import Callable
 
 import chc.util.fileutil as UF
 import chc.util.xmlutil as UX
@@ -203,7 +204,7 @@ class CFile(object):
         self._initialize_functions()
         return self.functions.values()
 
-    def iter_functions(self, f):
+    def iter_functions(self, f: Callable[[CFunction], None]) -> None:
         for fn in self.get_functions():
             f(fn)
 
