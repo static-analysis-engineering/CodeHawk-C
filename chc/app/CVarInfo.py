@@ -25,12 +25,13 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
-from typing import List, TYPE_CHECKING
+from typing import cast, List, TYPE_CHECKING
 
 import chc.app.CDictionaryRecord as CD
 
 if TYPE_CHECKING:
     from chc.app.CDeclarations import CDeclarations
+    from chc.app.CFileDeclarations import CFileDeclarations
 
 
 class CVarInfo(CD.CDeclarationsRecord):
@@ -65,7 +66,9 @@ class CVarInfo(CD.CDeclarationsRecord):
         self.vglob = args[3] == 1
         self.vinline = args[4] == 1
         self.vdecl = (
-            self.decls.get_location(self.args[5]) if not (self.args[5] == -1) else None
+            cast("CFileDeclarations", self.decls).get_location(self.args[5])
+            if not (self.args[5] == -1)
+            else None
         )
         self.vaddrof = args[6] == 1
         self.vparam = args[7]

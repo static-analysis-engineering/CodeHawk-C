@@ -93,8 +93,8 @@ class CHCFileNotFoundError(CHCError):
 
 
 class CFileNotFoundException(CHCError):
-    def __init__(self, filenames: str) -> None:
-        CHCError.__init__(self, "Files " + filenames.join(" ") + " not found")
+    def __init__(self, filenames: List[str]) -> None:
+        CHCError.__init__(self, "Files " + " ".join(filenames) + " not found")
 
 
 class CHCTargetGroupNotFoundError(CHCError):
