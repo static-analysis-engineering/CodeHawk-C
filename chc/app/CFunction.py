@@ -26,6 +26,7 @@
 # ------------------------------------------------------------------------------
 
 import xml.etree.ElementTree as ET
+from typing import Any, Dict, List, TYPE_CHECKING
 
 import chc.util.fileutil as UF
 
@@ -41,22 +42,29 @@ from chc.api.CFunctionApi import CFunctionApi
 from chc.proof.CFunPODictionary import CFunPODictionary
 from chc.proof.CFunctionProofs import CFunctionProofs
 
+if TYPE_CHECKING:
+    from chc.app.CFile import CFile
+
 
 class CFunction(object):
     """Function implementation."""
 
-    def __init__(self, cfile, xnode):
+    def __init__(self, cfile: "CFile", xnode: ET.Element) -> None:
         self.cfile = cfile
         self.capp = self.cfile.capp
         self.xnode = xnode
         self.fdecls = CFunDeclarations(self, xnode.find("declarations"))
-        self.svar = self.cfile.declarations.get_varinfo(
-            int(xnode.find("svar").get("ivinfo"))
-        )
+        xml_svar = xnode.find("svar")
+        if xml_svar is None:
+            raise Exception("xnode missing xml_svar")
+        xml_ivinfo = xml_svar.get("ivinfo")
+        if xml_ivinfo is None:
+            raise Exception("svar missing ivinfo")
+        self.svar = self.cfile.declarations.get_varinfo(int(xml_ivinfo))
         self.ftype = self.svar.vtype
         self.name = self.svar.vname
-        self.formals = {}  # vid -> CVarInfo
-        self.locals = {}  # vid -> CVarInfo
+        self.formals: Dict[int, CVarInfo] = {}  # vid -> CVarInfo
+        self.locals: Dict[int, CVarInfo] = {}  # vid -> CVarInfo
         self.body = CFunctionBody(self, self.xnode.find("sbody"))
         self.podictionary = CFunPODictionary(self)
         self.proofs = CFunctionProofs(self)
@@ -64,15 +72,14 @@ class CFunction(object):
         self.vard = CFunVarDictionary(self.fdecls)
         self.invd = CFunInvDictionary(self.vard)
         self.invtable = CFunInvariantTable(self.invd)
-        self.invariants = None  # CFunctionInvariants object
         self._initialize()
 
-    def reinitialize_tables(self):
+    def reinitialize_tables(self) -> None:
         self.api = CFunctionApi(self)
         self.podictionary.initialize()
         self.vard.initialize(force=True)
 
-    def export_function_data(self, result):
+    def export_function_data(self, result: Dict[str, Any]) -> None:
         result[self.name] = {}
         fnresult = result[self.name]
         fnresult["type"] = self.ftype.to_idict()
@@ -82,30 +89,31 @@ class CFunction(object):
         fnresult["call-instrs"] = [i.to_dict() for i in self.get_call_instrs()]
         fnresult["call-instrs-strs"] = [str(i) for i in self.get_call_instrs()]
 
-    def get_formal_vid(self, name):
+    def get_formal_vid(self, name: str) -> int:
         for v in self.formals:
             if self.formals[v].vname == name:
                 return v
         else:
-            print("Formals: " + ",".join([str(v) for v in self.formals.values()]))
+            raise Exception("Formals: " + ",".join([str(v) for v in self.formals.values()]))
 
-    def get_variable_vid(self, vname):
+    def get_variable_vid(self, vname: str) -> int:
         for v in self.formals:
             if self.formals[v].vname == vname:
                 return self.formals[v].get_vid()
         for v in self.locals:
             if self.locals[v].vname == vname:
                 return self.locals[v].get_vid()
+        raise Exception("Could not find vid for variable \"" + vname + "\"")
 
     # returns a list of strings
-    def get_strings(self):
+    def get_strings(self) -> List[str]:
         return self.body.get_strings()
 
     # returns the number of occurrences of vid in expressions and lhs
     def get_variable_uses(self, vid):
         return self.body.get_variable_uses(vid)
 
-    def has_function_contract(self):
+    def has_function_contract(self) -> bool:
         return self.cfile.has_function_contract(self.name)
 
     def get_function_contract(self):
@@ -130,7 +138,7 @@ class CFunction(object):
     def get_vid(self):
         return self.svar.get_vid()
 
-    def get_api(self):
+    def get_api(self) -> CFunctionApi:
         return self.api
 
     def get_location(self):
@@ -139,9 +147,10 @@ class CFunction(object):
     def get_source_code_file(self):
         return self.get_location().get_file()
 
-    def get_line_number(self):
+    def get_line_number(self) -> int:
         if self.cfile.name + ".c" == self.get_source_code_file():
             return self.get_location().get_line()
+        raise Exception("No relevant line number")
 
     def get_formals(self):
         return self.formals.values()
@@ -149,7 +158,7 @@ class CFunction(object):
     def get_locals(self):
         return self.locals.values()
 
-    def get_body(self):
+    def get_body(self) -> CFunctionBody:
         return self.body
 
     def get_block_count(self):
@@ -180,12 +189,12 @@ class CFunction(object):
     def get_callsite_spos(self):
         return self.proofs.getspos
 
-    def update_spos(self):
+    def update_spos(self) -> None:
         if self.selfignore():
             return
         self.proofs.update_spos()
 
-    def collect_post_assumes(self):
+    def collect_post_assumes(self) -> None:
         """For all call sites collect postconditions from callee's contracts and add as assume."""
 
         self.proofs.collect_post_assumes()
@@ -194,7 +203,7 @@ class CFunction(object):
     def distribute_post_guarantees(self):
         self.proofs.distribute_post_guarantees()
 
-    def collect_post(self):
+    def collect_post(self) -> None:
         """Add postcondition requests to the contract of the callee"""
         for r in self.get_api().get_postcondition_requests():
             tgtfid = r.callee.get_vid()
@@ -215,19 +224,19 @@ class CFunction(object):
                     cfuncontract = tgtcfile.get_function_contract(tgtfun.name)
                     cfuncontract.add_postrequest(tgtpostcondition)
 
-    def save_spos(self):
+    def save_spos(self) -> None:
         self.proofs.save_spos()
 
-    def save_pod(self):
+    def save_pod(self) -> None:
         cnode = ET.Element("function")
         cnode.set("name", self.name)
         self.podictionary.write_xml(cnode)
         UF.save_pod_file(self.cfile.capp.path, self.cfile.name, self.name, cnode)
 
-    def reload_ppos(self):
+    def reload_ppos(self) -> None:
         self.proofs.reload_ppos()
 
-    def reload_spos(self):
+    def reload_spos(self) -> None:
         self.proofs.reload_spos()
 
     def get_ppos(self):
@@ -251,16 +260,10 @@ class CFunction(object):
     def get_delegated(self):
         return self.proofs.get_delegated()
 
-    def _initialize(self):
+    def _initialize(self) -> None:
         for v in self.fdecls.get_formals():
             self.formals[v.get_vid()] = v
         for v in self.fdecls.get_locals():
             self.locals[v.get_vid()] = v
         self.vard.initialize()
         self.invtable.initialize()
-
-    def _read_invariants(self):
-        if self.invariants is not None:
-            return
-        xinvs = UF.get_invs_xnode(self.cfile.capp.path, self.cfile.name, self.name)
-        self.invariants = CFunctionInvariants(self, xinvs)
