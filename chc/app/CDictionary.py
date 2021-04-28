@@ -25,7 +25,7 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
-from typing import cast, Callable, Dict, List, Optional, Tuple
+from typing import cast, Any, Callable, Dict, List, Optional, Tuple, TYPE_CHECKING
 
 import xml.etree.ElementTree as ET
 
@@ -41,6 +41,9 @@ import chc.app.CLval as CV
 import chc.app.COffsetExp as CO
 import chc.app.CTyp as CT
 import chc.app.CTypsig as CS
+
+if TYPE_CHECKING:
+    from chc.app.CFileDictionary import CFileDictionary
 
 
 attrparam_constructors: Dict[
@@ -545,22 +548,22 @@ class CDictionary(object):
         print("cdict:no case yet for exp " + str(e))
         exit(1)
 
-    def index_funarg(self, funarg):
+    def index_funarg(self, funarg: CT.CFunArg) -> int:
         tags = [funarg.get_name()]
         args = [self.index_typ(funarg.get_type())]
 
-        def f(index, key):
+        def f(index: int, key: Tuple[str, str]) -> CT.CFunArg:
             return CT.CFunArg(self, index, tags, args)
 
         return self.funarg_table.add(IT.get_key(tags, args), f)
 
-    def index_funargs_opt(self, opt_funargs):
+    def index_funargs_opt(self, opt_funargs: Optional[CT.CFunArgs]) -> Optional[int]:
         if opt_funargs is None:
             return None
-        tags = []
+        tags: List[str] = []
         args = [self.index_funarg(f) for f in opt_funargs.get_args()]
 
-        def f(index, key):
+        def f(index: int, key: Tuple[str, str]) -> CT.CFunArgs:
             return CT.CFunArgs(self, index, tags, args)
 
         return self.funargs_table.add(IT.get_key(tags, args), f)
@@ -592,47 +595,49 @@ class CDictionary(object):
 
         return self.lval_table.add(IT.get_key([], args), f)
 
-    def mk_offset_index(self, tags, args):
-        def f(index, key):
+    def mk_offset_index(self, tags: List[str], args: List[int]) -> int:
+        def f(index: int, key: Tuple[str, str]) -> CO.COffsetBase:
             return offset_constructors[tags[0]]((self, index, tags, args))
 
         return self.offset_table.add(IT.get_key(tags, args), f)
 
-    def index_offset(self, o, fid=-1):
+    def index_offset(self, o: CO.COffsetBase, fid: int = -1) -> int:
         if not o.has_offset():
 
-            def f(index, key):
+            def f_no_offset(index: int, key: Tuple[str, str]) -> CO.CNoOffset:
                 return CO.CNoOffset(self, index, o.tags, o.args)
 
-            return self.offset_table.add(IT.get_key(o.tags, o.args), f)
+            return self.offset_table.add(IT.get_key(o.tags, o.args), f_no_offset)
         if o.is_field():
-            ckey = self.convert_ckey(o.get_ckey(), o.cd.cfile.index)
-            args = [ckey, self.index_offset(o.get_offset(), fid)]
+            ckey = self.convert_ckey(
+                cast(CO.CFieldOffset, o).get_ckey(), cast(Any, o.cd).cfile.index)
+            args = [ckey, self.index_offset(cast(CO.CFieldOffset, o).get_offset(), fid)]
 
-            def f(index, key):
+            def f_field(index: int, key: Tuple[str, str]) -> CO.CFieldOffset:
                 return CO.CFieldOffset(self, index, o.tags, args)
 
-            return self.offset_table.add(IT.get_key(o.tags, args), f)
+            return self.offset_table.add(IT.get_key(o.tags, args), f_field)
         if o.is_index():
             args = [
-                self.index_exp(o.get_index_exp()),
-                self.index_offset(o.get_offset(), fid),
+                self.index_exp(cast(CO.CIndexOffset, o).get_index_exp()),
+                self.index_offset(cast(CO.CIndexOffset, o).get_offset(), fid),
             ]
 
-            def f(index, key):
+            def f_index(index: int, key: Tuple[str, str]) -> CO.CIndexOffset:
                 return CO.CIndexOffset(self, index, o.tags, args)
 
-            return self.offset_table.add(IT.get_key(o.tags, args), f)
+            return self.offset_table.add(IT.get_key(o.tags, args), f_index)
+        raise UF.CHError("cdict: no case yet for " + str(o))
 
-    def mk_typ(self, tags, args):
-        def f(index, key):
+    def mk_typ(self, tags: List[str], args: List[int]) -> int:
+        def f(index: int, key: Tuple[str, str]) -> CT.CTypBase:
             return typ_constructors[tags[0]]((self, index, tags, args))
 
         return self.typ_table.add(IT.get_key(tags, args), f)
 
-    def index_typ(self, t):  # TBF
+    def index_typ(self, t: CT.CTypBase) -> int:  # TBF
         # omit attributes argument if there are no attributes
-        def ia(attrs):
+        def ia(attrs: CA.CAttributes) -> List[int]:
             return (
                 []
                 if len(attrs.get_attributes()) == 0
@@ -643,104 +648,105 @@ class CDictionary(object):
             tags = ["tvoid"]
             args = ia(t.get_attributes())
 
-            def f(index, key):
+            def f_void(index: int, key: Tuple[str, str]) -> CT.CTypVoid:
                 return CT.CTypVoid(self, index, tags, args)
 
-            return self.typ_table.add(IT.get_key(tags, args), f)
+            return self.typ_table.add(IT.get_key(tags, args), f_void)
         elif t.is_int():
-            tags = ["tint", t.get_kind()]
+            tags = ["tint", cast(CT.CTypInt, t).get_kind()]
             args = ia(t.get_attributes())
 
-            def f(index, key):
+            def f_int(index: int, key: Tuple[str, str]) -> CT.CTypInt:
                 return CT.CTypInt(self, index, tags, args)
 
-            return self.typ_table.add(IT.get_key(tags, args), f)
+            return self.typ_table.add(IT.get_key(tags, args), f_int)
         elif t.is_float():
-            tags = ["tfloat", t.get_kind()]
+            tags = ["tfloat", cast(CT.CTypFloat, t).get_kind()]
             args = ia(t.get_attributes())
 
-            def f(index, key):
+            def f_float(index: int, key: Tuple[str, str]) -> CT.CTypFloat:
                 return CT.CTypFloat(self, index, tags, args)
 
-            return self.typ_table.add(IT.get_key(tags, args), f)
+            return self.typ_table.add(IT.get_key(tags, args), f_float)
         elif t.is_pointer():
             tags = ["tptr"]
-            args = [self.index_typ(t.get_pointedto_type())] + ia(t.get_attributes())
+            args = ([self.index_typ(cast(CT.CTypPtr, t).get_pointedto_type())]
+                    + ia(t.get_attributes()))
 
-            def f(index, key):
+            def f_ptr(index: int, key: Tuple[str, str]) -> CT.CTypPtr:
                 return CT.CTypPtr(self, index, tags, args)
 
-            return self.typ_table.add(IT.get_key(tags, args), f)
+            return self.typ_table.add(IT.get_key(tags, args), f_ptr)
         elif t.is_named_type():
-            tags = ["tnamed", t.get_name()]
+            tags = ["tnamed", cast(CT.CTypNamed, t).get_name()]
             args = ia(t.get_attributes())
 
-            def f(index, key):
+            def f_named(index: int, key: Tuple[str, str]) -> CT.CTypNamed:
                 return CT.CTypNamed(self, index, tags, args)
 
-            return self.typ_table.add(IT.get_key(tags, args), f)
+            return self.typ_table.add(IT.get_key(tags, args), f_named)
         elif t.is_comp():
             tags = ["tcomp"]
-            ckey = self.index_compinfo_key(t.get_struct(), t.cd.cfile.index)
+            ckey = self.index_compinfo_key(
+                cast(CT.CTypComp, t).get_struct(), cast(Any, t.cd).cfile.index)
             args = [ckey] + ia(t.get_attributes())
 
-            def f(index, key):
+            def f_comp(index: int, key: Tuple[str, str]) -> CT.CTypComp:
                 return CT.CTypComp(self, index, tags, args)
 
-            return self.typ_table.add(IT.get_key(tags, args), f)
+            return self.typ_table.add(IT.get_key(tags, args), f_comp)
         elif t.is_enum():
             tags = t.tags
             args = ia(t.get_attributes())
 
-            def f(index, key):
+            def f_enum(index: int, key: Tuple[str, str]) -> CT.CTypEnum:
                 return CT.CTypEnum(self, index, tags, args)
 
-            return self.typ_table.add(IT.get_key(tags, args), f)
+            return self.typ_table.add(IT.get_key(tags, args), f_enum)
         elif t.is_array():
             tags = ["tarray"]
             arraysize = (
-                self.index_exp(t.get_array_size_expr())
-                if t.has_array_size_expr()
+                self.index_exp(cast(CT.CTypArray, t).get_array_size_expr())
+                if cast(CT.CTypArray, t).has_array_size_expr()
                 else (-1)
             )
-            args = [self.index_typ(t.get_array_basetype()), arraysize] + ia(
-                t.get_attributes()
-            )
+            args = ([self.index_typ(cast(CT.CTypArray, t).get_array_basetype()), arraysize]
+                    + ia(t.get_attributes()))
 
-            def f(index, key):
+            def f_array(index: int, key: Tuple[str, str]) -> CT.CTypArray:
                 return CT.CTypArray(self, index, tags, args)
 
-            return self.typ_table.add(IT.get_key(tags, args), f)
+            return self.typ_table.add(IT.get_key(tags, args), f_array)
         elif t.is_function():
-            index_funargs_opt = self.index_funargs_opt(t.get_args())
+            index_funargs_opt = self.index_funargs_opt(cast(CT.CTypFun, t).get_args())
             ixfunargs = -1 if index_funargs_opt is None else index_funargs_opt
             tags = ["tfun"]
             args = [
-                self.index_typ(t.get_return_type()),
+                self.index_typ(cast(CT.CTypFun, t).get_return_type()),
                 ixfunargs,
-                (1 if t.is_vararg() else 0),
+                (1 if cast(CT.CTypFun, t).is_vararg() else 0),
             ] + ia(t.get_attributes())
 
-            def f(index, key):
+            def f_fun(index: int, key: Tuple[str, str]) -> CT.CTypFun:
                 return CT.CTypFun(self, index, tags, args)
 
-            return self.typ_table.add(IT.get_key(tags, args), f)
+            return self.typ_table.add(IT.get_key(tags, args), f_fun)
         elif t.is_builtin_vaargs():
             tags = ["tbuiltinvaargs"]
             args = ia(t.get_attributes())
 
-            def f(index, key):
+            def f_builtin_varargs(index: int, key: Tuple[str, str]) -> CT.CTypBuiltinVaargs:
                 return CT.CTypBuiltinVaargs(self, index, tags, args)
 
-            return self.typ_table.add(IT.get_key(tags, args), f)
+            return self.typ_table.add(IT.get_key(tags, args), f_builtin_varargs)
         else:
             print("cdict: no case yet for " + str(t))
             exit(1)
 
-    def index_typsig(self, t):
+    def index_typsig(self, t: object) -> None:
         return None  # TBD
 
-    def index_typsiglist(self, t):
+    def index_typsiglist(self, t: object) -> None:
         return None  # TBD
 
     def index_string(self, s: str) -> int:
@@ -759,7 +765,7 @@ class CDictionary(object):
             t.write_xml(tnode)
             node.append(tnode)
 
-    def __str__(self):
+    def __str__(self) -> str:
         lines = []
         for (t, _) in self.tables:
             if t.size() > 0:
