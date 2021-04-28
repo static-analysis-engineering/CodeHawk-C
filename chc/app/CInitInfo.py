@@ -25,19 +25,26 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
+from typing import List, TYPE_CHECKING
+
 import chc.app.CDictionaryRecord as CD
+
+if TYPE_CHECKING:
+    import chc.app.CExp as CE
+    import chc.app.CTyp as CT
+    from chc.app.CDeclarations import CDeclarations
 
 
 class CInitInfoBase(CD.CDeclarationsRecord):
     """Global variable initializer."""
 
-    def __init__(self, decls, index, tags, args):
+    def __init__(self, decls: "CDeclarations", index: int, tags: List[str], args: List[int]):
         CD.CDeclarationsRecord.__init__(self, decls, index, tags, args)
 
-    def is_single(self):
+    def is_single(self) -> bool:
         return False
 
-    def is_compound(self):
+    def is_compound(self) -> bool:
         return False
 
     def __str__(self):
@@ -47,42 +54,42 @@ class CInitInfoBase(CD.CDeclarationsRecord):
 class CSingleInitInfo(CInitInfoBase):
     """Initializer of a simple variable."""
 
-    def __init__(self, decls, index, tags, args):
+    def __init__(self, decls: "CDeclarations", index: int, tags: List[str], args: List[int]):
         CInitInfoBase.__init__(self, decls, index, tags, args)
 
-    def get_exp(self):
+    def get_exp(self) -> "CE.CExpBase":
         return self.get_dictionary().get_exp(self.args[0])
 
-    def is_single(self):
+    def is_single(self) -> bool:
         return True
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self.get_exp())
 
 
 class CCompoundInitInfo(CInitInfoBase):
     """Initializer of a struct or array."""
 
-    def __init__(self, decls, index, tags, args):
+    def __init__(self, decls: "CDeclarations", index: int, tags: List[str], args: List[int]):
         CInitInfoBase.__init__(self, decls, index, tags, args)
 
-    def get_typ(self):
+    def get_typ(self) -> "CT.CTypBase":
         return self.get_dictionary().get_typ(self.args[0])
 
     def get_offset_initializers(self):
         return [self.decls.get_offset_init(x) for x in self.args[1:]]
 
-    def is_compound(self):
+    def is_compound(self) -> bool:
         return True
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "\n".join([str(x) for x in self.get_offset_initializers()])
 
 
 class COffsetInitInfo(CD.CDeclarationsRecord):
     """Component of a compound initializer."""
 
-    def __init__(self, decls, index, tags, args):
+    def __init__(self, decls: "CDeclarations", index: int, tags: List[str], args: List[int]):
         CD.CDeclarationsRecord.__init__(self, decls, index, tags, args)
 
     def get_offset(self):
@@ -91,5 +98,5 @@ class COffsetInitInfo(CD.CDeclarationsRecord):
     def get_initializer(self):
         return self.decls.get_initinfo(self.args[1])
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self.get_offset()) + ":=" + str(self.get_initializer())

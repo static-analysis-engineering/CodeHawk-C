@@ -25,7 +25,7 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
-from typing import cast, List, Tuple, Optional, TYPE_CHECKING
+from typing import cast, Any, List, Tuple, Optional, TYPE_CHECKING
 
 import chc.app.CDictionaryRecord as CD
 import chc.util.IndexedTable as IT
@@ -169,7 +169,7 @@ class CTypsigList(IT.IndexedTableValue):
         args: List[int],
     ) -> None:
         self.cd = cd
-        self.cfile = cast(chc.app.CFileDictionary.CFileDictionary, cd).cfile
+        self.cfile = cast(Any, cd).cfile
         self.index = index
         self.tags = tags
         self.args = args

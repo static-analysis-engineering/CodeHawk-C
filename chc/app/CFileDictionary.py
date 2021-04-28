@@ -25,6 +25,8 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
+from typing import TYPE_CHECKING
+
 import chc.util.fileutil as UF
 import chc.util.IndexedTable as IT
 
@@ -33,6 +35,9 @@ import chc.app.CLval as CV
 
 
 from chc.app.CDictionary import CDictionary
+
+if TYPE_CHECKING:
+    from chc.app.CFileDeclarations import CFileDeclarations
 
 
 class CKeyLookupError(Exception):
@@ -53,7 +58,7 @@ class CKeyLookupError(Exception):
 
 
 class CFileDictionary(CDictionary):
-    def __init__(self, decls):
+    def __init__(self, decls: "CFileDeclarations") -> None:
         CDictionary.__init__(self)
         self.decls = decls
         self.cfile = self.decls.cfile

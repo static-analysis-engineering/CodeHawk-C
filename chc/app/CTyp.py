@@ -26,7 +26,7 @@
 # ------------------------------------------------------------------------------
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
+from typing import cast, Any, Dict, List, Optional, Tuple, TYPE_CHECKING
 import xml.etree.ElementTree as ET
 
 import chc.app.CDictionaryRecord as CD
@@ -35,6 +35,7 @@ if TYPE_CHECKING:
     import chc.app.CDictionary
     import chc.app.CExp as CE
     import chc.app.CAttributes as CA
+    import chc.app.CConstExp as CC
 
 integernames = {
     "ichar": "char",
@@ -486,7 +487,7 @@ class CTypPtr(CTypBase):
     ) -> None:
         CTypBase.__init__(self, cd, index, tags, args)
 
-    def get_pointedto_type(self):
+    def get_pointedto_type(self) -> CTypBase:
         return self.get_typ(self.args[0])
 
     def get_size(self) -> int:
@@ -528,22 +529,21 @@ class CTypArray(CTypBase):
     ) -> None:
         CTypBase.__init__(self, cd, index, tags, args)
 
-    def get_array_basetype(self):
+    def get_array_basetype(self) -> CTypBase:
         return self.get_typ(self.args[0])
 
-    def get_array_size_expr(self):
-        return self.get_exp_opt(self.args[1])
+    def get_array_size_expr(self) -> "CE.CExpBase":
+        return self.get_exp(self.args[1])
 
-    def has_array_size_expr(self):
+    def has_array_size_expr(self) -> bool:
         return self.args[1] >= 0
 
     def get_size(self) -> int:
         try:
             if self.has_array_size_expr():
-                return (
-                    self.get_array_basetype().get_size()
-                    * self.get_array_size_expr().get_constant().get_int()
-                )
+                array_size_const = cast("CE.CExpConst", self.get_array_size_expr()).get_constant()
+                array_size_int = cast("CC.CConstInt", array_size_const).get_int()
+                return self.get_array_basetype().get_size() * array_size_int
         except BaseException:
             return -1000
         else:
@@ -590,7 +590,7 @@ class CTypFun(CTypBase):
     ) -> None:
         CTypBase.__init__(self, cd, index, tags, args)
 
-    def get_return_type(self):
+    def get_return_type(self) -> CTypBase:
         return self.get_typ(self.args[0])
 
     def get_args(self) -> Optional["CFunArgs"]:
