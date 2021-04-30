@@ -48,6 +48,7 @@ class CTypsigTSBase(CD.CDictionaryRecord):
         CD.CDictionaryRecord.__init__(self, cd, index, tags, args)
 
 
+@CD.c_dictionary_record_tag("tsarray")
 class CTypsigArray(CTypsigTSBase):
     def __init__(
         self,
@@ -71,6 +72,7 @@ class CTypsigArray(CTypsigTSBase):
         return "tsarray(" + str(self.get_typsig()) + "," + str(self.get_len_opt)
 
 
+@CD.c_dictionary_record_tag("tsptr")
 class CTypsigPtr(CTypsigTSBase):
     def __init__(
         self,
@@ -88,6 +90,7 @@ class CTypsigPtr(CTypsigTSBase):
         return "tsptr(" + str(self.get_typsig()) + ")"
 
 
+@CD.c_dictionary_record_tag("tscomp")
 class CTypsigComp(CTypsigTSBase):
     def __init__(
         self,
@@ -105,6 +108,7 @@ class CTypsigComp(CTypsigTSBase):
         return "tscomp(" + str(self.get_name()) + ")"
 
 
+@CD.c_dictionary_record_tag("tsfun")
 class CTypsigFun(CTypsigTSBase):
     def __init__(
         self,
@@ -126,6 +130,7 @@ class CTypsigFun(CTypsigTSBase):
         return "(" + str(self.get_typsig_list_opt) + "):" + str(self.get_typsig()) + ")"
 
 
+@CD.c_dictionary_record_tag("tsenum")
 class CTypsigEnum(CTypsigTSBase):
     def __init__(
         self,
@@ -143,6 +148,7 @@ class CTypsigEnum(CTypsigTSBase):
         return "tsenum(" + self.get_name() + ")"
 
 
+@CD.c_dictionary_record_tag("tsbase")
 class CTypsigBase(CTypsigTSBase):
     def __init__(
         self,
