@@ -35,6 +35,7 @@ import chc.util.StringIndexedTable as SI
 
 import chc.app.CAttributes as CA
 import chc.app.CConstExp as CC
+import chc.app.CDictionaryRecord as CD
 import chc.app.CExp as CE
 import chc.app.CLHost as CH
 import chc.app.CLval as CV
@@ -44,99 +45,6 @@ import chc.app.CTypsig as CS
 
 if TYPE_CHECKING:
     from chc.app.CFileDictionary import CFileDictionary
-
-
-attrparam_constructors: Dict[
-    str, Callable[[Tuple["CDictionary", int, List[str], List[int]]], CA.CAttrBase]
-] = {
-    "aint": lambda x: CA.CAttrInt(*x),
-    "astr": lambda x: CA.CAttrStr(*x),
-    "acons": lambda x: CA.CAttrCons(*x),
-    "asizeof": lambda x: CA.CAttrSizeOf(*x),
-    "asizeofe": lambda x: CA.CAttrSizeOfE(*x),
-    "asizeofs": lambda x: CA.CAttrSizeOfS(*x),
-    "aalignof": lambda x: CA.CAttrAlignOf(*x),
-    "aalignofe": lambda x: CA.CAttrAlignOfE(*x),
-    "aalignofs": lambda x: CA.CAttrAlignOfS(*x),
-    "aunop": lambda x: CA.CAttrUnOp(*x),
-    "abinop": lambda x: CA.CAttrBinOp(*x),
-    "adot": lambda x: CA.CAttrDot(*x),
-    "astar": lambda x: CA.CAttrStar(*x),
-    "aaddrof": lambda x: CA.CAttrAddrOf(*x),
-    "aindex": lambda x: CA.CAttrIndex(*x),
-    "aquestion": lambda x: CA.CAttrQuestion(*x),
-}
-
-constant_constructors: Dict[
-    str, Callable[[Tuple["CDictionary", int, List[str], List[int]]], CC.CConstBase]
-] = {
-    "int": lambda x: CC.CConstInt(*x),
-    "str": lambda x: CC.CConstStr(*x),
-    "wstr": lambda x: CC.CConstWStr(*x),
-    "chr": lambda x: CC.CConstChr(*x),
-    "real": lambda x: CC.CConstReal(*x),
-    "enum": lambda x: CC.CConstEnum(*x),
-}
-
-exp_constructors: Dict[
-    str, Callable[[Tuple["CDictionary", int, List[str], List[int]]], CE.CExpBase]
-] = {
-    "const": lambda x: CE.CExpConst(*x),
-    "lval": lambda x: CE.CExpLval(*x),
-    "sizeof": lambda x: CE.CExpSizeOf(*x),
-    "sizeofe": lambda x: CE.CExpSizeOfE(*x),
-    "sizeofstr": lambda x: CE.CExpSizeOfStr(*x),
-    "alignof": lambda x: CE.CExpAlignOf(*x),
-    "alignofe": lambda x: CE.CExpAlignOfE(*x),
-    "unop": lambda x: CE.CExpUnOp(*x),
-    "binop": lambda x: CE.CExpBinOp(*x),
-    "question": lambda x: CE.CExpQuestion(*x),
-    "caste": lambda x: CE.CExpCastE(*x),
-    "addrof": lambda x: CE.CExpAddrOf(*x),
-    "addroflabel": lambda x: CE.CExpAddrOfLabel(*x),
-    "startof": lambda x: CE.CExpStartOf(*x),
-    "fnapp": lambda x: CE.CExpFnApp(*x),
-    "cnapp": lambda x: CE.CExpCnApp(*x),
-}
-
-lhost_constructors: Dict[
-    str, Callable[[Tuple["CDictionary", int, List[str], List[int]]], CH.CLHostBase]
-] = {"var": lambda x: CH.CLHostVar(*x), "mem": lambda x: CH.CLHostMem(*x)}
-
-offset_constructors: Dict[
-    str, Callable[[Tuple["CDictionary", int, List[str], List[int]]], CO.COffsetBase]
-] = {
-    "n": lambda x: CO.CNoOffset(*x),
-    "f": lambda x: CO.CFieldOffset(*x),
-    "i": lambda x: CO.CIndexOffset(*x),
-}
-
-typ_constructors: Dict[
-    str, Callable[[Tuple["CDictionary", int, List[str], List[int]]], CT.CTypBase]
-] = {
-    "tvoid": lambda x: CT.CTypVoid(*x),
-    "tint": lambda x: CT.CTypInt(*x),
-    "tfloat": lambda x: CT.CTypFloat(*x),
-    "tnamed": lambda x: CT.CTypNamed(*x),
-    "tcomp": lambda x: CT.CTypComp(*x),
-    "tenum": lambda x: CT.CTypEnum(*x),
-    "tbuiltin-va-list": lambda x: CT.CTypBuiltinVaargs(*x),
-    "tbuiltinvaargs": lambda x: CT.CTypBuiltinVaargs(*x),
-    "tptr": lambda x: CT.CTypPtr(*x),
-    "tarray": lambda x: CT.CTypArray(*x),
-    "tfun": lambda x: CT.CTypFun(*x),
-}
-
-typsig_constructors: Dict[
-    str, Callable[[Tuple["CDictionary", int, List[str], List[int]]], CS.CTypsigTSBase]
-] = {
-    "tsarray": lambda x: CS.CTypsigArray(*x),
-    "tsptr": lambda x: CS.CTypsigPtr(*x),
-    "tscomp": lambda x: CS.CTypsigComp(*x),
-    "tsfun": lambda x: CS.CTypsigFun(*x),
-    "tsenum": lambda x: CS.CTypsigEnum(*x),
-    "tsbase": lambda x: CS.CTypsigBase(*x),
-}
 
 
 class CDictionary(object):
@@ -392,25 +300,25 @@ class CDictionary(object):
 
     def mk_exp_index(self, tags: List[str], args: List[int]) -> int:
         def f(index: int, key: Tuple[str, str]) -> CE.CExpBase:
-            return exp_constructors[tags[0]]((self, index, tags, args))
+            return CD.construct_c_dictionary_record(self, index, tags, args, CE.CExpBase)
 
         return self.exp_table.add(IT.get_key(tags, args), f)
 
     def mk_constant_index(self, tags: List[str], args: List[int]) -> int:
         def f(index: int, key: Tuple[str, str]) -> CC.CConstBase:
-            return constant_constructors[tags[0]]((self, index, tags, args))
+            return CD.construct_c_dictionary_record(self, index, tags, args, CC.CConstBase)
 
         return self.constant_table.add(IT.get_key(tags, args), f)
 
     def mk_typ_index(self, tags: List[str], args: List[int]) -> int:
         def f(index: int, key: Tuple[str, str]) -> CT.CTypBase:
-            return typ_constructors[tags[0]]((self, index, tags, args))
+            return CD.construct_c_dictionary_record(self, index, tags, args, CT.CTypBase)
 
         return self.typ_table.add(IT.get_key(tags, args), f)
 
     def mk_lhost_index(self, tags: List[str], args: List[int]) -> int:
         def f(index: int, key: Tuple[str, str]) -> CH.CLHostBase:
-            return lhost_constructors[tags[0]]((self, index, tags, args))
+            return CD.construct_c_dictionary_record(self, index, tags, args, CH.CLHostBase)
 
         return self.lhost_table.add(IT.get_key(tags, args), f)
 
@@ -597,7 +505,7 @@ class CDictionary(object):
 
     def mk_offset_index(self, tags: List[str], args: List[int]) -> int:
         def f(index: int, key: Tuple[str, str]) -> CO.COffsetBase:
-            return offset_constructors[tags[0]]((self, index, tags, args))
+            return CD.construct_c_dictionary_record(self, index, tags, args, CO.COffsetBase)
 
         return self.offset_table.add(IT.get_key(tags, args), f)
 
@@ -631,7 +539,7 @@ class CDictionary(object):
 
     def mk_typ(self, tags: List[str], args: List[int]) -> int:
         def f(index: int, key: Tuple[str, str]) -> CT.CTypBase:
-            return typ_constructors[tags[0]]((self, index, tags, args))
+            return CD.construct_c_dictionary_record(self, index, tags, args, CT.CTypBase)
 
         return self.typ_table.add(IT.get_key(tags, args), f)
 
@@ -773,11 +681,8 @@ class CDictionary(object):
         return "\n".join(lines)
 
     def _read_xml_attrparam_table(self, txnode: ET.Element) -> None:
-        def get_value(node: ET.Element) -> CA.CAttrBase:
-            rep = IT.get_rep(node)
-            tag = rep[1][0]
-            args = (self,) + rep
-            return attrparam_constructors[tag](args)
+        def get_value(n: ET.Element) -> CA.CAttrBase:
+            return CD.construct_c_dictionary_record(*((self,) + IT.get_rep(n)), CA.CAttrBase)
 
         self.attrparam_table.read_xml(txnode, "n", get_value)
 
@@ -798,20 +703,14 @@ class CDictionary(object):
         self.attributes_table.read_xml(txnode, "n", get_value)
 
     def _read_xml_constant_table(self, txnode: ET.Element) -> None:
-        def get_value(node: ET.Element) -> CC.CConstBase:
-            rep = IT.get_rep(node)
-            tag = rep[1][0]
-            args = (self,) + rep
-            return constant_constructors[tag](args)
+        def get_value(n: ET.Element) -> CC.CConstBase:
+            return CD.construct_c_dictionary_record(*((self,) + IT.get_rep(n)), CC.CConstBase)
 
         self.constant_table.read_xml(txnode, "n", get_value)
 
     def _read_xml_exp_table(self, txnode: ET.Element) -> None:
-        def get_value(node: ET.Element) -> CE.CExpBase:
-            rep = IT.get_rep(node)
-            tag = rep[1][0]
-            args = (self,) + rep
-            return exp_constructors[tag](args)
+        def get_value(n: ET.Element) -> CE.CExpBase:
+            return CD.construct_c_dictionary_record(*((self,) + IT.get_rep(n)), CE.CExpBase)
 
         self.exp_table.read_xml(txnode, "n", get_value)
 
@@ -832,11 +731,8 @@ class CDictionary(object):
         self.funargs_table.read_xml(txnode, "n", get_value)
 
     def _read_xml_lhost_table(self, txnode: ET.Element) -> None:
-        def get_value(node: ET.Element) -> CH.CLHostBase:
-            rep = IT.get_rep(node)
-            tag = rep[1][0]
-            args = (self,) + rep
-            return lhost_constructors[tag](args)
+        def get_value(n: ET.Element) -> CH.CLHostBase:
+            return CD.construct_c_dictionary_record(*((self,) + IT.get_rep(n)), CH.CLHostBase)
 
         self.lhost_table.read_xml(txnode, "n", get_value)
 
@@ -849,29 +745,20 @@ class CDictionary(object):
         self.lval_table.read_xml(txnode, "n", get_value)
 
     def _read_xml_offset_table(self, txnode: ET.Element) -> None:
-        def get_value(node: ET.Element) -> CO.COffsetBase:
-            rep = IT.get_rep(node)
-            tag = rep[1][0]
-            args = (self,) + rep
-            return offset_constructors[tag](args)
+        def get_value(n: ET.Element) -> CO.COffsetBase:
+            return CD.construct_c_dictionary_record(*((self,) + IT.get_rep(n)), CO.COffsetBase)
 
         self.offset_table.read_xml(txnode, "n", get_value)
 
     def _read_xml_typ_table(self, txnode: ET.Element) -> None:
-        def get_value(node: ET.Element) -> CT.CTypBase:
-            rep = IT.get_rep(node)
-            tag = rep[1][0]
-            args = (self,) + rep
-            return typ_constructors[tag](args)
+        def get_value(n: ET.Element) -> CT.CTypBase:
+            return CD.construct_c_dictionary_record(*((self,) + IT.get_rep(n)), CT.CTypBase)
 
         self.typ_table.read_xml(txnode, "n", get_value)
 
     def _read_xml_typsig_table(self, txnode: ET.Element) -> None:
-        def get_value(node: ET.Element) -> CS.CTypsigTSBase:
-            rep = IT.get_rep(node)
-            tag = rep[1][0]
-            args = (self,) + rep
-            return typsig_constructors[tag](args)
+        def get_value(n: ET.Element) -> CS.CTypsigTSBase:
+            return CD.construct_c_dictionary_record(*((self,) + IT.get_rep(n)), CS.CTypsigTSBase)
 
         self.typsig_table.read_xml(txnode, "n", get_value)
 

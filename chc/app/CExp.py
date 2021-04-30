@@ -139,6 +139,7 @@ class CExpBase(CD.CDictionaryRecord):
         return "baseexp:" + self.tags[0]
 
 
+@CD.c_dictionary_record_tag("const")
 class CExpConst(CExpBase):
     """
     tags:
@@ -173,6 +174,7 @@ class CExpConst(CExpBase):
         return str(self.get_constant())
 
 
+@CD.c_dictionary_record_tag("lval")
 class CExpLval(CExpBase):
     """
     tags:
@@ -213,6 +215,7 @@ class CExpLval(CExpBase):
         return str(self.get_lval())
 
 
+@CD.c_dictionary_record_tag("sizeof")
 class CExpSizeOf(CExpBase):
     """
     tags:
@@ -244,6 +247,7 @@ class CExpSizeOf(CExpBase):
         return "sizeof(" + str(self.get_type()) + ")"
 
 
+@CD.c_dictionary_record_tag("sizeofe")
 class CExpSizeOfE(CExpBase):
     """
     tags:
@@ -281,6 +285,7 @@ class CExpSizeOfE(CExpBase):
         return "sizeofe(" + str(self.get_exp()) + ")"
 
 
+@CD.c_dictionary_record_tag("sizeofstr")
 class CExpSizeOfStr(CExpBase):
     """
     tags:
@@ -315,6 +320,7 @@ class CExpSizeOfStr(CExpBase):
         return "sizeofstr(" + str(self.get_string()) + ")"
 
 
+@CD.c_dictionary_record_tag("alignof")
 class CExpAlignOf(CExpBase):
     """
     tags:
@@ -346,6 +352,7 @@ class CExpAlignOf(CExpBase):
         return "alignof(" + str(self.get_type()) + ")"
 
 
+@CD.c_dictionary_record_tag("alignofe")
 class CExpAlignOfE(CExpBase):
     """
     tags:
@@ -386,6 +393,7 @@ class CExpAlignOfE(CExpBase):
         return "alignofe(" + str(self.get_exp()) + ")"
 
 
+@CD.c_dictionary_record_tag("unop")
 class CExpUnOp(CExpBase):
     """
     tags:
@@ -434,6 +442,7 @@ class CExpUnOp(CExpBase):
         return "(" + unoperatorstrings[self.get_op()] + " " + str(self.get_exp()) + ")"
 
 
+@CD.c_dictionary_record_tag("binop")
 class CExpBinOp(CExpBase):
     """
     tags:
@@ -510,6 +519,7 @@ class CExpBinOp(CExpBase):
         )
 
 
+@CD.c_dictionary_record_tag("question")
 class CExpQuestion(CExpBase):
     """
     tags:
@@ -583,6 +593,7 @@ class CExpQuestion(CExpBase):
         )
 
 
+@CD.c_dictionary_record_tag("caste")
 class CExpCastE(CExpBase):
     """
     tags:
@@ -631,6 +642,7 @@ class CExpCastE(CExpBase):
         return "caste(" + str(self.get_type()) + "," + str(self.get_exp()) + ")"
 
 
+@CD.c_dictionary_record_tag("addrof")
 class CExpAddrOf(CExpBase):
     """
     tags:
@@ -671,6 +683,7 @@ class CExpAddrOf(CExpBase):
         return "&(" + str(self.get_lval()) + ")"
 
 
+@CD.c_dictionary_record_tag("addroflabel")
 class CExpAddrOfLabel(CExpBase):
     """
     tags:
@@ -699,6 +712,7 @@ class CExpAddrOfLabel(CExpBase):
         return "addroflabel(" + str(self.get_label()) + ")"
 
 
+@CD.c_dictionary_record_tag("startof")
 class CExpStartOf(CExpBase):
     """
     tags:
@@ -739,6 +753,7 @@ class CExpStartOf(CExpBase):
         return "&(" + str(self.get_lval()) + ")"
 
 
+@CD.c_dictionary_record_tag("fnapp")
 class CExpFnApp(CExpBase):
     def __init__(
         self,
@@ -753,6 +768,7 @@ class CExpFnApp(CExpBase):
         return True
 
 
+@CD.c_dictionary_record_tag("cnapp")
 class CExpCnApp(CExpBase):
     def __init__(
         self,

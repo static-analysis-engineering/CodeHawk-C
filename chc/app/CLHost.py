@@ -77,6 +77,7 @@ class CLHostBase(CD.CDictionaryRecord):
         return "lhostbase:" + self.tags[0]
 
 
+@CD.c_dictionary_record_tag("var")
 class CLHostVar(CLHostBase):
     """
     tags:
@@ -122,6 +123,7 @@ class CLHostVar(CLHostBase):
         return self.get_name()
 
 
+@CD.c_dictionary_record_tag("mem")
 class CLHostMem(CLHostBase):
     """
     tags:
