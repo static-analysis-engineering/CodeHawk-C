@@ -24,14 +24,19 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from chc.app.CLocation import CLocation
+    from chc.app.CVarInfo import CVarInfo
 
 
 class CGVarDecl(object):
     """Global variable declaration within a file."""
 
-    def __init__(self, varinfo, location):
+    def __init__(self, varinfo: "CVarInfo", location: "CLocation") -> None:
         self.varinfo = varinfo
         self.location = location
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self.varinfo)

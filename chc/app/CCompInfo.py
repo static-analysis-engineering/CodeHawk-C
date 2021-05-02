@@ -25,7 +25,13 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
+from typing import cast, List, TYPE_CHECKING
+
 import chc.app.CDictionaryRecord as CD
+
+if TYPE_CHECKING:
+    from chc.app.CDeclarations import CDeclarations
+    from chc.app.CGlobalDeclarations import CGlobalDeclarations
 
 
 class CCompInfo(CD.CDeclarationsRecord):
@@ -41,7 +47,13 @@ class CCompInfo(CD.CDeclarationsRecord):
         3 ->: field indices
     """
 
-    def __init__(self, decls, index, tags, args):
+    def __init__(
+        self,
+        decls: "CDeclarations",
+        index: int,
+        tags: List[str],
+        args: List[int],
+    ) -> None:
         CD.CDeclarationsRecord.__init__(self, decls, index, tags, args)
         self.fields = [self.decls.get_fieldinfo(i) for i in self.args[3:]]
         self.isstruct = self.args[1] == 1
@@ -54,17 +66,17 @@ class CCompInfo(CD.CDeclarationsRecord):
     def get_size(self) -> int:
         return sum([f.get_size() for f in self.fields])
 
-    def get_name(self):
+    def get_name(self) -> str:
         if self.tags[0] == "?":
-            name = list(self.decls.compinfo_names[self.get_ckey()])[0]
+            name = list(cast("CGlobalDeclarations", self.decls).compinfo_names[self.get_ckey()])[0]
         else:
             name = self.tags[0]
         return name
 
-    def get_field_strings(self):
+    def get_field_strings(self) -> str:
         return ":".join([f.fname for f in self.fields])
 
-    def __str__(self):
+    def __str__(self) -> str:
         lines = []
         lines.append("struct " + self.get_name())
         offset = 0

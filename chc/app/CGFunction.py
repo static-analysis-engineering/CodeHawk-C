@@ -32,10 +32,10 @@ from chc.app.CLocation import CLocation
 class CGFunction(object):
     """Function declaration."""
 
-    def __init__(self, varinfo):
+    def __init__(self, varinfo: CVarInfo) -> None:
         self.varinfo = varinfo
 
-    def get_name(self):
+    def get_name(self) -> str:
         return self.varinfo.vname
 
     def get_type(self):
