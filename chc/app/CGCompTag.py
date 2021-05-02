@@ -25,22 +25,28 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from chc.app.CCompInfo import CCompInfo
+    from chc.app.CLocation import CLocation
+
 
 class CGCompTag(object):
     """File-level definition of a struct."""
 
-    def __init__(self, compinfo, location):
+    def __init__(self, compinfo: "CCompInfo", location: "CLocation"):
         self.compinfo = compinfo
         self.location = location
 
-    def get_struct(self):
+    def get_struct(self) -> "CCompInfo":
         return self.compinfo
 
-    def get_name(self):
+    def get_name(self) -> str:
         return self.compinfo.get_name()
 
-    def is_struct(self):
-        return self.compinfo.is_struct
+    def is_struct(self) -> bool:
+        return self.compinfo.isstruct
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self.compinfo)

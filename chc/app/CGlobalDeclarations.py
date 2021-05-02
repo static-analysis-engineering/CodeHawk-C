@@ -25,6 +25,7 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
+from typing import Any, Callable, Dict, List, Tuple, TYPE_CHECKING
 import logging
 import xml.etree.ElementTree as ET
 
@@ -32,12 +33,16 @@ import chc.util.fileutil as UF
 import chc.util.IndexedTable as IT
 import chc.app.CInitInfo as CI
 
-from chc.app.CDeclarations import CDeclarations
-from chc.app.CGlobalDictionary import CGlobalDictionary
 from chc.app.CCompInfo import CCompInfo
+from chc.app.CDeclarations import CDeclarations
 from chc.app.CFieldInfo import CFieldInfo
+from chc.app.CGlobalDictionary import CGlobalDictionary
+from chc.app.CInitInfo import CInitInfoBase, COffsetInitInfo
 from chc.app.CVarInfo import CVarInfo
-from chc.util.IndexedTable import IndexedTable
+from chc.util.IndexedTable import IndexedTable, IndexedTableSuperclass
+
+if TYPE_CHECKING:
+    from chc.app.CApplication import CApplication
 
 initinfo_constructors = {
     "single": lambda x: CI.CSingleInitInfo(*x),
@@ -89,18 +94,18 @@ class CGlobalDeclarations(CDeclarations):
 
     """
 
-    def __init__(self, capp):
+    def __init__(self, capp: "CApplication") -> None:
         # Basic types dictionary
         CDeclarations.__init__(self, CGlobalDictionary(self))
         self.capp = capp
 
         # Global definitions and declarations dictionary
-        self.fieldinfo_table = IT.IndexedTable("fieldinfo-table")
-        self.compinfo_table = IT.IndexedTable("compinfo-table")
-        self.varinfo_table = IT.IndexedTable("varinfo-table")
-        self.initinfo_table = IT.IndexedTable("initinfo-table")
-        self.offset_init_table = IT.IndexedTable("offset-init-table")
-        self.tables = [
+        self.fieldinfo_table: IndexedTable[CFieldInfo] = IndexedTable("fieldinfo-table")
+        self.compinfo_table: IndexedTable[CCompInfo] = IndexedTable("compinfo-table")
+        self.varinfo_table: IndexedTable[CVarInfo] = IT.IndexedTable("varinfo-table")
+        self.initinfo_table: IndexedTable[CInitInfoBase] = IT.IndexedTable("initinfo-table")
+        self.offset_init_table: IndexedTable[COffsetInitInfo] = IT.IndexedTable("offset-init-table")
+        self.tables: List[Tuple[IndexedTableSuperclass, Callable[[ET.Element], None]]] = [
             (self.fieldinfo_table, self._read_xml_fieldinfo_table),
             (self.compinfo_table, self._read_xml_compinfo_table),
             (self.initinfo_table, self._read_xml_initinfo_table),
@@ -109,20 +114,20 @@ class CGlobalDeclarations(CDeclarations):
         ]
 
         # Collect names for compinfo equivalence classes
-        self.compinfo_names = {}  # gckey -> string set
+        self.compinfo_names: Dict[Any, Any] = {}  # gckey -> string set
 
         # Collect storage classes for varinfo equivalence classes
-        self.varinfo_storage_classes = {}  # gvid -> string
+        self.varinfo_storage_classes: Dict[Any, Any] = {}  # gvid -> string
 
         # Support data structures for linker
-        self.ckey2gckey = {}  # fid -> ckey -> gckey
-        self.vid2gvid = {}  # fid -> vid -> gvid
-        self.fieldstrings = {}  # string of joined fields -> gckey list
-        self.pending = []
-        self.conjectured = {}  # ckey -> gckey
-        self.reserved = {}  # ckey -> gckey
-        self.incompatibles = {}  # ckey -> gckey set
-        self.default_function_prototypes = []  # (fid,varinfo) list
+        self.ckey2gckey: Dict[Any, Any] = {}  # fid -> ckey -> gckey
+        self.vid2gvid: Dict[Any, Any] = {}  # fid -> vid -> gvid
+        self.fieldstrings: Dict[Any, Any] = {}  # string of joined fields -> gckey list
+        self.pending: List[Any] = []
+        self.conjectured: Dict[Any, Any] = {}  # ckey -> gckey
+        self.reserved: Dict[Any, Any] = {}  # ckey -> gckey
+        self.incompatibles: Dict[Any, Any] = {}  # ckey -> gckey set
+        self.default_function_prototypes: List[Any] = []  # (fid,varinfo) list
 
         self.globalcontract = self.capp.globalcontract
 
@@ -140,7 +145,7 @@ class CGlobalDeclarations(CDeclarations):
             return self.globalcontract.is_hidden_struct(filename, compname)
         return False
 
-    def get_stats(self):
+    def get_stats(self) -> str:
         lines = []
         lines.append("=" * 80)
         lines.append("Dictionary")
@@ -154,30 +159,31 @@ class CGlobalDeclarations(CDeclarations):
 
     # ---------------------- Retrieve items from definitions dictionary ------
 
-    def get_fieldinfo(self, ix):
+    def get_fieldinfo(self, ix: int) -> CFieldInfo:
         return self.fieldinfo_table.retrieve(ix)
 
-    def get_varinfo(self, ix):
+    def get_varinfo(self, ix: int) -> CVarInfo:
         return self.varinfo_table.retrieve(ix)
 
-    def get_compinfo(self, ix):
+    def get_compinfo(self, ix: int) -> CCompInfo:
         return self.compinfo_table.retrieve(ix)
 
-    def get_initinfo(self, ix):
+    def get_initinfo(self, ix: int) -> CInitInfoBase:
         return self.initinfo_table.retrieve(ix)
 
-    def get_offset_init(self, ix):
+    def get_offset_init(self, ix: int) -> COffsetInitInfo:
         return self.offset_init_table.retrieve(ix)
 
     # --------------------- Retrieve derived items ---------------------------
 
-    def has_varinfo_by_name(self, name):
+    def has_varinfo_by_name(self, name: str) -> bool:
         return any([v.vname == name for v in self.varinfo_table.values()])
 
-    def get_varinfo_by_name(self, name):
+    def get_varinfo_by_name(self, name: str) -> CVarInfo:
         for v in self.varinfo_table.values():
             if v.vname == name:
                 return v
+        raise Exception("No varinfo with name \"" + name + "\"")
 
     def get_structname(self, ckey):
         if ckey in self.compinfo_names:
@@ -235,7 +241,7 @@ class CGlobalDeclarations(CDeclarations):
 
     # -------------------- Linker support services ---------------------------
 
-    def reset_conjectures(self):
+    def reset_conjectures(self) -> None:
         self.pending = []
         self.conjectured = {}
         self.reserved = {}
@@ -253,7 +259,7 @@ class CGlobalDeclarations(CDeclarations):
                 if gckey >= checkpoint:
                     self.fieldstrings[k].remove(gckey)
 
-    def get_state(self):
+    def get_state(self) -> str:
         lines = []
         lines.append("Pending    : " + str(self.pending))
         lines.append("Conjectured: " + str(self.conjectured))
@@ -349,11 +355,11 @@ class CGlobalDeclarations(CDeclarations):
             return pendingkey
         return self.index_compinfo(fid, compinfo).get_ckey()
 
-    def index_opaque_struct(self):
+    def index_opaque_struct(self) -> int:
         tags = ["?"]
         args = [-1, 1, -1]
 
-        def f(index, key):
+        def f(index: int, key: Tuple[str, str]) -> CCompInfo:
             if index not in self.compinfo_names:
                 self.compinfo_names[index] = set([])
             self.compinfo_names[index].add("opaque-struct")
@@ -361,7 +367,7 @@ class CGlobalDeclarations(CDeclarations):
 
         return self.compinfo_table.add(IT.get_key(tags, args), f)
 
-    def get_opaque_struct(self):
+    def get_opaque_struct(self) -> CCompInfo:
         return self.compinfo_table.retrieve(1)
 
     def index_opaque_struct_pointer(self):
@@ -545,7 +551,7 @@ class CGlobalDeclarations(CDeclarations):
             for v in varinfos:
                 self.index_varinfo(fid, v)
 
-    def resolve_default_function_prototypes(self):
+    def resolve_default_function_prototypes(self) -> None:
         print(
             "Resolving "
             + str(len(self.default_function_prototypes))
@@ -618,7 +624,7 @@ class CGlobalDeclarations(CDeclarations):
             vsnode.append(vnode)
         node.append(vsnode)
 
-    def __str__(self):
+    def __str__(self) -> str:
         lines = []
         lines.append(str(self.dictionary))
         for (t, _) in self.tables:
@@ -626,45 +632,69 @@ class CGlobalDeclarations(CDeclarations):
                 lines.append(str(t))
         return "\n".join(lines)
 
-    def _initialize(self):
+    def _initialize(self) -> None:
         # Initialize global declarations from globaldefinitions file if
         # available
         xnode = UF.get_global_declarations_xnode(self.capp.path)  # globals
         if xnode is None:
             return
         for (t, f) in self.tables:
-            f(xnode.find(t.name))
-        for n in xnode.find("compinfo-names").findall("n"):
-            self.compinfo_names[int(n.get("ckey"))] = set(n.get("names").split(","))
-        for n in xnode.find("varinfo-storage-classes"):
-            self.varinfo_storage_classes[int(n.get("vid"))] = n.get("s")
+            xml_table = xnode.find(t.name)
+            if xml_table is None:
+                raise Exception("Missing element `" + t.name + "`")
+            f(xml_table)
+        xml_compinfo_names = xnode.find("compinfo-names")
+        if xml_compinfo_names is None:
+            raise Exception("Missing element `compinfo-names`")
+        xml_compinfo_names_n = xml_compinfo_names.find("n")
+        if xml_compinfo_names_n is None:
+            raise Exception("Missing element `n`")
+        for n in xml_compinfo_names_n:
+            xml_ckey = n.get("ckey")
+            if xml_ckey is None:
+                raise Exception("Missing element `ckey`")
+            xml_names = n.get("names")
+            if xml_names is None:
+                raise Exception("Missing element `names`")
+            self.compinfo_names[int(xml_ckey)] = set(xml_names.split(","))
+        xml_varinfo_storage_classes = xnode.find("varinfo-storage-classes")
+        if xml_varinfo_storage_classes is None:
+            raise Exception("Missing element `varinfo-storage-classes`")
+        for n in xml_varinfo_storage_classes:
+            xml_vid = n.get("vid")
+            if xml_vid is None:
+                raise Exception("Missing element `vid`")
+            xml_s = n.get("s")
+            if xml_s is None:
+                raise Exception("Missing element `s`")
+            self.varinfo_storage_classes[int(xml_vid)] = xml_s
 
-    def _read_xml_fieldinfo_table(self, xnode):
-        def get_value(node):
+    def _read_xml_fieldinfo_table(self, xnode: ET.Element) -> None:
+        def get_value(node: ET.Element) -> CFieldInfo:
             rep = IT.get_rep(node)
             args = (self,) + rep
             return CFieldInfo(*args)
 
         self.fieldinfo_table.read_xml(xnode, "n", get_value)
 
-    def _read_xml_compinfo_table(self, xnode):
-        def get_value(node):
+    def _read_xml_compinfo_table(self, xnode: ET.Element) -> None:
+        def get_value(node: ET.Element) -> CCompInfo:
             rep = IT.get_rep(node)
             args = (self,) + rep
             return CCompInfo(*args)
 
         self.compinfo_table.read_xml(xnode, "n", get_value)
 
-    def _read_xml_varinfo_table(self, xnode):
-        def get_value(node):
+    def _read_xml_varinfo_table(self, xnode: ET.Element) -> None:
+        def get_value(node: ET.Element) -> CVarInfo:
             rep = IT.get_rep(node)
             args = (self,) + rep
             return CVarInfo(*args)
 
         self.varinfo_table.read_xml(xnode, "n", get_value)
 
-    def _read_xml_initinfo_table(self, xnode):
-        def get_value(node):
+    def _read_xml_initinfo_table(self, xnode: ET.Element) -> None:
+        def get_value(node: ET.Element) -> CInitInfoBase:
             rep = IT.get_rep(node)
             tag = rep[1][0]
             args = (self,) + rep
@@ -672,23 +702,35 @@ class CGlobalDeclarations(CDeclarations):
 
         self.initinfo_table.read_xml(xnode, "n", get_value)
 
-    def _read_xml_offset_init_table(self, xnode):
-        def get_value(node):
+    def _read_xml_offset_init_table(self, xnode: ET.Element) -> None:
+        def get_value(node: ET.Element) -> COffsetInitInfo:
             rep = IT.get_rep(node)
             args = (self,) + rep
-            return CI.COffsetInitInfo(*args)
+            return COffsetInitInfo(*args)
 
         self.offset_init_table.read_xml(xnode, "n", get_value)
 
-    def _read_xml_varinfo_storage_classes(self, xnode):
+    def _read_xml_varinfo_storage_classes(self, xnode: ET.Element) -> None:
         for n in xnode.findall("n"):
-            vid = int(n.get("vid"))
+            xml_vid = n.get("vid")
+            if xml_vid is None:
+                raise Exception("Missing `vid` element")
+            vid = int(xml_vid)
             self.varinfo_storage_classes[vid] = set([])
-            for c in n.get("s"):
+            xml_s = n.get("s")
+            if xml_s is None:
+                raise Exception("Missing `s` element")
+            for c in xml_s:
                 self.varinfo_storage_classes[vid].add(c)
 
-    def _read_xml_compinfo_names(self, xnode):
+    def _read_xml_compinfo_names(self, xnode: ET.Element) -> None:
         for n in xnode.findall("n"):
-            ckey = int(n.get("ckey"))
-            names = n.get("names").split(",")
+            xml_ckey = n.get("ckey")
+            if xml_ckey is None:
+                raise Exception("Missing `ckey` element")
+            ckey = int(xml_ckey)
+            xml_names = n.get("names")
+            if xml_names is None:
+                raise Exception("Missing `names` element")
+            names = xml_names.split(",")
             self.compinfo_names[ckey] = set(names)
