@@ -25,7 +25,7 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
-from typing import Any, Callable, Dict, List, NoReturn, Tuple, TYPE_CHECKING
+from typing import Any, Callable, Dict, Iterable, List, NoReturn, Tuple, TYPE_CHECKING
 import xml.etree.ElementTree as ET
 
 import chc.util.fileutil as UF
@@ -97,11 +97,11 @@ class CFileDeclarations(CDeclarations):
         self.gtypes: Dict[Any, Any] = {}  # name -> CGType
         self.gcomptagdefs: Dict[Any, Any] = {}  # key -> CGCompTag
         self.gcomptagdecls: Dict[Any, Any] = {}  # key -> CGCompTag
-        self.gvardefs: Dict[Any, Any] = {}  # vid -> CGVarDef
-        self.gvardecls: Dict[Any, Any] = {}  # vid -> CGVarDecl
+        self.gvardefs: Dict[int, CGVarDef] = {}  # vid -> CGVarDef
+        self.gvardecls: Dict[int, CGVarDecl] = {}  # vid -> CGVarDecl
         self.genumtagdefs: Dict[Any, Any] = {}  # ename -> CGEnumTag
         self.genumtagdecls: Dict[Any, Any] = {}  # ename -> CGEnumTag
-        self.gfunctions: Dict[Any, Any] = {}  # vid -> CGFunction
+        self.gfunctions: Dict[int, CGFunction] = {}  # vid -> CGFunction
 
         # File definition dictionary
         self.initinfo_table: IT.IndexedTable[CI.CInitInfoBase] = IT.IndexedTable("initinfo-table")
@@ -138,11 +138,11 @@ class CFileDeclarations(CDeclarations):
 
     # Retrieve definitions and declarations
 
-    def get_gfunction(self, vid):
+    def get_gfunction(self, vid: int) -> CGFunction:
         if vid in self.gfunctions:
             return self.gfunctions[vid]
         else:
-            raise InvalidArgumentError
+            raise Exception("nothing in gfunctions for vid \"" + str(vid) + "\"")
 
     def make_opaque_global_varinfo(self, gvid, gname, gtypeix):
         tags = [gname, "o_" + str(gvid)]
@@ -153,10 +153,10 @@ class CFileDeclarations(CDeclarations):
 
         return self.varinfo_table.add(IT.get_key(tags, args), f)
 
-    def get_globalvar_definitions(self):
+    def get_globalvar_definitions(self) -> Iterable[CGVarDef]:
         return self.gvardefs.values()
 
-    def get_global_functions(self):
+    def get_global_functions(self) -> Iterable[CGFunction]:
         return self.gfunctions.values()
 
     def get_compinfos(self):
