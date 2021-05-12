@@ -26,7 +26,7 @@
 # ------------------------------------------------------------------------------
 
 import logging
-from typing import cast, Any, Dict, List, Optional, Tuple, TYPE_CHECKING
+from typing import cast, Dict, List, Optional, Tuple, TYPE_CHECKING
 import xml.etree.ElementTree as ET
 
 import chc.app.CDictionaryRecord as CD
@@ -177,10 +177,10 @@ class CTypBase(CD.CDictionaryRecord):
     def __str__(self) -> str:
         return "typebase:" + self.tags[0]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, object]:
         return {"base": "type"}
 
-    def to_idict(self) -> Dict[str, Any]:
+    def to_idict(self) -> Dict[str, object]:
         return {"t": self.tags, "a": self.args}
 
 
@@ -209,7 +209,7 @@ class CTypVoid(CTypBase):
     def get_opaque_type(self) -> CTypBase:
         return self
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, object]:
         return {"base": "void"}
 
     def __str__(self) -> str:
@@ -252,7 +252,7 @@ class CTypInt(CTypBase):
     def get_opaque_type(self) -> CTypBase:
         return self
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, object]:
         return {"base": "int", "kind": self.get_kind()}
 
     def __str__(self) -> str:
@@ -291,7 +291,7 @@ class CTypFloat(CTypBase):
     def get_opaque_type(self) -> CTypBase:
         return self
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, object]:
         return {"base": "float", "kind": self.get_kind()}
 
     def __str__(self) -> str:
@@ -333,7 +333,7 @@ class CTypNamed(CTypBase):
     def get_opaque_type(self):
         return self.expand().get_opaque_type()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, object]:
         return {
             "base": "named",
             "name": self.get_name(),

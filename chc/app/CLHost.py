@@ -25,7 +25,7 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
-from typing import Any, Dict, List, Tuple, TYPE_CHECKING
+from typing import Dict, List, Tuple, TYPE_CHECKING
 
 import chc.app.CDictionaryRecord as CD
 
@@ -70,7 +70,7 @@ class CLHostBase(CD.CDictionaryRecord):
     def get_variable_uses(self, vid: int) -> int:
         raise NotImplementedError("Subclass needs to override get_variable_uses")
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, object]:
         return {"base": "lhost"}
 
     def __str__(self) -> str:
@@ -115,7 +115,7 @@ class CLHostVar(CLHostBase):
     def get_variable_uses(self, vid: int) -> int:
         return 1 if self.has_variable(vid) else 0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, object]:
         return {"base": "var", "var": self.get_name()}
 
     def __str__(self) -> str:
@@ -160,7 +160,7 @@ class CLHostMem(CLHostBase):
     def has_variable_deref(self, vid: int) -> bool:
         return self.get_exp().has_variable(vid)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, object]:
         return {"base": "mem", "exp": self.get_exp().to_dict()}
 
     def __str__(self) -> str:
