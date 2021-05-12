@@ -25,7 +25,7 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
-from typing import Any, Dict, List, Tuple, TYPE_CHECKING
+from typing import Dict, List, Tuple, TYPE_CHECKING
 
 import chc.app.CDictionaryRecord as CD
 
@@ -78,13 +78,13 @@ class CLval(CD.CDictionaryRecord):
     def has_ref_type(self) -> bool:
         return self.get_lhost().has_ref_type()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, object]:
         return {
             "lhost": self.get_lhost().to_dict(),
             "offset": self.get_offset().to_dict(),
         }
 
-    def to_idict(self) -> Dict[str, Any]:
+    def to_idict(self) -> Dict[str, object]:
         return {"t": self.tags, "a": self.args}
 
     def __str__(self) -> str:

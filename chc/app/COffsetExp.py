@@ -25,7 +25,7 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
-from typing import Any, Dict, List, Tuple, TYPE_CHECKING
+from typing import Dict, List, Tuple, TYPE_CHECKING
 
 import chc.app.CDictionaryRecord as CD
 
@@ -61,7 +61,7 @@ class COffsetBase(CD.CDictionaryRecord):
     def get_variable_uses(self, vid: int) -> int:
         return 0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, object]:
         return {"base": "offset"}
 
     def __str__(self) -> str:
@@ -82,7 +82,7 @@ class CNoOffset(COffsetBase):
     def has_offset(self) -> bool:
         return False
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, object]:
         return {"base": "no-offset"}
 
     def __str__(self) -> str:
@@ -112,8 +112,8 @@ class CFieldOffset(COffsetBase):
     def is_field(self) -> bool:
         return True
 
-    def to_dict(self) -> Dict[str, Any]:
-        result: Dict[str, Any] = {"base": "field-offset", "field": self.get_fieldname()}
+    def to_dict(self) -> Dict[str, object]:
+        result: Dict[str, object] = {"base": "field-offset", "field": self.get_fieldname()}
         if self.get_offset().has_offset():
             result["offset"] = self.get_offset().to_dict()
         return result
@@ -149,8 +149,8 @@ class CIndexOffset(COffsetBase):
     def is_index(self) -> bool:
         return True
 
-    def to_dict(self) -> Dict[str, Any]:
-        result: Dict[str, Any] = {"base": "index-offset", "exp": self.get_index_exp().to_dict()}
+    def to_dict(self) -> Dict[str, object]:
+        result: Dict[str, object] = {"base": "index-offset", "exp": self.get_index_exp().to_dict()}
         if self.get_offset().has_offset():
             result["offset"] = self.get_offset().to_dict()
         return result

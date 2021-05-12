@@ -25,7 +25,7 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
-from typing import Any, Dict, List, Tuple, TYPE_CHECKING
+from typing import Dict, List, Tuple, TYPE_CHECKING
 
 import chc.app.CDictionaryRecord as CD
 
@@ -129,10 +129,10 @@ class CExpBase(CD.CDictionaryRecord):
     def get_variable_uses(self, vid: int) -> int:
         return 0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, object]:
         return {"base": "exp"}
 
-    def to_idict(self) -> Dict[str, Any]:
+    def to_idict(self) -> Dict[str, object]:
         return {"t": self.tags, "a": self.args}
 
     def __str__(self) -> str:
@@ -167,7 +167,7 @@ class CExpConst(CExpBase):
     def get_strings(self) -> List[str]:
         return self.get_constant().get_strings()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, object]:
         return {"base": "const", "value": str(self.get_constant())}
 
     def __str__(self) -> str:
@@ -208,7 +208,7 @@ class CExpLval(CExpBase):
     def get_variable_uses(self, vid: int) -> int:
         return self.get_lval().get_variable_uses(vid)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, object]:
         return {"base": "lval", "lval": self.get_lval().to_dict()}
 
     def __str__(self) -> str:
@@ -240,7 +240,7 @@ class CExpSizeOf(CExpBase):
     def is_sizeof(self) -> bool:
         return True
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, object]:
         return {"base": "sizeof", "type": self.get_type().to_dict()}
 
     def __str__(self) -> str:
@@ -278,7 +278,7 @@ class CExpSizeOfE(CExpBase):
     def get_variable_uses(self, vid: int) -> int:
         return self.get_exp().get_variable_uses(vid)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, object]:
         return {"base": "sizeofe", "exp": self.get_exp().to_dict()}
 
     def __str__(self) -> str:
@@ -313,7 +313,7 @@ class CExpSizeOfStr(CExpBase):
     def is_sizeofstr(self) -> bool:
         return True
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, object]:
         return {"base": "sizeofstr", "string": self.get_string()}
 
     def __str__(self) -> str:
@@ -345,7 +345,7 @@ class CExpAlignOf(CExpBase):
     def is_alignof(self) -> bool:
         return True
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, object]:
         return {"base": "alignof", "type": self.get_type().to_dict()}
 
     def __str__(self) -> str:
@@ -386,7 +386,7 @@ class CExpAlignOfE(CExpBase):
     def get_variable_uses(self, vid: int) -> int:
         return self.get_exp().get_variable_uses(vid)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, object]:
         return {"base": "alignofe", "exp": self.get_exp().to_dict()}
 
     def __str__(self) -> str:
@@ -435,7 +435,7 @@ class CExpUnOp(CExpBase):
     def get_variable_uses(self, vid: int) -> int:
         return self.get_exp().get_variable_uses(vid)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, object]:
         return {"base": "unop", "op": self.get_op(), "exp": self.get_exp().to_dict()}
 
     def __str__(self) -> str:
@@ -497,7 +497,7 @@ class CExpBinOp(CExpBase):
         c2 = self.get_exp2().get_variable_uses(vid)
         return c1 + c2
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, object]:
         return {
             "base": "binop",
             "op": self.get_op(),
@@ -572,7 +572,7 @@ class CExpQuestion(CExpBase):
         f = self.get_false_exp().get_variable_uses(vid)
         return c + t + f
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, object]:
         return {
             "base": "question",
             "cond": self.get_condition().to_dict(),
@@ -631,7 +631,7 @@ class CExpCastE(CExpBase):
     def get_variable_uses(self, vid: int) -> int:
         return self.get_exp().get_variable_uses(vid)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, object]:
         return {
             "base": "caste",
             "exp": self.get_exp().to_dict(),
@@ -676,7 +676,7 @@ class CExpAddrOf(CExpBase):
     def get_variable_uses(self, vid: int) -> int:
         return self.get_lval().get_variable_uses(vid)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, object]:
         return {"base": "addrof", "lval": self.get_lval().to_dict()}
 
     def __str__(self) -> str:
@@ -705,7 +705,7 @@ class CExpAddrOfLabel(CExpBase):
     def get_label(self) -> int:
         return self.args[0]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, object]:
         return {"base": "addroflabel", "label": self.get_label()}
 
     def __str__(self) -> str:
@@ -746,7 +746,7 @@ class CExpStartOf(CExpBase):
     def get_variable_uses(self, vid: int) -> int:
         return self.get_lval().get_variable_uses(vid)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, object]:
         return {"base": "startof", "lval": self.get_lval().to_dict()}
 
     def __str__(self) -> str:
