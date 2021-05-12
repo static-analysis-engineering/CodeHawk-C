@@ -25,15 +25,20 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
-import chc.app.CDictionaryRecord as CD
+from typing import cast, List, TYPE_CHECKING
+
+from chc.app.CDictionaryRecord import CDeclarationsRecord
+
+if TYPE_CHECKING:
+    from chc.app.CFileDeclarations import CFileDeclarations
 
 
-class CEnumItem(CD.CDeclarationsRecord):
-    def __init__(self, decls, index, tags, args):
-        CD.CDeclarationsRecord.__init__(self, decls, index, tags, args)
+class CEnumItem(CDeclarationsRecord):
+    def __init__(self, decls: "CFileDeclarations", index: int, tags: List[str], args: List[int]):
+        CDeclarationsRecord.__init__(self, decls, index, tags, args)
         self.name = self.tags[0]
         self.exp = self.get_dictionary().get_exp(self.args[0])
-        self.loc = self.decls.get_location(self.args[1])
+        self.loc = cast("CFileDeclarations", self.decls).get_location(self.args[1])
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name + ":" + str(self.exp)
