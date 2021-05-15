@@ -65,7 +65,10 @@ class CFunction(object):
         self.name = self.svar.vname
         self.formals: Dict[int, CVarInfo] = {}  # vid -> CVarInfo
         self.locals: Dict[int, CVarInfo] = {}  # vid -> CVarInfo
-        self.body = CFunctionBody(self, self.xnode.find("sbody"))
+        sbody = self.xnode.find("sbody")
+        if sbody is None:
+            raise Exception("missing element `sbody`")
+        self.body = CFunctionBody(self, sbody)
         self.podictionary = CFunPODictionary(self)
         self.proofs = CFunctionProofs(self)
         self.api = CFunctionApi(self)
