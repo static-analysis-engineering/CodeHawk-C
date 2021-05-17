@@ -25,25 +25,29 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
+from typing import Any, Callable, List, Tuple, TYPE_CHECKING
 import xml.etree.ElementTree as ET
 
 import chc.util.fileutil as UF
 import chc.util.IndexedTable as IT
 
+if TYPE_CHECKING:
+    from chc.app.CFile import CFile
 
-class CContextBaseRep(object):
+
+class CContextBaseRep(IT.IndexedTableValue):
     """Base class for all context representations."""
 
-    def __init__(self, ctxttable, index, tags, args):
+    def __init__(self, ctxttable: "CContextTable", index: int, tags: List[str], args: List[int]):
         self.ctxttable = ctxttable
         self.index = index
         self.tags = tags
         self.args = args
 
-    def get_key(self):
+    def get_key(self) -> Tuple[str, str]:
         return (",".join(self.tags), ",".join([str(x) for x in self.args]))
 
-    def write_xml(self, node):
+    def write_xml(self, node: ET.Element) -> None:
         (tagstr, argstr) = self.get_key()
         if len(tagstr) > 0:
             node.set("t", tagstr)
@@ -53,10 +57,16 @@ class CContextBaseRep(object):
 
 
 class CContextNode(CContextBaseRep):
-    def __init__(self, ctxttable, index, tags, args):
+    def __init__(
+        self,
+        ctxttable: "CContextTable",
+        index: int,
+        tags: List[str],
+        args: List[int],
+    ) -> None:
         CContextBaseRep.__init__(self, ctxttable, index, tags, args)
 
-    def __str__(self):
+    def __str__(self) -> str:
         if len(self.args) == 0:
             return "_".join(self.tags)
         else:
@@ -64,61 +74,79 @@ class CContextNode(CContextBaseRep):
 
 
 class CfgContext(CContextBaseRep):
-    def __init__(self, ctxttable, index, tags, args):
+    def __init__(
+        self,
+        ctxttable: "CContextTable",
+        index: int,
+        tags: List[str],
+        args: List[int],
+    ) -> None:
         CContextBaseRep.__init__(self, ctxttable, index, tags, args)
 
-    def get_nodes(self):
+    def get_nodes(self) -> List[CContextNode]:
         return [self.ctxttable.get_node(x) for x in self.args]
 
-    def get_rev_repr(self):
+    def get_rev_repr(self) -> str:
         revnodes = self.get_nodes()[:]
         revnodes.reverse()
         return "_".join([str(x) for x in revnodes])
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "_".join([str(x) for x in self.get_nodes()])
 
 
 class ExpContext(CContextBaseRep):
-    def __init__(self, ctxttable, index, tags, args):
+    def __init__(
+        self,
+        ctxttable: "CContextTable",
+        index: int,
+        tags: List[str],
+        args: List[int],
+    ) -> None:
         CContextBaseRep.__init__(self, ctxttable, index, tags, args)
 
-    def get_nodes(self):
+    def get_nodes(self) -> List[CContextNode]:
         return [self.ctxttable.get_node(x) for x in self.args]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "_".join([str(x) for x in self.get_nodes()])
 
 
 class CProgramContext(CContextBaseRep):
     """Represents a location in a function."""
 
-    def __init__(self, ctxttable, index, tags, args):
+    def __init__(
+        self,
+        ctxttable: "CContextTable",
+        index: int,
+        tags: List[str],
+        args: List[int],
+    ) -> None:
         CContextBaseRep.__init__(self, ctxttable, index, tags, args)
 
-    def get_cfg_context(self):
+    def get_cfg_context(self) -> CfgContext:
         return self.ctxttable.get_cfg_context(self.args[0])
 
-    def get_exp_context(self):
+    def get_exp_context(self) -> ExpContext:
         return self.ctxttable.get_exp_context(self.args[1])
 
-    def get_cfg_context_string(self):
+    def get_cfg_context_string(self) -> str:
         return str(self.get_cfg_context())
 
-    def __str__(self):
+    def __str__(self) -> str:
         return (
             "(" + str(self.get_cfg_context()) + "," + str(self.get_exp_context()) + ")"
         )
 
 
 class CContextTable(object):
-    def __init__(self, cfile):
+    def __init__(self, cfile: "CFile"):
         self.cfile = cfile
-        self.nodetable = IT.IndexedTable("nodes")
-        self.cfgtable = IT.IndexedTable("cfg-contexts")
-        self.exptable = IT.IndexedTable("exp-contexts")
-        self.contexttable = IT.IndexedTable("contexts")
-        self.tables = [
+        self.nodetable: IT.IndexedTable[CContextNode] = IT.IndexedTable("nodes")
+        self.cfgtable: IT.IndexedTable[CfgContext] = IT.IndexedTable("cfg-contexts")
+        self.exptable: IT.IndexedTable[ExpContext] = IT.IndexedTable("exp-contexts")
+        self.contexttable: IT.IndexedTable[CProgramContext] = IT.IndexedTable("contexts")
+        self.tables: List[Tuple[IT.IndexedTableSuperclass, Callable[[ET.Element], None]]] = [
             (self.nodetable, self._read_xml_node_table),
             (self.cfgtable, self._read_xml_cfg_table),
             (self.exptable, self._read_xml_exp_table),
@@ -126,77 +154,80 @@ class CContextTable(object):
         ]
         self.initialize()
 
-    def get_node(self, id):
+    def get_node(self, id: int) -> CContextNode:
         return self.nodetable.retrieve(id)
 
-    def get_program_context(self, id):
+    def get_program_context(self, id: int) -> CProgramContext:
         return self.contexttable.retrieve(id)
 
-    def get_cfg_context(self, id):
+    def get_cfg_context(self, id: int) -> CfgContext:
         return self.cfgtable.retrieve(id)
 
-    def get_exp_context(self, id):
+    def get_exp_context(self, id: int) -> ExpContext:
         return self.exptable.retrieve(id)
 
-    def index_node(self, cnode):
-        def f(index, key):
+    def index_node(self, cnode: CContextNode) -> int:
+        def f(index: int, key: object) -> CContextNode:
             return CContextNode(self, index, cnode.tags, cnode.args)
 
         return self.nodetable.add(IT.get_key(cnode.tags, cnode.args), f)
 
-    def index_exp_context(self, expcontext):
+    def index_exp_context(self, expcontext: ExpContext) -> int:
         args = [self.index_node(x) for x in expcontext.get_nodes()]
 
-        def f(index, key):
-            return CExpContext(self, index, [], args)
+        def f(index: int, key: object) -> ExpContext:
+            return ExpContext(self, index, [], args)
 
         return self.exptable.add(IT.get_key([], args), f)
 
-    def index_empty_exp_context(self):
-        def f(index, key):
-            return CExpContext(self, index, [], [])
+    def index_empty_exp_context(self) -> int:
+        def f(index: int, key: object) -> ExpContext:
+            return ExpContext(self, index, [], [])
 
         return self.exptable.add(IT.get_key([], []), f)
 
-    def index_cfg_context(self, cfgcontext):
+    def index_cfg_context(self, cfgcontext: CfgContext) -> int:
         args = [self.index_node(x) for x in cfgcontext.get_nodes()]
 
-        def f(index, key):
-            return CCfgContext(self, index, [], args)
+        def f(index: int, key: object) -> CfgContext:
+            return CfgContext(self, index, [], args)
 
         return self.cfgtable.add(IT.get_key([], args), f)
 
-    def index_context(self, context):
+    def index_context(self, context: CProgramContext) -> int:
         args = [
             self.index_cfg_context(context.get_cfg_context()),
             self.index_exp_context(context.get_exp_context()),
         ]
 
-        def f(index, key):
+        def f(index: int, key: object) -> CProgramContext:
             return CProgramContext(self, index, [], args)
 
         return self.contexttable.add(IT.get_key([], args), f)
 
-    def index_cfg_projection(self, context):
+    def index_cfg_projection(self, context: CProgramContext) -> int:
         args = [
             self.index_cfg_context(context.get_cfg_context()),
             self.index_empty_exp_context(),
         ]
 
-        def f(index, key):
+        def f(index: int, key: object) -> CProgramContext:
             return CProgramContext(self, index, [], args)
 
         return self.contexttable.add(IT.get_key([], args), f)
 
-    def read_xml_context(self, xnode):
+    def read_xml_context(self, xnode: ET.Element) -> CProgramContext:
         self.initialize()
-        return self.get_program_context(int(xnode.get("ictxt")))
+        ictxt = xnode.get("ictxt")
+        if ictxt is None:
+            raise Exception("missing attribute ictxt")
+        return self.get_program_context(int(ictxt))
 
     # assume that python never adds new contexts
-    def write_xml_context(self, xnode, context):
+    def write_xml_context(self, xnode: ET.Element, context: CProgramContext) -> None:
         xnode.set("ictxt", str(context.index))
 
-    def __str__(self):
+    def __str__(self) -> str:
         lines = []
         for v in self.contexttable.values():
             lines.append(str(v))
@@ -206,7 +237,7 @@ class CContextTable(object):
         lines.append("Program contexts: " + str(self.contexttable.size()))
         return "\n".join(lines)
 
-    def initialize(self, force=False):
+    def initialize(self, force: bool = False) -> None:
         if self.nodetable.size() > 0 and not force:
             return
         xnode = UF.get_cfile_contexttable_xnode(self.cfile.capp.path, self.cfile.name)
@@ -214,49 +245,64 @@ class CContextTable(object):
             return
         for (t, _) in self.tables:
             t.reset()
-        self._read_xml_node_table(xnode.find("nodes"))
-        self._read_xml_cfg_table(xnode.find("cfg-contexts"))
-        self._read_xml_exp_table(xnode.find("exp-contexts"))
-        self._read_xml_context_table(xnode.find("contexts"))
+        nodes = xnode.find("nodes")
+        if nodes is None:
+            raise Exception("missing element `nodes`")
+        self._read_xml_node_table(nodes)
 
-    def _get_args(self, node):
+        cfg_contexts = xnode.find("cfg-contexts")
+        if cfg_contexts is None:
+            raise Exception("missing element `cfg-contexts`")
+        self._read_xml_cfg_table(cfg_contexts)
+
+        exp_contexts = xnode.find("exp-contexts")
+        if exp_contexts is None:
+            raise Exception("missing element `exp-contexts`")
+        self._read_xml_exp_table(exp_contexts)
+
+        contexts = xnode.find("contexts")
+        if contexts is None:
+            raise Exception("missing element `contexts`")
+        self._read_xml_context_table(contexts)
+
+    def _get_args(self, node: ET.Element) -> List[int]:
         args = node.get("a")
         if args is None:
             return []
         return [int(x) for x in args.split(",")]
 
-    def _get_tags(self, node):
+    def _get_tags(self, node: ET.Element) -> List[str]:
         tags = node.get("t")
         if tags is None:
             return []
         return tags.split(",")
 
-    def _read_xml_node_table(self, xnode):
-        def getvalue(node):
+    def _read_xml_node_table(self, xnode: ET.Element) -> None:
+        def getvalue(node: ET.Element) -> CContextNode:
             rep = IT.get_rep(node)
             args = (self,) + rep
             return CContextNode(*args)
 
         self.nodetable.read_xml(xnode, "n", getvalue)
 
-    def _read_xml_cfg_table(self, xnode):
-        def getvalue(node):
+    def _read_xml_cfg_table(self, xnode: ET.Element) -> None:
+        def getvalue(node: ET.Element) -> CfgContext:
             rep = IT.get_rep(node)
             args = (self,) + rep
             return CfgContext(*args)
 
         self.cfgtable.read_xml(xnode, "n", getvalue)
 
-    def _read_xml_exp_table(self, xnode):
-        def getvalue(node):
+    def _read_xml_exp_table(self, xnode: ET.Element) -> None:
+        def getvalue(node: ET.Element) -> ExpContext:
             rep = IT.get_rep(node)
             args = (self,) + rep
             return ExpContext(*args)
 
         self.exptable.read_xml(xnode, "n", getvalue)
 
-    def _read_xml_context_table(self, xnode):
-        def getvalue(node):
+    def _read_xml_context_table(self, xnode: ET.Element) -> None:
+        def getvalue(node: ET.Element) -> CProgramContext:
             rep = IT.get_rep(node)
             args = (self,) + rep
             return CProgramContext(*args)

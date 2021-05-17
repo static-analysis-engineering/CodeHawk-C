@@ -61,4 +61,6 @@ class CGlobalDictionary(CDictionary):
 
     def _initialize(self) -> None:
         xnode = UF.get_global_dictionary_xnode(self.capp.path)
+        if xnode is None:
+            raise Exception("UF.get_global_dictionary_xnode returned None")
         CDictionary.initialize(self, xnode)

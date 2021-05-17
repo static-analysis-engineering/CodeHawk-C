@@ -25,18 +25,33 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
+from typing import Any, List, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from chc.api.CFunctionApi import CFunctionApi
+    from chc.api.XPredicate import XPredicate
+    from chc.app.CFunction import CFunction
+
 
 class ContractAssumption(object):
-    def __init__(self, capi, id, callee, xpredicate, ppos, spos):
+    def __init__(
+        self,
+        capi: "CFunctionApi",
+        id: int,
+        callee: int,
+        xpredicate: "XPredicate",
+        ppos: List[int],
+        spos: List[Any]
+    ) -> None:
         self.id = id
         self.callee = callee
-        self.capi = capi  # api/CFunctionAPI
+        self.capi: "CFunctionApi" = capi  # api/CFunctionAPI
         self.cfun = self.capi.cfun
         self.xpredicate = xpredicate
         self.ppos = ppos
         self.spos = spos
 
-    def __str__(self):
+    def __str__(self) -> str:
         strppos = ""
         strspos = ""
         calleename = "global"

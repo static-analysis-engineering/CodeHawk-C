@@ -86,7 +86,7 @@ class CBlock(object):
     def get_instr_count(self) -> int:
         return sum([stmt.get_instr_count() for stmt in self.get_statements()])
 
-    def get_call_instrs(self) -> List["CInstr"]:
+    def get_call_instrs(self) -> List["CCallInstr"]:
         return sum([stmt.get_call_instrs() for stmt in self.get_statements()], [])
 
     def get_strings(self) -> List[str]:
@@ -129,7 +129,7 @@ class CFunctionBody(object):
     def get_instr_count(self) -> int:
         return self.block.get_instr_count()
 
-    def get_call_instrs(self) -> List["CInstr"]:
+    def get_call_instrs(self) -> List["CCallInstr"]:
         return self.block.get_call_instrs()
 
     def get_strings(self) -> List[str]:
@@ -189,7 +189,7 @@ class CStmt(object):
     def get_instr_count(self) -> int:
         return 0
 
-    def get_call_instrs(self) -> List["CInstr"]:
+    def get_call_instrs(self) -> List["CCallInstr"]:
         return []
 
     def get_strings(self) -> List[str]:
@@ -270,7 +270,7 @@ class CIfStmt(CStmt):
     def get_instr_count(self) -> int:
         return self.thenblock.get_instr_count() + self.elseblock.get_instr_count()
 
-    def get_call_instrs(self) -> List["CInstr"]:
+    def get_call_instrs(self) -> List["CCallInstr"]:
         return self.thenblock.get_call_instrs() + self.elseblock.get_call_instrs()
 
     def get_strings(self) -> List[str]:
@@ -317,7 +317,7 @@ class CLoopStmt(CStmt):
     def get_stmt_count(self) -> int:
         return self.loopblock.get_stmt_count()
 
-    def get_call_instrs(self) -> List["CInstr"]:
+    def get_call_instrs(self) -> List["CCallInstr"]:
         return self.loopblock.get_call_instrs()
 
     def get_strings(self) -> List[str]:
@@ -352,7 +352,7 @@ class CSwitchStmt(CStmt):
     def get_instr_count(self) -> int:
         return self.switchblock.get_instr_count()
 
-    def get_call_instrs(self) -> List["CInstr"]:
+    def get_call_instrs(self) -> List["CCallInstr"]:
         return self.switchblock.get_call_instrs()
 
     def get_strings(self) -> List[str]:
@@ -406,8 +406,8 @@ class CInstrsStmt(CStmt):
     def get_instr_count(self) -> int:
         return len(self.instrs)
 
-    def get_call_instrs(self) -> List["CInstr"]:
-        return [i for i in self.instrs if i.is_call()]
+    def get_call_instrs(self) -> List["CCallInstr"]:
+        return [cast("CCallInstr", i) for i in self.instrs if i.is_call()]
 
     def get_strings(self) -> List[str]:
         return sum([i.get_strings() for i in self.instrs], [])
