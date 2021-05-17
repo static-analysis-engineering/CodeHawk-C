@@ -30,7 +30,7 @@ from typing import Any, Dict, List, TYPE_CHECKING
 
 import chc.util.fileutil as UF
 
-from chc.app.CFunctionBody import CFunctionBody
+from chc.app.CFunctionBody import CCallInstr, CFunctionBody
 from chc.app.CLocation import CLocation
 from chc.app.CFunDeclarations import CFunDeclarations
 from chc.app.CVarInfo import CVarInfo
@@ -82,15 +82,15 @@ class CFunction(object):
         self.podictionary.initialize()
         self.vard.initialize(force=True)
 
-    def export_function_data(self, result: Dict[str, Any]) -> None:
-        result[self.name] = {}
-        fnresult = result[self.name]
+    def export_function_data(self, result: Dict[str, object]) -> None:
+        fnresult: Dict[str, object] = {}
         fnresult["type"] = self.ftype.to_idict()
         fnresult["typestr"] = str(self.ftype)
         fnresult["stmt-count"] = self.get_stmt_count()
         fnresult["instr-count"] = self.get_instr_count()
         fnresult["call-instrs"] = [i.to_dict() for i in self.get_call_instrs()]
         fnresult["call-instrs-strs"] = [str(i) for i in self.get_call_instrs()]
+        result[self.name] = fnresult
 
     def get_formal_vid(self, name: str) -> int:
         for v in self.formals:
@@ -164,16 +164,16 @@ class CFunction(object):
     def get_body(self) -> CFunctionBody:
         return self.body
 
-    def get_block_count(self):
+    def get_block_count(self) -> int:
         return self.body.get_block_count()
 
-    def get_stmt_count(self):
+    def get_stmt_count(self) -> int:
         return self.body.get_stmt_count()
 
-    def get_instr_count(self):
+    def get_instr_count(self) -> int:
         return self.body.get_instr_count()
 
-    def get_call_instrs(self):
+    def get_call_instrs(self) -> List[CCallInstr]:
         return self.body.get_call_instrs()
 
     def get_invariants(self):
