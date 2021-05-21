@@ -25,17 +25,27 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
+from typing import cast, Callable, Dict, List, Tuple, Optional, TYPE_CHECKING
 import xml.etree.ElementTree as ET
 
 import chc.util.fileutil as UF
 import chc.util.IndexedTable as IT
+from chc.util.IndexedTable import IndexedTable, IndexedTableValue, IndexedTableSuperclass
 
 import chc.api.ApiParameter as AP
+from chc.api.ApiParameter import ApiParameter, APFormal, APGlobal
 import chc.api.GlobalAssumption as GA
 import chc.api.PostRequest as PR
+from chc.api.PostRequest import PostRequest
 import chc.api.PostAssume as PA
+from chc.api.PostAssume import PostAssume
 import chc.api.STerm as ST
+from chc.api.STerm import SOffset, STerm, STArgNoOffset, STArgFieldOffset, STArgIndexOffset
 import chc.api.XPredicate as XP
+from chc.api.XPredicate import XPredicate
+
+if TYPE_CHECKING:
+    from chc.app.CFile import CFile
 
 macroconstants = {
     "MININT8": "-128",
@@ -52,19 +62,28 @@ macroconstants = {
     "MAXUINT64": "18446744073709551615",
 }
 
-api_parameter_constructors = {
+api_parameter_constructors: Dict[
+    str,
+    Callable[[Tuple["InterfaceDictionary", int, List[str], List[int]]], ApiParameter],
+] = {
     "pf": lambda x: AP.APFormal(*x),
     "pg": lambda x: AP.APGlobal(*x),
 }
 
-s_offset_constructors = {
+s_offset_constructors: Dict[
+    str,
+    Callable[[Tuple["InterfaceDictionary", int, List[str], List[int]]], SOffset],
+] = {
     "no": lambda x: ST.STArgNoOffset(*x),
     "fo": lambda x: ST.STArgFieldOffset(*x),
     "io": lambda x: ST.STArgIndexOffset(*x),
 }
 
 
-s_term_constructors = {
+s_term_constructors: Dict[
+    str,
+    Callable[[Tuple["InterfaceDictionary", int, List[str], List[int]]], STerm],
+] = {
     "av": lambda x: ST.STArgValue(*x),
     "rv": lambda x: ST.STReturnValue(*x),
     "nc": lambda x: ST.STNamedConstant(*x),
@@ -80,7 +99,10 @@ s_term_constructors = {
     "rt": lambda x: ST.STRuntimeValue(*x),
 }
 
-xpredicate_constructors = {
+xpredicate_constructors: Dict[
+    str,
+    Callable[[Tuple["InterfaceDictionary", int, List[str], List[int]]], XPredicate],
+] = {
     "ab": lambda x: XP.XAllocationBase(*x),
     "bw": lambda x: XP.XBlockWrite(*x),
     "b": lambda x: XP.XBuffer(*x),
@@ -124,18 +146,28 @@ xpredicate_constructors = {
 class InterfaceDictionary(object):
     """Function interface constructs."""
 
-    def __init__(self, cfile):
+    def __init__(self, cfile: "CFile"):
         self.cfile = cfile
         self.declarations = self.cfile.declarations
         self.dictionary = self.declarations.dictionary
-        self.api_parameter_table = IT.IndexedTable("api-parameter-table")
-        self.s_offset_table = IT.IndexedTable("s-offset-table")
-        self.s_term_table = IT.IndexedTable("s-term-table")
-        self.xpredicate_table = IT.IndexedTable("xpredicate-table")
-        self.postrequest_table = IT.IndexedTable("postrequest-table")
-        self.postassume_table = IT.IndexedTable("postassume-table")
-        self.ds_condition_table = IT.IndexedTable("ds-condition-table")
-        self.tables = [
+        self.api_parameter_table: IndexedTable[ApiParameter] = IndexedTable(
+            "api-parameter-table"
+        )
+        self.s_offset_table: IndexedTable[SOffset] = IndexedTable("s-offset-table")
+        self.s_term_table: IndexedTable[STerm] = IndexedTable("s-term-table")
+        self.xpredicate_table: IndexedTable[XPredicate] = IndexedTable(
+            "xpredicate-table"
+        )
+        self.postrequest_table: IndexedTable[PostRequest] = IndexedTable(
+            "postrequest-table"
+        )
+        self.postassume_table: IndexedTable[PostAssume] = IndexedTable(
+            "postassume-table"
+        )
+        self.ds_condition_table: IndexedTable[IndexedTableValue] = IndexedTable(
+            "ds-condition-table"
+        )
+        self.tables: List[Tuple[IndexedTableSuperclass, Callable[[ET.Element], None]]] = [
             (self.api_parameter_table, self._read_xml_api_parameter_table),
             (self.s_offset_table, self._read_xml_s_offset_table),
             (self.s_term_table, self._read_xml_s_term_table),
@@ -148,197 +180,201 @@ class InterfaceDictionary(object):
 
     # ----------------- Retrieve items from dictionary tables ----------------
 
-    def get_api_parameter(self, ix):
+    def get_api_parameter(self, ix: int) -> ApiParameter:
         return self.api_parameter_table.retrieve(ix)
 
-    def get_s_offset(self, ix):
+    def get_s_offset(self, ix: int) -> SOffset:
         return self.s_offset_table.retrieve(ix)
 
-    def get_s_term(self, ix):
+    def get_s_term(self, ix: int) -> STerm:
         return self.s_term_table.retrieve(ix)
 
-    def get_xpredicate(self, ix):
+    def get_xpredicate(self, ix: int) -> XPredicate:
         return self.xpredicate_table.retrieve(ix)
 
-    def get_postrequest(self, ix):
+    def get_postrequest(self, ix: int) -> PostRequest:
         return self.postrequest_table.retrieve(ix)
 
     # --------------------- Index items by category --------------------------
 
-    def index_api_parameter(self, p):
+    def index_api_parameter(self, p: ApiParameter) -> int:
         if p.is_formal():
 
-            def f(index, key):
-                return AP.APFormal(self, index, p.tags, p.args)
+            def f_formal(index: int, key: object) -> APFormal:
+                return APFormal(self, index, p.tags, p.args)
 
-            return self.api_parameter_table.add(IT.get_key(p.tags, p.args), f)
-        if c.is_global():
+            return self.api_parameter_table.add(IT.get_key(p.tags, p.args), f_formal)
+        if p.is_global():
 
-            def f(index, key):
-                return AP.APGlobal(self, index, p.tags, p.args)
+            def f_global(index: int, key: object) -> APGlobal:
+                return APGlobal(self, index, p.tags, p.args)
 
-            return self.api_parameter_table.add(IT.get_key(p.tags, p.args), f)
+            return self.api_parameter_table.add(IT.get_key(p.tags, p.args), f_global)
+        raise Exception("Unknown variant of ApiParameter")
 
-    def mk_api_parameter(self, tags, args):
-        def f(index, key):
+    def mk_api_parameter(self, tags: List[str], args: List[int]) -> int:
+        def f(index: int, key: object) -> ApiParameter:
             return api_parameter_constructors[tags[0]]((self, index, tags, args))
 
         return self.api_parameter_table.add(IT.get_key(tags, args), f)
 
-    def mk_formal_api_parameter(self, n):
+    def mk_formal_api_parameter(self, n: int) -> ApiParameter:
         return self.get_api_parameter(self.mk_api_parameter(["pf"], [n]))
 
-    def mk_global_api_parameter(self, g):
+    def mk_global_api_parameter(self, g: str) -> ApiParameter:
         return self.get_api_parameter(self.mk_api_parameter(["pg", g], []))
 
-    def index_s_offset(self, t):
+    def index_s_offset(self, t: SOffset) -> int:
         if t.is_nooffset():
 
-            def f(index, key):
-                return ST.STArgNoOffset(self, index, t.tags, t.args)
+            def f_nooffset(index: int, key: object) -> STArgNoOffset:
+                return STArgNoOffset(self, index, t.tags, t.args)
 
-            return self.s_offset_table.add(IT.get_key(t.tags, t.args), f)
+            return self.s_offset_table.add(IT.get_key(t.tags, t.args), f_nooffset)
         if t.is_field_offset():
-            args = [self.index_s_offset(t.get_offset())]
+            args = [self.index_s_offset(cast(STArgFieldOffset, t).get_offset())]
 
-            def f(index, key):
-                return ST.STArgFieldOffset(self, index, t.tags, args)
+            def f_fieldoffset(index: int, key: object) -> STArgFieldOffset:
+                return STArgFieldOffset(self, index, t.tags, args)
 
-            return self.s_offset_table.add(IT.get_key(t.tags, args), f)
+            return self.s_offset_table.add(IT.get_key(t.tags, args), f_fieldoffset)
         if t.is_index_offset():
 
-            def f(index, key):
-                return ST.STArgIndexOffset(self, index, t.tags, t.args)
+            def f_indexoffset(index: int, key: object) -> STArgIndexOffset:
+                return STArgIndexOffset(self, index, t.tags, t.args)
 
-            return self.s_offset_table.add(IT.get_key(t.tags, t.args), f)
+            return self.s_offset_table.add(IT.get_key(t.tags, t.args), f_indexoffset)
+        raise Exception("Unknown variant of SOffset: \"" + str(t) + "\"")
 
-    def mk_s_offset(self, tags, args):
-        def f(index, key):
-            return s_offset_constructors[tags[0]](self, index, tags, args)
+    def mk_s_offset(self, tags: List[str], args: List[int]) -> int:
+        def f(index: int, key: object) -> SOffset:
+            return s_offset_constructors[tags[0]]((self, index, tags, args))
 
         return self.s_offset_table.add(IT.get_key(tags, args), f)
 
-    def mk_arg_no_offset(self):
-        return self.get_s_offst(self.mk_s_offset(["no"], []))
+    def mk_arg_no_offset(self) -> SOffset:
+        return self.get_s_offset(self.mk_s_offset(["no"], []))
 
-    def index_s_term(self, t):
+    def index_s_term(self, t: STerm) -> int:
         if t.is_arg_value():
             args = [
-                self.index_api_parameter(t.get_parameter()),
-                self.index_s_offset(t.get_offset()),
+                self.index_api_parameter(cast(ST.STArgValue, t).get_parameter()),
+                self.index_s_offset(cast(ST.STArgValue, t).get_offset()),
             ]
 
-            def f(index, key):
+            def f_argvalue(index: int, key: object) -> ST.STArgValue:
                 return ST.STArgValue(self, index, t.tags, args)
 
-            return self.s_term_table.add(IT.get_key(t.tags, args), f)
+            return self.s_term_table.add(IT.get_key(t.tags, args), f_argvalue)
         if t.is_return_value():
 
-            def f(index, key):
+            def f_returnvalue(index: int, key: object) -> ST.STReturnValue:
                 return ST.STReturnValue(self, index, t.tags, t.args)
 
-            return self.s_term_table.add(IT.get_key(t.tags, t.args), f)
+            return self.s_term_table.add(IT.get_key(t.tags, t.args), f_returnvalue)
         if t.is_named_constant():
 
-            def f(index, key):
+            def f_namedconstant(index: int, key: object) -> ST.STNamedConstant:
                 return ST.STNamedConstant(self, index, t.tags, t.args)
 
-            return self.s_term_table.add(IT.get_key(t.tags, t.args), f)
+            return self.s_term_table.add(IT.get_key(t.tags, t.args), f_namedconstant)
         if t.is_num_constant():
 
-            def f(index, key):
+            def f_numconstant(index: int, key: object) -> ST.STNumConstant:
                 return ST.STNumConstant(self, index, t.tags, t.args)
 
-            return self.s_term_table.add(IT.get_key(t.tags, t.args), f)
+            return self.s_term_table.add(IT.get_key(t.tags, t.args), f_numconstant)
         if t.is_index_size():
-            args = [self.index_s_term(t.get_term())]
+            args = [self.index_s_term(cast(ST.STIndexSize, t).get_term())]
 
-            def f(index, key):
+            def f_indexsize(index: int, key: object) -> ST.STIndexSize:
                 return ST.STIndexSize(self, index, t.tags, args)
 
-            return self.s_term_table.add(IT.get_key(t.tags, args), f)
+            return self.s_term_table.add(IT.get_key(t.tags, args), f_indexsize)
         if t.is_byte_size():
-            args = [self.index_s_term(t.get_term())]
+            args = [self.index_s_term(cast(ST.STByteSize, t).get_term())]
 
-            def f(index, key):
+            def f_bytesize(index: int, key: object) -> ST.STByteSize:
                 return ST.STByteSize(self, index, t.tags, args)
 
-            return self.s_term_table.add(IT.get_key(t.tags, args), f)
+            return self.s_term_table.add(IT.get_key(t.tags, args), f_bytesize)
         if t.is_field_offset():
 
-            def f(index, key):
+            def f_fieldoffset(index: int, key: object) -> ST.STFieldOffset:
                 return ST.STFieldOffset(self, index, t.tags, t.args)
 
-            return self.s_term_table.add(IT.get_key(t.tags, t.args), f)
+            return self.s_term_table.add(IT.get_key(t.tags, t.args), f_fieldoffset)
         if t.is_arg_addressed_value():
             args = [
-                self.index_s_term(t.get_base_term()),
-                self.index_s_offset(t.get_offset()),
+                self.index_s_term(cast(ST.STArgAddressedValue, t).get_base_term()),
+                self.index_s_offset(cast(ST.STArgAddressedValue, t).get_offset()),
             ]
 
-            def f(index, key):
+            def f_argaddressedvalue(index: int, key: object) -> ST.STArgAddressedValue:
                 return ST.STArgAddressedValue(self, index, t.tags, args)
 
-            return self.s_term_table.add(IT.get_key(t.tags, args), f)
+            return self.s_term_table.add(IT.get_key(t.tags, args), f_argaddressedvalue)
         if t.is_arg_null_terminator_pos():
-            args = [self.index_s_term(t.get_term())]
+            args = [self.index_s_term(cast(ST.STArgNullTerminatorPos, t).get_term())]
 
-            def f(index, key):
+            def f_nullterminatorpos(index: int, key: object) -> ST.STArgNullTerminatorPos:
                 return ST.STArgNullTerminatorPos(self, index, t.tags, args)
 
-            return self.s_term_table.add(IT.get_key(t.tags, args), f)
+            return self.s_term_table.add(IT.get_key(t.tags, args), f_nullterminatorpos)
         if t.is_arg_size_of_type():
-            args = [self.index_s_term(t.get_term())]
+            args = [self.index_s_term(cast(ST.STArgSizeOfType, t).get_term())]
 
-            def f(index, key):
+            def f_sizeoftype(index: int, key: object) -> ST.STArgSizeOfType:
                 return ST.STArgSizeOfType(self, index, t.tags, args)
 
-            return self.s_term_table.add(IT.get_key(t.tags, args), f)
+            return self.s_term_table.add(IT.get_key(t.tags, args), f_sizeoftype)
         if t.is_arithmetic_expr():
-            args = [self.index_s_term(t.get_term1()), self.index_s_term(t.get_term2())]
+            t_arith = cast(ST.STArithmeticExpr, t)
+            args = [self.index_s_term(t_arith.get_term1()), self.index_s_term(t_arith.get_term2())]
 
-            def f(index, key):
+            def f_arithmeticexpr(index: int, key: object) -> ST.STArithmeticExpr:
                 return ST.STArithmeticExpr(self, index, t.tags, args)
 
-            return self.s_term_table.add(IT.get_key(t.tags, args), f)
+            return self.s_term_table.add(IT.get_key(t.tags, args), f_arithmeticexpr)
         if t.is_formatted_output_size():
-            args = [self.index_s_term(t.get_term())]
+            args = [self.index_s_term(cast(ST.STFormattedOutputSize, t).get_term())]
 
-            def f(index, key):
+            def f_formattedoutputsize(index: int, key: object) -> ST.STFormattedOutputSize:
                 return ST.STFormattedOutputSize(self, index, t.tags, args)
 
-            return self.s_term_table.add(IT.get_key(t.tags, args), f)
+            return self.s_term_table.add(IT.get_key(t.tags, args), f_formattedoutputsize)
         if t.is_runtime_value():
 
-            def f(index, key):
+            def f_runtimevalue(index: int, key: object) -> ST.STRuntimeValue:
                 return ST.STRuntimeValue(self, index, t.tags, t.args)
 
-            return self.s_term_table.add(IT.get_key(t.tags, t.args), f)
+            return self.s_term_table.add(IT.get_key(t.tags, t.args), f_runtimevalue)
+        raise Exception("Unknown STerm variant: \"" + str(t) + "\"")
 
-    def index_opt_s_term(self, t):
+    def index_opt_s_term(self, t: Optional[STerm]) -> int:
         if t is None:
             return -1
         else:
             return self.index_s_term(t)
 
-    def mk_s_term(self, tags, args):
-        def f(index, key):
+    def mk_s_term(self, tags: List[str], args: List[int]) -> int:
+        def f(index: int, key: object) -> STerm:
             return s_term_constructors[tags[0]]((self, index, tags, args))
 
         return self.s_term_table.add(IT.get_key(tags, args), f)
 
-    def mk_field_s_term(self, fieldname):
+    def mk_field_s_term(self, fieldname: str) -> STerm:
         index = self.mk_s_term(["fo", fieldname], [])
         return self.get_s_term(index)
 
-    def mk_xpredicate(self, tags, args):
-        def f(index, key):
+    def mk_xpredicate(self, tags: List[str], args: List[int]) -> int:
+        def f(index: int, key: object) -> XPredicate:
             return xpredicate_constructors[tags[0]]((self, index, tags, args))
 
         return self.xpredicate_table.add(IT.get_key(tags, args), f)
 
-    def mk_initialized_xpredicate(self, t):
-        index = self.mk_xpredicate("i", [self.index_s_term(t)])
+    def mk_initialized_xpredicate(self, t: STerm) -> XPredicate:
+        index = self.mk_xpredicate(["i"], [self.index_s_term(t)])
         return self.get_xpredicate(index)
 
     def index_xpredicate(self, p):
@@ -852,14 +888,17 @@ class InterfaceDictionary(object):
 
     # ------------------- Initialize dictionary ------------------------------
 
-    def initialize(self):
+    def initialize(self) -> None:
         xnode = UF.get_cfile_interface_dictionary_xnode(
             self.cfile.capp.path, self.cfile.name
         )
         if xnode is None:
             return
         for (t, f) in self.tables:
-            f(xnode.find(t.name))
+            elem = xnode.find(t.name)
+            if elem is None:
+                raise Exception("Expected element \"" + t.name + "\"")
+            f(elem)
 
     # ----------------------- Printing ---------------------------------------
 
@@ -874,8 +913,8 @@ class InterfaceDictionary(object):
 
     # --------------------- Initialization -----------------------------------
 
-    def _read_xml_api_parameter_table(self, txnode):
-        def get_value(node):
+    def _read_xml_api_parameter_table(self, txnode: ET.Element) -> None:
+        def get_value(node: ET.Element) -> ApiParameter:
             rep = IT.get_rep(node)
             tag = rep[1][0]
             args = (self,) + rep
@@ -883,8 +922,8 @@ class InterfaceDictionary(object):
 
         self.api_parameter_table.read_xml(txnode, "n", get_value)
 
-    def _read_xml_s_offset_table(self, txnode):
-        def get_value(node):
+    def _read_xml_s_offset_table(self, txnode: ET.Element) -> None:
+        def get_value(node: ET.Element) -> SOffset:
             rep = IT.get_rep(node)
             tag = rep[1][0]
             args = (self,) + rep
@@ -892,8 +931,8 @@ class InterfaceDictionary(object):
 
         self.s_offset_table.read_xml(txnode, "n", get_value)
 
-    def _read_xml_s_term_table(self, txnode):
-        def get_value(node):
+    def _read_xml_s_term_table(self, txnode: ET.Element) -> None:
+        def get_value(node: ET.Element) -> STerm:
             rep = IT.get_rep(node)
             tag = rep[1][0]
             args = (self,) + rep
@@ -901,8 +940,8 @@ class InterfaceDictionary(object):
 
         self.s_term_table.read_xml(txnode, "n", get_value)
 
-    def _read_xml_xpredicate_table(self, txnode):
-        def get_value(node):
+    def _read_xml_xpredicate_table(self, txnode: ET.Element) -> None:
+        def get_value(node: ET.Element) -> XPredicate:
             rep = IT.get_rep(node)
             tag = rep[1][0]
             args = (self,) + rep
@@ -910,29 +949,21 @@ class InterfaceDictionary(object):
 
         self.xpredicate_table.read_xml(txnode, "n", get_value)
 
-    def _read_xml_postrequest_table(self, txnode):
-        def get_value(node):
+    def _read_xml_postrequest_table(self, txnode: ET.Element) -> None:
+        def get_value(node: ET.Element) -> PostRequest:
             rep = IT.get_rep(node)
             args = (self,) + rep
-            return PR.PostRequest(*args)
+            return PostRequest(*args)
 
         self.postrequest_table.read_xml(txnode, "n", get_value)
 
-    def _read_xml_global_assumption_request_table(self, txnode):
-        def get_value(node):
-            rep = IT.get_rep(node)
-            args = (self,) + rep
-            return GA.GlobalAssumption(*args)
-
-        self.global_assumption_request_table.read_xml(txnode, "n", get_value)
-
-    def _read_xml_postassume_table(self, txnode):
-        def get_value(node):
+    def _read_xml_postassume_table(self, txnode: ET.Element) -> None:
+        def get_value(node: ET.Element) -> PostAssume:
             rep = IT.get_rep(node)
             args = (self,) + rep
             return PA.PostAssume(*args)
 
         self.postassume_table.read_xml(txnode, "n", get_value)
 
-    def _read_xml_ds_condition_table(self, txnode):
+    def _read_xml_ds_condition_table(self, txnode: ET.Element) -> None:
         pass
