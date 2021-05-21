@@ -27,26 +27,27 @@
 
 from typing import List, TYPE_CHECKING
 
-import chc.app.CDictionaryRecord as CD
+from chc.api.InterfaceDictionaryRecord import InterfaceDictionaryRecord
 
 if TYPE_CHECKING:
-    import chc.app.CDictionary
+    from chc.api.InterfaceDictionary import InterfaceDictionary
+    from chc.api.XPredicate import XPredicate
 
 
-class PostAssume(CD.CDictionaryRecord):
+class PostAssume(InterfaceDictionaryRecord):
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
+        cd: "InterfaceDictionary",
         index: int,
         tags: List[str],
         args: List[int],
     ) -> None:
-        CD.CDictionaryRecord.__init__(self, cd, index, tags, args)
+        InterfaceDictionaryRecord.__init__(self, cd, index, tags, args)
 
     def get_callee(self):
         return self.cd.cfile.declarations.get_global_varinfo(int(self.args[0]))
 
-    def get_postcondition(self):
+    def get_postcondition(self) -> "XPredicate":
         return self.cd.get_xpredicate(int(self.args[1]))
 
     def __str__(self) -> str:
