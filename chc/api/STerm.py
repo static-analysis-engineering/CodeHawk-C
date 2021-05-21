@@ -28,11 +28,11 @@
 from typing import List, Optional, TYPE_CHECKING
 import xml.etree.ElementTree as ET
 
-import chc.app.CDictionaryRecord as CD
+from chc.api.InterfaceDictionaryRecord import InterfaceDictionaryRecord
 import chc.util.fileutil as UF
 
 if TYPE_CHECKING:
-    import chc.app.CDictionary
+    from chc.api.InterfaceDictionary import InterfaceDictionary
 
 printops = {
     "plus": "+",
@@ -52,15 +52,15 @@ def get_printop(s: str) -> str:
         return s
 
 
-class SOffset(CD.CDictionaryRecord):
+class SOffset(InterfaceDictionaryRecord):
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
+        cd: "InterfaceDictionary",
         index: int,
         tags: List[str],
         args: List[int],
     ) -> None:
-        CD.CDictionaryRecord.__init__(self, cd, index, tags, args)
+        InterfaceDictionaryRecord.__init__(self, cd, index, tags, args)
 
     def is_nooffset(self) -> bool:
         return False
@@ -78,7 +78,7 @@ class SOffset(CD.CDictionaryRecord):
 class STArgNoOffset(SOffset):
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
+        cd: "InterfaceDictionary",
         index: int,
         tags: List[str],
         args: List[int],
@@ -98,7 +98,7 @@ class STArgNoOffset(SOffset):
 class STArgFieldOffset(SOffset):
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
+        cd: "InterfaceDictionary",
         index: int,
         tags: List[str],
         args: List[int],
@@ -129,7 +129,7 @@ class STArgFieldOffset(SOffset):
 class STArgIndexOffset(SOffset):
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
+        cd: "InterfaceDictionary",
         index: int,
         tags: List[str],
         args: List[int],
@@ -157,15 +157,15 @@ class STArgIndexOffset(SOffset):
         return "[" + str(self.get_index()) + "]" + str(self.get_offset())
 
 
-class STerm(CD.CDictionaryRecord):
+class STerm(InterfaceDictionaryRecord):
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
+        cd: "InterfaceDictionary",
         index: int,
         tags: List[str],
         args: List[int],
     ) -> None:
-        CD.CDictionaryRecord.__init__(self, cd, index, tags, args)
+        InterfaceDictionaryRecord.__init__(self, cd, index, tags, args)
 
     def get_iterm(self, argix):
         return self.cd.get_s_term(int(self.args[argix]))
@@ -222,7 +222,7 @@ class STerm(CD.CDictionaryRecord):
 class STArgValue(STerm):
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
+        cd: "InterfaceDictionary",
         index: int,
         tags: List[str],
         args: List[int],
@@ -250,7 +250,7 @@ class STArgValue(STerm):
 class STReturnValue(STerm):
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
+        cd: "InterfaceDictionary",
         index: int,
         tags: List[str],
         args: List[int],
@@ -270,7 +270,7 @@ class STReturnValue(STerm):
 class STNamedConstant(STerm):
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
+        cd: "InterfaceDictionary",
         index: int,
         tags: List[str],
         args: List[int],
@@ -295,7 +295,7 @@ class STNamedConstant(STerm):
 class STNumConstant(STerm):
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
+        cd: "InterfaceDictionary",
         index: int,
         tags: List[str],
         args: List[int],
@@ -326,7 +326,7 @@ class STNumConstant(STerm):
 class STIndexSize(STerm):
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
+        cd: "InterfaceDictionary",
         index: int,
         tags: List[str],
         args: List[int],
@@ -353,7 +353,7 @@ class STIndexSize(STerm):
 class STByteSize(STerm):
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
+        cd: "InterfaceDictionary",
         index: int,
         tags: List[str],
         args: List[int],
@@ -380,7 +380,7 @@ class STByteSize(STerm):
 class STFieldOffset(STerm):
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
+        cd: "InterfaceDictionary",
         index: int,
         tags: List[str],
         args: List[int],
@@ -405,7 +405,7 @@ class STFieldOffset(STerm):
 class STArgAddressedValue(STerm):
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
+        cd: "InterfaceDictionary",
         index: int,
         tags: List[str],
         args: List[int],
@@ -443,7 +443,7 @@ class STArgAddressedValue(STerm):
 class STArgNullTerminatorPos(STerm):
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
+        cd: "InterfaceDictionary",
         index: int,
         tags: List[str],
         args: List[int],
@@ -470,7 +470,7 @@ class STArgNullTerminatorPos(STerm):
 class STArgSizeOfType(STerm):
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
+        cd: "InterfaceDictionary",
         index: int,
         tags: List[str],
         args: List[int],
@@ -497,7 +497,7 @@ class STArgSizeOfType(STerm):
 class STArithmeticExpr(STerm):
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
+        cd: "InterfaceDictionary",
         index: int,
         tags: List[str],
         args: List[int],
@@ -550,7 +550,7 @@ class STArithmeticExpr(STerm):
 class STFormattedOutputSize(STerm):
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
+        cd: "InterfaceDictionary",
         index: int,
         tags: List[str],
         args: List[int],
@@ -577,7 +577,7 @@ class STFormattedOutputSize(STerm):
 class STRuntimeValue(STerm):
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
+        cd: "InterfaceDictionary",
         index: int,
         tags: List[str],
         args: List[int],
