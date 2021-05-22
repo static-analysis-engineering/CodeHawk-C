@@ -524,10 +524,10 @@ class XNonNegative(XPredicate):
     def __init__(self, cd: "InterfaceDictionary", index: int, tags: List[str], args: List[int]):
         XPredicate.__init__(self, cd, index, tags, args)
 
-    def get_term(self):
+    def get_term(self) -> "STerm":
         return self.get_iterm(0)
 
-    def is_non_negative(self):
+    def is_non_negative(self) -> bool:
         return True
 
     def write_mathml(self, cnode: ET.Element, signature: List[str]) -> None:
