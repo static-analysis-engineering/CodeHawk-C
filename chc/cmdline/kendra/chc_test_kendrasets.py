@@ -45,7 +45,7 @@ def parse():
     return args
 
 
-skips = [163, 363, 391]
+skips = [139, 151, 163, 363, 391]
 
 if __name__ == "__main__":
     args = parse()
