@@ -4,7 +4,9 @@
 # ------------------------------------------------------------------------------
 # The MIT License (MIT)
 #
-# Copyright (c) 2017 Kestrel Technology LLC
+# Copyright (c) 2017-2019 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -71,8 +73,8 @@ if __name__ == "__main__":
 
     capp = CApplication(sempath)
     print("Global entities")
-    if capp.declarations:
-        print(str(capp.declarations.get_stats()))
+    # if capp.declarations:
+    #    print(str(capp.declarations.get_stats()))
     print("\nFile line and function counts\n")
     print(capp.get_line_counts())
 

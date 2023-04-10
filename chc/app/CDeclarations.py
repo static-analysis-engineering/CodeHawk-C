@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2021 Google LLC
+# Copyright (c) 2022 Henny Sipma
+# Copyright (c) 2023 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -32,13 +34,24 @@ from chc.app.CDictionary import CDictionary
 
 if TYPE_CHECKING:
     from chc.app.CFieldInfo import CFieldInfo
+    from chc.app.CFile import CFile
     from chc.app.CInitInfo import CInitInfoBase, COffsetInitInfo
 
 
 class CDeclarations(ABC):
 
-    def __init__(self, dictionary: CDictionary) -> None:
-        self.dictionary = dictionary
+    def __init__(self) -> None:
+        pass
+
+    @property
+    @abstractmethod
+    def dictionary(self) -> CDictionary:
+        ...
+
+    @property
+    @abstractmethod
+    def cfile(self) -> "CFile":
+        ...
 
     @abstractmethod
     def get_initinfo(self, ix: int) -> "CInitInfoBase":
@@ -50,4 +63,8 @@ class CDeclarations(ABC):
 
     @abstractmethod
     def get_offset_init(self, ix: int) -> "COffsetInitInfo":
+        ...
+
+    @abstractmethod
+    def is_struct(self, ckey: int) -> bool:
         ...
