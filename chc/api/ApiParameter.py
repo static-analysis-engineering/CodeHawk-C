@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -27,21 +29,24 @@
 
 from typing import List, TYPE_CHECKING
 
-from chc.api.InterfaceDictionaryRecord import InterfaceDictionaryRecord
+from chc.api.InterfaceDictionaryRecord import (
+    InterfaceDictionaryRecord, ifdregistry)
+
+import chc.util.IndexedTable as IT
 
 if TYPE_CHECKING:
-    from chc.api.InterfaceDictionary import InterfaceDictionary
+    from chc.api.InterfaceDictionary import (
+        InterfaceDictionary, ifdregistry)
 
 
 class ApiParameter(InterfaceDictionaryRecord):
+
     def __init__(
         self,
         cd: "InterfaceDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        InterfaceDictionaryRecord.__init__(self, cd, index, tags, args)
+        InterfaceDictionaryRecord.__init__(self, cd, ixval)
 
     def is_formal(self) -> bool:
         return False
@@ -53,15 +58,15 @@ class ApiParameter(InterfaceDictionaryRecord):
         return "api-parameter " + self.tags[0]
 
 
+@ifdregistry.register_tag("pf", ApiParameter)
 class APFormal(ApiParameter):
+
     def __init__(
         self,
         cd: "InterfaceDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        ApiParameter.__init__(self, cd, index, tags, args)
+        ApiParameter.__init__(self, cd, ixval)
 
     def get_seq_number(self) -> int:
         return int(self.args[0])
@@ -73,15 +78,15 @@ class APFormal(ApiParameter):
         return "par-" + str(self.get_seq_number())
 
 
+@ifdregistry.register_tag("pg", ApiParameter)
 class APGlobal(ApiParameter):
+
     def __init__(
         self,
         cd: "InterfaceDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        ApiParameter.__init__(self, cd, index, tags, args)
+        ApiParameter.__init__(self, cd, ixval)
 
     def get_name(self) -> str:
         return self.tags[1]

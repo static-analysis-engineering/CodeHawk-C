@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2023 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,17 +27,21 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
-from typing import List, Optional, TYPE_CHECKING
+from typing import Dict, List, Optional, TYPE_CHECKING
 import xml.etree.ElementTree as ET
 
-from chc.api.InterfaceDictionaryRecord import InterfaceDictionaryRecord
+from chc.api.InterfaceDictionaryRecord import (
+    InterfaceDictionaryRecord, ifdregistry)
+
 import chc.util.fileutil as UF
+import chc.util.IndexedTable as IT
 
 if TYPE_CHECKING:
     from chc.api.InterfaceDictionary import InterfaceDictionary
     from chc.api.ApiParameter import ApiParameter
 
-printops = {
+
+printops: Dict[str, str] = {
     "plus": "+",
     "plusa": "+",
     "minnus": "-",
@@ -57,11 +63,9 @@ class SOffset(InterfaceDictionaryRecord):
     def __init__(
         self,
         cd: "InterfaceDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        InterfaceDictionaryRecord.__init__(self, cd, index, tags, args)
+        InterfaceDictionaryRecord.__init__(self, cd, ixval)
 
     def is_nooffset(self) -> bool:
         return False
@@ -79,15 +83,14 @@ class SOffset(InterfaceDictionaryRecord):
         return "s-offset-" + self.tags[0]
 
 
+@ifdregistry.register_tag("no", SOffset)
 class STArgNoOffset(SOffset):
     def __init__(
         self,
         cd: "InterfaceDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        SOffset.__init__(self, cd, index, tags, args)
+        SOffset.__init__(self, cd, ixval)
 
     def is_nooffset(self) -> bool:
         return True
@@ -99,15 +102,14 @@ class STArgNoOffset(SOffset):
         return ""
 
 
+@ifdregistry.register_tag("fo", SOffset)
 class STArgFieldOffset(SOffset):
     def __init__(
         self,
         cd: "InterfaceDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        SOffset.__init__(self, cd, index, tags, args)
+        SOffset.__init__(self, cd, ixval)
 
     def get_field(self) -> str:
         return self.tags[1]
@@ -130,15 +132,14 @@ class STArgFieldOffset(SOffset):
         return "." + self.get_field() + str(self.get_offset())
 
 
+@ifdregistry.register_tag("io", SOffset)
 class STArgIndexOffset(SOffset):
     def __init__(
         self,
         cd: "InterfaceDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        SOffset.__init__(self, cd, index, tags, args)
+        SOffset.__init__(self, cd, ixval)
 
     def get_index(self) -> int:
         return int(self.tags[1])
@@ -165,11 +166,9 @@ class STerm(InterfaceDictionaryRecord):
     def __init__(
         self,
         cd: "InterfaceDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        InterfaceDictionaryRecord.__init__(self, cd, index, tags, args)
+        InterfaceDictionaryRecord.__init__(self, cd, ixval)
 
     def get_iterm(self, argix: int) -> "STerm":
         return self.cd.get_s_term(int(self.args[argix]))
@@ -223,15 +222,14 @@ class STerm(InterfaceDictionaryRecord):
         return "s-term-" + self.tags[0]
 
 
+@ifdregistry.register_tag("av", STerm)
 class STArgValue(STerm):
     def __init__(
         self,
         cd: "InterfaceDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        STerm.__init__(self, cd, index, tags, args)
+        STerm.__init__(self, cd, ixval)
 
     def get_parameter(self) -> "ApiParameter":
         return self.cd.get_api_parameter(int(self.args[0]))
@@ -251,15 +249,14 @@ class STArgValue(STerm):
         return "arg-val(" + str(self.get_parameter()) + ")"
 
 
+@ifdregistry.register_tag("rv", STerm)
 class STReturnValue(STerm):
     def __init__(
         self,
         cd: "InterfaceDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        STerm.__init__(self, cd, index, tags, args)
+        STerm.__init__(self, cd, ixval)
 
     def is_return_value(self) -> bool:
         return True
@@ -271,15 +268,14 @@ class STReturnValue(STerm):
         return "returnval"
 
 
+@ifdregistry.register_tag("nc", STerm)
 class STNamedConstant(STerm):
     def __init__(
         self,
         cd: "InterfaceDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        STerm.__init__(self, cd, index, tags, args)
+        STerm.__init__(self, cd, ixval)
 
     def get_name(self) -> str:
         return self.tags[1]
@@ -296,15 +292,14 @@ class STNamedConstant(STerm):
         return "named-constant(" + self.get_name() + ")"
 
 
+@ifdregistry.register_tag("ic", STerm)
 class STNumConstant(STerm):
     def __init__(
         self,
         cd: "InterfaceDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        STerm.__init__(self, cd, index, tags, args)
+        STerm.__init__(self, cd, ixval)
 
     def get_constant(self) -> int:
         try:
@@ -327,15 +322,14 @@ class STNumConstant(STerm):
         return "num-constant(" + str(self.get_constant()) + ")"
 
 
+@ifdregistry.register_tag("is", STerm)
 class STIndexSize(STerm):
     def __init__(
         self,
         cd: "InterfaceDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        STerm.__init__(self, cd, index, tags, args)
+        STerm.__init__(self, cd, ixval)
 
     def get_term(self) -> STerm:
         return self.get_iterm(0)
@@ -354,15 +348,14 @@ class STIndexSize(STerm):
         return "index-size(" + str(self.get_term()) + ")"
 
 
+@ifdregistry.register_tag("bs", STerm)
 class STByteSize(STerm):
     def __init__(
         self,
         cd: "InterfaceDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        STerm.__init__(self, cd, index, tags, args)
+        STerm.__init__(self, cd, ixval)
 
     def get_term(self) -> STerm:
         return self.get_iterm(0)
@@ -381,15 +374,14 @@ class STByteSize(STerm):
         return "byte-size(" + str(self.get_term()) + ")"
 
 
+@ifdregistry.register_tag("fo", STerm)
 class STFieldOffset(STerm):
     def __init__(
         self,
         cd: "InterfaceDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        STerm.__init__(self, cd, index, tags, args)
+        STerm.__init__(self, cd, ixval)
 
     def get_name(self) -> str:
         return self.tags[1]
@@ -406,15 +398,14 @@ class STFieldOffset(STerm):
         return "field-offset(" + str(self.get_name()) + ")"
 
 
+@ifdregistry.register_tag("aa", STerm)
 class STArgAddressedValue(STerm):
     def __init__(
         self,
         cd: "InterfaceDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        STerm.__init__(self, cd, index, tags, args)
+        STerm.__init__(self, cd, ixval)
 
     def get_base_term(self) -> STerm:
         return self.get_iterm(0)
@@ -444,15 +435,14 @@ class STArgAddressedValue(STerm):
         )
 
 
+@ifdregistry.register_tag("at", STerm)
 class STArgNullTerminatorPos(STerm):
     def __init__(
         self,
         cd: "InterfaceDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        STerm.__init__(self, cd, index, tags, args)
+        STerm.__init__(self, cd, ixval)
 
     def get_term(self) -> STerm:
         return self.get_iterm(0)
@@ -471,15 +461,14 @@ class STArgNullTerminatorPos(STerm):
         return "arg-null-terminator-pos(" + str(self.get_term()) + ")"
 
 
+@ifdregistry.register_tag("st", STerm)
 class STArgSizeOfType(STerm):
     def __init__(
         self,
         cd: "InterfaceDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        STerm.__init__(self, cd, index, tags, args)
+        STerm.__init__(self, cd, ixval)
 
     def get_term(self) -> STerm:
         return self.get_iterm(0)
@@ -498,15 +487,14 @@ class STArgSizeOfType(STerm):
         return "arg-size-of-type(" + str(self.get_term()) + ")"
 
 
+@ifdregistry.register_tag("ax", STerm)
 class STArithmeticExpr(STerm):
     def __init__(
         self,
         cd: "InterfaceDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        STerm.__init__(self, cd, index, tags, args)
+        STerm.__init__(self, cd, ixval)
 
     def get_op(self) -> str:
         return self.tags[1]
@@ -551,15 +539,14 @@ class STArithmeticExpr(STerm):
         )
 
 
+@ifdregistry.register_tag("fs", STerm)
 class STFormattedOutputSize(STerm):
     def __init__(
         self,
         cd: "InterfaceDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        STerm.__init__(self, cd, index, tags, args)
+        STerm.__init__(self, cd, ixval)
 
     def get_term(self) -> STerm:
         return self.get_iterm(0)
@@ -578,15 +565,14 @@ class STFormattedOutputSize(STerm):
         return "formatted-output-size(" + str(self.get_term()) + ")"
 
 
+@ifdregistry.register_tag("rt", STerm)
 class STRuntimeValue(STerm):
     def __init__(
         self,
         cd: "InterfaceDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        STerm.__init__(self, cd, index, tags, args)
+        STerm.__init__(self, cd, ixval)
 
     def is_runtime_value(self) -> bool:
         return True
