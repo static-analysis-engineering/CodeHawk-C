@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,37 +27,60 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
-from typing import List, Tuple, TYPE_CHECKING
+from typing import Callable, cast, Dict, List, Tuple, Type, TypeVar, TYPE_CHECKING
 import xml.etree.ElementTree as ET
 
+import chc.util.fileutil as UF
 import chc.util.IndexedTable as IT
+
 
 if TYPE_CHECKING:
     from chc.api.InterfaceDictionary import InterfaceDictionary
 
 
 class InterfaceDictionaryRecord(IT.IndexedTableValue):
-    """Base class for all objects kept in the CDictionary."""
+    """Base class for all objects kept in the InterfaceDictionary."""
 
     def __init__(
         self,
-        cd: "InterfaceDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        dictionary: "InterfaceDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        self.cd = cd
-        self.index = index
-        self.tags = tags
-        self.args = args
+        IT.IndexedTableValue.__init__(self, ixval.index, ixval.tags, ixval.args)
+        self._cd = dictionary
 
-    def get_key(self) -> Tuple[str, str]:
-        return (",".join(self.tags), ",".join([str(x) for x in self.args]))
+    @property
+    def cd(self) -> "InterfaceDictionary":
+        return self._cd
 
-    def write_xml(self, node: ET.Element) -> None:
-        (tagstr, argstr) = self.get_key()
-        if len(tagstr) > 0:
-            node.set("t", tagstr)
-        if len(argstr) > 0:
-            node.set("a", argstr)
-        node.set("ix", str(self.index))
+
+IdR = TypeVar("IdR", bound=InterfaceDictionaryRecord, covariant=True)
+
+
+class InterfaceDictionaryRegistry:
+
+    def __init__(self) -> None:
+        self.register: Dict[Tuple[type, str], Type[InterfaceDictionaryRecord]] = {}
+
+    def register_tag(
+            self,
+            tag: str,
+            anchor: type) -> Callable[[type], type]:
+        def handler(t: type) -> type:
+            self.register[(anchor, tag)] = t
+            return t
+        return handler
+
+    def mk_instance(
+            self,
+            ifd: "InterfaceDictionary",
+            ixval: IT.IndexedTableValue,
+            anchor: Type[IdR]) -> IdR:
+        tag = ixval.tags[0]
+        if (anchor, tag) not in self.register:
+            raise UF.CHCError("Unknown bdictionary type: " + tag)
+        instance = self.register[(anchor, tag)](ifd, ixval)
+        return cast(IdR, instance)
+
+
+ifdregistry: InterfaceDictionaryRegistry = InterfaceDictionaryRegistry()

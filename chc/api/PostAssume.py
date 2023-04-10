@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -29,22 +31,23 @@ from typing import List, TYPE_CHECKING
 
 from chc.api.InterfaceDictionaryRecord import InterfaceDictionaryRecord
 
+import chc.util.IndexedTable as IT
+
 if TYPE_CHECKING:
     from chc.api.InterfaceDictionary import InterfaceDictionary
     from chc.api.XPredicate import XPredicate
+    from chc.app.CVarInfo import CVarInfo
 
 
 class PostAssume(InterfaceDictionaryRecord):
     def __init__(
         self,
         cd: "InterfaceDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        InterfaceDictionaryRecord.__init__(self, cd, index, tags, args)
+        InterfaceDictionaryRecord.__init__(self, cd, ixval)
 
-    def get_callee(self):
+    def get_callee(self) -> "CVarInfo":
         return self.cd.cfile.declarations.get_global_varinfo(int(self.args[0]))
 
     def get_postcondition(self) -> "XPredicate":
