@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,10 +28,18 @@
 # ------------------------------------------------------------------------------
 import xml.etree.ElementTree as ET
 
+from typing import Optional, TYPE_CHECKING
+
 import chc.util.fileutil as UF
 import chc.util.IndexedTable as IT
 
 import chc.app.GlobalAssignment as GA
+
+if TYPE_CHECKING:
+    from chc.app.CFile import CFile
+    from chc.app.CFileDeclarations import CFileDeclarations
+    from chc.app.CFileDictionary import CFileDictionary
+
 
 assignment_constructors = {
     "init": lambda x: GA.InitAssignment(*x),
@@ -41,21 +51,30 @@ assignment_constructors = {
     "u": lambda x: GA.UnknownAssignment(*x),
 }
 
-
 class CFileAssignmentDictionary(object):
     """Dictionary that encodes assignments to global and static variables and fields."""
 
-    def __init__(self, cfile):
-        self.cfile = cfile
-        self.declarations = self.cfile.declarations
-        self.dictionary = self.declarations.dictionary
+    def __init__(self, cfile: "CFile", xnode: Optional[ET.Element]):
+        self._cfile = cfile
         self.assignment_table = IT.IndexedTable("assignment-table")
         self.function_name_table = IT.IndexedTable("function-name-table")
         self.tables = [
             (self.function_name_table, self._read_xml_function_name_table),
             (self.assignment_table, self._read_xml_assignment_table),
         ]
-        self.initialize()
+        self.initialize(xnode)
+
+    @property
+    def cfile(self) -> "CFile":
+        return self._cfile
+
+    @property
+    def declarations(self) -> "CFileDeclarations":
+        return self.cfile.declarations
+
+    @property
+    def dictionary(self) -> "CFileDictionary":
+        return self.cfile.dictionary
 
     def get_function_name(self, ix):
         return self.function_name_table.retrieve(ix)
@@ -69,12 +88,9 @@ class CFileAssignmentDictionary(object):
 
         return self.assignment_table.add(IT.get_key(tags, args), f)
 
-    def initialize(self):
+    def initialize(self, xnode: Optional[ET.Element]) -> None:
         if self.assignment_table.size() > 0:
             return
-        xnode = UF.get_cfile_assignment_dictionary_xnode(
-            self.cfile.capp.path, self.cfile.name
-        )
         if xnode is None:
             return
         for (t, f) in self.tables:

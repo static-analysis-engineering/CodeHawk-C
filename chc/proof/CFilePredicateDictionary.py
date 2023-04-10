@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,10 +28,16 @@
 # ------------------------------------------------------------------------------
 import xml.etree.ElementTree as ET
 
+from typing import Optional, TYPE_CHECKING
+
 import chc.util.fileutil as UF
 import chc.util.IndexedTable as IT
 
 import chc.proof.CPOPredicate as PO
+
+if TYPE_CHECKING:
+    from chc.app.CFile import CFile
+    from chc.app.CFileDictionary import CFileDictionary
 
 
 po_predicate_constructors = {
@@ -89,12 +97,19 @@ po_predicate_constructors = {
 class CFilePredicateDictionary(object):
     """Dictionary that encodes proof obligation predicates."""
 
-    def __init__(self, cfile):
-        self.cfile = cfile
-        self.dictionary = self.cfile.declarations.dictionary
+    def __init__(self, cfile: "CFile", xnode: Optional[ET.Element]) -> None:
+        self._cfile = cfile
         self.po_predicate_table = IT.IndexedTable("po-predicate-table")
         self.tables = [(self.po_predicate_table, self._read_xml_po_predicate_table)]
-        self.initialize()
+        self.initialize(xnode)
+
+    @property
+    def cfile(self) -> "CFile":
+        return self._cfile
+
+    @property
+    def dictionary(self) -> "CFileDictionary":
+        return self.cfile.dictionary
 
     def get_predicate(self, ix):
         return self.po_predicate_table.retrieve(ix)
@@ -456,18 +471,16 @@ class CFilePredicateDictionary(object):
     def write_xml_predicate(self, xnode, pred, tag="ipr"):
         xnode.set(tag, str(self.index_predicate(pred)))
 
-    def initialize(self, force=False):
+    def initialize(
+            self, xnode: Optional[ET.Element], force: bool = False) -> None:
         if self.po_predicate_table.size() > 0 and not force:
             return
-        xnode = UF.get_cfile_predicate_dictionary_xnode(
-            self.cfile.capp.path, self.cfile.name
-        )
         if xnode is None:
             return
         for (t, f) in self.tables:
             f(xnode.find(t.name))
 
-    def __str__(self):
+    def __str__(self) -> str:
         lines = []
         for (t, _) in self.tables:
             lines.append(str(t))
