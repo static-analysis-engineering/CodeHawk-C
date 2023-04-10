@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -90,9 +92,9 @@ class IndexedTableError(Exception):
         return self.msg
 
 
-class StringIndexedTable(IT.IndexedTableSuperclass):
+class StringIndexedTable:
     def __init__(self, name: str) -> None:
-        IT.IndexedTableSuperclass.__init__(self, name)
+        self.name = name
         self.stringtable: Dict[str, int] = {}  # string -> index
         self.indextable: Dict[int, str] = {}  # index -> string
         self.next = 1
@@ -102,9 +104,8 @@ class StringIndexedTable(IT.IndexedTableSuperclass):
         self.indextable = {}
         self.next = 1
 
-    def add(self, s: Optional[str]) -> int:
+    def add(self, s: str) -> int:
         if s is None:
-            print("Attempt to index None in string table")
             raise IndexedTableError(self.name + ": Attempt to index None")
         if s in self.stringtable:
             return self.stringtable[s]

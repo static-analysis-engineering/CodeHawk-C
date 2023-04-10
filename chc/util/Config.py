@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,7 +28,7 @@
 # ------------------------------------------------------------------------------
 
 import os
-from typing import Dict
+from typing import Dict, Optional
 
 if os.path.isfile(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "ConfigLocal.py")
@@ -58,13 +60,13 @@ class Config(object):
             self.linuxdir = os.path.join(self.bindir, "linux")
             self.cparser = os.path.join(self.linuxdir, "parseFile")
             self.canalyzer = os.path.join(self.linuxdir, "canalyzer")
-            self.chc_gui = None
 
         if self.platform == "macOS":
             self.macOSdir = os.path.join(self.bindir, "macOS")
             self.cparser = os.path.join(self.macOSdir, "parseFile")
             self.canalyzer = os.path.join(self.macOSdir, "canalyzer")
-            self.chc_gui = None
+
+        self.chc_gui: Optional[str] = None
 
         # bear: a tool that generates a compilation database in json
         self.bear = None
