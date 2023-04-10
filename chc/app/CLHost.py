@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -27,24 +29,24 @@
 
 from typing import Dict, List, Tuple, TYPE_CHECKING
 
-import chc.app.CDictionaryRecord as CD
+from chc.app.CDictionaryRecord import CDictionaryRecord, cdregistry
+
+import chc.util.IndexedTable as IT
 
 if TYPE_CHECKING:
-    import chc.app.CDictionary
+    from chc.app.CDictionary import CDictionary
     import chc.app.CExp as CE
 
 
-class CLHostBase(CD.CDictionaryRecord):
+class CLHostBase(CDictionaryRecord):
     """Base class for variable and dereference."""
 
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CD.CDictionaryRecord.__init__(self, cd, index, tags, args)
+        CDictionaryRecord.__init__(self, cd, ixval)
 
     def is_var(self) -> bool:
         return False
@@ -77,7 +79,7 @@ class CLHostBase(CD.CDictionaryRecord):
         return "lhostbase:" + self.tags[0]
 
 
-@CD.c_dictionary_record_tag("var")
+@cdregistry.register_tag("var", CLHostBase)
 class CLHostVar(CLHostBase):
     """
     tags:
@@ -90,12 +92,10 @@ class CLHostVar(CLHostBase):
 
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CLHostBase.__init__(self, cd, index, tags, args)
+        CLHostBase.__init__(self, cd, ixval)
 
     def get_name(self) -> str:
         return self.tags[1]
@@ -123,7 +123,7 @@ class CLHostVar(CLHostBase):
         return self.get_name()
 
 
-@CD.c_dictionary_record_tag("mem")
+@cdregistry.register_tag("mem", CLHostBase)
 class CLHostMem(CLHostBase):
     """
     tags:
@@ -135,12 +135,10 @@ class CLHostMem(CLHostBase):
 
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CLHostBase.__init__(self, cd, index, tags, args)
+        CLHostBase.__init__(self, cd, ixval)
 
     def get_exp(self) -> "CE.CExpBase":
         return self.cd.get_exp(self.args[0])

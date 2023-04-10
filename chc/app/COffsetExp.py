@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -27,24 +29,24 @@
 
 from typing import Dict, List, Tuple, TYPE_CHECKING
 
-import chc.app.CDictionaryRecord as CD
+from chc.app.CDictionaryRecord import CDictionaryRecord, cdregistry
+
+import chc.util.IndexedTable as IT
 
 if TYPE_CHECKING:
-    import chc.app.CDictionary
+    from chc.app.CDictionary import CDictionary
     import chc.app.CExp as CE
 
 
-class COffsetBase(CD.CDictionaryRecord):
+class COffsetBase(CDictionaryRecord):
     """Base class for an expression offset."""
 
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CD.CDictionaryRecord.__init__(self, cd, index, tags, args)
+        CDictionaryRecord.__init__(self, cd, ixval)
 
     def has_offset(self) -> bool:
         return True
@@ -68,16 +70,15 @@ class COffsetBase(CD.CDictionaryRecord):
         return "offsetbase:" + self.tags[0]
 
 
-@CD.c_dictionary_record_tag("n")
+@cdregistry.register_tag("n", COffsetBase)
 class CNoOffset(COffsetBase):
+
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        COffsetBase.__init__(self, cd, index, tags, args)
+        COffsetBase.__init__(self, cd, ixval)
 
     def has_offset(self) -> bool:
         return False
@@ -89,16 +90,15 @@ class CNoOffset(COffsetBase):
         return ""
 
 
-@CD.c_dictionary_record_tag("f")
+@cdregistry.register_tag("f", COffsetBase)
 class CFieldOffset(COffsetBase):
+
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        COffsetBase.__init__(self, cd, index, tags, args)
+        COffsetBase.__init__(self, cd, ixval)
 
     def get_fieldname(self) -> str:
         return self.tags[1]
@@ -123,16 +123,14 @@ class CFieldOffset(COffsetBase):
         return "." + self.get_fieldname() + offset
 
 
-@CD.c_dictionary_record_tag("i")
+@cdregistry.register_tag("i", COffsetBase)
 class CIndexOffset(COffsetBase):
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        COffsetBase.__init__(self, cd, index, tags, args)
+        COffsetBase.__init__(self, cd, ixval)
 
     def get_index_exp(self) -> "CE.CExpBase":
         return self.cd.get_exp(self.args[0])
