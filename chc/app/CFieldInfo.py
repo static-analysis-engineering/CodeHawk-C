@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -27,16 +29,19 @@
 
 from typing import cast, List, Optional, TYPE_CHECKING
 
-import chc.app.CDictionaryRecord as CD
+import chc.util.IndexedTable as IT
+
+from chc.app.CDictionaryRecord import CDeclarationsRecord
 
 if TYPE_CHECKING:
     from chc.app.CAttributes import CAttributes
     from chc.app.CDeclarations import CDeclarations
     from chc.app.CFileDeclarations import CFileDeclarations
     from chc.app.CLocation import CLocation
+    from chc.app.CTyp import CTypBase
 
 
-class CFieldInfo(CD.CDeclarationsRecord):
+class CFieldInfo(CDeclarationsRecord):
     """Definition of a struct field.
 
     tags:
@@ -53,14 +58,21 @@ class CFieldInfo(CD.CDeclarationsRecord):
     def __init__(
         self,
         cdecls: "CDeclarations",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CD.CDeclarationsRecord.__init__(self, cdecls, index, tags, args)
-        self.fname = self.tags[0]
-        self.ftype = self.get_dictionary().get_typ(self.args[1])
-        self.bitfield = self.args[2]
+        CDeclarationsRecord.__init__(self, cdecls, ixval)
+
+    @property
+    def fname(self) -> str:
+        return self.tags[0]
+
+    @property
+    def ftype(self) -> "CTypBase":
+        return self.dictionary.get_typ(self.args[1])
+
+    @property
+    def bitfield(self) -> int:
+        return self.args[2]
 
     def get_size(self) -> int:
         return self.ftype.get_size()
@@ -72,7 +84,7 @@ class CFieldInfo(CD.CDeclarationsRecord):
 
     def get_attributes(self) -> Optional["CAttributes"]:
         if self.args[3] >= 0:
-            return self.get_dictionary().get_attributes(self.args[3])
+            return self.dictionary.get_attributes(self.args[3])
         return None
 
     def __str__(self) -> str:

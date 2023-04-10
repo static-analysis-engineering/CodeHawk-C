@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -27,15 +29,17 @@
 
 from typing import Dict, List, Tuple, TYPE_CHECKING
 
-import chc.app.CDictionaryRecord as CD
+from chc.app.CDictionaryRecord import CDictionaryRecord
+
+import chc.util.IndexedTable as IT
 
 if TYPE_CHECKING:
-    import chc.app.CDictionary
+    from chc.app.CDictionary import CDictionary
     import chc.app.CLHost as CH
     import chc.app.COffsetExp as CO
 
 
-class CLval(CD.CDictionaryRecord):
+class CLval(CDictionaryRecord):
     """
     tags: -
 
@@ -46,12 +50,10 @@ class CLval(CD.CDictionaryRecord):
 
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CD.CDictionaryRecord.__init__(self, cd, index, tags, args)
+        CDictionaryRecord.__init__(self, cd, ixval)
 
     def get_lhost(self) -> "CH.CLHostBase":
         return self.cd.get_lhost(self.args[0])

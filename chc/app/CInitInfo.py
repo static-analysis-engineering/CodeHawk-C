@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -27,7 +29,9 @@
 
 from typing import List, TYPE_CHECKING
 
-import chc.app.CDictionaryRecord as CD
+from chc.app.CDictionaryRecord import CDeclarationsRecord
+
+import chc.util.IndexedTable as IT
 
 if TYPE_CHECKING:
     import chc.app.CExp as CE
@@ -36,11 +40,11 @@ if TYPE_CHECKING:
     from chc.app.COffsetExp import COffsetBase
 
 
-class CInitInfoBase(CD.CDeclarationsRecord):
+class CInitInfoBase(CDeclarationsRecord):
     """Global variable initializer."""
 
-    def __init__(self, decls: "CDeclarations", index: int, tags: List[str], args: List[int]):
-        CD.CDeclarationsRecord.__init__(self, decls, index, tags, args)
+    def __init__(self, decls: "CDeclarations", ixval: IT.IndexedTableValue):
+        CDeclarationsRecord.__init__(self, decls, ixval)
 
     def is_single(self) -> bool:
         return False
@@ -52,11 +56,11 @@ class CInitInfoBase(CD.CDeclarationsRecord):
 class CSingleInitInfo(CInitInfoBase):
     """Initializer of a simple variable."""
 
-    def __init__(self, decls: "CDeclarations", index: int, tags: List[str], args: List[int]):
-        CInitInfoBase.__init__(self, decls, index, tags, args)
+    def __init__(self, decls: "CDeclarations", ixval: IT.IndexedTableValue):
+        CInitInfoBase.__init__(self, decls, ixval)
 
     def get_exp(self) -> "CE.CExpBase":
-        return self.get_dictionary().get_exp(self.args[0])
+        return self.dictionary.get_exp(self.args[0])
 
     def is_single(self) -> bool:
         return True
@@ -68,11 +72,11 @@ class CSingleInitInfo(CInitInfoBase):
 class CCompoundInitInfo(CInitInfoBase):
     """Initializer of a struct or array."""
 
-    def __init__(self, decls: "CDeclarations", index: int, tags: List[str], args: List[int]):
-        CInitInfoBase.__init__(self, decls, index, tags, args)
+    def __init__(self, decls: "CDeclarations", ixval: IT.IndexedTableValue):
+        CInitInfoBase.__init__(self, decls, ixval)
 
     def get_typ(self) -> "CT.CTypBase":
-        return self.get_dictionary().get_typ(self.args[0])
+        return self.dictionary.get_typ(self.args[0])
 
     def get_offset_initializers(self) -> List["COffsetInitInfo"]:
         return [self.decls.get_offset_init(x) for x in self.args[1:]]
@@ -84,14 +88,14 @@ class CCompoundInitInfo(CInitInfoBase):
         return "\n".join([str(x) for x in self.get_offset_initializers()])
 
 
-class COffsetInitInfo(CD.CDeclarationsRecord):
+class COffsetInitInfo(CDeclarationsRecord):
     """Component of a compound initializer."""
 
-    def __init__(self, decls: "CDeclarations", index: int, tags: List[str], args: List[int]):
-        CD.CDeclarationsRecord.__init__(self, decls, index, tags, args)
+    def __init__(self, decls: "CDeclarations", ixval: IT.IndexedTableValue):
+        CDeclarationsRecord.__init__(self, decls, ixval)
 
     def get_offset(self) -> "COffsetBase":
-        return self.get_dictionary().get_offset(self.args[0])
+        return self.dictionary.get_offset(self.args[0])
 
     def get_initializer(self) -> CInitInfoBase:
         return self.decls.get_initinfo(self.args[1])

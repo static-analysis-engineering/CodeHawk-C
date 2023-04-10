@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -29,19 +31,36 @@ from typing import cast, List, TYPE_CHECKING
 
 from chc.app.CDictionaryRecord import CDeclarationsRecord
 
+import chc.util.IndexedTable as IT
+
 if TYPE_CHECKING:
+    from chc.app.CAttributes import CAttributes
+    from chc.app.CEnumItem import CEnumItem
     from chc.app.CFileDeclarations import CFileDeclarations
 
 
 class CEnumInfo(CDeclarationsRecord):
     """Global enum definition."""
 
-    def __init__(self, decls: "CFileDeclarations", index: int, tags: List[str], args: List[int]):
-        CDeclarationsRecord.__init__(self, decls, index, tags, args)
-        self.ename = self.tags[0]
-        self.ikind = self.tags[1]
-        self.eattr = self.get_dictionary().get_attributes(args[0])
-        self.eitems = [cast("CFileDeclarations", self.decls).get_enumitem(i) for i in self.args[1:]]
+    def __init__(self, decls: "CFileDeclarations", ixval: IT.IndexedTableValue):
+        CDeclarationsRecord.__init__(self, decls, ixval)
+
+    @property
+    def ename(self) -> str:
+        return self.tags[0]
+
+    @property
+    def ikind(self) -> str:
+        return self.tags[1]
+
+    @property
+    def eattr(self) -> "CAttributes":
+        return self.dictionary.get_attributes(self.args[0])
+
+    @property
+    def eitems(self) -> List["CEnumItem"]:
+        decls = cast("CFileDeclarations", self.decls)
+        return [decls.get_enumitem(i) for i in self.args[1:]]
 
     def __str__(self) -> str:
         return self.ename + " (" + str(len(self.eitems)) + " items)"

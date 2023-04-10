@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -27,25 +29,32 @@
 
 from typing import List, TYPE_CHECKING
 
-import chc.app.CDictionaryRecord as CD
+from chc.app.CDictionaryRecord import CDeclarationsRecord
+
+import chc.util.IndexedTable as IT
 
 if TYPE_CHECKING:
     from chc.app.CDeclarations import CDeclarations
+    from chc.app.CTyp import CTypBase
 
 
-class CTypeInfo(CD.CDeclarationsRecord):
+class CTypeInfo(CDeclarationsRecord):
     """Type definition."""
 
     def __init__(
         self,
         cdecls: "CDeclarations",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CD.CDeclarationsRecord.__init__(self, cdecls, index, tags, args)
-        self.name = tags[0]
-        self.type = self.get_dictionary().get_typ(self.args[0])
+        CDeclarationsRecord.__init__(self, cdecls, ixval)
+
+    @property
+    def name(self) -> str:
+        return self.tags[0]
+
+    @property
+    def type(self) -> "CTypBase":
+        return self.dictionary.get_typ(self.args[0])
 
     def __str__(self) -> str:
         return self.name + ":" + str(self.type)
