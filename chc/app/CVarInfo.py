@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -27,14 +29,16 @@
 
 from typing import cast, List, TYPE_CHECKING
 
-import chc.app.CDictionaryRecord as CD
+from chc.app.CDictionaryRecord import CDictionaryRecord, CDeclarationsRecord
+
+import chc.util.IndexedTable as IT
 
 if TYPE_CHECKING:
     from chc.app.CDeclarations import CDeclarations
     from chc.app.CFileDeclarations import CFileDeclarations
 
 
-class CVarInfo(CD.CDeclarationsRecord):
+class CVarInfo(CDeclarationsRecord):
     """Global variable.
 
     tags:
@@ -56,22 +60,20 @@ class CVarInfo(CD.CDeclarationsRecord):
     def __init__(
         self,
         cdecls: "CDeclarations",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CD.CDeclarationsRecord.__init__(self, cdecls, index, tags, args)
-        self.vname = tags[0]
-        self.vtype = self.get_dictionary().get_typ(args[1])
-        self.vglob = args[3] == 1
-        self.vinline = args[4] == 1
+        CDeclarationsRecord.__init__(self, cdecls, ixval)
+        self.vname = self.tags[0]
+        self.vtype = self.dictionary.get_typ(self.args[1])
+        self.vglob = self.args[3] == 1
+        self.vinline = self.args[4] == 1
         self.vdecl = (
             cast("CFileDeclarations", self.decls).get_location(self.args[5])
             if not (self.args[5] == -1)
             else None
         )
-        self.vaddrof = args[6] == 1
-        self.vparam = args[7]
+        self.vaddrof = self.args[6] == 1
+        self.vparam = self.args[7]
         self.vinit = (
             self.decls.get_initinfo(self.args[8]) if len(self.args) == 9 else None
         )

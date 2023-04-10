@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -27,14 +29,18 @@
 
 from typing import cast, List, TYPE_CHECKING
 
-import chc.app.CDictionaryRecord as CD
+from chc.app.CDictionaryRecord import CDeclarationsRecord
+
+import chc.util.IndexedTable as IT
 
 if TYPE_CHECKING:
+    from chc.app.CAttributes import CAttributes
     from chc.app.CDeclarations import CDeclarations
+    from chc.app.CFieldInfo import CFieldInfo
     from chc.app.CGlobalDeclarations import CGlobalDeclarations
 
 
-class CCompInfo(CD.CDeclarationsRecord):
+class CCompInfo(CDeclarationsRecord):
     """Struct definition.
 
     tags:
@@ -50,14 +56,26 @@ class CCompInfo(CD.CDeclarationsRecord):
     def __init__(
         self,
         decls: "CDeclarations",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CD.CDeclarationsRecord.__init__(self, decls, index, tags, args)
+        CDeclarationsRecord.__init__(self, decls, ixval)
+        '''
         self.fields = [self.decls.get_fieldinfo(i) for i in self.args[3:]]
         self.isstruct = self.args[1] == 1
         self.cattr = self.get_dictionary().get_attributes(args[2])
+        '''
+
+    @property
+    def fields(self) -> List["CFieldInfo"]:
+        return [self.decls.get_fieldinfo(i) for i in self.args[3:]]
+
+    @property
+    def isstruct(self) -> bool:
+        return self.args[1] == 1
+
+    @property
+    def cattr(self) -> "CAttributes":
+        return self.dictionary.get_attributes(self.args[2])
 
     def get_ckey(self) -> int:
         ckey = int(self.args[0])

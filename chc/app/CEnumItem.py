@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -29,16 +31,30 @@ from typing import cast, List, TYPE_CHECKING
 
 from chc.app.CDictionaryRecord import CDeclarationsRecord
 
+import chc.util.IndexedTable as IT
+
 if TYPE_CHECKING:
+    from chc.app.CExp import CExpBase
     from chc.app.CFileDeclarations import CFileDeclarations
+    from chc.app.CLocation import CLocation
 
 
 class CEnumItem(CDeclarationsRecord):
-    def __init__(self, decls: "CFileDeclarations", index: int, tags: List[str], args: List[int]):
-        CDeclarationsRecord.__init__(self, decls, index, tags, args)
-        self.name = self.tags[0]
-        self.exp = self.get_dictionary().get_exp(self.args[0])
-        self.loc = cast("CFileDeclarations", self.decls).get_location(self.args[1])
+    def __init__(self, decls: "CFileDeclarations", ixval: IT.IndexedTableValue):
+        CDeclarationsRecord.__init__(self, decls, ixval)
+
+    @property
+    def name(self) -> str:
+        return self.tags[0]
+
+    @property
+    def exp(self) -> "CExpBase":
+        return self.dictionary.get_exp(self.args[0])
+
+    @property
+    def loc(self) -> "CLocation":
+        decls = cast("CFileDeclarations", self.decls)
+        return decls.get_location(self.args[1])
 
     def __str__(self) -> str:
         return self.name + ":" + str(self.exp)

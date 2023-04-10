@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -29,14 +31,16 @@ from typing import cast, List, Tuple, TYPE_CHECKING
 
 import xml.etree.ElementTree as ET
 
-import chc.app.CDictionaryRecord as CD
+from chc.app.CDictionaryRecord import CDeclarationsRecord
+
+import chc.util.IndexedTable as IT
 
 if TYPE_CHECKING:
     from chc.app.CDeclarations import CDeclarations
     from chc.app.CFileDeclarations import CFileDeclarations
 
 
-class CLocation(CD.CDeclarationsRecord):
+class CLocation(CDeclarationsRecord):
     """Location in a C source program.
 
     tags: -
@@ -47,8 +51,8 @@ class CLocation(CD.CDeclarationsRecord):
         2: line number
     """
 
-    def __init__(self, decls: "CDeclarations", index: int, tags: List[str], args: List[int]):
-        CD.CDeclarationsRecord.__init__(self, decls, index, tags, args)
+    def __init__(self, decls: "CDeclarations", ixval: IT.IndexedTableValue):
+        CDeclarationsRecord.__init__(self, decls, ixval)
 
     def get_byte(self) -> int:
         return int(self.args[1])
