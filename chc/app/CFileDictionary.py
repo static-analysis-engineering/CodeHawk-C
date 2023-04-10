@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,6 +27,8 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
+import xml.etree.ElementTree as ET
+
 from typing import TYPE_CHECKING
 
 import chc.util.fileutil as UF
@@ -37,6 +41,7 @@ import chc.app.CLval as CV
 from chc.app.CDictionary import CDictionary
 
 if TYPE_CHECKING:
+    from chc.app.CFile import CFile
     from chc.app.CFileDeclarations import CFileDeclarations
 
 
@@ -58,19 +63,21 @@ class CKeyLookupError(Exception):
 
 
 class CFileDictionary(CDictionary):
-    def __init__(self, decls: "CFileDeclarations") -> None:
-        CDictionary.__init__(self)
-        self.decls = decls
-        self.cfile = self.decls.cfile
-        self.initialize()
 
-    def initialize(self, force=False):
-        xnode = UF.get_cfile_dictionary_xnode(self.cfile.capp.path, self.cfile.name)
-        if xnode is None:
-            raise Exception("UF.get_cfile_dictionary_xnode returned None")
-        xnode = xnode.find("c-dictionary")
-        if xnode is None:
-            raise Exception("Missing node `c-dictionary`")
+    def __init__(self, cfile: "CFile", xnode: ET.Element)  -> None:
+        CDictionary.__init__(self)
+        self._cfile = cfile
+        self._initialize(xnode)
+
+    @property
+    def cfile(self) -> "CFile":
+        return self._cfile
+
+    @property
+    def decls(self) -> "CFileDeclarations":
+        return self.cfile.declarations
+
+    def _initialize(self, xnode: ET.Element, force: bool = False) -> None:
         CDictionary.initialize(self, xnode, force)
 
     def index_compinfo_key(self, compinfo, _):

@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,9 +27,11 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
-from typing import cast, Callable, Dict, List, Tuple, Type, TypeVar, TYPE_CHECKING
 import xml.etree.ElementTree as ET
 
+from typing import cast, Callable, Dict, List, Tuple, Type, TypeVar, TYPE_CHECKING
+
+import chc.util.fileutil as UF
 import chc.util.IndexedTable as IT
 
 if TYPE_CHECKING:
@@ -41,76 +45,100 @@ class CDictionaryRecord(IT.IndexedTableValue):
     def __init__(
         self,
         cd: "CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        self.cd = cd
-        self.index = index
-        self.tags = tags
-        self.args = args
+        IT.IndexedTableValue.__init__(self, ixval.index, ixval.tags, ixval.args)
+        self._cd = cd
 
-    def get_key(self) -> Tuple[str, str]:
-        return (",".join(self.tags), ",".join([str(x) for x in self.args]))
+    @property
+    def cd(self) -> "CDictionary":
+        return self._cd
 
-    def write_xml(self, node: ET.Element) -> None:
-        (tagstr, argstr) = self.get_key()
-        if len(tagstr) > 0:
-            node.set("t", tagstr)
-        if len(argstr) > 0:
-            node.set("a", argstr)
-        node.set("ix", str(self.index))
+    @property
+    def decls(self) -> "CDeclarations":
+        return self.cd.decls
 
 
 class CDeclarationsRecord(IT.IndexedTableValue):
-    """Base class for all objects kept in the CDeclarations."""
+    """Base class for all objects kept in the CFileDeclarations."""
 
     def __init__(
         self,
         decls: "CDeclarations",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        ixval: IT.IndexedTableValue
     ) -> None:
-        self.decls = decls
-        self.index = index
-        self.tags = tags
-        self.args = args
+        IT.IndexedTableValue.__init__(self, ixval.index, ixval.tags, ixval.args)
+        self._decls = decls
 
-    def get_key(self) -> Tuple[str, str]:
-        return (",".join(self.tags), ",".join([str(x) for x in self.args]))
+    @property
+    def decls(self) -> "CDeclarations":
+        return self._decls
 
-    def get_dictionary(self) -> "CDictionary":
+    @property
+    def dictionary(self) -> "CDictionary":
         return self.decls.dictionary
 
-    def write_xml(self, node: ET.Element) -> None:
-        (tagstr, argstr) = self.get_key()
-        if len(tagstr) > 0:
-            node.set("t", tagstr)
-        if len(argstr) > 0:
-            node.set("a", argstr)
-        node.set("ix", str(self.index))
+
+# __c_dictionary_record_types: Dict[Tuple[type, str], Type[CDictionaryRecord]] = {}
+CDiR = TypeVar("CDiR", bound=CDictionaryRecord, covariant=True)
 
 
-__c_dictionary_record_types: Dict[Tuple[type, str], Type[CDictionaryRecord]] = {}
-CDiR = TypeVar('CDiR', bound=CDictionaryRecord, covariant=True)
+class CDictionaryRegistry:
+
+    def __init__(self) -> None:
+        self.register: Dict[Tuple[type, str], Type[CDictionaryRecord]] = {}
+
+    def register_tag(
+            self,
+            tag: str,
+            anchor: type) -> Callable[[type], type]:
+        def handler(t: type) -> type:
+            self.register[(anchor, tag)] = t
+            return t
+        return handler
+
+    def mk_instance(
+            self,
+            cd: "CDictionary",
+            ixval: IT.IndexedTableValue,
+            anchor: Type[CDiR]) -> CDiR:
+        tag = ixval.tags[0]
+        if (anchor, tag) not in self.register:
+            raise UF.CHCError("Unknown cdictionary type: " + tag)
+        instance = self.register[(anchor, tag)](cd, ixval)
+        return cast(CDiR, instance)
 
 
-def c_dictionary_record_tag(tag_name: str) -> Callable[[Type[CDiR]], Type[CDiR]]:
-    def handler(t: Type[CDiR]) -> Type[CDiR]:
-        __c_dictionary_record_types[(t.__bases__[0], tag_name)] = t
-        return t
-    return handler
+cdregistry: CDictionaryRegistry = CDictionaryRegistry()
 
 
-def construct_c_dictionary_record(
-    cd: "CDictionary",
-    index: int,
-    tags: List[str],
-    args: List[int],
-    superclass: Type[CDiR],
-) -> CDiR:
-    if (superclass, tags[0]) not in __c_dictionary_record_types:
-        raise Exception("unknown type: " + tags[0])
-    instance = __c_dictionary_record_types[(superclass, tags[0])](cd, index, tags, args)
-    return cast(CDiR, instance)
+CDecR = TypeVar("CDecR", bound=CDeclarationsRecord, covariant=True)
+
+
+class CDeclarationsRegistry:
+
+    def __init__(self) -> None:
+        self.register: Dict[Tuple[type, str], Type[CDeclarationsRecord]] = {}
+
+    def register_tag(
+            self,
+            tag: str,
+            anchor: type) -> Callable[[type], type]:
+        def handler(t: type) -> type:
+            self.register[(anchor, tag)] = t
+            return t
+        return handler
+
+    def mk_instance(
+            self,
+            cd: "CDeclarations",
+            ixval: IT.IndexedTableValue,
+            anchor: Type[CDecR]) -> CDecR:
+        tag = ixval.tags[0]
+        if (anchor, tag) not in self.register:
+            raise UF.CHCError("Unknown cdeclarations type: " + tag)
+        instance = self.register[(anchor, tag)](cd, ixval)
+        return cast(CDecR, instance)
+
+
+cdecregistry: CDeclarationsRegistry = CDeclarationsRegistry()
