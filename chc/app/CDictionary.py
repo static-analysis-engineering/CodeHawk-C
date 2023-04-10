@@ -683,11 +683,11 @@ class CDictionary(ABC):
     def initialize(self, xnode: ET.Element, force: bool = False) -> None:
         for t in self.tables:
             t.reset()
-        xtable = xnode.find(t.name)
-        if xtable is not None:
-            t.read_xml(xtable, "n")
-        else:
-            raise UF.CHCError("Error reading table " + t.name)
+            xtable = xnode.find(t.name)
+            if xtable is not None:
+                t.read_xml(xtable, "n")
+            else:
+                raise UF.CHCError("Error reading table " + t.name)
         self.string_table.reset()
         xstable = xnode.find(self.string_table.name)
         if xstable is not None:

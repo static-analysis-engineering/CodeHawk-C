@@ -96,9 +96,9 @@ class CFile(object):
         self._declarations: Optional[CFileDeclarations] = None
         self._dictionary: Optional[CFileDictionary] = None
         self.contexttable = CContextTable(self)
-        self.predicatedictionary = CFilePredicateDictionary(self)
+        self._predicatedictionary: Optional[CFilePredicateDictionary] = None
         self._interfacedictionary: Optional[InterfaceDictionary] = None
-        self.assigndictionary = CFileAssignmentDictionary(self)
+        self._assigndictionary: Optional[CFileAssignmentDictionary] = None
         self.functions: Dict[int, CFunction] = {}  # vid -> CFunction
         self.functionnames: Dict[str, int] = {}  # functionname -> vid
         self.strings: Dict[int, Tuple[int, str]] = {}  # string-index -> (len,string)
@@ -139,6 +139,7 @@ class CFile(object):
 
     @property
     def declarations(self) -> CFileDeclarations:
+        d = self.dictionary
         if self._declarations is None:
             xnode = UF.get_cfile_dictionary_xnode(self.capp.path, self.name)
             if xnode is None:
@@ -157,6 +158,20 @@ class CFile(object):
                 raise UF.CHCError("Interface dictionary file not found")
             self._interfacedictionary = InterfaceDictionary(self, xnode)
         return self._interfacedictionary
+
+    @property
+    def assigndictionary(self) -> CFileAssignmentDictionary:
+        if self._assigndictionary is None:
+            xnode = UF.get_cfile_assignment_dictionary_xnode(self.capp.path, self.name)
+            self._assigndictionary = CFileAssignmentDictionary(self, xnode)
+        return self._assigndictionary
+
+    @property
+    def predicatedictionary(self) -> CFilePredicateDictionary:
+        if self._predicatedictionary is None:
+            xnode = UF.get_cfile_predicate_dictionary_xnode(self.capp.path, self.name)
+            self._predicatedictionary = CFilePredicateDictionary(self, xnode)
+        return self._predicatedictionary
 
     def collect_post_assumes(self) -> None:
         """For all call sites collect postconditions from callee's contracts and add as assume."""
@@ -202,9 +217,17 @@ class CFile(object):
         xnode = UF.get_cfile_dictionary_xnode(self.capp.path, self.name)
         if xnode is None:
             raise UF.CHCError("File dictionary file not found")
-        self.declarations._initialize(xnode)
+        xdict = xnode.find("c-dictionary")
+        if xdict is None:
+            raise UF.CHCError("File dictionary does not have c-dictionary")
+        self.dictionary._initialize(xdict)
+        xdecls = xnode.find("c-declarations")
+        if xdecls is None:
+            raise UF.CHCError("File dictionary does not have c-declarations")
+        self.declarations._initialize(xdecls)
         self.contexttable.initialize()
-        self.predicatedictionary.initialize(force=True)
+        xnode = UF.get_cfile_predicate_dictionary_xnode(self.capp.path, self.name)
+        self.predicatedictionary.initialize(xnode, force=True)
         xnode = UF.get_cfile_interface_dictionary_xnode(self.capp.path, self.name)
         if xnode is None:
             raise UF.CHCError("Interface dictionary file not found")

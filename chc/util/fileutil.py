@@ -1112,7 +1112,7 @@ def get_kendra_testpath_byid(testid: int) -> str:
 def get_kendra_cpath(cfilename: str) -> str:
     if cfilename.endswith(".c"):
         testid = int(cfilename[2:-2])
-        testbase = (((testid - 115) / 4) * 4) + 115
+        testbase = (((testid - 115) // 4) * 4) + 115
         return get_kendra_testpath_byid(int(testbase))
     else:
         raise CHCFileNotFoundError(cfilename)

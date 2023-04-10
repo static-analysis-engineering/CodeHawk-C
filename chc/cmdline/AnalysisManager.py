@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -34,11 +36,9 @@ import shutil
 import chc.util.fileutil as UF
 from chc.util.Config import Config
 
-# from chc.invariants.CGlobalInvariants import CGlobalInvariants
-
 
 class AnalysisManager(object):
-    """Provide the interface to the KT Advance (ocaml) analyzer."""
+    """Provide the interface to the codehawk (ocaml) analyzer."""
 
     def __init__(
         self,
