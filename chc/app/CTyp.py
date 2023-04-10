@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -29,13 +31,16 @@ import logging
 from typing import cast, Dict, List, Optional, Tuple, TYPE_CHECKING
 import xml.etree.ElementTree as ET
 
-import chc.app.CDictionaryRecord as CD
+from chc.app.CDictionaryRecord import CDictionaryRecord, cdregistry
+
+import chc.util.IndexedTable as IT
 
 if TYPE_CHECKING:
-    import chc.app.CDictionary
+    from chc.app.CDictionary import CDictionary
     import chc.app.CExp as CE
     import chc.app.CAttributes as CA
     import chc.app.CConstExp as CC
+
 
 integernames = {
     "ichar": "char",
@@ -68,17 +73,15 @@ attribute_index = {
 }
 
 
-class CTypBase(CD.CDictionaryRecord):
+class CTypBase(CDictionaryRecord):
     """Variable type. """
 
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CD.CDictionaryRecord.__init__(self, cd, index, tags, args)
+        CDictionaryRecord.__init__(self, cd, ixval)
 
     def expand(self) -> "CTypBase":
         return self
@@ -129,6 +132,9 @@ class CTypBase(CD.CDictionaryRecord):
             return "[" + str(attrs) + "]"
         else:
             return ""
+
+    def get_opaque_type(self) -> "CTypBase":
+        return self
 
     def equal(self, other: "CTypBase") -> bool:
         return self.expand().index == other.expand().index
@@ -184,7 +190,7 @@ class CTypBase(CD.CDictionaryRecord):
         return {"t": self.tags, "a": self.args}
 
 
-@CD.c_dictionary_record_tag("tvoid")
+@cdregistry.register_tag("tvoid", CTypBase)
 class CTypVoid(CTypBase):
     """
     tags:
@@ -196,12 +202,10 @@ class CTypVoid(CTypBase):
 
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CTypBase.__init__(self, cd, index, tags, args)
+        CTypBase.__init__(self, cd, ixval)
 
     def is_void(self) -> bool:
         return True
@@ -216,7 +220,7 @@ class CTypVoid(CTypBase):
         return "void" + "[" + str(self.get_attributes()) + "]"
 
 
-@CD.c_dictionary_record_tag("tint")
+@cdregistry.register_tag("tint", CTypBase)
 class CTypInt(CTypBase):
     """
     tags:
@@ -229,12 +233,10 @@ class CTypInt(CTypBase):
 
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CTypBase.__init__(self, cd, index, tags, args)
+        CTypBase.__init__(self, cd, ixval)
 
     def is_int(self) -> bool:
         return True
@@ -259,7 +261,7 @@ class CTypInt(CTypBase):
         return integernames[self.get_kind()] + str(self.get_attributes_string())
 
 
-@CD.c_dictionary_record_tag("tfloat")
+@cdregistry.register_tag("tfloat", CTypBase)
 class CTypFloat(CTypBase):
     """
     tags:
@@ -272,12 +274,10 @@ class CTypFloat(CTypBase):
 
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CTypBase.__init__(self, cd, index, tags, args)
+        CTypBase.__init__(self, cd, ixval)
 
     def is_float(self) -> bool:
         return True
@@ -298,7 +298,7 @@ class CTypFloat(CTypBase):
         return floatnames[self.get_kind()]
 
 
-@CD.c_dictionary_record_tag("tnamed")
+@cdregistry.register_tag("tnamed", CTypBase)
 class CTypNamed(CTypBase):
     """
     tags:
@@ -311,12 +311,10 @@ class CTypNamed(CTypBase):
 
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CTypBase.__init__(self, cd, index, tags, args)
+        CTypBase.__init__(self, cd, ixval)
 
     def get_name(self) -> str:
         return self.tags[1]
@@ -344,7 +342,7 @@ class CTypNamed(CTypBase):
         return self.get_name() + str(self.get_attributes_string())
 
 
-@CD.c_dictionary_record_tag("tcomp")
+@cdregistry.register_tag("tcomp", CTypBase)
 class CTypComp(CTypBase):
     """
     tags:
@@ -357,24 +355,22 @@ class CTypComp(CTypBase):
 
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CTypBase.__init__(self, cd, index, tags, args)
+        CTypBase.__init__(self, cd, ixval)
 
     def get_ckey(self) -> int:
         return self.args[0]
 
     def get_struct(self):
-        return self.cd.decls.get_struct(self.get_ckey())
+        return self.decls.get_struct(self.get_ckey())
 
     def get_name(self):
-        return self.cd.decls.get_structname(self.get_ckey())
+        return self.decls.get_structname(self.get_ckey())
 
-    def is_struct(self):
-        return self.cd.decls.is_struct(self.get_ckey())
+    def is_struct(self) -> bool:
+        return self.decls.is_struct(self.get_ckey())
 
     def get_size(self) -> int:
         return self.get_struct().get_size()
@@ -402,7 +398,7 @@ class CTypComp(CTypBase):
             return "union " + self.get_name() + "(" + str(self.get_ckey()) + ")"
 
 
-@CD.c_dictionary_record_tag("tenum")
+@cdregistry.register_tag("tenum", CTypBase)
 class CTypEnum(CTypBase):
     """
     tags:
@@ -415,20 +411,18 @@ class CTypEnum(CTypBase):
 
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CTypBase.__init__(self, cd, index, tags, args)
+        CTypBase.__init__(self, cd, ixval)
 
-    def get_name(self):
+    def get_name(self) -> str:
         return self.tags[1]
 
-    def get_size(self):
+    def get_size(self) -> int:
         return 4
 
-    def is_enum(self):
+    def is_enum(self) -> bool:
         return True
 
     def get_opaque_type(self):
@@ -443,8 +437,8 @@ class CTypEnum(CTypBase):
         return "enum " + self.get_name()
 
 
-@CD.c_dictionary_record_tag("tbuiltinvaargs")
-@CD.c_dictionary_record_tag("tbuiltin-va-list")
+@cdregistry.register_tag("tbuiltinvaargs", CTypBase)
+@cdregistry.register_tag("tbuiltin-va-list", CTypBase)
 class CTypBuiltinVaargs(CTypBase):
     """
     tags:
@@ -456,17 +450,15 @@ class CTypBuiltinVaargs(CTypBase):
 
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CTypBase.__init__(self, cd, index, tags, args)
+        CTypBase.__init__(self, cd, ixval)
 
     def is_builtin_vaargs(self) -> bool:
         return True
 
-    def get_opaque_type(self):
+    def get_opaque_type(self) -> CTypBase:
         return self
 
     def to_dict(self):
@@ -476,7 +468,7 @@ class CTypBuiltinVaargs(CTypBase):
         return "tbuiltin_va_args"
 
 
-@CD.c_dictionary_record_tag("tptr")
+@cdregistry.register_tag("tptr", CTypBase)
 class CTypPtr(CTypBase):
     """
     tags:
@@ -489,12 +481,10 @@ class CTypPtr(CTypBase):
 
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CTypBase.__init__(self, cd, index, tags, args)
+        CTypBase.__init__(self, cd, ixval)
 
     def get_pointedto_type(self) -> CTypBase:
         return self.get_typ(self.args[0])
@@ -505,7 +495,7 @@ class CTypPtr(CTypBase):
     def is_pointer(self) -> bool:
         return True
 
-    def get_opaque_type(self):
+    def get_opaque_type(self) -> CTypBase:
         tgttype = self.get_pointedto_type().get_opaque_type()
         tags = ["tptr"]
         args = [self.cd.index_typ(tgttype)]
@@ -518,7 +508,7 @@ class CTypPtr(CTypBase):
         return "(" + str(self.get_pointedto_type()) + " *)"
 
 
-@CD.c_dictionary_record_tag("tarray")
+@cdregistry.register_tag("tarray", CTypBase)
 class CTypArray(CTypBase):
     """
     tags:
@@ -532,12 +522,10 @@ class CTypArray(CTypBase):
 
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CTypBase.__init__(self, cd, index, tags, args)
+        CTypBase.__init__(self, cd, ixval)
 
     def get_array_basetype(self) -> CTypBase:
         return self.get_typ(self.args[0])
@@ -562,9 +550,9 @@ class CTypArray(CTypBase):
     def is_array(self) -> bool:
         return True
 
-    def get_opaque_type(self):
+    def get_opaque_type(self) -> CTypBase:
         tags = ["tvoid"]
-        args = []
+        args: List[int] = []
         return self.cd.get_typ(self.cd.mk_typ(tags, args))
 
     def to_dict(self):
@@ -579,7 +567,7 @@ class CTypArray(CTypBase):
         return str(self.get_array_basetype()) + "[" + ssize + "]"
 
 
-@CD.c_dictionary_record_tag("tfun")
+@cdregistry.register_tag("tfun", CTypBase)
 class CTypFun(CTypBase):
     """
     tags:
@@ -594,12 +582,10 @@ class CTypFun(CTypBase):
 
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CTypBase.__init__(self, cd, index, tags, args)
+        CTypBase.__init__(self, cd, ixval)
 
     def get_return_type(self) -> CTypBase:
         return self.get_typ(self.args[0])
@@ -659,7 +645,7 @@ class CTypFun(CTypBase):
         return "(" + str(args) + "):" + str(rtyp)
 
 
-class CFunArg(CD.CDictionaryRecord):
+class CFunArg(CDictionaryRecord):
     """
     tags:
         0: argument name
@@ -671,20 +657,18 @@ class CFunArg(CD.CDictionaryRecord):
 
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CD.CDictionaryRecord.__init__(self, cd, index, tags, args)
+        CDictionaryRecord.__init__(self, cd, ixval)
 
-    def get_name(self):
+    def get_name(self) -> str:
         if len(self.tags) > 0:
             return self.tags[0]
         else:
             return "__"
 
-    def get_type(self):
+    def get_type(self) -> CTypBase:
         return self.cd.get_typ(self.args[0])
 
     def to_dict(self):
@@ -694,7 +678,7 @@ class CFunArg(CD.CDictionaryRecord):
         return str(self.get_type()) + " " + self.get_name()
 
 
-class CFunArgs(CD.CDictionaryRecord):
+class CFunArgs(CDictionaryRecord):
     """
     tags: -
 
@@ -703,14 +687,12 @@ class CFunArgs(CD.CDictionaryRecord):
 
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CD.CDictionaryRecord.__init__(self, cd, index, tags, args)
+        CDictionaryRecord.__init__(self, cd, ixval)
 
-    def get_args(self):
+    def get_args(self) -> List[CFunArg]:
         return [self.cd.get_funarg(i) for i in self.args]
 
     def to_dict(self):

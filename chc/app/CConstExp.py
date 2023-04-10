@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -27,24 +29,24 @@
 
 from typing import List, Tuple, TYPE_CHECKING
 
-import chc.app.CDictionaryRecord as CD
+from chc.app.CDictionaryRecord import CDictionaryRecord, cdregistry
+
+import chc.util.IndexedTable as IT
 
 if TYPE_CHECKING:
-    import chc.app.CDictionary
+    from chc.app.CDictionary import CDictionary
     import chc.app.CExp as CE
 
 
-class CConstBase(CD.CDictionaryRecord):
+class CConstBase(CDictionaryRecord):
     """Constant expression."""
 
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CD.CDictionaryRecord.__init__(self, cd, index, tags, args)
+        CDictionaryRecord.__init__(self, cd, ixval)
 
     def get_exp(self, ix: int) -> 'CE.CExpBase':
         return self.cd.get_exp(ix)
@@ -68,7 +70,7 @@ class CConstBase(CD.CDictionaryRecord):
         return "constantbase:" + self.tags[0]
 
 
-@CD.c_dictionary_record_tag("int")
+@cdregistry.register_tag("int", CConstBase)
 class CConstInt(CConstBase):
     """
     tags:
@@ -81,12 +83,10 @@ class CConstInt(CConstBase):
 
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CConstBase.__init__(self, cd, index, tags, args)
+        CConstBase.__init__(self, cd, ixval)
 
     def get_int(self) -> int:
         return int(self.tags[1])
@@ -101,7 +101,7 @@ class CConstInt(CConstBase):
         return str(self.get_int())
 
 
-@CD.c_dictionary_record_tag("str")
+@cdregistry.register_tag("str", CConstBase)
 class CConstStr(CConstBase):
     """
     tags:
@@ -113,12 +113,10 @@ class CConstStr(CConstBase):
 
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CConstBase.__init__(self, cd, index, tags, args)
+        CConstBase.__init__(self, cd, ixval)
 
     def get_string(self) -> str:
         return self.cd.get_string(self.args[0])
@@ -136,7 +134,7 @@ class CConstStr(CConstBase):
         return "str(" + strg + ")"
 
 
-@CD.c_dictionary_record_tag("wstr")
+@cdregistry.register_tag("wstr", CConstBase)
 class CConstWStr(CConstBase):
     """
     tags:
@@ -148,12 +146,10 @@ class CConstWStr(CConstBase):
 
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CConstBase.__init__(self, cd, index, tags, args)
+        CConstBase.__init__(self, cd, ixval)
 
     def get_string(self) -> str:
         return "-".join(self.tags[1:])
@@ -162,7 +158,7 @@ class CConstWStr(CConstBase):
         return "wstr(" + self.get_string() + ")"
 
 
-@CD.c_dictionary_record_tag("chr")
+@cdregistry.register_tag("chr", CConstBase)
 class CConstChr(CConstBase):
     """
     tags:
@@ -174,12 +170,10 @@ class CConstChr(CConstBase):
 
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CConstBase.__init__(self, cd, index, tags, args)
+        CConstBase.__init__(self, cd, ixval)
 
     def get_chr(self) -> str:
         return "'" + str(chr(self.args[0])) + "'"
@@ -191,7 +185,7 @@ class CConstChr(CConstBase):
         return "chr(" + self.get_chr() + ")"
 
 
-@CD.c_dictionary_record_tag("real")
+@cdregistry.register_tag("real", CConstBase)
 class CConstReal(CConstBase):
     """
     tags:
@@ -203,12 +197,10 @@ class CConstReal(CConstBase):
 
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CConstBase.__init__(self, cd, index, tags, args)
+        CConstBase.__init__(self, cd, ixval)
 
     def get_real(self) -> float:
         return float(self.tags[1])
@@ -223,7 +215,7 @@ class CConstReal(CConstBase):
         return str(self.get_real())
 
 
-@CD.c_dictionary_record_tag("enum")
+@cdregistry.register_tag("enum", CConstBase)
 class CConstEnum(CConstBase):
     """
     tags:
@@ -237,12 +229,10 @@ class CConstEnum(CConstBase):
 
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CConstBase.__init__(self, cd, index, tags, args)
+        CConstBase.__init__(self, cd, ixval)
 
     def get_enum_name(self) -> str:
         return self.tags[1]
@@ -264,7 +254,7 @@ class CConstEnum(CConstBase):
         )
 
 
-class CStringConstant(CD.CDictionaryRecord):
+class CStringConstant(CDictionaryRecord):
     """
     tags:
         0: string value or hexadecimal representation of string value
@@ -276,12 +266,10 @@ class CStringConstant(CD.CDictionaryRecord):
 
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CD.CDictionaryRecord.__init__(self, cd, index, tags, args)
+        CDictionaryRecord.__init__(self, cd, ixval)
 
     def get_string(self) -> str:
         if len(self.tags) > 0:

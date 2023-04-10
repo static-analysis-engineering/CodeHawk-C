@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -27,13 +29,16 @@
 
 from typing import Dict, List, Tuple, TYPE_CHECKING
 
-import chc.app.CDictionaryRecord as CD
+from chc.app.CDictionaryRecord import CDictionaryRecord, cdregistry
+
+import chc.util.IndexedTable as IT
 
 if TYPE_CHECKING:
-    import chc.app.CDictionary
+    from chc.app.CDictionary import CDictionary
     import chc.app.CConstExp as CC
     import chc.app.CTyp as CT
     import chc.app.CLval as CV
+
 
 binoperatorstrings = {
     "band": "&",
@@ -63,17 +68,15 @@ binoperatorstrings = {
 unoperatorstrings = {"neg": "-", "bnot": "~", "lnot": "!"}
 
 
-class CExpBase(CD.CDictionaryRecord):
+class CExpBase(CDictionaryRecord):
     """Base class for all expressions."""
 
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CD.CDictionaryRecord.__init__(self, cd, index, tags, args)
+        CDictionaryRecord.__init__(self, cd, ixval)
 
     def is_binop(self) -> bool:
         return False
@@ -139,7 +142,7 @@ class CExpBase(CD.CDictionaryRecord):
         return "baseexp:" + self.tags[0]
 
 
-@CD.c_dictionary_record_tag("const")
+@cdregistry.register_tag("const", CExpBase)
 class CExpConst(CExpBase):
     """
     tags:
@@ -151,12 +154,10 @@ class CExpConst(CExpBase):
 
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CExpBase.__init__(self, cd, index, tags, args)
+        CExpBase.__init__(self, cd, ixval)
 
     def is_constant(self) -> bool:
         return True
@@ -174,7 +175,7 @@ class CExpConst(CExpBase):
         return str(self.get_constant())
 
 
-@CD.c_dictionary_record_tag("lval")
+@cdregistry.register_tag("lval", CExpBase)
 class CExpLval(CExpBase):
     """
     tags:
@@ -186,12 +187,10 @@ class CExpLval(CExpBase):
 
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CExpBase.__init__(self, cd, index, tags, args)
+        CExpBase.__init__(self, cd, ixval)
 
     def get_lval(self) -> "CV.CLval":
         return self.cd.get_lval(self.args[0])
@@ -215,7 +214,7 @@ class CExpLval(CExpBase):
         return str(self.get_lval())
 
 
-@CD.c_dictionary_record_tag("sizeof")
+@cdregistry.register_tag("sizeof", CExpBase)
 class CExpSizeOf(CExpBase):
     """
     tags:
@@ -227,12 +226,10 @@ class CExpSizeOf(CExpBase):
 
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CExpBase.__init__(self, cd, index, tags, args)
+        CExpBase.__init__(self, cd, ixval)
 
     def get_type(self) -> "CT.CTypBase":
         return self.cd.get_typ(self.args[0])
@@ -247,7 +244,7 @@ class CExpSizeOf(CExpBase):
         return "sizeof(" + str(self.get_type()) + ")"
 
 
-@CD.c_dictionary_record_tag("sizeofe")
+@cdregistry.register_tag("sizeofe", CExpBase)
 class CExpSizeOfE(CExpBase):
     """
     tags:
@@ -259,12 +256,10 @@ class CExpSizeOfE(CExpBase):
 
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CExpBase.__init__(self, cd, index, tags, args)
+        CExpBase.__init__(self, cd, ixval)
 
     def get_exp(self) -> CExpBase:
         return self.cd.get_exp(self.args[0])
@@ -285,7 +280,7 @@ class CExpSizeOfE(CExpBase):
         return "sizeofe(" + str(self.get_exp()) + ")"
 
 
-@CD.c_dictionary_record_tag("sizeofstr")
+@cdregistry.register_tag("sizeofstr", CExpBase)
 class CExpSizeOfStr(CExpBase):
     """
     tags:
@@ -297,12 +292,10 @@ class CExpSizeOfStr(CExpBase):
 
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CExpBase.__init__(self, cd, index, tags, args)
+        CExpBase.__init__(self, cd, ixval)
 
     def get_string(self) -> str:
         return self.cd.get_string(self.args[0])
@@ -320,7 +313,7 @@ class CExpSizeOfStr(CExpBase):
         return "sizeofstr(" + str(self.get_string()) + ")"
 
 
-@CD.c_dictionary_record_tag("alignof")
+@cdregistry.register_tag("alignof", CExpBase)
 class CExpAlignOf(CExpBase):
     """
     tags:
@@ -332,12 +325,10 @@ class CExpAlignOf(CExpBase):
 
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CExpBase.__init__(self, cd, index, tags, args)
+        CExpBase.__init__(self, cd, ixval)
 
     def get_type(self) -> "CT.CTypBase":
         return self.cd.get_typ(self.args[0])
@@ -352,7 +343,7 @@ class CExpAlignOf(CExpBase):
         return "alignof(" + str(self.get_type()) + ")"
 
 
-@CD.c_dictionary_record_tag("alignofe")
+@cdregistry.register_tag("alignofe", CExpBase)
 class CExpAlignOfE(CExpBase):
     """
     tags:
@@ -364,12 +355,10 @@ class CExpAlignOfE(CExpBase):
 
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CExpBase.__init__(self, cd, index, tags, args)
+        CExpBase.__init__(self, cd, ixval)
 
     def is_alignofe(self) -> bool:
         return True
@@ -393,7 +382,7 @@ class CExpAlignOfE(CExpBase):
         return "alignofe(" + str(self.get_exp()) + ")"
 
 
-@CD.c_dictionary_record_tag("unop")
+@cdregistry.register_tag("unop", CExpBase)
 class CExpUnOp(CExpBase):
     """
     tags:
@@ -407,12 +396,10 @@ class CExpUnOp(CExpBase):
 
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CExpBase.__init__(self, cd, index, tags, args)
+        CExpBase.__init__(self, cd, ixval)
 
     def get_exp(self) -> CExpBase:
         return self.cd.get_exp(self.args[0])
@@ -442,7 +429,7 @@ class CExpUnOp(CExpBase):
         return "(" + unoperatorstrings[self.get_op()] + " " + str(self.get_exp()) + ")"
 
 
-@CD.c_dictionary_record_tag("binop")
+@cdregistry.register_tag("binop", CExpBase)
 class CExpBinOp(CExpBase):
     """
     tags:
@@ -457,12 +444,10 @@ class CExpBinOp(CExpBase):
 
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CExpBase.__init__(self, cd, index, tags, args)
+        CExpBase.__init__(self, cd, ixval)
 
     def get_exp1(self) -> CExpBase:
         return self.cd.get_exp(self.args[0])
@@ -519,7 +504,7 @@ class CExpBinOp(CExpBase):
         )
 
 
-@CD.c_dictionary_record_tag("question")
+@cdregistry.register_tag("question", CExpBase)
 class CExpQuestion(CExpBase):
     """
     tags:
@@ -534,12 +519,10 @@ class CExpQuestion(CExpBase):
 
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CExpBase.__init__(self, cd, index, tags, args)
+        CExpBase.__init__(self, cd, ixval)
 
     def get_condition(self) -> CExpBase:
         return self.cd.get_exp(self.args[0])
@@ -593,7 +576,7 @@ class CExpQuestion(CExpBase):
         )
 
 
-@CD.c_dictionary_record_tag("caste")
+@cdregistry.register_tag("caste", CExpBase)
 class CExpCastE(CExpBase):
     """
     tags:
@@ -606,12 +589,10 @@ class CExpCastE(CExpBase):
 
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CExpBase.__init__(self, cd, index, tags, args)
+        CExpBase.__init__(self, cd, ixval)
 
     def get_exp(self) -> CExpBase:
         return self.cd.get_exp(self.args[1])
@@ -642,7 +623,7 @@ class CExpCastE(CExpBase):
         return "caste(" + str(self.get_type()) + "," + str(self.get_exp()) + ")"
 
 
-@CD.c_dictionary_record_tag("addrof")
+@cdregistry.register_tag("addrof", CExpBase)
 class CExpAddrOf(CExpBase):
     """
     tags:
@@ -654,12 +635,10 @@ class CExpAddrOf(CExpBase):
 
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CExpBase.__init__(self, cd, index, tags, args)
+        CExpBase.__init__(self, cd, ixval)
 
     def get_lval(self) -> "CV.CLval":
         return self.cd.get_lval(self.args[0])
@@ -683,7 +662,7 @@ class CExpAddrOf(CExpBase):
         return "&(" + str(self.get_lval()) + ")"
 
 
-@CD.c_dictionary_record_tag("addroflabel")
+@cdregistry.register_tag("addroflabel", CExpBase)
 class CExpAddrOfLabel(CExpBase):
     """
     tags:
@@ -695,12 +674,10 @@ class CExpAddrOfLabel(CExpBase):
 
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CExpBase.__init__(self, cd, index, tags, args)
+        CExpBase.__init__(self, cd, ixval)
 
     def get_label(self) -> int:
         return self.args[0]
@@ -712,7 +689,7 @@ class CExpAddrOfLabel(CExpBase):
         return "addroflabel(" + str(self.get_label()) + ")"
 
 
-@CD.c_dictionary_record_tag("startof")
+@cdregistry.register_tag("startof", CExpBase)
 class CExpStartOf(CExpBase):
     """
     tags:
@@ -724,12 +701,10 @@ class CExpStartOf(CExpBase):
 
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CExpBase.__init__(self, cd, index, tags, args)
+        CExpBase.__init__(self, cd, ixval)
 
     def get_lval(self) -> "CV.CLval":
         return self.cd.get_lval(self.args[0])
@@ -753,31 +728,27 @@ class CExpStartOf(CExpBase):
         return "&(" + str(self.get_lval()) + ")"
 
 
-@CD.c_dictionary_record_tag("fnapp")
+@cdregistry.register_tag("fnapp", CExpBase)
 class CExpFnApp(CExpBase):
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CExpBase.__init__(self, cd, index, tags, args)
+        CExpBase.__init__(self, cd, ixval)
 
     def is_fn_app(self) -> bool:
         return True
 
 
-@CD.c_dictionary_record_tag("cnapp")
+@cdregistry.register_tag("cnapp", CExpBase)
 class CExpCnApp(CExpBase):
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CExpBase.__init__(self, cd, index, tags, args)
+        CExpBase.__init__(self, cd, ixval)
 
     def get_name(self) -> str:
         return self.tags[1]

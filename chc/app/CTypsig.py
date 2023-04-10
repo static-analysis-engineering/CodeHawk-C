@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -27,37 +29,46 @@
 
 from typing import cast, Any, List, Tuple, Optional, TYPE_CHECKING
 
-import chc.app.CDictionaryRecord as CD
+from chc.app.CDictionaryRecord import CDictionaryRecord, cdregistry
+
 import chc.util.IndexedTable as IT
 
 if TYPE_CHECKING:
-    import chc.app.CDictionary
+    from chc.app.CDictionary import CDictionary
+    from chc.app.CFile import CFile
     import chc.app.CFileDictionary
     import chc.app.CAttributes as CA
     import chc.app.CTyp as CT
 
 
-class CTypsigTSBase(CD.CDictionaryRecord):
+class CTypsigTSBase(CDictionaryRecord):
+
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CD.CDictionaryRecord.__init__(self, cd, index, tags, args)
+        CDictionaryRecord.__init__(self, cd, ixval)
+        self._cd = cd
+        self._cfile = self.cd.cfile
+
+    @property
+    def cd(self) -> "CDictionary":
+        return self._cd
+
+    @property
+    def cfile(self) -> "CFile":
+        return self._cfile
 
 
-@CD.c_dictionary_record_tag("tsarray")
+@cdregistry.register_tag("tsarray", CTypsigTSBase)
 class CTypsigArray(CTypsigTSBase):
     def __init__(
         self,
         cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CTypsigTSBase.__init__(self, cd, index, tags, args)
+        CTypsigTSBase.__init__(self, cd, ixval)
 
     def get_len_opt(self) -> Optional[int]:
         return None if self.tags[1] == "" else int(self.tags[1])
@@ -72,16 +83,14 @@ class CTypsigArray(CTypsigTSBase):
         return "tsarray(" + str(self.get_typsig()) + "," + str(self.get_len_opt)
 
 
-@CD.c_dictionary_record_tag("tsptr")
+@cdregistry.register_tag("tsptr", CTypsigTSBase)
 class CTypsigPtr(CTypsigTSBase):
     def __init__(
         self,
         cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CTypsigTSBase.__init__(self, cd, index, tags, args)
+        CTypsigTSBase.__init__(self, cd, ixval)
 
     def get_typsig(self) -> CTypsigTSBase:
         return self.cd.get_typsig(self.args[0])
@@ -90,16 +99,14 @@ class CTypsigPtr(CTypsigTSBase):
         return "tsptr(" + str(self.get_typsig()) + ")"
 
 
-@CD.c_dictionary_record_tag("tscomp")
+@cdregistry.register_tag("tscomp", CTypsigTSBase)
 class CTypsigComp(CTypsigTSBase):
     def __init__(
         self,
         cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CTypsigTSBase.__init__(self, cd, index, tags, args)
+        CTypsigTSBase.__init__(self, cd, ixval)
 
     def get_name(self) -> str:
         return self.tags[1]
@@ -108,16 +115,14 @@ class CTypsigComp(CTypsigTSBase):
         return "tscomp(" + str(self.get_name()) + ")"
 
 
-@CD.c_dictionary_record_tag("tsfun")
+@cdregistry.register_tag("tsfun", CTypsigTSBase)
 class CTypsigFun(CTypsigTSBase):
     def __init__(
         self,
         cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CTypsigTSBase.__init__(self, cd, index, tags, args)
+        CTypsigTSBase.__init__(self, cd, ixval)
 
     def get_typsig(self) -> CTypsigTSBase:
         return self.cd.get_typsig(self.args[0])
@@ -130,16 +135,14 @@ class CTypsigFun(CTypsigTSBase):
         return "(" + str(self.get_typsig_list_opt) + "):" + str(self.get_typsig()) + ")"
 
 
-@CD.c_dictionary_record_tag("tsenum")
+@cdregistry.register_tag("tsenum", CTypsigTSBase)
 class CTypsigEnum(CTypsigTSBase):
     def __init__(
         self,
         cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CTypsigTSBase.__init__(self, cd, index, tags, args)
+        CTypsigTSBase.__init__(self, cd, ixval)
 
     def get_name(self) -> str:
         return self.tags[1]
@@ -148,16 +151,14 @@ class CTypsigEnum(CTypsigTSBase):
         return "tsenum(" + self.get_name() + ")"
 
 
-@CD.c_dictionary_record_tag("tsbase")
+@cdregistry.register_tag("tsbase", CTypsigTSBase)
 class CTypsigBase(CTypsigTSBase):
     def __init__(
         self,
         cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CTypsigTSBase.__init__(self, cd, index, tags, args)
+        CTypsigTSBase.__init__(self, cd, ixval)
 
     def get_type(self) -> "CT.CTypBase":
         return self.cd.get_typ(self.args[0])
@@ -169,19 +170,11 @@ class CTypsigBase(CTypsigTSBase):
 class CTypsigList(IT.IndexedTableValue):
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
         self.cd = cd
-        self.cfile = cast(Any, cd).cfile
-        self.index = index
-        self.tags = tags
-        self.args = args
-
-    def get_key(self) -> Tuple[str, str]:
-        return (",".join(self.tags), ",".join([str(x) for x in self.args]))
+        self.cfile = self.cd.cfile
 
     def get_typsig_list(self) -> List[CTypsigTSBase]:
         return [self.cd.get_typsig(ix) for ix in self.args]

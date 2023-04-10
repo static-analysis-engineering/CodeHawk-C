@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -27,25 +29,26 @@
 
 from typing import List, Tuple, TYPE_CHECKING
 
-import chc.app.CDictionaryRecord as CD
+from chc.app.CDictionaryRecord import CDictionaryRecord, cdregistry
+
+import chc.util.fileutil as UF
+import chc.util.IndexedTable as IT
 
 if TYPE_CHECKING:
-    import chc.app.CDictionary
+    from chc.app.CDictionary import CDictionary
     import chc.app.CTyp as CT
     import chc.app.CTypsig as CS
 
 
-class CAttrBase(CD.CDictionaryRecord):
+class CAttrBase(CDictionaryRecord):
     """Attribute that comes with a C type."""
 
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue
     ) -> None:
-        CD.CDictionaryRecord.__init__(self, cd, index, tags, args)
+        CDictionaryRecord.__init__(self, cd, ixval)
 
     def is_int(self) -> bool:
         return False
@@ -99,16 +102,15 @@ class CAttrBase(CD.CDictionaryRecord):
         return "attrparam:" + self.tags[0]
 
 
-@CD.c_dictionary_record_tag("aint")
+@cdregistry.register_tag("aint", CAttrBase)
 class CAttrInt(CAttrBase):
+
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CAttrBase.__init__(self, cd, index, tags, args)
+        CAttrBase.__init__(self, cd, ixval)
 
     def get_int(self) -> int:
         return int(self.args[0])
@@ -120,16 +122,15 @@ class CAttrInt(CAttrBase):
         return "aint(" + str(self.get_int()) + ")"
 
 
-@CD.c_dictionary_record_tag("astr")
+@cdregistry.register_tag("astr", CAttrBase)
 class CAttrStr(CAttrBase):
+
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CAttrBase.__init__(self, cd, index, tags, args)
+        CAttrBase.__init__(self, cd, ixval)
 
     def get_str(self) -> int:
         return self.args[0]
@@ -141,16 +142,15 @@ class CAttrStr(CAttrBase):
         return "astr(" + str(self.get_str()) + ")"
 
 
-@CD.c_dictionary_record_tag("acons")
+@cdregistry.register_tag("acons", CAttrBase)
 class CAttrCons(CAttrBase):
+
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CAttrBase.__init__(self, cd, index, tags, args)
+        CAttrBase.__init__(self, cd, ixval)
 
     def get_cons(self) -> str:
         return self.tags[1]
@@ -165,16 +165,15 @@ class CAttrCons(CAttrBase):
         return "acons(" + str(self.get_cons()) + ")"
 
 
-@CD.c_dictionary_record_tag("asizeof")
+@cdregistry.register_tag("asizeof", CAttrBase)
 class CAttrSizeOf(CAttrBase):
+
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CAttrBase.__init__(self, cd, index, tags, args)
+        CAttrBase.__init__(self, cd, ixval)
 
     def get_type(self) -> 'CT.CTypBase':
         return self.cd.get_typ(int(self.args[0]))
@@ -186,16 +185,15 @@ class CAttrSizeOf(CAttrBase):
         return "asizeof(" + str(self.get_type()) + ")"
 
 
-@CD.c_dictionary_record_tag("asizeofe")
+@cdregistry.register_tag("asizeofe", CAttrBase)
 class CAttrSizeOfE(CAttrBase):
+
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CAttrBase.__init__(self, cd, index, tags, args)
+        CAttrBase.__init__(self, cd, ixval)
 
     def get_param(self) -> CAttrBase:
         return self.cd.get_attrparam(int(self.args[0]))
@@ -207,18 +205,17 @@ class CAttrSizeOfE(CAttrBase):
         return "asizeofe(" + str(self.get_param()) + ")"
 
 
-@CD.c_dictionary_record_tag("asizeofs")
+@cdregistry.register_tag("asizeofs", CAttrBase)
 class CAttrSizeOfS(CAttrBase):
+
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CAttrBase.__init__(self, cd, index, tags, args)
+        CAttrBase.__init__(self, cd, ixval)
 
-    def get_typsig(self) -> 'CS.CTypsigTSBase':
+    def get_typsig(self) -> "CS.CTypsigTSBase":
         return self.cd.get_typsig(int(self.args[0]))
 
     def is_sizeofs(self) -> bool:
@@ -228,18 +225,17 @@ class CAttrSizeOfS(CAttrBase):
         return "asizeofs(" + str(self.get_typsig()) + ")"
 
 
-@CD.c_dictionary_record_tag("aalignof")
+@cdregistry.register_tag("aalignof", CAttrBase)
 class CAttrAlignOf(CAttrBase):
+
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CAttrBase.__init__(self, cd, index, tags, args)
+        CAttrBase.__init__(self, cd, ixval)
 
-    def get_type(self) -> 'CT.CTypBase':
+    def get_type(self) -> "CT.CTypBase":
         return self.cd.get_typ(int(self.args[0]))
 
     def is_alignof(self) -> bool:
@@ -249,16 +245,15 @@ class CAttrAlignOf(CAttrBase):
         return "aalignof(" + str(self.get_type()) + ")"
 
 
-@CD.c_dictionary_record_tag("aalignofe")
+@cdregistry.register_tag("aalignofe", CAttrBase)
 class CAttrAlignOfE(CAttrBase):
+
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CAttrBase.__init__(self, cd, index, tags, args)
+        CAttrBase.__init__(self, cd, ixval)
 
     def get_param(self) -> CAttrBase:
         return self.cd.get_attrparam(int(self.args[0]))
@@ -270,16 +265,15 @@ class CAttrAlignOfE(CAttrBase):
         return "aalignofe(" + str(self.get_param()) + ")"
 
 
-@CD.c_dictionary_record_tag("aalignofs")
+@cdregistry.register_tag("aalignofs", CAttrBase)
 class CAttrAlignOfS(CAttrBase):
+
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CAttrBase.__init__(self, cd, index, tags, args)
+        CAttrBase.__init__(self, cd, ixval)
 
     def get_typsig(self) -> 'CS.CTypsigTSBase':
         return self.cd.get_typsig(int(self.args[0]))
@@ -291,16 +285,15 @@ class CAttrAlignOfS(CAttrBase):
         return "aalignofs(" + str(self.get_typsig()) + ")"
 
 
-@CD.c_dictionary_record_tag("aunop")
+@cdregistry.register_tag("aunop", CAttrBase)
 class CAttrUnOp(CAttrBase):
+
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CAttrBase.__init__(self, cd, index, tags, args)
+        CAttrBase.__init__(self, cd, ixval)
 
     def get_op(self) -> str:
         return self.tags[1]
@@ -315,16 +308,15 @@ class CAttrUnOp(CAttrBase):
         return "aunop(" + self.get_op() + "," + str(self.get_param()) + ")"
 
 
-@CD.c_dictionary_record_tag("abinop")
+@cdregistry.register_tag("abinop", CAttrBase)
 class CAttrBinOp(CAttrBase):
+
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CAttrBase.__init__(self, cd, index, tags, args)
+        CAttrBase.__init__(self, cd, ixval)
 
     def get_op(self) -> str:
         return self.tags[1]
@@ -350,16 +342,15 @@ class CAttrBinOp(CAttrBase):
         )
 
 
-@CD.c_dictionary_record_tag("adot")
+@cdregistry.register_tag("adot", CAttrBase)
 class CAttrDot(CAttrBase):
+
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CAttrBase.__init__(self, cd, index, tags, args)
+        CAttrBase.__init__(self, cd, ixval)
 
     def get_name(self) -> str:
         return self.tags[1]
@@ -374,16 +365,15 @@ class CAttrDot(CAttrBase):
         return "adot(" + self.get_name() + "," + str(self.get_param()) + ")"
 
 
-@CD.c_dictionary_record_tag("astr")
+@cdregistry.register_tag("astr", CAttrBase)
 class CAttrStar(CAttrBase):
+
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CAttrBase.__init__(self, cd, index, tags, args)
+        CAttrBase.__init__(self, cd, ixval)
 
     def get_param(self) -> CAttrBase:
         return self.cd.get_attrparam(int(self.args[0]))
@@ -395,16 +385,15 @@ class CAttrStar(CAttrBase):
         return "astar(" + str(self.get_param()) + ")"
 
 
-@CD.c_dictionary_record_tag("aaddrof")
+@cdregistry.register_tag("aaddrof", CAttrBase)
 class CAttrAddrOf(CAttrBase):
+
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CAttrBase.__init__(self, cd, index, tags, args)
+        CAttrBase.__init__(self, cd, ixval)
 
     def get_param(self) -> CAttrBase:
         return self.cd.get_attrparam(int(self.args[0]))
@@ -416,16 +405,15 @@ class CAttrAddrOf(CAttrBase):
         return "aaddrof(" + str(self.get_param()) + ")"
 
 
-@CD.c_dictionary_record_tag("aindex")
+@cdregistry.register_tag("aindex", CAttrBase)
 class CAttrIndex(CAttrBase):
+
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CAttrBase.__init__(self, cd, index, tags, args)
+        CAttrBase.__init__(self, cd, ixval)
 
     def get_param1(self) -> CAttrBase:
         return self.cd.get_attrparam(int(self.args[0]))
@@ -440,16 +428,15 @@ class CAttrIndex(CAttrBase):
         return "aindex(" + str(self.get_param1()) + "," + str(self.get_param2()) + ")"
 
 
-@CD.c_dictionary_record_tag("aquestion")
+@cdregistry.register_tag("aquestion", CAttrBase)
 class CAttrQuestion(CAttrBase):
+
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CAttrBase.__init__(self, cd, index, tags, args)
+        CAttrBase.__init__(self, cd, ixval)
 
     def get_param1(self) -> CAttrBase:
         return self.cd.get_attrparam(int(self.args[0]))
@@ -472,15 +459,13 @@ class CAttrQuestion(CAttrBase):
         )
 
 
-class CAttribute(CD.CDictionaryRecord):
+class CAttribute(CDictionaryRecord):
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CD.CDictionaryRecord.__init__(self, cd, index, tags, args)
+        CDictionaryRecord.__init__(self, cd, ixval)
 
     def get_name(self) -> str:
         return self.tags[0]
@@ -492,15 +477,13 @@ class CAttribute(CD.CDictionaryRecord):
         return self.get_name() + ": " + ",".join([str(p) for p in self.get_params()])
 
 
-class CAttributes(CD.CDictionaryRecord):
+class CAttributes(CDictionaryRecord):
     def __init__(
         self,
-        cd: "chc.app.CDictionary.CDictionary",
-        index: int,
-        tags: List[str],
-        args: List[int],
+        cd: "CDictionary",
+        ixval: IT.IndexedTableValue,
     ) -> None:
-        CD.CDictionaryRecord.__init__(self, cd, index, tags, args)
+        CDictionaryRecord.__init__(self, cd, ixval)
 
     def get_attributes(self) -> List[CAttribute]:
         return [self.cd.get_attribute(int(i)) for i in self.args]
