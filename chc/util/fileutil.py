@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -31,8 +33,9 @@ import os
 import subprocess
 import shutil
 import time
-from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
 import xml.etree.ElementTree as ET
+
+from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
 
 import chc.util.xmlutil as UX
 
@@ -45,6 +48,11 @@ if TYPE_CHECKING:
 
 
 class CHError(Exception):
+
+    def __init__(self, msg: str) -> None:
+        Exception.__init__(self, msg)
+        self.msg = msg
+
     def wrap(self) -> str:
         lines = []
         lines.append("*" * 80)
