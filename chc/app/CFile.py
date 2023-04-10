@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,7 +28,7 @@
 # ------------------------------------------------------------------------------
 import os
 import xml.etree.ElementTree as ET
-from typing import Any, Callable, Dict, Iterable, Tuple, TYPE_CHECKING
+from typing import Any, Callable, Dict, Iterable, Optional, Tuple, TYPE_CHECKING
 
 import chc.util.fileutil as UF
 import chc.util.xmlutil as UX
@@ -91,10 +93,11 @@ class CFile(object):
         if found_name is None:
             raise Exception("xml missing \"filename\"")
         self.name = found_name
-        self.declarations = CFileDeclarations(self)
+        self._declarations: Optional[CFileDeclarations] = None
+        self._dictionary: Optional[CFileDictionary] = None
         self.contexttable = CContextTable(self)
         self.predicatedictionary = CFilePredicateDictionary(self)
-        self.interfacedictionary = InterfaceDictionary(self)
+        self._interfacedictionary: Optional[InterfaceDictionary] = None
         self.assigndictionary = CFileAssignmentDictionary(self)
         self.functions: Dict[int, CFunction] = {}  # vid -> CFunction
         self.functionnames: Dict[str, int] = {}  # functionname -> vid
@@ -121,6 +124,39 @@ class CFile(object):
         self.gcomptagdecls: Dict[Any, Any] = {}  # key -> CGCompTag
         self.gvardecls: Dict[Any, Any] = {}  # vid -> CGVarDecl
         self.gvardefs: Dict[Any, Any] = {}  # vid -> CGVarDef
+
+    @property
+    def dictionary(self) -> CFileDictionary:
+        if self._dictionary is None:
+            xnode = UF.get_cfile_dictionary_xnode(self.capp.path, self.name)
+            if xnode is None:
+                raise UF.CHCError("File dictionary file not found")
+            xdict = xnode.find("c-dictionary")
+            if xdict is None:
+                raise UF.CHCError("File dictionary node not found")
+            self._dictionary = CFileDictionary(self, xdict)
+        return self._dictionary
+
+    @property
+    def declarations(self) -> CFileDeclarations:
+        if self._declarations is None:
+            xnode = UF.get_cfile_dictionary_xnode(self.capp.path, self.name)
+            if xnode is None:
+                raise UF.CHCError("File dictionary file not found")
+            xdecls = xnode.find("c-declarations")
+            if xdecls is None:
+                raise UF.CHCError("File declarations node not found")
+            self._declarations = CFileDeclarations(self, xdecls)
+        return self._declarations
+
+    @property
+    def interfacedictionary(self) -> InterfaceDictionary:
+        if self._interfacedictionary is None:
+            xnode = UF.get_cfile_interface_dictionary_xnode(self.capp.path, self.name)
+            if xnode is None:
+                raise UF.CHCError("Interface dictionary file not found")
+            self._interfacedictionary = InterfaceDictionary(self, xnode)
+        return self._interfacedictionary
 
     def collect_post_assumes(self) -> None:
         """For all call sites collect postconditions from callee's contracts and add as assume."""
@@ -163,10 +199,16 @@ class CFile(object):
             return self.sourcefile.get_line(n)
 
     def reinitialize_tables(self) -> None:
-        self.declarations.initialize()
+        xnode = UF.get_cfile_dictionary_xnode(self.capp.path, self.name)
+        if xnode is None:
+            raise UF.CHCError("File dictionary file not found")
+        self.declarations._initialize(xnode)
         self.contexttable.initialize()
         self.predicatedictionary.initialize(force=True)
-        self.interfacedictionary.initialize()
+        xnode = UF.get_cfile_interface_dictionary_xnode(self.capp.path, self.name)
+        if xnode is None:
+            raise UF.CHCError("Interface dictionary file not found")
+        self.interfacedictionary.initialize(xnode)
         self.iter_functions(lambda f: f.reinitialize_tables())
 
     def is_struct(self, ckey):

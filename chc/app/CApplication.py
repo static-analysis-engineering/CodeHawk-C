@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -40,6 +42,7 @@ from chc.app.CFile import CFile
 from chc.app.CVarInfo import CVarInfo
 from chc.app.IndexManager import IndexManager
 from chc.app.CGlobalDeclarations import CGlobalDeclarations
+from chc.app.CGlobalDictionary import CGlobalDictionary
 
 from chc.source.CSrcFile import CSrcFile
 
@@ -73,14 +76,26 @@ class CApplication(object):
         self.candidate_contractpath = candidate_contractpath
         self.filenames: Dict[int, str] = {}  # file index -> filename
         self.files: Dict[str, CFile] = {}  # filename -> CFile
-        if self.singlefile:
-            self.declarations = None  # TBD: set to CFileDeclarations
-        else:
-            self.declarations = CGlobalDeclarations(self)
         self.indexmanager = IndexManager(self.singlefile)
         self.callgraph: Dict[Any, Any] = {}  # (fid,vid) -> (callsitespos, (tgtfid,tgtvid))
         self.revcallgraph: Dict[Any, Any] = {}  # (tgtfid,tgtvid) -> ((fid,vid),callsitespos)
+        self._dictionary: Optional[CGlobalDictionary] = None
+        self._declarations: Optional[CGlobalDeclarations] = None
         self._initialize(cfilename)
+
+    @property
+    def dictionary(self) -> CGlobalDictionary:
+        if self._dictionary is None:
+            xnode = UF.get_global_dictionary_xnode(self.path)
+            self._dictionary = CGlobalDictionary(self, xnode)
+        return self._dictionary
+
+    @property
+    def declarations(self) -> CGlobalDeclarations:
+        if self._declarations is None:
+            xnode = UF.get_global_declarations_xnode(self.path)
+            self._declarations = CGlobalDeclarations(self, xnode)
+        return self._declarations
 
     def get_filenames(self) -> Iterable[str]:
         return self.filenames.values()
