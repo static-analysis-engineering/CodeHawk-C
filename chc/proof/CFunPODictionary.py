@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,150 +26,170 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Dictionary of proof obligation types at function level."""
+
+import importlib
+import os
 
 import xml.etree.ElementTree as ET
+
+from typing import List, TYPE_CHECKING
+
+from chc.proof.AssumptionType import AssumptionType
+from chc.proof.CFunPODictionaryRecord import podregistry
+from chc.proof.PPOType import PPOType
+from chc.proof.SPOType import SPOType
 
 import chc.util.fileutil as UF
 import chc.util.IndexedTable as IT
 
-import chc.proof.AssumptionType as AT
-import chc.proof.POType as PP
 
-assumption_type_constructors = {
-    "la": lambda x: AT.ATLocalAssumptionType(*x),
-    "aa": lambda x: AT.ATApiAssumptionType(*x),
-    "gi": lambda x: AT.ATGlobalApiAssumptionType(*x),
-    "ca": lambda x: AT.ATPostconditionType(*x),
-    "ga": lambda x: AT.ATGlobalAssumptionType(*x),
-}
+if TYPE_CHECKING:
+    from chc.api.InterfaceDictionary import InterfaceDictionary
+    from chc.app.CApplication import CApplication
+    from chc.app.CContextDictionary import CContextDictionary
+    from chc.app.CFile import CFile
+    from chc.app.CFileDeclarations import CFileDeclarations
+    from chc.app.CFunction import CFunction
+    from chc.proof.CFilePredicateDictionary import CFilePredicateDictionary
 
-ppo_type_constructors = {
-    "p": lambda x: PP.PPOType(*x),
-    "pl": lambda x: PP.PPOLibType(*x),
-}
-
-spo_type_constructors = {
-    "cs": lambda x: PP.CallsiteSPOType(*x),
-    "rs": lambda x: PP.ReturnsiteSPOType(*x),
-    "ls": lambda x: PP.LocalSPOType(*x),
-}
+importlib.import_module("chc.proof.AssumptionType")
+importlib.import_module("chc.proof.POType")
 
 
 class CFunPODictionary(object):
     """Indexed function proof obligations."""
 
-    def __init__(self, cfun):
-        self.cfun = cfun
-        self.pd = self.cfun.cfile.predicatedictionary
+    def __init__(
+            self,
+            cfun: "CFunction",
+            xnode: ET.Element) -> None:
+        self._cfun = cfun
         self.assumption_type_table = IT.IndexedTable("assumption-table")
         self.ppo_type_table = IT.IndexedTable("ppo-type-table")
         self.spo_type_table = IT.IndexedTable("spo-type-table")
         self.tables = [
-            (self.assumption_type_table, self._read_xml_assumption_type_table),
-            (self.ppo_type_table, self._read_xml_ppo_type_table),
-            (self.spo_type_table, self._read_xml_spo_type_table),
+            self.assumption_type_table,
+            self.ppo_type_table,
+            self.spo_type_table
         ]
-        self.initialize()
+        self.initialize(xnode)
+
+    @property
+    def cfun(self) -> "CFunction":
+        return self._cfun
+
+    @property
+    def cfile(self) -> "CFile":
+        return self.cfun.cfile
+
+    @property
+    def capp(self) -> "CApplication":
+        return self.cfile.capp
+
+    @property
+    def pd(self) -> "CFilePredicateDictionary":
+        return self.cfile.predicatedictionary
+
+    @property
+    def interfacedictionary(self) -> "InterfaceDictionary":
+        return self.cfile.interfacedictionary
 
     # ------------------------ Retrieve items from dictionary ----------------
 
-    def get_assumption_type(self, ix):
-        return self.assumption_type_table.retrieve(ix)
+    def get_assumption_type(self, ix: int) -> AssumptionType:
+        return podregistry.mk_instance(
+            self, self.assumption_type_table.retrieve(ix), AssumptionType)
 
-    def get_ppo_type(self, ix):
-        return self.ppo_type_table.retrieve(ix)
+    def get_ppo_type(self, ix: int) -> PPOType:
+        return podregistry.mk_instance(
+            self, self.ppo_type_table.retrieve(ix), PPOType)
 
-    def get_spo_type(self, ix):
-        return self.spo_type_table.retrieve(ix)
+    def get_spo_type(self, ix: int) -> SPOType:
+        return podregistry.mk_instance(
+            self, self.spo_type_table.retrieve(ix), SPOType)
 
     # ------------------------- Provide read/write xml service ---------------
 
-    def read_xml_assumption_type(self, txnode, tag="iast"):
-        return self.get_assumption_type(int(txnode.get(tag)))
+    def read_xml_assumption_type(
+            self, txnode: ET.Element, tag: str = "iast") -> AssumptionType:
+        optix = txnode.get(tag)
+        if optix is not None:
+            return self.get_assumption_type(int(optix))
+        else:
+            raise UF.CHCError("Error in reading xml assumption type")
 
-    def read_xml_ppo_type(self, txnode, tag="ippo"):
-        return self.get_ppo_type(int(txnode.get(tag)))
+    def read_xml_ppo_type(self, txnode: ET.Element, tag: str = "ippo") -> PPOType:
+        optix = txnode.get(tag)
+        if optix is not None:
+            return self.get_ppo_type(int(optix))
+        else:
+            raise UF.CHCError("Error in reading xml ppo type")
 
-    def read_xml_spo_type(self, txnode, tag="ispo"):
-        return self.get_spo_type(int(txnode.get(tag)))
+    def read_xml_spo_type(self, txnode: ET.Element, tag: str = "ispo") -> SPOType:
+        optix = txnode.get(tag)
+        if optix is not None:
+            return self.get_spo_type(int(optix))
+        else:
+            raise UF.CHCError("Error in reading xml spo type")
 
-    def write_xml_spo_type(self, txnode, spotype, tag="ispo"):
-        txnode.set(tag, self.index_spo_type(spotype.tags, spotype.args))
+    def write_xml_spo_type(
+            self, txnode: ET.Element, spotype: SPOType, tag: str = "ispo") -> None:
+        txnode.set(tag, str(self.index_spo_type(spotype.tags, spotype.args)))
 
     # -------------------------- Index items by category ---------------------
 
-    def index_assumption_type(self, tags, args):
-        def f(index, key):
-            return assumption_type_constructors[tags[0]]((self, index, tags, args))
+    def index_assumption_type(self, tags: List[str], args: List[int]) -> int:
 
-        return self.assumption_type_table.add(IT.get_key(tags, args), f)
+        def f(index: int, tags: List[str], args: List[int]) -> AssumptionType:
+            itv = IT.IndexedTableValue(index, tags, args)
+            return AssumptionType(self, itv)
 
-    def index_ppo_type(self, tags, args):
-        def f(index, key):
-            return ppo_type_constructors[tags[0]]((self, index, tags, args))
+        return self.assumption_type_table.add_tags_args(tags, args, f)
 
-        return self.ppo_type_table.add(IT.get_key(tags, args), f)
+    def index_ppo_type(self, tags: List[str], args: List[int]) -> int:
 
-    def index_spo_type(self, tags, args):
-        def f(index, key):
-            return spo_type_constructors[tags[0]]((self, index, tags, args))
+        def f(index: int, tags: List[str], args: List[int]) -> PPOType:
+            itv = IT.IndexedTableValue(index, tags, args)
+            return PPOType(self, itv)
 
-        return self.spo_type_table.add(IT.get_key(tags, args), f)
+        return self.ppo_type_table.add_tags_args(tags, args, f)
+
+    def index_spo_type(self, tags: List[str], args: List[int]) -> int:
+
+        def f(index: int, tags: List[str], args: List[int]) -> SPOType:
+            itv = IT.IndexedTableValue(index, tags, args)
+            return SPOType(self, itv)
+
+        return self.spo_type_table.add_tags_args(tags, args, f)
 
     # ---------------------- Initialize dictionary from file -----------------
 
-    def initialize(self):
-        xnode = UF.get_pod_xnode(
-            self.cfun.cfile.capp.path, self.cfun.cfile.name, self.cfun.name
-        )
-        if xnode is not None:
-            for (t, f) in self.tables:
+    def initialize(self, xnode: ET.Element) -> None:
+        for t in self.tables:
+            xtable = xnode.find(t.name)
+            if xtable is not None:
                 t.reset()
-                f(xnode.find(t.name))
+                t.read_xml(xtable, "n")
+            else:
+                raise UF.CHCError(
+                    "Table " + t.name + " not found in podictionary")
 
     # ------------------------------ Printing --------------------------------
 
-    def write_xml(self, node):
-        def f(n, r):
+    def write_xml(self, node: ET.Element) -> None:
+
+        def f(n: ET.Element, r: IT.IndexedTableValue) -> None:
             r.write_xml(n)
 
-        for (t, _) in self.tables:
+        for t in self.tables:
             tnode = ET.Element(t.name)
             t.write_xml(tnode, f)
             node.append(tnode)
 
-    def __str__(self):
-        lines = []
-        for (t, _) in self.tables:
+    def __str__(self) -> str:
+        lines: List[str] = []
+        for t in self.tables:
             if t.size() > 0:
                 lines.append(str(t))
         return "\n".join(lines)
-
-    # -------------------------------- Internal ------------------------------
-
-    def _read_xml_assumption_type_table(self, txnode):
-        def get_value(node):
-            rep = IT.get_rep(node)
-            tag = rep[1][0]
-            args = (self,) + rep
-            return assumption_type_constructors[tag](args)
-
-        self.assumption_type_table.read_xml(txnode, "n", get_value)
-
-    def _read_xml_ppo_type_table(self, txnode):
-        def get_value(node):
-            rep = IT.get_rep(node)
-            tag = rep[1][0]
-            args = (self,) + rep
-            return ppo_type_constructors[tag](args)
-
-        self.ppo_type_table.read_xml(txnode, "n", get_value)
-
-    def _read_xml_spo_type_table(self, txnode):
-        def get_value(node):
-            rep = IT.get_rep(node)
-            tag = rep[1][0]
-            args = (self,) + rep
-            return spo_type_constructors[tag](args)
-
-        self.spo_type_table.read_xml(txnode, "n", get_value)
