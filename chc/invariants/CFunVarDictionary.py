@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -29,98 +31,116 @@ import os
 
 import xml.etree.ElementTree as ET
 
+from typing import List, Optional, TYPE_CHECKING
+
 import chc.util.fileutil as UF
 import chc.util.IndexedTable as IT
 
-import chc.invariants.CVar as CV
+from chc.invariants.CFunDictionaryRecord import varregistry
 
 from chc.invariants.CFunXprDictionary import CFunXprDictionary
-
-memory_base_constructors = {
-    "null": lambda x: CV.MemoryBaseNull(*x),
-    "str": lambda x: CV.MemoryBaseStringLiteral(*x),
-    "sa": lambda x: CV.MemoryBaseStackAddress(*x),
-    "saa": lambda x: CV.MemoryBaseAllocStackAddress(*x),
-    "ga": lambda x: CV.MemoryBaseGlobalAddress(*x),
-    "ha": lambda x: CV.MemoryBaseHeapAddress(*x),
-    "bv": lambda x: CV.MemoryBaseBaseVar(*x),
-    "ui": lambda x: CV.MemoryBaseUninterpreted(*x),
-    "fr": lambda x: CV.MemoryBaseFreed(*x),
-}
-
-constant_value_variable_constructors = {
-    "iv": lambda x: CV.CVVInitialValue(*x),
-    "frv": lambda x: CV.CVVFunctionReturnValue(*x),
-    "erv": lambda x: CV.CVVExpFunctionReturnValue(*x),
-    "fsev": lambda x: CV.CVVSideEffectValue(*x),
-    "esev": lambda x: CV.CVVExpSideEffectValue(*x),
-    "sv": lambda x: CV.CVVSymbolicValue(*x),
-    "tv": lambda x: CV.CVVTaintedValue(*x),
-    "bs": lambda x: CV.CVVByteSequence(*x),
-    "ma": lambda x: CV.CVVMemoryAddress(*x),
-}
-
-c_variable_denotation_constructors = {
-    "libv": lambda x: CV.CVLibraryVariable(*x),
-    "lv": lambda x: CV.LocalVariable(*x),
-    "gv": lambda x: CV.GlobalVariable(*x),
-    "mv": lambda x: CV.MemoryVariable(*x),
-    "mrv": lambda x: CV.MemoryRegionVariable(*x),
-    "rv": lambda x: CV.ReturnVariable(*x),
-    "fv": lambda x: CV.FieldVariable(*x),
-    "cv": lambda x: CV.CheckVariable(*x),
-    "av": lambda x: CV.AuxiliaryVariable(*x),
-    "xv": lambda x: CV.AugmentationVariable(*x),
-}
+from chc.invariants.CVariableDenotation import CVariableDenotation
+from chc.invariants.CVConstantValueVariable import CVConstantValueVariable
+from chc.invariants.CVMemoryBase import CVMemoryBase
+from chc.invariants.CVMemoryReferenceData import CVMemoryReferenceData
 
 
-class CFunVarDictionary(object):
+if TYPE_CHECKING:
+    from chc.app.CApplication import CApplication
+    from chc.app.CFile import CFile
+    from chc.app.CFileDeclarations import CFileDeclarations
+    from chc.app.CFileDictionary import CFileDictionary
+    from chc.app.CFunction import CFunction
+    from chc.app.CFunDeclarations import CFunDeclarations
+
+
+class CFunVarDictionary:
     """Indexed analysis variables."""
 
-    def __init__(self, fdecls):
-        self.fdecls = fdecls
-        self.cfun = self.fdecls.cfun
-        self.cfile = self.cfun.cfile
-        self.xd = CFunXprDictionary(self)
+    def __init__(self, cfun: "CFunction", xnode: ET.Element) -> None:
+        self._cfun = cfun
+        self.xnode = xnode
+        self._xd: Optional[CFunXprDictionary] = None
         self.memory_base_table = IT.IndexedTable("memory-base-table")
         self.memory_reference_data_table = IT.IndexedTable(
-            "memory-reference-data-table"
-        )
+            "memory-reference-data-table")
         self.constant_value_variable_table = IT.IndexedTable(
-            "constant-value-variable-table"
-        )
+            "constant-value-variable-table")
         self.c_variable_denotation_table = IT.IndexedTable(
-            "c-variable-denotation-table"
-        )
-        self.tables = [
-            (self.memory_base_table, self._read_xml_memory_base_table),
-            (
-                self.memory_reference_data_table,
-                self._read_xml_memory_reference_data_table,
-            ),
-            (
-                self.constant_value_variable_table,
-                self._read_xml_constant_value_variable_table,
-            ),
-            (
-                self.c_variable_denotation_table,
-                self._read_xml_c_variable_denotation_table,
-            ),
+            "c-variable-denotation-table")
+        self.tables: List[IT.IndexedTable] = [
+            self.memory_base_table,
+            self.memory_reference_data_table,
+            self.constant_value_variable_table,
+            self.c_variable_denotation_table
         ]
+        self.initialize(xnode)
+
+    @property
+    def cfun(self) -> "CFunction":
+        return self._cfun
+
+    @property
+    def cfile(self) -> "CFile":
+        return self.cfun.cfile
+
+    @property
+    def cdictionary(self) -> "CFileDictionary":
+        return self.cfile.dictionary
+
+    @property
+    def fundecls(self) -> "CFunDeclarations":
+        return self.cfun.cfundecls
+
+    @property
+    def fdecls(self) -> "CFileDeclarations":
+        return self.cfile.declarations
+
+    @property
+    def xd(self) -> CFunXprDictionary:
+        if self._xd is None:
+            xprd = self.xnode.find("xpr-dictionary")
+            if xprd is None:
+                raise UF.CHCError(
+                    "Xpr dictionary not found in variable dictionary for "
+                    + "function " + self.cfun.name)
+            else:
+                self._xd = CFunXprDictionary(self, xprd)
+        return self._xd
 
     # -------------------- Retrieve items from dictionary tables -------------
 
-    def get_memory_base(self, ix):
-        return self.memory_base_table.retrieve(ix)
+    def get_memory_base(self, ix: int) -> CVMemoryBase:
+        if ix > 0:
+            return varregistry.mk_instance(
+                self, self.memory_base_table.retrieve(ix), CVMemoryBase)
+        else:
+            raise UF.CHCError("Illegal memory base index value: " + str(ix))
 
-    def get_memory_reference_data(self, ix):
-        return self.memory_reference_data_table.retrieve(ix)
+    def get_memory_reference_data(self, ix: int) -> CVMemoryReferenceData:
+        if ix > 0:
+            return CVMemoryReferenceData(
+                self, self.memory_reference_data_table.retrieve(ix))
+        else:
+            raise UF.CHCError("Illegal memory reference data index value")
 
-    def get_constant_value_variable(self, ix):
-        return self.constant_value_variable_table.retrieve(ix)
+    def get_constant_value_variable(self, ix: int) -> CVConstantValueVariable:
+        if ix > 0:
+            return varregistry.mk_instance(
+                self,
+                self.constant_value_variable_table.retrieve(ix),
+                CVConstantValueVariable)
+        else:
+            raise UF.CHCError("Illegal constant-value-variable index value: " + str(ix))
 
-    def get_c_variable_denotation(self, ix):
-        return self.c_variable_denotation_table.retrieve(ix)
+    def get_c_variable_denotation(self, ix: int) -> CVariableDenotation:
+        if ix > 0:
+            return varregistry.mk_instance(
+                self,
+                self.c_variable_denotation_table.retrieve(ix),
+                CVariableDenotation)
+        else:
+            raise UF.CHCError("Illegal c-variable denotation index value: " + str(ix))
 
     # ------------------- Provide read_xml service ---------------------------
 
@@ -132,64 +152,26 @@ class CFunVarDictionary(object):
 
     # ------------------- Initialize dictionary from file --------------------
 
-    def initialize(self, force=False):
-        xnode = UF.get_vars_xnode(
-            self.cfun.cfile.capp.path, self.cfun.cfile.name, self.cfun.name
-        )
-        if xnode is not None:
-            xvard = xnode.find("var-dictionary")
-            self.xd.initialize(xvard.find("xpr-dictionary"))
-            for (t, f) in self.tables:
+    def initialize(self, xnode: ET.Element) -> None:
+        for t in self.tables:
+            xtable = xnode.find(t.name)
+            if xtable is not None:
                 t.reset()
-                f(xvard.find(t.name))
+                t.read_xml(xtable, "n")
+            else:
+                raise UF.CHCError(
+                    "Var dictionary table " + t.name + " not found")
 
     # ---------------------- Printing ------------------------------------------
 
-    def __str__(self):
-        lines = []
+    def __str__(self) -> str:
+        lines: List[str] = []
         lines.append("Xpr dictionary")
         lines.append("-" * 80)
         lines.append(str(self.xd))
         lines.append("\nVar dictionary")
         lines.append("-" * 80)
-        for (t, _) in self.tables:
+        for t in self.tables:
             if t.size() > 0:
                 lines.append(str(t))
         return "\n".join(lines)
-
-    # ----------------------- Internal ---------------------------------------
-
-    def _read_xml_memory_base_table(self, txnode):
-        def get_value(node):
-            rep = IT.get_rep(node)
-            tag = rep[1][0]
-            args = (self,) + rep
-            return memory_base_constructors[tag](args)
-
-        self.memory_base_table.read_xml(txnode, "n", get_value)
-
-    def _read_xml_memory_reference_data_table(self, txnode):
-        def get_value(node):
-            rep = IT.get_rep(node)
-            args = (self,) + rep
-            return CV.MemoryReferenceData(*args)
-
-        self.memory_reference_data_table.read_xml(txnode, "n", get_value)
-
-    def _read_xml_constant_value_variable_table(self, txnode):
-        def get_value(node):
-            rep = IT.get_rep(node)
-            tag = rep[1][0]
-            args = (self,) + rep
-            return constant_value_variable_constructors[tag](args)
-
-        self.constant_value_variable_table.read_xml(txnode, "n", get_value)
-
-    def _read_xml_c_variable_denotation_table(self, txnode):
-        def get_value(node):
-            rep = IT.get_rep(node)
-            tag = rep[1][0]
-            args = (self,) + rep
-            return c_variable_denotation_constructors[tag](args)
-
-        self.c_variable_denotation_table.read_xml(txnode, "n", get_value)

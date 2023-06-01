@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -29,32 +31,30 @@ import os
 
 import xml.etree.ElementTree as ET
 
+from typing import List, TYPE_CHECKING
+
 import chc.util.fileutil as UF
 import chc.util.IndexedTable as IT
-import chc.invariants.CXpr as CX
 
-xcst_constructors = {
-    "ss": lambda x: CX.CXCSymSet(*x),
-    "ic": lambda x: CX.CXIntConst(*x),
-    "bc": lambda x: CX.CXCBoolConst(*x),
-    "r": lambda x: CX.CXRandom(*x),
-    "ui": lambda x: CX.CXUnknownInt(*x),
-    "us": lambda x: CX.CXUnknownSet(*x),
-}
+from chc.invariants.CFunDictionaryRecord import xprregistry
 
-xpr_constructors = {
-    "v": lambda x: CX.CXVar(*x),
-    "c": lambda x: CX.CXConst(*x),
-    "x": lambda x: CX.CXOp(*x),
-    "a": lambda x: CX.CXAttr(*x),
-}
+from chc.invariants.CXConstant import CXConstant
+from chc.invariants.CXNumerical import CXNumerical
+from chc.invariants.CXSymbol import CXSymbol
+from chc.invariants.CXVariable import CXVariable
+from chc.invariants.CXXpr import CXXpr, CXprList, CXprListList
+
+
+if TYPE_CHECKING:
+    from chc.invariants.CFunVarDictionary import CFunVarDictionary
 
 
 class CFunXprDictionary(object):
     """Indexed analysis expressions."""
 
-    def __init__(self, vd):
-        self.vd = vd
+    def __init__(self, vd: "CFunVarDictionary", xnode: ET.Element) -> None:
+        self._vd = vd
+        self.xnode = xnode
         self.numerical_table = IT.IndexedTable("numerical-table")
         self.symbol_table = IT.IndexedTable("symbol-table")
         self.variable_table = IT.IndexedTable("variable-table")
@@ -62,39 +62,70 @@ class CFunXprDictionary(object):
         self.xpr_table = IT.IndexedTable("xpr-table")
         self.xpr_list_table = IT.IndexedTable("xpr-list-table")
         self.xpr_list_list_table = IT.IndexedTable("xpr-list-list-table")
-        self.tables = [
-            (self.numerical_table, self._read_xml_numerical_table),
-            (self.symbol_table, self._read_xml_symbol_table),
-            (self.variable_table, self._read_xml_variable_table),
-            (self.xcst_table, self._read_xml_xcst_table),
-            (self.xpr_table, self._read_xml_xpr_table),
-            (self.xpr_list_table, self._read_xml_xpr_list_table),
-            (self.xpr_list_list_table, self._read_xml_xpr_list_list_table),
+        self.tables: List[IT.IndexedTable] = [
+            self.numerical_table,
+            self.symbol_table,
+            self.variable_table,
+            self.xcst_table,
+            self.xpr_table,
+            self.xpr_list_table,
+            self.xpr_list_list_table
         ]
+        self.initialize(xnode)
+
+    @property
+    def vd(self) -> "CFunVarDictionary":
+        return self._vd
 
     # ------------- Retrieve items from dictionary tables --------------------
 
-    def get_numerical(self, ix):
+    def get_numerical(self, ix: int) -> CXNumerical:
         if ix > 0:
-            return self.numerical_table.retrieve(ix)
+            return CXNumerical(self, self.numerical_table.retrieve(ix))
+        else:
+            raise UF.CHCError("Illegal numerical index value: " + str(ix))
 
-    def get_symbol(self, ix):
-        return self.symbol_table.retrieve(ix)
+    def get_symbol(self, ix: int) -> CXSymbol:
+        if ix > 0:
+            return CXSymbol(self, self.symbol_table.retrieve(ix))
+        else:
+            raise UF.CHCError("Illegal symbol index value: " + str(ix))
 
-    def get_variable(self, ix):
-        return self.variable_table.retrieve(ix)
+    def get_variable(self, ix: int) -> CXVariable:
+        if ix > 0:
+            return CXVariable(self, self.variable_table.retrieve(ix))
+        else:
+            raise UF.CHCError("Illegal variable index value: " + str(ix))
 
-    def get_xcst(self, ix):
-        return self.xcst_table.retrieve(ix)
+    def get_xcst(self, ix: int) -> CXConstant:
+        if ix > 0:
+            return xprregistry.mk_instance(
+                self,
+                self.xcst_table.retrieve(ix),
+                CXConstant)
+        else:
+            raise UF.CHCError("Illegal constant index value: " + str(ix))
 
-    def get_xpr(self, ix):
-        return self.xpr_table.retrieve(ix)
+    def get_xpr(self, ix: int) -> CXXpr:
+        if ix > 0:
+            return xprregistry.mk_instance(
+                self,
+                self.xpr_table.retrieve(ix),
+                CXXpr)
+        else:
+            raise UF.CHCError("Illegal xpr index value: " + str(ix))
 
-    def get_xpr_list(self, ix):
-        return self.xpr_list_table.retrieve(ix)
+    def get_xpr_list(self, ix: int) -> CXprList:
+        if ix > 0:
+            return CXprList(self, self.xpr_list_table.retrieve(ix))
+        else:
+            raise UF.CHCError("Illegal xpr-list index value: " + str(ix))
 
-    def get_xpr_list_list(self, ix):
-        return self.xpr_list_list_table.retrieve(ix)
+    def get_xpr_list_list(self, ix: int) -> CXprListList:
+        if ix > 0:
+            return CXprListList(self, self.xpr_list_list_table.retrieve(ix))
+        else:
+            raise UF.CHCError("Illegal xpr-list-list index value: " + str(ix))
 
     # ------------ Provide read_xml service ----------------------------------
 
@@ -106,78 +137,21 @@ class CFunXprDictionary(object):
 
     # -------------- Initialize dictionary from file -------------------------
 
-    def initialize(self, xnode, force=False):
-        if xnode is None:
-            print("no xpr dictionary found")
-            return
-        for (t, f) in self.tables:
-            f(xnode.find(t.name))
+    def initialize(self, xnode: ET.Element, force: bool = False) -> None:
+        for t in self.tables:
+            xtable = xnode.find(t.name)
+            if xtable is not None:
+                t.reset()
+                t.read_xml(xtable, "n")
+            else:
+                raise UF.CHCError(
+                    "Xpr dictionary table " + t.name + " not found")
 
     # ------------------ Printing --------------------------------------------
 
-    def __str__(self):
-        lines = []
-        for (t, _) in self.tables:
+    def __str__(self) -> str:
+        lines: List[str] = []
+        for t in self.tables:
             if t.size() > 0:
                 lines.append(str(t))
         return "\n".join(lines)
-
-    # ------------------------ Internal --------------------------------------
-
-    def _read_xml_numerical_table(self, txnode):
-        def get_value(node):
-            rep = IT.get_rep(node)
-            args = (self,) + rep
-            return CX.CXNumerical(*args)
-
-        self.numerical_table.read_xml(txnode, "n", get_value)
-
-    def _read_xml_symbol_table(self, txnode):
-        def get_value(node):
-            rep = IT.get_rep(node)
-            args = (self,) + rep
-            return CX.CXSymbol(*args)
-
-        self.symbol_table.read_xml(txnode, "n", get_value)
-
-    def _read_xml_variable_table(self, txnode):
-        def get_value(node):
-            rep = IT.get_rep(node)
-            args = (self,) + rep
-            return CX.CXVariable(*args)
-
-        self.variable_table.read_xml(txnode, "n", get_value)
-
-    def _read_xml_xcst_table(self, txnode):
-        def get_value(node):
-            rep = IT.get_rep(node)
-            tag = rep[1][0]
-            args = (self,) + rep
-            return xcst_constructors[tag](args)
-
-        self.xcst_table.read_xml(txnode, "n", get_value)
-
-    def _read_xml_xpr_table(self, txnode):
-        def get_value(node):
-            rep = IT.get_rep(node)
-            tag = rep[1][0]
-            args = (self,) + rep
-            return xpr_constructors[tag](args)
-
-        self.xpr_table.read_xml(txnode, "n", get_value)
-
-    def _read_xml_xpr_list_table(self, txnode):
-        def get_value(node):
-            rep = IT.get_rep(node)
-            args = (self,) + rep
-            return CX.CXprList(*args)
-
-        self.xpr_list_table.read_xml(txnode, "n", get_value)
-
-    def _read_xml_xpr_list_list_table(self, txnode):
-        def get_value(node):
-            rep = IT.get_rep(node)
-            args = (self,) + rep
-            return CX.CXprListList(*args)
-
-        self.xpr_list_list_table.read_xml(txnode, "n", get_value)
