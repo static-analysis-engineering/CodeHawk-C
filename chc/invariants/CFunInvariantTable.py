@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,95 +27,154 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
+import xml.etree.ElementTree as ET
+
+from typing import cast, Dict, List, Tuple, TYPE_CHECKING
+
+from chc.invariants.CInvariantFact import CInvariantFact, CInvariantNRVFact
+from chc.invariants.CNonRelationalValue import (
+    CNonRelationalValue, CNRVRegionSet)
+from chc.invariants.CVariableDenotation import (
+    CVariableDenotation, CVCheckVariable)
+
 import chc.util.fileutil as UF
 
+if TYPE_CHECKING:
+    from chc.app.CContext import ProgramContext
+    from chc.app.CContextDictionary import CContextDictionary
+    from chc.app.CFile import CFile
+    from chc.app.CFunction import CFunction
+    from chc.invariants.CFunInvDictionary import CFunInvDictionary
+    from chc.invariants.CFunVarDictionary import CFunVarDictionary
+    from chc.invariants.CXVariable import CXVariable
 
-class CFunInvariantTable(object):
+
+class CFunInvariantTable:
     """Function-level invariants."""
 
-    def __init__(self, invd):
-        self.invd = invd
-        self.cfun = self.invd.cfun
-        self.invariants = {}  # context -> CInvariantFact list
+    def __init__(self, cfun: "CFunction", xnode: ET.Element):
+        self._cfun = cfun
+        self.xnode = xnode
+        self._invariants: Dict[int, List[CInvariantFact]] = {}
 
-    def get_invariants(self, context):
-        ictxt = self.cfun.cfile.contexttable.index_cfg_projection(context)
+        # self.invariants = {}  # context -> CInvariantFact list
+
+    @property
+    def cfun(self) -> "CFunction":
+        return self.cfun
+
+    @property
+    def cfile(self) -> "CFile":
+        return self.cfun.cfile
+
+    @property
+    def ctxtd(self) -> "CContextDictionary":
+        return self.cfile.contextdictionary
+
+    @property
+    def invd(self) -> "CFunInvDictionary":
+        return self.cfun.invdictionary
+
+    @property
+    def vard(self) -> "CFunVarDictionary":
+        return self.cfun.vardictionary
+
+    @property
+    def invariants(self) -> Dict[int, List[CInvariantFact]]:
+        if len(self._invariants) == 0:
+            for xloc in self.xnode.findall("loc"):
+                xctxt = xloc.get("ictxt")
+                if xctxt is not None:
+                    ictxt = int(xctxt)
+                    self._invariants[ictxt] = []
+                    xifacts = xloc.get("ifacts")
+                    if xifacts is not None:
+                        indices: List[int] = [int(x) for x in xifacts.split(",")]
+                        for findex in indices:
+                            self._invariants[ictxt].append(
+                                self.invd.get_invariant_fact(findex))
+        return self._invariants
+
+    def context_invariants(self, context: "ProgramContext") -> List[CInvariantFact]:
+        ictxt = self.ctxtd.index_cfg_projection(context)
         if ictxt in self.invariants:
             return self.invariants[ictxt]
         else:
             return []
 
-    def get_sorted_invariants(self, context):
-        invs = self.get_invariants(context)
-        nrvinvs = [inv for inv in invs if inv.is_nrv_fact()]
-        otherinvs = [inv for inv in invs if not inv.is_nrv_fact()]
-        nrvinvs = sorted(nrvinvs, key=lambda i: str(i.get_variable()))
+    def get_sorted_invariants(
+            self, context: "ProgramContext") -> List[CInvariantFact]:
+        invs = self.context_invariants(context)
+        nrvinvs = [inv for inv in invs if inv.is_nrv_fact]
+        otherinvs = [inv for inv in invs if not inv.is_nrv_fact]
+        nrvinvs = sorted(
+            nrvinvs, key=lambda i: str(cast(CInvariantNRVFact, i).variable))
         return otherinvs + nrvinvs
 
-    def get_po_invariants(self, context, poId):
-        invs = self.get_invariants(context)
+    def get_po_invariants(
+            self, context: "ProgramContext", poId: int) -> List[CInvariantFact]:
+        invs = self.context_invariants(context)
 
-        def filter(inv):
-            if inv.is_nrv_fact():
-                var = inv.get_variable()
-                cvar = self.cfun.vard.get_c_variable_denotation(var.get_seqnr())
-                if cvar.is_check_variable():
-                    return poId in cvar.get_po_ids()
+        def filter(inv: CInvariantFact) -> bool:
+            if inv.is_nrv_fact:
+                inv = cast(CInvariantNRVFact, inv)
+                var = inv.variable
+                cvar = self.vard.get_c_variable_denotation(var.seqnr)
+                if cvar.is_check_variable:
+                    cvar = cast(CVCheckVariable, cvar)
+                    return poId in cvar.po_ids
                 else:
                     return True
             else:
                 return True
 
         invs = [inv for inv in invs if filter(inv)]
-        unrinvs = [inv for inv in invs if inv.is_unreachable_fact()]
+        unrinvs = [inv for inv in invs if inv.is_unreachable_fact]
         nonrsinvs = [
             inv
             for inv in invs
-            if inv.is_nrv_fact()
-            and (not inv.get_non_relational_value().is_region_set())
+            if inv.is_nrv_fact
+            and (not cast(CInvariantNRVFact, inv).non_relational_value.is_region_set)
         ]
-        rsinvs = [
-            inv
+        rsinvs: List[CInvariantNRVFact] = [
+            cast(CInvariantNRVFact, inv)
             for inv in invs
-            if inv.is_nrv_fact() and inv.get_non_relational_value().is_region_set()
+            if (inv.is_nrv_fact
+                and cast(CInvariantNRVFact, inv).non_relational_value.is_region_set)
         ]
-        varsets = {}
+        varsets: Dict[int, CInvariantNRVFact] = {}
         for r in rsinvs:
-            cvar = r.get_variable()
-            if not cvar.get_seqnr() in varsets:
-                varsets[cvar.get_seqnr()] = r
+            cvar = r.variable
+            if var.seqnr not in varsets:
+                varsets[cvar.seqnr] = r
             else:
                 if (
-                    r.get_non_relational_value().size()
-                    < varsets[cvar.get_seqnr()].get_non_relational_value().size()
+                    cast(CNRVRegionSet, r.non_relational_value).size
+                    < cast(CNRVRegionSet,
+                           varsets[cvar.seqnr].non_relational_value).size
                 ):
-                    varsets[cvar.get_seqnr()] = r
+                    varsets[cvar.seqnr] = r
         invs = unrinvs + sorted(
-            nonrsinvs + list(varsets.values()), key=lambda i: str(i.get_variable())
+            nonrsinvs
+            + list(varsets.values()),
+            key=lambda i: str(cast(CInvariantNRVFact, i).variable)
         )
         return invs
 
-    def initialize(self):
-        xnode = UF.get_invs_xnode(
-            self.cfun.cfile.capp.path, self.cfun.cfile.name, self.cfun.name
-        )
-        if xnode is not None:
-            xinvt = xnode.find("location-invariants")
-            self._read_xml(xinvt)
-
-    def __str__(self):
-        contexts = []
-        lines = []
+    def __str__(self) -> str:
+        contexts: List[Tuple[str, List[CInvariantFact]]] = []
+        lines: List[str] = []
         for i in self.invariants:
-            ctxt = self.cfun.cfile.contexttable.get_program_context(i)
-            ctxt = str(ctxt.get_cfg_context().get_rev_repr())
-            contexts.append((ctxt, self.invariants[i]))
-        for (ctxt, invs) in sorted(contexts):
-            lines.append("\n" + ctxt)
+            ctxt = self.ctxtd.get_program_context(i)
+            sctxt = ctxt.cfg_context.reverse_repr
+            contexts.append((sctxt, self.invariants[i]))
+        for (sctxt, invs) in sorted(contexts):
+            lines.append("\n" + sctxt)
             for inv in invs:
                 lines.append("  " + str(inv))
         return "\n".join(lines)
 
+    '''
     def _read_xml(self, xnode):
         for xloc in xnode.findall("loc"):
             ictxt = int(xloc.get("ictxt"))
@@ -121,3 +182,4 @@ class CFunInvariantTable(object):
             if "ifacts" in xloc.attrib:
                 for findex in [int(x) for x in xloc.get("ifacts").split(",")]:
                     self.invariants[ictxt].append(self.invd.get_invariant_fact(findex))
+    '''

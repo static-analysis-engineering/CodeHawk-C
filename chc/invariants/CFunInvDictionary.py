@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,54 +27,69 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
+import xml.etree.ElementTree as ET
+
+from typing import List, TYPE_CHECKING
+
+from chc.invariants.CFunDictionaryRecord import invregistry
+from chc.invariants.CInvariantFact import CInvariantFact
+from chc.invariants.CNonRelationalValue import CNonRelationalValue
+
 import chc.util.fileutil as UF
 import chc.util.IndexedTable as IT
-import chc.invariants.CInv as CI
 
-non_relational_value_constructors = {
-    "sx": lambda x: CI.NRVSymbolicExpr(*x),
-    "sb": lambda x: CI.NRVSymbolicBound(*x),
-    "iv": lambda x: CI.NRVIntervalValue(*x),
-    "bv": lambda x: CI.NRVBaseOffsetValue(*x),
-    "rs": lambda x: CI.NRVRegionSet(*x),
-    "iz": lambda x: CI.NRVInitializedSet(*x),
-    "ps": lambda x: CI.NRVPolicyStateSet(*x),
-}
-
-inv_constructors = {
-    "nrv": lambda x: CI.CInvariantNRVFact(*x),
-    "x": lambda x: CI.UnreachableFact(*x),
-    "pc": lambda x: CI.CParameterConstraintFact(*x),
-}
+if TYPE_CHECKING:
+    from chc.app.CFile import CFile
+    from chc.app.CFunction import CFunction
+    from chc.invariants.CFunVarDictionary import CFunVarDictionary
+    from chc.invariants.CFunXprDictionary import CFunXprDictionary
 
 
 class CFunInvDictionary(object):
-
     """Indexed function invariants."""
 
-    def __init__(self, vard):
-        self.vard = vard
-        self.cfun = self.vard.cfun
-        self.xd = self.vard.xd
-        self.non_relational_value_table = IT.IndexedTable("non-relational-value-table")
+    def __init__(self, cfun: "CFunction", xnode: ET.Element) -> None:
+        self._cfun = cfun
+        self.non_relational_value_table = IT.IndexedTable(
+            "non-relational-value-table")
         self.invariant_fact_table = IT.IndexedTable("invariant-fact-table")
         self.invariant_list_table = IT.IndexedTable("invariant-list-table")
-        self.tables = [
-            (
-                self.non_relational_value_table,
-                self._read_xml_non_relational_value_table,
-            ),
-            (self.invariant_fact_table, self._read_xml_invariant_fact_table),
+        self.tables: List[IT.IndexedTable] = [
+            self.non_relational_value_table,
+            self.invariant_fact_table,
+            self.invariant_list_table
         ]
-        self.initialize()
+        self.initialize(xnode)
+
+    @property
+    def cfun(self) -> "CFunction":
+        return self._cfun
+
+    @property
+    def cfile(self) -> "CFile":
+        return self.cfun.cfile
+
+    @property
+    def vd(self) -> "CFunVarDictionary":
+        return self.cfun.vardictionary
+
+    @property
+    def xd(self) -> "CFunXprDictionary":
+        return self.vd.xd
 
     # -------------------- Retrieve items from dictionary tables -------------
 
-    def get_non_relational_value(self, ix):
-        return self.non_relational_value_table.retrieve(ix)
+    def get_non_relational_value(self, ix: int) -> CNonRelationalValue:
+        return invregistry.mk_instance(
+            self,
+            self.non_relational_value_table.retrieve(ix),
+            CNonRelationalValue)
 
-    def get_invariant_fact(self, ix):
-        return self.invariant_fact_table.retrieve(ix)
+    def get_invariant_fact(self, ix: int) -> CInvariantFact:
+        return invregistry.mk_instance(
+            self,
+            self.invariant_fact_table.retrieve(ix),
+            CInvariantFact)
 
     # ------------------- Provide read_xml service ---------------------------
 
@@ -84,41 +101,21 @@ class CFunInvDictionary(object):
 
     # ------------------- Initialize dictionary from file --------------------
 
-    def initialize(self, force=False):
-        xnode = UF.get_invs_xnode(
-            self.cfun.cfile.capp.path, self.cfun.cfile.name, self.cfun.name
-        )
-        if xnode is not None:
-            xinvs = xnode.find("inv-dictionary")
-            for (t, f) in self.tables:
+    def initialize(self, xnode: ET.Element) -> None:
+        for t in self.tables:
+            xtable = xnode.find(t.name)
+            if xtable is not None:
                 t.reset()
-                f(xinvs.find(t.name))
+                t.read_xml(xtable, "n")
+            else:
+                raise UF.CHCError(
+                    "Inv dictionary table " + t.name + " not found")
 
     # ---------------------- Printing ----------------------------------------
 
-    def __str__(self):
-        lines = []
-        for (t, _) in self.tables:
+    def __str__(self) -> str:
+        lines: List[str] = []
+        for t in self.tables:
             if t.size() > 0:
                 lines.append(str(t))
         return "\n".join(lines)
-
-    # ---------------------------- Internal ----------------------------------
-
-    def _read_xml_non_relational_value_table(self, txnode):
-        def get_value(node):
-            rep = IT.get_rep(node)
-            tag = rep[1][0]
-            args = (self,) + rep
-            return non_relational_value_constructors[tag](args)
-
-        self.non_relational_value_table.read_xml(txnode, "n", get_value)
-
-    def _read_xml_invariant_fact_table(self, txnode):
-        def get_value(node):
-            rep = IT.get_rep(node)
-            tag = rep[1][0]
-            args = (self,) + rep
-            return inv_constructors[tag](args)
-
-        self.invariant_fact_table.read_xml(txnode, "n", get_value)
