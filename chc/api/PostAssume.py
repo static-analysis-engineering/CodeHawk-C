@@ -40,18 +40,23 @@ if TYPE_CHECKING:
 
 
 class PostAssume(InterfaceDictionaryRecord):
+    """Assumption on the postcondition of a function.
+
+    args[0]: function vid
+    args[1]: index of predicate in interface dictionary
+    """
+
     def __init__(
-        self,
-        cd: "InterfaceDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        InterfaceDictionaryRecord.__init__(self, cd, ixval)
+            self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue) -> None:
+        InterfaceDictionaryRecord.__init__(self, ifd, ixval)
 
-    def get_callee(self) -> "CVarInfo":
-        return self.cd.cfile.declarations.get_global_varinfo(int(self.args[0]))
+    @property
+    def callee(self) -> "CVarInfo":
+        return self.ifd.cfile.declarations.get_global_varinfo(int(self.args[0]))
 
-    def get_postcondition(self) -> "XPredicate":
-        return self.cd.get_xpredicate(int(self.args[1]))
+    @property
+    def postcondition(self) -> "XPredicate":
+        return self.ifd.get_xpredicate(int(self.args[1]))
 
     def __str__(self) -> str:
-        return str(self.get_callee()) + ":" + str(self.get_postcondition())
+        return str(self.callee) + ":" + str(self.postcondition)

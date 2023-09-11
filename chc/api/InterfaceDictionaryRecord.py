@@ -47,11 +47,11 @@ class InterfaceDictionaryRecord(IT.IndexedTableValue):
         ixval: IT.IndexedTableValue,
     ) -> None:
         IT.IndexedTableValue.__init__(self, ixval.index, ixval.tags, ixval.args)
-        self._cd = dictionary
+        self._ifd = dictionary
 
     @property
-    def cd(self) -> "InterfaceDictionary":
-        return self._cd
+    def ifd(self) -> "InterfaceDictionary":
+        return self._ifd
 
 
 IdR = TypeVar("IdR", bound=InterfaceDictionaryRecord, covariant=True)

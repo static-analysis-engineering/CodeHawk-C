@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -27,38 +29,147 @@
 
 import xml.etree.ElementTree as ET
 
+from typing import Dict, List, Optional, TYPE_CHECKING
+
 import chc.util.fileutil as UF
+
+if TYPE_CHECKING:
+    from chc.api.CFileContracts import CFileContracts
+    from chc.api.CFunctionApi import CFunctionApi
+    from chc.api.InterfaceDictionary import InterfaceDictionary
+    from chc.api.XPredicate import XPredicate
+    from chc.app.CFile import CFile
+    from chc.app.CFunction import CFunction
+
 
 
 class CFunctionContract(object):
     """Representsa user-provided function contract."""
 
-    def __init__(self, cfilecontracts, xnode):
-        self.cfilecontracts = cfilecontracts
-        self.ixd = self.cfilecontracts.cfile.interfacedictionary
-        self.prd = self.cfilecontracts.cfile.predicatedictionary
-        self.xnode = xnode
-        self.name = self.xnode.get("name")
-        self.cfun = self.cfilecontracts.cfile.get_function_by_name(self.name)
-        self.api = self.cfun.api
-        self.ignore = self.xnode.get("ignore", "no") == "yes"
-        self.signature = {}  # name -> index nr
-        self.rsignature = {}  # index nr -> name
-        self.postconditions = {}  # index -> XPredicate
-        self.preconditions = {}  # index -> XPredicate
-        self.sideeffects = {}  # index -> XPredicate
-        self._initialize(self.xnode)
+    def __init__(
+            self,
+            cfilecontracts: "CFileContracts",
+            xnode: ET.Element) -> None:
+        self._cfilecontracts = cfilecontracts
+        self._xnode = xnode
+        self._signature: Optional[Dict[str, int]] = None  # name -> index nr
+        self._postconditions: Optional[Dict[int, "XPredicate"]] = None
+        self._preconditions: Optional[Dict[int, "XPredicate"]] = None
+        self._sideeffects: Optional[Dict[int, "XPredicate"]] = None
+        # self._initialize(self.xnode)
 
-    def has_assertions(self):
+    @property
+    def cfilecontracts(self) -> "CFileContracts":
+        return self._cfilecontracts
+
+    @property
+    def name(self) -> str:
+        n = self._xnode.get("name")
+        if n is None:
+            raise UF.CHCError("Function Contract without name")
+        else:
+            return n
+
+    @property
+    def ignore(self) -> bool:
+        return self._xnode.get("ignore", "no") == "yes"
+
+    @property
+    def cfile(self) -> "CFile":
+        return self.cfilecontracts.cfile
+
+    @property
+    def cfun(self) -> "CFunction":
+        return self.cfile.get_function_by_name(self.name)
+
+    @property
+    def api(self) -> "CFunctionApi":
+        return self.cfun.api
+
+    @property
+    def ifd(self) -> "InterfaceDictionary":
+        return self.cfile.interfacedictionary
+
+    '''
+    @property
+    def prd(self) -> "PredicateDictionary":
+        return self.cfile.predicatedictionary
+    '''
+
+    def has_assertions(self) -> bool:
         return (len(self.postconditions) + len(self.preconditions)) > 0
 
-    def has_postconditions(self):
+    def has_postconditions(self) -> bool:
         return len(self.postconditions) > 0
 
-    def has_preconditions(self):
+    def has_preconditions(self) -> bool:
         return len(self.preconditions) > 0
 
-    def _initialize_signature(self, ppnode):
+    @property
+    def signature(self) -> Dict[str, int]:
+        if self._signature is None:
+            xsig = self._xnode.find("parameters")
+            if xsig is not None:
+                self._signature = {}
+                for xpar in xsig.findall("par"):
+                    xname = xpar.get("name")
+                    xnr = xpar.get("nr")
+                    if xname is not None and xnr is not None:
+                        self._signature[xname] = int(xnr)
+                return self._signature
+            else:
+                print("Problem with function contract signature: " + self.name)
+        self._signature = {}
+        return self._signature
+
+    @property
+    def rsignature(self) -> Dict[int, str]:
+        return {v: k for k, v in self.signature.items()}
+
+    @property
+    def postconditions(self) -> Dict[int, "XPredicate"]:
+        if self._postconditions is None:
+            xpost = self._xnode.find("postconditions")
+            if xpost is not None:
+                self._postconditions = {}
+                for xpc in xpost.findall("post"):
+                    ipc = self.ifd.parse_mathml_xpredicate(xpc, self.signature)
+                    pc = self.ifd.get_xpredicate(ipc)
+                    self._postconditions[ipc] = pc
+                return self._postconditions
+        self._postconditions = {}
+        return self._postconditions
+
+    @property
+    def preconditions(self) -> Dict[int, "XPredicate"]:
+        if self._preconditions is None:
+            xpre = self._xnode.find("preconditions")
+            if xpre is not None:
+                self._preconditions = {}
+                for xpc in xpre.findall("pre"):
+                    ipc = self.ifd.parse_mathml_xpredicate(xpc, self.signature)
+                    pc = self.ifd.get_xpredicate(ipc)
+                    self._preconditions[ipc] = pc
+                return self._preconditions
+        self._preconditions = {}
+        return self._preconditions
+
+    @property
+    def sideeffects(self) -> Dict[int, "XPredicate"]:
+        if self._sideeffects is None:
+            xse = self._xnode.find("sideeffects")
+            if xse is not None:
+                self._sideeffects = {}
+                for xs in xse.findall("sideeffect"):
+                    ise = self.ifd.parse_mathml_xpredicate(xs, self.signature)
+                    se = self.ifd.get_xpredicate(ise)
+                    self._sideeffects[ise] = se
+                return self._sideeffects
+        self._sideeffects = {}
+        return self._sideeffects
+
+    '''
+    def _initialize_signature(self, ppnode: ET.Element):
         if ppnode is None:
             print("Problem with function contract signature: " + self.name)
             return
@@ -108,11 +219,16 @@ class CFunctionContract(object):
                 + str(e)
             )
             exit(1)
+        '''
 
-    def report_postconditions(self):
-        lines = []
+    def report_postconditions(self) -> str:
+        lines: List[str] = []
         if len(self.postconditions) == 1:
-            return "  " + self.name + ": " + self.postconditions.values()[0].pretty()
+            return (
+                "  "
+                + self.name
+                + ": "
+                + list(self.postconditions.values())[0].pretty())
         elif len(self.postconditions) > 1:
             lines.append("  " + self.name)
             pclines = []
@@ -122,11 +238,15 @@ class CFunctionContract(object):
             return "\n".join(lines)
         return ""
 
-    def report_preconditions(self):
-        lines = []
+    def report_preconditions(self) -> str:
+        lines: List[str] = []
         try:
             if len(self.preconditions) == 1:
-                return "  " + self.name + ": " + self.preconditions.values()[0].pretty()
+                return (
+                    "  "
+                    + self.name
+                    + ": "
+                    + list(self.preconditions.values())[0].pretty())
             elif len(self.preconditions) > 1:
                 lines.append("  " + self.name)
                 pclines = []
@@ -146,16 +266,16 @@ class CFunctionContract(object):
             )
             raise UF.CHCError(msg)
 
-    def __str__(self):
-        lines = []
+    def __str__(self) -> str:
+        lines: List[str] = []
         lines.append("Contract for " + self.name)
 
-        def add(t, pl):
+        def add(title: str, pl: List["XPredicate"]) -> None:
             if len(pl) > 0:
-                lines.append(t)
+                lines.append(title)
                 for p in pl:
                     lines.append("     " + (p.pretty()))
 
-        add("  Postconditions:", self.postconditions.values())
-        add("  Preconditions :", self.preconditions.values())
+        add("  Postconditions:", list(self.postconditions.values()))
+        add("  Preconditions :", list(self.preconditions.values()))
         return "\n".join(lines)

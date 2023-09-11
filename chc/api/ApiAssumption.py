@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2021-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -33,7 +35,8 @@ if TYPE_CHECKING:
     from chc.proof.CPOPredicate import CPOPredicate
 
 
-class ApiAssumption(object):
+class ApiAssumption:
+
     def __init__(
         self,
         capi: "CFunctionApi",
@@ -43,7 +46,7 @@ class ApiAssumption(object):
         spos: List[int],
         isglobal: bool = False,
         isfile: bool = False,
-    ):
+    ) -> None:
         self.id = id
         self.capi = capi  # api/CFunctionAPI
         self.cfun: "CFunction" = self.capi.cfun  # app/CFunction

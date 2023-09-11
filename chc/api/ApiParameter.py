@@ -26,6 +26,15 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Object representation of api_parameter_t
+
+cchlib/CCHLibTypes.api_parameter_t =      predicate       properties
+                               -------------------------------------------------
+type api_parameter_t =
+  | ParFormal of int                      is_formal       index: int
+  | ParGlobal of string                   is_global       name: str
+
+"""
 
 from typing import List, TYPE_CHECKING
 
@@ -35,22 +44,20 @@ from chc.api.InterfaceDictionaryRecord import (
 import chc.util.IndexedTable as IT
 
 if TYPE_CHECKING:
-    from chc.api.InterfaceDictionary import (
-        InterfaceDictionary, ifdregistry)
+    from chc.api.InterfaceDictionary import InterfaceDictionary
 
 
 class ApiParameter(InterfaceDictionaryRecord):
 
     def __init__(
-        self,
-        cd: "InterfaceDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
+        self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue) -> None:
         InterfaceDictionaryRecord.__init__(self, cd, ixval)
 
+    @property
     def is_formal(self) -> bool:
         return False
 
+    @property
     def is_global(self) -> bool:
         return False
 
@@ -60,39 +67,41 @@ class ApiParameter(InterfaceDictionaryRecord):
 
 @ifdregistry.register_tag("pf", ApiParameter)
 class APFormal(ApiParameter):
+    """Formal parameter of a function.
+
+    args[0]: parameter index (starting at 1)
+    """
 
     def __init__(
-        self,
-        cd: "InterfaceDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
+        self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue) -> None:
         ApiParameter.__init__(self, cd, ixval)
 
-    def get_seq_number(self) -> int:
+    @property
+    def index(self) -> int:
         return int(self.args[0])
 
+    @property
     def is_formal(self) -> bool:
         return True
 
     def __str__(self) -> str:
-        return "par-" + str(self.get_seq_number())
+        return "par-" + str(self.index)
 
 
 @ifdregistry.register_tag("pg", ApiParameter)
 class APGlobal(ApiParameter):
 
     def __init__(
-        self,
-        cd: "InterfaceDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
+        self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue) -> None:
         ApiParameter.__init__(self, cd, ixval)
 
-    def get_name(self) -> str:
+    @property
+    def name(self) -> str:
         return self.tags[1]
 
+    @property
     def is_global(self) -> bool:
         return True
 
     def __str__(self) -> str:
-        return "par-" + self.get_name()
+        return "par-" + self.name

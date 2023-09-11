@@ -26,7 +26,32 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Object representation of sum type s_term
 
+cchlib/CCHLibTypes.s_term =             predicates                properties
+                                        ----------------------------------------
+  | ArgValue                            is_arg_value              parameter: ApiParameter
+      of api_parameter_t * s_offset_t                             offset: SOffset
+  | LocalVariable of string             is_local_var              name: str
+  | ReturnValue                         is_return_value           -
+  | NamedConstant of string             is_named_constant         name: str
+  | NumConstant of numerical_t          is_num_constant           constantvalue: int
+  | IndexSize of s_term_t               is_index_size             term: STerm
+  | ByteSize of s_term_t                is_byte_size              term: STerm
+  | ArgAddressedValue                   is_arg_addressed_value    term: STerm
+      of s_term_t * s_offset_t                                    offset: SOffset
+  | ArgNullTerminatorPos of s_term_t    is_arg_null_terminator_pos   term: STerm
+  | ArgSizeOfType of s_term_t           is_arg_size_of_type       term: STerm
+  | ArithmeticExpr                      is_arithmetic_expr        op: str
+      of binop * s_term_t * s_term_t                              term1: STerm
+                                                                  term2: STerm
+  | FormattedOutputSize of s_term_t     is_formatted_output_size  term: STerm
+  | Region of s_term_t                  is_region
+  | RuntimeValue                        is_runtime_value
+  | ChoiceValue of                      is_choice_value
+     s_term_t option * s_term_t option
+
+"""
 from typing import Dict, List, Optional, TYPE_CHECKING
 import xml.etree.ElementTree as ET
 
@@ -37,8 +62,9 @@ import chc.util.fileutil as UF
 import chc.util.IndexedTable as IT
 
 if TYPE_CHECKING:
-    from chc.api.InterfaceDictionary import InterfaceDictionary
     from chc.api.ApiParameter import ApiParameter
+    from chc.api.InterfaceDictionary import InterfaceDictionary    
+    from chc.api.SOffset import SOffset
 
 
 printops: Dict[str, str] = {
@@ -59,157 +85,77 @@ def get_printop(s: str) -> str:
         return s
 
 
-class SOffset(InterfaceDictionaryRecord):
-    def __init__(
-        self,
-        cd: "InterfaceDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        InterfaceDictionaryRecord.__init__(self, cd, ixval)
-
-    def is_nooffset(self) -> bool:
-        return False
-
-    def is_field_offset(self) -> bool:
-        return False
-
-    def is_index_offset(self) -> bool:
-        return False
-
-    def get_mathml_node(self, signature: List[str]) -> Optional[ET.Element]:
-        raise Exception("Should be implemented by a subclass")
-
-    def __str__(self) -> str:
-        return "s-offset-" + self.tags[0]
-
-
-@ifdregistry.register_tag("no", SOffset)
-class STArgNoOffset(SOffset):
-    def __init__(
-        self,
-        cd: "InterfaceDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        SOffset.__init__(self, cd, ixval)
-
-    def is_nooffset(self) -> bool:
-        return True
-
-    def get_mathml_node(self, signature: List[str]) -> Optional[ET.Element]:
-        return None
-
-    def __str__(self) -> str:
-        return ""
-
-
-@ifdregistry.register_tag("fo", SOffset)
-class STArgFieldOffset(SOffset):
-    def __init__(
-        self,
-        cd: "InterfaceDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        SOffset.__init__(self, cd, ixval)
-
-    def get_field(self) -> str:
-        return self.tags[1]
-
-    def get_offset(self) -> SOffset:
-        return self.cd.get_s_offset(int(self.args[0]))
-
-    def is_field_offset(self) -> bool:
-        return True
-
-    def get_mathml_node(self, signature: List[str]) -> Optional[ET.Element]:
-        fnode = ET.Element("field")
-        fnode.set("name", self.get_field())
-        offnode = self.get_offset().get_mathml_node(signature)
-        if offnode is not None:
-            fnode.append(offnode)
-        return fnode
-
-    def __str__(self) -> str:
-        return "." + self.get_field() + str(self.get_offset())
-
-
-@ifdregistry.register_tag("io", SOffset)
-class STArgIndexOffset(SOffset):
-    def __init__(
-        self,
-        cd: "InterfaceDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        SOffset.__init__(self, cd, ixval)
-
-    def get_index(self) -> int:
-        return int(self.tags[1])
-
-    def get_offset(self) -> SOffset:
-        return self.cd.get_s_offset(int(self.args[0]))
-
-    def is_index_offset(self) -> bool:
-        return True
-
-    def get_mathml_node(self, signature: List[str]) -> Optional[ET.Element]:
-        inode = ET.Element("index")
-        inode.set("i", str(self.get_index()))
-        offnode = self.get_offset().get_mathml_node(signature)
-        if offnode is not None:
-            inode.append(offnode)
-        return inode
-
-    def __str__(self) -> str:
-        return "[" + str(self.get_index()) + "]" + str(self.get_offset())
-
-
 class STerm(InterfaceDictionaryRecord):
     def __init__(
-        self,
-        cd: "InterfaceDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        InterfaceDictionaryRecord.__init__(self, cd, ixval)
+        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue) -> None:
+        InterfaceDictionaryRecord.__init__(self, ifd, ixval)
 
     def get_iterm(self, argix: int) -> "STerm":
-        return self.cd.get_s_term(int(self.args[argix]))
+        return self.ifd.get_s_term(int(self.args[argix]))
 
+    @property
     def is_arg_value(self) -> bool:
         return False
 
+    @property
+    def is_local_var(self) -> bool:
+        return False
+
+    @property
     def is_return_value(self) -> bool:
         return False
 
+    @property
     def is_named_constant(self) -> bool:
         return False
 
+    @property
     def is_num_constant(self) -> bool:
         return False
 
+    @property
     def is_index_size(self) -> bool:
         return False
 
+    @property
     def is_byte_size(self) -> bool:
         return False
 
+    '''
     def is_field_offset(self) -> bool:
         return False
+    '''
 
+    @property
     def is_arg_addressed_value(self) -> bool:
         return False
 
+    @property
     def is_arg_null_terminator_pos(self) -> bool:
         return False
 
+    @property
     def is_arg_size_of_type(self) -> bool:
         return False
 
+    @property
     def is_arithmetic_expr(self) -> bool:
         return False
 
+    @property
     def is_formatted_output_size(self) -> bool:
         return False
 
+    @property
+    def is_region(self) -> bool:
+        return False
+
+    @property
     def is_runtime_value(self) -> bool:
+        return False
+
+    @property
+    def is_choice_value(self) -> bool:
         return False
 
     def get_mathml_node(self, signature: List[str]) -> ET.Element:
@@ -224,18 +170,23 @@ class STerm(InterfaceDictionaryRecord):
 
 @ifdregistry.register_tag("av", STerm)
 class STArgValue(STerm):
+    """Argument value passed to a function.
+
+    args[0]: index of api parameter in interface dictionary
+    args[1]: index of s_term offset in interface dictionary
+    """
+
     def __init__(
-        self,
-        cd: "InterfaceDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
+        self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue) -> None:
         STerm.__init__(self, cd, ixval)
 
-    def get_parameter(self) -> "ApiParameter":
-        return self.cd.get_api_parameter(int(self.args[0]))
+    @property
+    def parameter(self) -> "ApiParameter":
+        return self.ifd.get_api_parameter(int(self.args[0]))
 
-    def get_offset(self) -> SOffset:
-        return self.cd.get_s_offset(int(self.args[1]))
+    @property
+    def offset(self) -> "SOffset":
+        return self.ifd.get_s_offset(int(self.args[1]))
 
     def is_arg_value(self) -> bool:
         return True
@@ -246,18 +197,41 @@ class STArgValue(STerm):
         return node
 
     def __str__(self) -> str:
-        return "arg-val(" + str(self.get_parameter()) + ")"
+        return "arg-val(" + str(self.parameter) + ")"
 
 
+@ifdregistry.register_tag("lv", STerm)
+class SLocalVariable(STerm):
+    """Local variable used in external predicate.
+
+    tags[1]: name
+"""
+
+    def __init__(
+        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue) -> None:
+        STerm.__init__(self, ifd, ixval)
+
+    @property
+    def is_local_var(self) -> bool:
+        return True
+
+    @property
+    def name(self) -> str:
+        return self.tags[1]
+
+    def __str__(self) -> str:
+        return self.name
+
+    
 @ifdregistry.register_tag("rv", STerm)
 class STReturnValue(STerm):
+    """Return value, as used in post conditions."""
+    
     def __init__(
-        self,
-        cd: "InterfaceDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        STerm.__init__(self, cd, ixval)
+        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue) -> None:
+        STerm.__init__(self, ifd, ixval)
 
+    @property
     def is_return_value(self) -> bool:
         return True
 
@@ -270,110 +244,122 @@ class STReturnValue(STerm):
 
 @ifdregistry.register_tag("nc", STerm)
 class STNamedConstant(STerm):
-    def __init__(
-        self,
-        cd: "InterfaceDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        STerm.__init__(self, cd, ixval)
+    """Named constant with unspecified value."""
 
-    def get_name(self) -> str:
+    def __init__(
+        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue) -> None:
+        STerm.__init__(self, ifd, ixval)
+
+    @property
+    def name(self) -> str:
         return self.tags[1]
 
+    @property
     def is_named_constant(self) -> bool:
         return True
 
     def get_mathml_node(self, signature: List[str]) -> ET.Element:
         node = ET.Element("ci")
-        node.text = self.get_name()
+        node.text = self.name
         return node
 
     def __str__(self) -> str:
-        return "named-constant(" + self.get_name() + ")"
+        return "named-constant(" + self.name + ")"
 
 
 @ifdregistry.register_tag("ic", STerm)
 class STNumConstant(STerm):
-    def __init__(
-        self,
-        cd: "InterfaceDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        STerm.__init__(self, cd, ixval)
+    """Constant with given numerical value."""
 
-    def get_constant(self) -> int:
+    def __init__(
+        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue) -> None:
+        STerm.__init__(self, ifd, ixval)
+
+    @property
+    def constantvalue(self) -> int:
         try:
             return int(self.tags[1])
         except ValueError as e:
             raise UF.CHCError(str(e))
 
+    @property
     def is_num_constant(self) -> bool:
         return True
 
     def get_mathml_node(self, signature: List[str]) -> ET.Element:
         node = ET.Element("cn")
-        node.text = str(self.get_constant())
+        node.text = str(self.constantvalue)
         return node
 
     def pretty(self) -> str:
-        return str(self.get_constant())
+        return str(self.constantvalue)
 
     def __str__(self) -> str:
-        return "num-constant(" + str(self.get_constant()) + ")"
+        return "num-constant(" + str(self.constantvalue) + ")"
 
 
 @ifdregistry.register_tag("is", STerm)
 class STIndexSize(STerm):
-    def __init__(
-        self,
-        cd: "InterfaceDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        STerm.__init__(self, cd, ixval)
+    """Size term expressed in units of array index.
 
-    def get_term(self) -> STerm:
+    For example, an index-size of 1 corresponds to 4 bytes in an int-array.
+
+    args[0]: index of term in interface dictionary
+    """
+
+    def __init__(
+        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue) -> None:
+        STerm.__init__(self, ifd, ixval)
+
+    @property
+    def term(self) -> STerm:
         return self.get_iterm(0)
 
+    @property
     def is_index_size(self) -> bool:
         return True
 
     def get_mathml_node(self, signature: List[str]) -> ET.Element:
         anode = ET.Element("apply")
         opnode = ET.Element("index-size")
-        tnode = self.get_term().get_mathml_node(signature)
+        tnode = self.term.get_mathml_node(signature)
         anode.extend([opnode, tnode])
         return anode
 
     def __str__(self) -> str:
-        return "index-size(" + str(self.get_term()) + ")"
+        return "index-size(" + str(self.term) + ")"
 
 
 @ifdregistry.register_tag("bs", STerm)
 class STByteSize(STerm):
-    def __init__(
-        self,
-        cd: "InterfaceDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        STerm.__init__(self, cd, ixval)
+    """Size term expressed in bytes.
 
-    def get_term(self) -> STerm:
+    args[0]: index of term in interface dictionary
+    """
+
+    def __init__(
+        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue) -> None:
+        STerm.__init__(self, ifd, ixval)
+
+    @property
+    def term(self) -> STerm:
         return self.get_iterm(0)
 
+    @property
     def is_byte_size(self) -> bool:
         return True
 
     def get_mathml_node(self, signature: List[str]) -> ET.Element:
         anode = ET.Element("apply")
         opnode = ET.Element("byte-size")
-        tnode = self.get_term().get_mathml_node(signature)
+        tnode = self.term.get_mathml_node(signature)
         anode.extend([opnode, tnode])
         return anode
 
     def __str__(self) -> str:
-        return "byte-size(" + str(self.get_term()) + ")"
+        return "byte-size(" + str(self.term) + ")"
 
-
+'''
 @ifdregistry.register_tag("fo", STerm)
 class STFieldOffset(STerm):
     def __init__(
@@ -396,31 +382,38 @@ class STFieldOffset(STerm):
 
     def __str__(self) -> str:
         return "field-offset(" + str(self.get_name()) + ")"
+'''
 
 
 @ifdregistry.register_tag("aa", STerm)
 class STArgAddressedValue(STerm):
-    def __init__(
-        self,
-        cd: "InterfaceDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        STerm.__init__(self, cd, ixval)
+    """
 
-    def get_base_term(self) -> STerm:
+    args[0]: index of term in interface dictionary
+    args[1]: index of term offset in interface dictionary
+    """
+
+    def __init__(
+        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue) -> None:
+        STerm.__init__(self, ifd, ixval)
+
+    @property
+    def term(self) -> STerm:
         return self.get_iterm(0)
 
-    def get_offset(self) -> SOffset:
-        return self.cd.get_s_offset(int(self.args[1]))
+    @property
+    def offset(self) -> "SOffset":
+        return self.ifd.get_s_offset(int(self.args[1]))
 
+    @property
     def is_arg_addressed_value(self) -> bool:
         return True
 
     def get_mathml_node(self, signature: List[str]) -> ET.Element:
         anode = ET.Element("apply")
         opnode = ET.Element("addressed-value")
-        t1node = self.get_base_term().get_mathml_node(signature)
-        offnode = self.get_offset().get_mathml_node(signature)
+        t1node = self.term.get_mathml_node(signature)
+        offnode = self.offset.get_mathml_node(signature)
         if offnode is not None:
             t1node.append(offnode)
         anode.extend([opnode, t1node])
@@ -429,151 +422,201 @@ class STArgAddressedValue(STerm):
     def __str__(self) -> str:
         return (
             "addressed-value("
-            + str(self.get_base_term())
+            + str(self.term)
             + ")"
-            + str(self.get_offset())
+            + str(self.offset)
         )
 
 
 @ifdregistry.register_tag("at", STerm)
 class STArgNullTerminatorPos(STerm):
-    def __init__(
-        self,
-        cd: "InterfaceDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        STerm.__init__(self, cd, ixval)
+    """Denotes the position of the null-terminator in a string term.
 
-    def get_term(self) -> STerm:
+    args[0]: index of term in interface dictionary
+    """
+
+    def __init__(
+        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue) -> None:
+        STerm.__init__(self, ifd, ixval)
+
+    @property
+    def term(self) -> STerm:
         return self.get_iterm(0)
 
+    @property
     def is_arg_null_terminator_pos(self) -> bool:
         return True
 
     def get_mathml_node(self, signature: List[str]) -> ET.Element:
         anode = ET.Element("apply")
         opnode = ET.Element("nullterminator-pos")
-        tnode = self.get_term().get_mathml_node(signature)
+        tnode = self.term.get_mathml_node(signature)
         anode.extend([opnode, tnode])
         return anode
 
     def __str__(self) -> str:
-        return "arg-null-terminator-pos(" + str(self.get_term()) + ")"
+        return "arg-null-terminator-pos(" + str(self.term) + ")"
 
 
 @ifdregistry.register_tag("st", STerm)
 class STArgSizeOfType(STerm):
-    def __init__(
-        self,
-        cd: "InterfaceDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        STerm.__init__(self, cd, ixval)
+    """Size of argument type, in bytes.
 
-    def get_term(self) -> STerm:
+    args[0]: index of term in interface dictionary
+    """
+
+    def __init__(
+        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue) -> None:
+        STerm.__init__(self, ifd, ixval)
+
+    @property
+    def term(self) -> STerm:
         return self.get_iterm(0)
 
+    @property
     def is_arg_size_of_type(self) -> bool:
         return True
 
     def get_mathml_node(self, signature: List[str]) -> ET.Element:
         anode = ET.Element("apply")
         opnode = ET.Element("size-of-type")
-        tnode = self.get_term().get_mathml_node(signature)
+        tnode = self.term.get_mathml_node(signature)
         anode.extend([opnode, tnode])
         return anode
 
     def __str__(self) -> str:
-        return "arg-size-of-type(" + str(self.get_term()) + ")"
+        return "arg-size-of-type(" + str(self.term) + ")"
 
 
 @ifdregistry.register_tag("ax", STerm)
 class STArithmeticExpr(STerm):
-    def __init__(
-        self,
-        cd: "InterfaceDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        STerm.__init__(self, cd, ixval)
+    """Binary arithmetic expression on terms.
 
-    def get_op(self) -> str:
+    tags[1]: binary operator
+    args[0]: index of first term in interface dictionary
+    args[1]: index of second term in interface dictionary
+    """
+
+    def __init__(
+        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue) -> None:
+        STerm.__init__(self, ifd, ixval)
+
+    @property
+    def op(self) -> str:
         return self.tags[1]
 
-    def get_term1(self) -> STerm:
+    @property
+    def term1(self) -> STerm:
         return self.get_iterm(0)
 
-    def get_term2(self) -> STerm:
+    @property
+    def term2(self) -> STerm:
         return self.get_iterm(1)
 
+    @property
     def is_arithmetic_expr(self) -> bool:
         return True
 
     def get_mathml_node(self, signature: List[str]) -> ET.Element:
         anode = ET.Element("apply")
-        opnode = ET.Element(self.get_op())
-        t1node = self.get_term1().get_mathml_node(signature)
-        t2node = self.get_term2().get_mathml_node(signature)
+        opnode = ET.Element(self.op)
+        t1node = self.term1.get_mathml_node(signature)
+        t2node = self.term2.get_mathml_node(signature)
         anode.extend([opnode, t1node, t2node])
         return anode
 
     def pretty(self) -> str:
         return (
             "("
-            + self.get_term1().pretty()
+            + self.term1.pretty()
             + " "
-            + get_printop(self.get_op())
+            + get_printop(self.op)
             + " "
-            + self.get_term2().pretty()
+            + self.term2.pretty()
             + ")"
         )
 
     def __str__(self) -> str:
         return (
             "xpr("
-            + str(self.get_term1())
+            + str(self.term1)
             + " "
-            + self.get_op()
+            + self.op
             + " "
-            + str(self.get_term2())
+            + str(self.term2)
             + ")"
         )
 
 
 @ifdregistry.register_tag("fs", STerm)
 class STFormattedOutputSize(STerm):
-    def __init__(
-        self,
-        cd: "InterfaceDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        STerm.__init__(self, cd, ixval)
+    """Denotes the size of a string formed via a format string.
 
-    def get_term(self) -> STerm:
+    args[0]: index of term in interface dictionary
+    """
+
+    def __init__(
+        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue) -> None:
+        STerm.__init__(self, ifd, ixval)
+
+    @property
+    def term(self) -> STerm:
         return self.get_iterm(0)
 
+    @property
     def is_formatted_output_size(self) -> bool:
         return True
 
     def get_mathml_node(self, signature: List[str]) -> ET.Element:
         anode = ET.Element("apply")
         opnode = ET.Element("formatted-output-size")
-        tnode = self.get_term().get_mathml_node(signature)
+        tnode = self.term.get_mathml_node(signature)
         anode.extend([opnode, tnode])
         return anode
 
     def __str__(self) -> str:
-        return "formatted-output-size(" + str(self.get_term()) + ")"
+        return "formatted-output-size(" + str(self.term) + ")"
 
+
+@ifdregistry.register_tag("rg", STerm)
+class STRegion(STerm):
+    """Denotes a memory region.
+
+    args[0]: index of term in interface dictionary
+    """
+
+    def __init__(
+        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue) -> None:
+        STerm.__init__(self, ifd, ixval)
+
+    @property
+    def term(self) -> STerm:
+        return self.get_iterm(0)
+
+    @property
+    def is_region(self) -> bool:
+        return True
+
+    def get_mathml_node(self, signature: List[str]) -> ET.Element:
+        anode = ET.Element("apply")
+        opnode = ET.Element("region")
+        tnode = self.term.get_mathml_node(signature)
+        anode.extend([opnode, tnode])
+        return anode
+
+    def __str__(self) -> str:
+        return "region(" + str(self.term) + ")"
+    
 
 @ifdregistry.register_tag("rt", STerm)
 class STRuntimeValue(STerm):
-    def __init__(
-        self,
-        cd: "InterfaceDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        STerm.__init__(self, cd, ixval)
+    """Denotes a value that is determined at runtime."""
 
+    def __init__(
+        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue) -> None:
+        STerm.__init__(self, ifd, ixval)
+
+    @property
     def is_runtime_value(self) -> bool:
         return True
 

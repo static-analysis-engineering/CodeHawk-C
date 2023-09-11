@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -33,7 +35,8 @@ if TYPE_CHECKING:
     from chc.app.CFunction import CFunction
 
 
-class ContractAssumption(object):
+class ContractAssumption:
+
     def __init__(
         self,
         capi: "CFunctionApi",
@@ -41,15 +44,39 @@ class ContractAssumption(object):
         callee: int,
         xpredicate: "XPredicate",
         ppos: List[int],
-        spos: List[Any]
+        spos: List[int]
     ) -> None:
-        self.id = id
-        self.callee = callee
-        self.capi: "CFunctionApi" = capi  # api/CFunctionAPI
-        self.cfun = self.capi.cfun
-        self.xpredicate = xpredicate
-        self.ppos = ppos
-        self.spos = spos
+        self._id = id
+        self._callee = callee
+        self._capi = capi
+        self._cfun = self.capi.cfun
+        self._xpredicate = xpredicate
+        self._ppos = ppos
+        self._spos = spos
+
+    @property
+    def id(self) -> int:
+        return self._id
+
+    @property
+    def callee(self) -> int:
+        return self._callee
+
+    @property
+    def capi(self) -> "CFunctionApi":
+        return self._capi
+
+    @property
+    def xpredicate(self) -> "XPredicate":
+        return self._xpredicate
+
+    @property
+    def ppos(self) -> List[int]:
+        return self._ppos
+
+    @property
+    def spos(self) -> List[int]:
+        return self._spos
 
     def __str__(self) -> str:
         strppos = ""

@@ -61,7 +61,7 @@ class CFunctionApi:
             Dict[Tuple[int, int], ContractAssumption]] = None
         self._global_assumption_requests: Optional[Dict[int, GlobalAssumption]] = None
         self._postcondition_requests: Optional[Dict[int, PostConditionRequest]] = None
-        self._postcondition_guarantees: Optional[Dict[int, XPredicate]] = None
+        self._postcondition_guarantees: Optional[Dict[int, "XPredicate"]] = None
         self._library_calls: Optional[Dict[Tuple[str, str], int]] = None  # (header,fname) -> count
         self._contract_condition_failures: Optional[List[Tuple[str, str]]] = None
         self._missing_summaries: Optional[List[str]] = None
@@ -87,8 +87,8 @@ class CFunctionApi:
 
     def has_outstanding_postcondition_requests(self) -> bool:
         return (
-            sum([len(r.get_open_ppos()) for r in self.postcondition_requests.values()])
-        ) > 0
+            sum([len(r.get_open_ppos())
+                 for r in self.postcondition_requests.values()])) > 0
 
     @property
     def missing_summaries(self) -> List[str]:
@@ -107,16 +107,13 @@ class CFunctionApi:
 
     def has_outstanding_global_requests(self) -> bool:
         return (
-            sum(
-                [len(r.get_open_ppos()) for r in self.global_assumption_requests.values()]
-            )
-        ) > 0
+            sum([len(r.get_open_ppos())
+                 for r in self.global_assumption_requests.values()])) > 0
 
     def has_outstanding_requests(self) -> bool:
         return (
             self.has_outstanding_postcondition_requests()
-            or self.has_outstanding_global_requests()
-        )
+            or self.has_outstanding_global_requests())
 
     @property
     def api_assumptions(self) -> Dict[int, ApiAssumption]:
@@ -167,7 +164,7 @@ class CFunctionApi:
         return self._postcondition_requests
 
     @property
-    def postcondition_guarantees(self) -> Dict[int, XPredicate]:
+    def postcondition_guarantees(self) -> Dict[int, "XPredicate"]:
         if self._postcondition_guarantees is None:
             self._postcondition_guarantees = {}
             xpgs = self.xnode.find("postcondition-guarantees")
@@ -187,7 +184,8 @@ class CFunctionApi:
                     xid = x.get("ipr")
                     if xid is None:
                         raise UF.CHCError(
-                            self.xmsg("ipr attribute missing in global-assumption-requests"))
+                            self.xmsg(
+                                "ipr attribute missing in global-assumption-requests"))
                     id = int(xid)
                     p = self.cfile.predicatedictionary.get_predicate(id)
                     ppos = IT.get_attribute_int_list(x, "ppos")
@@ -206,8 +204,11 @@ class CFunctionApi:
                     header = x.get("h")
                     fname = x.get("f")
                     count = x.get("c")
-                    if (header is not None) and (fname is not None) and (count is not None):
-                        self._library_calls[(header, fname)] = int(count)
+                    if (
+                            (header is not None)
+                            and (fname is not None)
+                            and (count is not None)):
+                            self._library_calls[(header, fname)] = int(count)
         return self._library_calls
 
     @property
@@ -281,8 +282,12 @@ class CFunctionApi:
             lines.append("\n  library calls:")
             for (k, v) in self.library_calls:
                 lines.append(
-                    "   " + k + ":" + v + " -- " + str(self.library_calls[(k, v)])
-                )
+                    "   "
+                    + k
+                    + ":"
+                    + v
+                    + " -- "
+                    + str(self.library_calls[(k, v)]))
         else:
             lines.append("\n  -- no library calls")
         if len(self.missing_summaries) > 0:
