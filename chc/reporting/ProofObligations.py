@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2016-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarn Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -27,11 +29,22 @@
 
 import time
 
+from typing import Any, Callable, Dict, List, Sequence, Tuple, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from chc.app.CApplication import CApplication
+    from chc.app.CFile import CFile
+    from chc.app.CFunction import CFunction
+    from chc.app.CContext import ProgramContext
+    from chc.proof.CFunctionPO import CFunctionPO
+
 """Utility functions for reporting proof obligations and their statistics."""
 
-dischargemethods = ["stmt", "local", "api", "contract", "open", "violated"]
+dischargemethods: List[str] = [
+    "stmt", "local", "api", "contract", "open", "violated"]
 
-histogramcolors = {
+
+histogramcolors: Dict[str, str] = {
     "violated": "red",
     "stmt": "green",
     "local": "lightgreen",
@@ -41,11 +54,12 @@ histogramcolors = {
 }
 
 
-def get_dsmethods(extra):
+def get_dsmethods(extra: List[str]) -> List[str]:
     return extra + dischargemethods
 
 
-def get_dsmethod_header(indent, dsmethods, header1=""):
+def get_dsmethod_header(
+        indent: int, dsmethods: List[str], header1: str = "") -> str:
     return (
         header1.ljust(indent)
         + "".join([dm.rjust(10) for dm in dsmethods])
@@ -53,23 +67,23 @@ def get_dsmethod_header(indent, dsmethods, header1=""):
     )
 
 
-def classifypo(po, d):
-    """Classify proof obligation with respect to discharge method and update dictionary.
+def classifypo(po: "CFunctionPO", d: Dict[str, int]) -> None:
+    """Classify proof obligation wrt discharge method and update dictionary.
 
     Args:
       po: proof obligation (CFunctionPO)
       d: dictionary, with discharge methods initialized (is updated)
     """
-    if po.is_closed():
-        if po.is_violated():
+    if po.is_closed:
+        if po.is_violated:
             d["violated"] += 1
         deps = po.dependencies
         if deps.has_external_dependencies():
             deptype = po.get_dependencies_type()
             d[deptype] += 1
-        elif deps.is_stmt():
+        elif deps.is_stmt:
             d["stmt"] += 1
-        elif deps.is_local() or deps.is_deadcode():
+        elif deps.is_local or deps.is_deadcode:
             d["local"] += 1
         else:
             print("Unable to classify " + str(po))
@@ -77,7 +91,10 @@ def classifypo(po, d):
         d["open"] += 1
 
 
-def get_method_count(pos, filefilter=lambda f: True, extradsmethods=[]):
+def get_method_count(
+        pos: Sequence["CFunctionPO"],
+        filefilter: Callable[[str], bool] = lambda f: True,
+        extradsmethods: List[str] = []) -> Dict[str, int]:
     """Create dicharge method count dictionary from proof obligation list.
 
     Args:
@@ -87,7 +104,7 @@ def get_method_count(pos, filefilter=lambda f: True, extradsmethods=[]):
     Returns:
       dictionary that organizes proof obligations by discharge method
     """
-    result = {}
+    result: Dict[str, int] = {}
     for dm in get_dsmethods(extradsmethods):
         result[dm] = 0
     for po in pos:
@@ -95,7 +112,10 @@ def get_method_count(pos, filefilter=lambda f: True, extradsmethods=[]):
     return result
 
 
-def get_tag_method_count(pos, filefilter=lambda f: True, extradsmethods=[]):
+def get_tag_method_count(
+        pos: Sequence["CFunctionPO"],
+        filefilter: Callable[[str], bool] = lambda f: True,
+        extradsmethods: List[str] = []) -> Dict[str, Dict[str, int]]:
     """Create predicate tag, discharge method count dictionary.
 
     Args:
@@ -105,12 +125,12 @@ def get_tag_method_count(pos, filefilter=lambda f: True, extradsmethods=[]):
     Returns:
       dictionary that organizes proof obligations by predicate and discharge method
     """
-    result = {}
+    result: Dict[str, Dict[str, int]] = {}
     dsmethods = get_dsmethods(extradsmethods)
     for po in pos:
         if not filefilter(po.cfile.name):
             continue
-        tag = po.predicatetag
+        tag = po.predicate_name
         if tag not in result:
             result[tag] = {}
             for dm in dsmethods:
@@ -119,7 +139,10 @@ def get_tag_method_count(pos, filefilter=lambda f: True, extradsmethods=[]):
     return result
 
 
-def get_file_method_count(pos, filefilter=lambda f: True, extradsmethods=[]):
+def get_file_method_count(
+        pos: Sequence["CFunctionPO"],
+        filefilter: Callable[[str], bool] = lambda f: True,
+        extradsmethods: List[str] = []) -> Dict[str, Dict[str, int]]:
     """Create file, discharge method count dictionary from proof obligation list.
 
     Args:
@@ -129,7 +152,7 @@ def get_file_method_count(pos, filefilter=lambda f: True, extradsmethods=[]):
     Returns:
       dictionary that organizes proof obligations by file and discharge method
     """
-    result = {}
+    result: Dict[str, Dict[str, int]] = {}
     dsmethods = get_dsmethods(extradsmethods)
     for po in pos:
         pofile = po.cfile.name
@@ -143,7 +166,9 @@ def get_file_method_count(pos, filefilter=lambda f: True, extradsmethods=[]):
     return result
 
 
-def get_function_method_count(pos, extradsmethods=[]):
+def get_function_method_count(
+        pos: Sequence["CFunctionPO"],
+        extradsmethods: List[str] = []) -> Dict[str, Dict[str, int]]:
     """Create function, discharge method count dictionary from proof obligation list.
 
     Args:
@@ -153,7 +178,7 @@ def get_function_method_count(pos, extradsmethods=[]):
     Returns:
       dictionary that organizes proof obligations by function and discharge method
     """
-    result = {}
+    result: Dict[str, Dict[str, int]] = {}
     dsmethods = get_dsmethods(extradsmethods)
     for po in pos:
         pofunction = po.cfun.name
@@ -165,7 +190,12 @@ def get_function_method_count(pos, extradsmethods=[]):
     return result
 
 
-def row_method_count_tostring(d, perc=False, extradsmethods=[], rhlen=25, header1=""):
+def row_method_count_tostring(
+        d: Dict[str, Dict[str, int]],
+        perc: bool = False,
+        extradsmethods: List[str] = [],
+        rhlen: int = 25,
+        header1: str = "") -> str:
     """Display a dictionary with row-header - discharge method - count.
 
     Args:
@@ -174,9 +204,11 @@ def row_method_count_tostring(d, perc=False, extradsmethods=[], rhlen=25, header
       extradsmethods: list of additional column headers (will be prepended)
       rhlen: maximum length of the row header (default 25)
     Returns:
-      table of discharge method counts represented as a string"""
-    lines = []
-    width = 10
+      table of discharge method counts represented as a string
+    """
+
+    lines: List[str] = []
+    width: int = 10
     dsmethods = get_dsmethods(extradsmethods)
     lines.append(get_dsmethod_header(rhlen, dsmethods, header1=header1))
     barlen = 70 + rhlen
@@ -191,10 +223,10 @@ def row_method_count_tostring(d, perc=False, extradsmethods=[], rhlen=25, header
         )
     lines.append("-" * barlen)
 
-    totals = {}
+    totals: Dict[str, int] = {}
     for dm in dsmethods:
         totals[dm] = sum([d[t][dm] for t in d])
-    totalcount = sum([totals[dm] for dm in totals if not dm == "violated"])
+    totalcount: int = sum([totals[dm] for dm in totals if not dm == "violated"])
     lines.append(
         "total".ljust(rhlen)
         + "".join([str(totals[dm]).rjust(width) for dm in dsmethods])
@@ -214,41 +246,62 @@ def row_method_count_tostring(d, perc=False, extradsmethods=[], rhlen=25, header
     return "\n".join(lines)
 
 
-class FunctionDisplay(object):
-    def __init__(self, cfunction, sourcecodeavailable):
-        self.cfunction = cfunction
-        self.sourcecodeavailable = sourcecodeavailable
-        self.cfile = self.cfunction.cfile
-        self.fline = self.cfunction.get_location().get_line()
-        self.currentline = self.fline + 1
+class FunctionDisplay:
 
-    def get_source_line(self, line):
+    def __init__(
+            self,
+            cfunction: "CFunction",
+            sourcecodeavailable: bool) -> None:
+        self._cfunction = cfunction
+        self._sourcecodeavailable = sourcecodeavailable
+        self._currentline = self._cfunction.get_location().line + 1
+
+    @property
+    def cfunction(self) -> "CFunction":
+        return self._cfunction
+
+    @property
+    def sourcecodeavailable(self) -> bool:
+        return self._sourcecodeavailable
+
+    @property
+    def cfile(self) -> "CFile":
+        return self.cfunction.cfile
+
+    @property
+    def fline(self) -> int:
+        return self.cfunction.get_location().line
+
+    def get_source_line(self, line: int) -> str:
         srcline = self.cfile.get_source_line(line)
         if srcline is not None:
             return self.cfile.get_source_line(line).strip()
         return "?"
 
-    def pos_no_code_to_string(self, pos, pofilter=lambda po: True):
-        lines = []
-        for po in sorted(pos, key=lambda po: po.get_line()):
+    def pos_no_code_to_string(
+            self,
+            pos: Sequence["CFunctionPO"],
+            pofilter: Callable[["CFunctionPO"], bool] = lambda po: True) -> str:
+        lines: List[str] = []
+        for po in sorted(pos, key=lambda po: po.line):
             if not pofilter(po):
                 continue
-            delegated = ""
-            indent = 18 if po.is_ppo() else 24
-            if po.is_closed():
+            delegated: str = ""
+            indent: int = 18 if po.is_ppo else 24
+            if po.is_closed:
                 expl = po.explanation
                 prefix = po.get_display_prefix()
                 lines.append(prefix + " " + str(po))
-                lines.append((" " * indent) + expl)
+                lines.append((" " * indent) + str(expl))
             else:
                 lines.append("\n<?> " + str(po))
                 if po.has_diagnostic():
-                    amsgs = po.diagnostic.amsgs
+                    amsgs = po.diagnostic.argument_msgs
                     if len(amsgs) > 0:
                         for arg in sorted(amsgs):
                             for s in sorted(amsgs[arg]):
                                 lines.append((" " * indent) + s)
-                    kmsgs = po.diagnostic.kmsgs
+                    kmsgs = po.diagnostic.keyword_msgs
                     if len(kmsgs) > 0:
                         for key in sorted(kmsgs):
                             for s in sorted(kmsgs[key]):
@@ -257,30 +310,36 @@ class FunctionDisplay(object):
                     if len(msgs) > 0:
                         for m in msgs:
                             lines.append((" " * indent) + m)
-                    keys = po.diagnostic.get_argument_indices()
+                    keys = po.diagnostic.argument_indices
                     for k in sorted(keys):
                         invids = po.diagnostic.get_invariant_ids(k)
                         for id in invids:
-                            inv = self.cfunction.invd.get_invariant_fact(
+                            inv = self.cfunction.invdictionary.get_invariant_fact(
                                 id
-                            ).get_non_relational_value()
+                            ).non_relational_value
                             lines.append((" " * indent) + str(k) + ": " + str(inv))
                 else:
                     lines.append((" " * indent) + "---> no diagnostic found")
         return "\n".join(lines)
 
-    def pos_on_code_tostring(self, pos, pofilter=lambda po: True, showinvs=False):
-        lines = []
+    def pos_on_code_tostring(
+            self,
+            pos: Sequence["CFunctionPO"],
+            pofilter: Callable[["CFunctionPO"], bool] = lambda po: True,
+            showinvs: bool = False) -> str:
+        lines: List[str] = []
         contexts = set([])
-        for po in sorted(pos, key=lambda po: po.get_line()):
+        for po in sorted(pos, key=lambda po: po.line):
             if not pofilter(po):
                 continue
-            line = po.get_line()
-            if line >= self.currentline:
+            line = po.line
+            indent: int = 18 if po.is_ppo else 24            
+            if line >= self._currentline:
                 if len(contexts) > 0 and showinvs:
                     lines.append(
-                        "\n" + (" " * indent) + "-------- context invariants --------"
-                    )
+                        "\n"
+                        + (" " * indent)
+                        + "-------- context invariants --------")
                     for c in contexts:
                         lines.append((" " * indent) + str(c))
                         lines.append((" " * indent) + ("-" * len(str(c))))
@@ -288,36 +347,37 @@ class FunctionDisplay(object):
                         lines.append(" ")
                 lines.append("-" * 80)
                 if self.sourcecodeavailable:
-                    for n in range(self.currentline, line + 1):
+                    for n in range(self._currentline, line + 1):
                         lines.append(self.get_source_line(n))
                 else:
-                    if self.currentline == line:
+                    if self._currentline == line:
                         lines.append("source line " + str(line))
                     else:
                         lines.append(
-                            "source lines " + str(self.currentline) + " - " + str(line)
-                        )
+                            "source lines "
+                            + str(self._currentline)
+                            + " - " + str(line))
                 lines.append("-" * 80)
                 contexts = set([])
-            self.currentline = line + 1
+            self._currentline = line + 1
             delegated = ""
-            indent = 18 if po.is_ppo() else 24
-            if po.is_closed():
+            indent = 18 if po.is_ppo else 24
+            if po.is_closed:
                 # contexts.add(po.context)    (uncomment to see all invariants)
                 expl = po.explanation
                 prefix = po.get_display_prefix()
                 lines.append(prefix + " " + str(po))
-                lines.append((" " * indent) + expl)
+                lines.append((" " * indent) + str(expl))
             else:
                 contexts.add(po.context)
                 lines.append("\n<?> " + str(po))
                 if po.has_diagnostic():
-                    amsgs = po.diagnostic.amsgs
+                    amsgs = po.diagnostic.argument_msgs
                     if len(amsgs) > 0:
                         for arg in sorted(amsgs):
                             for s in sorted(amsgs[arg]):
                                 lines.append((" " * indent) + s)
-                    kmsgs = po.diagnostic.kmsgs
+                    kmsgs = po.diagnostic.keyword_msgs
                     if len(kmsgs) > 0:
                         for key in sorted(kmsgs):
                             for s in sorted(kmsgs[key]):
@@ -326,13 +386,14 @@ class FunctionDisplay(object):
                     if len(msgs) > 0:
                         for m in msgs:
                             lines.append((" " * indent) + m)
-                    keys = po.diagnostic.get_argument_indices()
+                    keys = po.diagnostic.argument_indices
                     for k in sorted(keys):
                         invids = po.diagnostic.get_invariant_ids(k)
                         for id in invids:
-                            inv = self.cfunction.invd.get_invariant_fact(
+                            inv = self.cfunction.invdictionary.get_invariant_fact(id)
+                            inv = self.cfunction.invdictionary.get_invariant_fact(
                                 id
-                            ).get_non_relational_value()
+                            ).non_relational_value
                             lines.append((" " * indent) + str(k) + ": " + str(inv))
                 else:
                     lines.append((" " * indent) + "---> no diagnostic found")
@@ -340,35 +401,38 @@ class FunctionDisplay(object):
 
                 if showinvs and (not po.has_diagnostic()):
                     lines.append((" " * 18) + "--")
-                    lines.append(self._get_po_invariants(po.context, po.id))
+                    lines.append(self._get_po_invariants(po.context, po.po_index))
 
         if len(contexts) > 0 and showinvs:
-            lines.append("\n" + (" " * indent) + "-------- context invariants --------")
+            lines.append(
+                "\n" + (" " * indent) + "-------- context invariants --------")
             for c in contexts:
                 lines.append((" " * indent) + "=== " + str(c) + " ===")
                 lines.append(str(self._get_context_invariants(c)))
                 lines.append(" ")
 
-        self.currentline = self.fline + 1
+        self._currentline = self.fline + 1
         return "\n".join(lines)
 
-    def _get_po_invariants(self, context, poId):
-        lines = []
-        invs = self.cfunction.invtable.get_po_invariants(context, poId)
+    def _get_po_invariants(self, context: "ProgramContext", poId: int) -> str:
+        lines: List[str] = []
+        invs = self.cfunction.invarianttable.get_po_invariants(context, poId)
         for inv in invs:
             lines.append((" " * 18) + str(inv))
         return "\n".join(lines)
 
-    def _get_context_invariants(self, context):
-        lines = []
-        invs = self.cfunction.invtable.get_sorted_invariants(context)
+    def _get_context_invariants(self, context: "ProgramContext") -> str:
+        lines: List[str] = []
+        invs = self.cfunction.invarianttable.get_sorted_invariants(context)
         for inv in invs:
             lines.append((" " * 18) + str(inv))
         return "\n".join(lines)
 
 
-def function_pos_to_string(fn, pofilter=lambda po: True):
-    lines = []
+def function_pos_to_string(
+        fn: "CFunction",
+        pofilter: Callable[["CFunctionPO"], bool] = lambda po: True) -> str:
+    lines: List[str] = []
     ppos = fn.get_ppos()
     ppos = [x for x in ppos if pofilter(x)]
     spos = fn.get_spos()
@@ -381,14 +445,16 @@ def function_pos_to_string(fn, pofilter=lambda po: True):
 
 
 def function_code_tostring(
-    fn, pofilter=lambda po: True, showinvs=False, showpreamble=True
-):
-    lines = []
+        fn: "CFunction",
+        pofilter: Callable[["CFunctionPO"], bool] = lambda po: True,
+        showinvs: bool = False,
+        showpreamble: bool = True) -> str:
+    lines: List[str] = []
     ppos = fn.get_ppos()
     ppos = [x for x in ppos if pofilter(x)]
     spos = fn.get_spos()
-    fnstartline = fn.get_line_number()
-    if fnstartline is None:
+    fnstartlinenr = fn.get_line_number()
+    if fnstartlinenr is None:
         lines.append(
             "\nFunction "
             + fn.name
@@ -398,7 +464,7 @@ def function_code_tostring(
         )
         fd = FunctionDisplay(fn, False)
     else:
-        fnstartline = fn.cfile.get_source_line(fnstartline)
+        fnstartline = fn.cfile.get_source_line(fnstartlinenr)
         lines.append("\nFunction " + fn.name)
         lines.append("-" * 80)
         lines.append(fnstartline.strip())
@@ -421,87 +487,98 @@ def function_code_tostring(
     return "\n".join(lines)
 
 
-def function_code_open_tostring(fn, showinvs=False):
-    def pofilter(po):
-        return po.is_violated() or (not po.is_closed())
+def function_code_open_tostring(
+        fn: "CFunction", showinvs: bool = False) -> str:
+
+    def pofilter(po: "CFunctionPO") -> bool:
+        return po.is_violated or (not po.is_closed)
 
     return function_code_tostring(fn, pofilter=pofilter, showinvs=showinvs)
 
 
-def function_code_violation_tostring(fn, showinvs=False):
-    def pofilter(po):
-        return po.is_violated()
+def function_code_violation_tostring(
+        fn: "CFunction", showinvs: bool = False) -> str:
+
+    def pofilter(po: "CFunctionPO") -> bool:
+        return po.is_violated
 
     return function_code_tostring(fn, pofilter=pofilter, showinvs=showinvs)
 
 
-def function_code_predicate_tostring(fn, p, showinvs=False):
-    def pofilter(po):
-        return po.predicatetag == p
+def function_code_predicate_tostring(
+        fn: "CFunction", p: str, showinvs: bool = False) -> str:
+
+    def pofilter(po: "CFunctionPO") -> bool:
+        return po.predicate_name == p
 
     return function_code_tostring(fn, pofilter=pofilter, showinvs=showinvs)
 
 
-def file_pos_violations_to_string(cfile):
-    lines = []
+def file_pos_violations_to_string(cfile: "CFile") -> str:
+    lines: List[str] = []
 
-    def pofilter(po):
-        return po.is_violated()
+    def pofilter(po: "CFunctionPO") -> bool:
+        return po.is_violated
 
-    def f(fn):
+    def f(fn: "CFunction") -> None:
         lines.append(function_pos_to_string(fn, pofilter=pofilter))
 
     cfile.iter_functions(f)
     return "\n".join(lines)
 
 
-def file_code_tostring(cfile, pofilter=lambda po: True, showinvs=False):
-    lines = []
+def file_code_tostring(
+        cfile: "CFile",
+        pofilter: Callable[["CFunctionPO"], bool] = lambda po: True,
+        showinvs: bool = False) -> str:
+    lines: List[str] = []
 
-    def f(fn):
-        lines.append(function_code_tostring(fn, pofilter=pofilter, showinvs=showinvs))
+    def f(fn: "CFunction") -> None:
+        lines.append(
+            function_code_tostring(fn, pofilter=pofilter, showinvs=showinvs))
 
     cfile.iter_functions(f)
     return "\n".join(lines)
 
 
-def file_code_open_tostring(fn, showinvs=False):
-    def pofilter(po):
-        return po.is_violated() or (not po.is_closed())
+def file_code_open_tostring(cfile: "CFile", showinvs: bool = False) -> str:
 
-    return file_code_tostring(fn, pofilter=pofilter, showinvs=showinvs)
+    def pofilter(po: "CFunctionPO") -> bool:
+        return po.is_violated or (not po.is_closed)
+
+    return file_code_tostring(cfile, pofilter=pofilter, showinvs=showinvs)
 
 
 def proofobligation_stats_tostring(
-    pporesults, sporesults, rhlen=28, header1="", extradsmethods=[]
-):
-    lines = []
+        pporesults: Dict[str, Dict[str, int]],
+        sporesults: Dict[str, Dict[str, int]],
+        rhlen: int = 28,
+        header1: str = "",
+        extradsmethods: List[str] = []) -> str:
+    lines: List[str] = []
     lines.append("\nPrimary Proof Obligations")
     lines.append(
-        row_method_count_tostring(pporesults, perc=True, rhlen=rhlen, header1=header1)
-    )
+        row_method_count_tostring(
+            pporesults, perc=True, rhlen=rhlen, header1=header1))
     if len(sporesults) > 0:
         lines.append("\nSupporting Proof Obligations")
         lines.append(
             row_method_count_tostring(
-                sporesults, perc=True, rhlen=rhlen, header1=header1
-            )
-        )
+                sporesults, perc=True, rhlen=rhlen, header1=header1))
     return "\n".join(lines)
 
 
 def project_proofobligation_stats_tostring(
-    capp, filefilter=lambda f: True, extradsmethods=[]
-):
-    lines = []
+        capp: "CApplication",
+        filefilter: Callable[[str], bool] = lambda f: True,
+        extradsmethods: List[str] = []) -> str:
+    lines: List[str] = []
     ppos = capp.get_ppos()
     spos = capp.get_spos()
     pporesults = get_file_method_count(
-        ppos, extradsmethods=extradsmethods, filefilter=filefilter
-    )
+        ppos, extradsmethods=extradsmethods, filefilter=filefilter)
     sporesults = get_file_method_count(
-        spos, extradsmethods=extradsmethods, filefilter=filefilter
-    )
+        spos, extradsmethods=extradsmethods, filefilter=filefilter)
 
     rhlen = capp.get_max_filename_length() + 3
     lines.append(
@@ -510,44 +587,36 @@ def project_proofobligation_stats_tostring(
             sporesults,
             rhlen=rhlen,
             header1="c files",
-            extradsmethods=extradsmethods,
-        )
-    )
+            extradsmethods=extradsmethods))
     tagpporesults = get_tag_method_count(
-        ppos, filefilter=filefilter, extradsmethods=extradsmethods
-    )
+        ppos, filefilter=filefilter, extradsmethods=extradsmethods)
     tagsporesults = get_tag_method_count(
-        spos, filefilter=filefilter, extradsmethods=extradsmethods
-    )
+        spos, filefilter=filefilter, extradsmethods=extradsmethods)
 
     lines.append("\n\nProof Obligation Statistics")
     lines.append("~" * 80)
     lines.append(
         proofobligation_stats_tostring(
-            tagpporesults, tagsporesults, extradsmethods=extradsmethods
-        )
-    )
+            tagpporesults, tagsporesults, extradsmethods=extradsmethods))
     return "\n".join(lines)
 
 
 def project_proofobligation_stats_to_dict(
-    capp, filefilter=lambda f: True, extradsmethods=[]
-):
+        capp: "CApplication",
+        filefilter: Callable[[str], bool] = lambda f: True,
+        extradsmethods: List[str] = []) -> Dict[str, Any]:
     ppos = capp.get_ppos()
     spos = capp.get_spos()
     pporesults = get_file_method_count(
-        ppos, extradsmethods=extradsmethods, filefilter=filefilter
-    )
+        ppos, extradsmethods=extradsmethods, filefilter=filefilter)
     sporesults = get_file_method_count(
-        spos, extradsmethods=extradsmethods, filefilter=filefilter
-    )
+        spos, extradsmethods=extradsmethods, filefilter=filefilter)
     tagpporesults = get_tag_method_count(
-        ppos, filefilter=filefilter, extradsmethods=extradsmethods
-    )
+        ppos, filefilter=filefilter, extradsmethods=extradsmethods)
     tagsporesults = get_tag_method_count(
-        spos, filefilter=filefilter, extradsmethods=extradsmethods
-    )
-    result = {}
+        spos, filefilter=filefilter, extradsmethods=extradsmethods)
+
+    result: Dict[str, Any] = {}
     result["tagresults"] = {}
     result["fileresults"] = {}
     result["stats"] = capp.get_project_counts(filefilter=filefilter)
@@ -558,8 +627,9 @@ def project_proofobligation_stats_to_dict(
     return result
 
 
-def project_proofobligation_stats_dict_to_string(stats_dict):
-    lines = []
+def project_proofobligation_stats_dict_to_string(
+        stats_dict: Dict[str, Dict[str, Dict[str, Dict[str, int]]]]) -> str:
+    lines: List[str] = []
 
     pporesults = stats_dict["fileresults"]["ppos"]
     sporesults = stats_dict["fileresults"]["spos"]
@@ -567,9 +637,7 @@ def project_proofobligation_stats_dict_to_string(stats_dict):
     rhlen = max([len(x) for x in pporesults])
     lines.append(
         proofobligation_stats_tostring(
-            pporesults, sporesults, rhlen=rhlen, header1="c files"
-        )
-    )
+            pporesults, sporesults, rhlen=rhlen, header1="c files"))
 
     lines.append("\n\nProof Obligation Statistics")
 
@@ -580,8 +648,9 @@ def project_proofobligation_stats_dict_to_string(stats_dict):
     return "\n".join(lines)
 
 
-def file_proofobligation_stats_tostring(cfile, extradsmethods=[]):
-    lines = []
+def file_proofobligation_stats_tostring(
+        cfile: "CFile", extradsmethods: List[str] = []) -> str:
+    lines: List[str] = []
     ppos = cfile.get_ppos()
     spos = cfile.get_spos()
     pporesults = get_function_method_count(ppos, extradsmethods=extradsmethods)
@@ -590,9 +659,7 @@ def file_proofobligation_stats_tostring(cfile, extradsmethods=[]):
     rhlen = cfile.get_max_functionname_length() + 3
     lines.append(
         proofobligation_stats_tostring(
-            pporesults, sporesults, rhlen=rhlen, header1="functions"
-        )
-    )
+            pporesults, sporesults, rhlen=rhlen, header1="functions"))
 
     tagpporesults = get_tag_method_count(ppos, extradsmethods=extradsmethods)
     tagsporesults = get_tag_method_count(spos, extradsmethods=extradsmethods)
@@ -605,8 +672,8 @@ def file_proofobligation_stats_tostring(cfile, extradsmethods=[]):
     return "\n".join(lines)
 
 
-def file_global_assumptions_tostring(cfile):
-    lines = []
+def file_global_assumptions_tostring(cfile: "CFile") -> str:
+    lines: List[str] = []
     lines.append("\nGlobal assumptions")
     lines.append(("-" * 80))
     polines = set([])
@@ -618,8 +685,8 @@ def file_global_assumptions_tostring(cfile):
     return "\n".join(sorted(lines) + sorted(list(polines)))
 
 
-def file_postcondition_assumptions_tostring(cfile):
-    lines = []
+def file_postcondition_assumptions_tostring(cfile: "CFile") -> str:
+    lines: List[str] = []
     lines.append("\nPostcondition assumptions")
     lines.append(("-" * 80))
     polines = set([])
@@ -631,21 +698,26 @@ def file_postcondition_assumptions_tostring(cfile):
     return "\n".join(lines + sorted(list(polines)))
 
 
-def function_proofobligation_stats_tostring(cfunction, extradsmethods=[]):
-    lines = []
+def function_proofobligation_stats_tostring(
+        cfunction: "CFunction", extradsmethods: List[str] = []) -> str:
+    lines: List[str] = []
     ppos = cfunction.get_ppos()
     spos = cfunction.get_spos()
     tagpporesults = get_tag_method_count(ppos, extradsmethods=extradsmethods)
     tagsporesults = get_tag_method_count(spos, extradsmethods=extradsmethods)
 
-    lines.append("\n\nProof Obligation Statistics for function " + cfunction.name)
+    lines.append(
+        "\n\nProof Obligation Statistics for function " + cfunction.name)
     lines.append("~" * 80)
 
     lines.append(proofobligation_stats_tostring(tagpporesults, tagsporesults))
     return "\n".join(lines)
 
 
-def make_po_tag_dict(pos, pofilter=lambda po: True):
+def make_po_tag_dict(
+        pos: List["CFunctionPO"],
+        pofilter: Callable[["CFunctionPO"], bool] = lambda po: True
+) -> Dict[str, List["CFunctionPO"]]:
     """Create a predicate tag dictionary from a a list of proof obligations.
 
     Args:
@@ -654,17 +726,20 @@ def make_po_tag_dict(pos, pofilter=lambda po: True):
     Returns:
       dictionary that organizes the proof obligations by predicate tag
     """
-    result = {}
+    result: Dict[str, List["CFunctionPO"]] = {}
     for po in pos:
         if pofilter(po):
-            tag = po.get_predicate_tag()
+            tag = po.predicate_name
             if tag not in result:
                 result[tag] = []
             result[tag].append(po)
     return result
 
 
-def make_po_file_function_dict(pos, filefilter=lambda f: True):
+def make_po_file_function_dict(
+        pos: List["CFunctionPO"],
+        filefilter: Callable[[str], bool] = lambda f: True
+) -> Dict[str, Dict[str, List["CFunctionPO"]]]:
     """Create a file, function dictionary from a list of proof obligations.
 
     Args:
@@ -673,7 +748,7 @@ def make_po_file_function_dict(pos, filefilter=lambda f: True):
     Returns:
       dictionary that organizes the proof obligations by c file
     """
-    result = {}
+    result: Dict[str, Dict[str, List["CFunctionPO"]]] = {}
     for po in pos:
         cfile = po.cfile.name
         if filefilter(cfile):
@@ -687,9 +762,10 @@ def make_po_file_function_dict(pos, filefilter=lambda f: True):
 
 
 def tag_file_function_pos_tostring(
-    pos, filefilter=lambda f: True, pofilter=lambda po: True
-):
-    lines = []
+        pos: List["CFunctionPO"],
+        filefilter: Callable[[str], bool] = lambda f: True,
+        pofilter: Callable[["CFunctionPO"], bool] = lambda po: True) -> str:
+    lines: List[str] = []
     tagdict = make_po_tag_dict(pos, pofilter=pofilter)
     for tag in sorted(tagdict):
         fundict = make_po_file_function_dict(tagdict[tag], filefilter=filefilter)
@@ -698,14 +774,14 @@ def tag_file_function_pos_tostring(
             lines.append("\n  File: " + f)
             for ff in sorted(fundict[f]):
                 lines.append("    Function: " + ff)
-                for po in sorted(fundict[f][ff], key=lambda po: po.get_line()):
-                    invd = po.cfun.invd
+                for po in sorted(fundict[f][ff], key=lambda po: po.line):
+                    invd = po.cfun.invdictionary
                     lines.append((" " * 6) + str(po))
-                    if po.is_closed():
+                    if po.is_closed:
                         lines.append((" " * 14) + str(po.explanation))
 
                     if po.has_diagnostic():
-                        amsgs = po.diagnostic.amsgs
+                        amsgs = po.diagnostic.argument_msgs
                         if len(amsgs) > 0:
                             for arg in sorted(amsgs):
                                 for s in sorted(amsgs[arg]):
@@ -716,7 +792,7 @@ def tag_file_function_pos_tostring(
                             for s in msgs[1:]:
                                 lines.append((" " * 14) + s)
                             lines.append(" ")
-                        keys = po.diagnostic.get_argument_indices()
+                        keys = po.diagnostic.argument_indices
                         for k in keys:
                             invids = po.diagnostic.get_invariant_ids(k)
                             for id in invids:
@@ -726,30 +802,33 @@ def tag_file_function_pos_tostring(
                                     + ": "
                                     + str(
                                         invd.get_invariant_fact(
-                                            id
-                                        ).get_non_relational_value()
-                                    )
-                                )
+                                            id).non_relational_value))
                         lines.append(" ")
 
     return "\n".join(lines)
 
 
-def get_totals_from_tagtotals(tagtotals):
-    totals = {}
+def get_totals_from_tagtotals(
+        tagtotals: Dict[str, Dict[str, int]]) -> Dict[str, int]:
+    totals: Dict[str, int] = {}
     dsmethods = get_dsmethods([])
     for dm in dsmethods:
-        totals[dm] = sum([tagtotals[t][dm] for t in tagtotals if dm in tagtotals[t]])
+        totals[dm] = sum(
+            [tagtotals[t][dm] for t in tagtotals if dm in tagtotals[t]])
     return totals
 
 
-def totals_to_string(tagtotals, absolute=True, totals=True):
-    lines = []
+def totals_to_string(
+        tagtotals: Dict[str, Dict[str, int]],
+        absolute: bool = True,
+        do_totals: bool = True) -> List[str]:
+    lines: List[str] = []
     rhlen = max([max([len(t) for t in tagtotals]), 12])
     header1 = ""
     dsmethods = get_dsmethods([])
     width = 10
-    lines.append(get_dsmethod_header(rhlen, dsmethods, header1=header1) + "    %closed")
+    lines.append(
+        get_dsmethod_header(rhlen, dsmethods, header1=header1) + "    %closed")
     barlen = 80 + rhlen
     lines.append("-" * barlen)
     for t in sorted(tagtotals):
@@ -758,57 +837,50 @@ def totals_to_string(tagtotals, absolute=True, totals=True):
         if rsum == 0:
             continue
         tagopenpct = (1.0 - (float(tagtotals[t]["open"]) / float(rsum))) * 100.0
-        tagopenpct = str("{:.1f}".format(tagopenpct))
+        s_tagopenpct = str("{:.1f}".format(tagopenpct))
         if absolute:
             lines.append(
                 t.ljust(rhlen)
                 + "".join([str(x).rjust(width) for x in r])
                 + str(sum(r)).rjust(10)
-                + tagopenpct.rjust(width)
-            )
+                + s_tagopenpct.rjust(width))
         else:
             lines.append(
                 t.ljust(rhlen)
                 + "".join(
-                    [
-                        str("{:.2f}".format(float(x) / float(rsum) * 100.0)).rjust(
-                            width
-                        )
-                        for x in r
-                    ]
-                )
-            )
-    if totals:
+                    [str("{:.2f}".format(float(x) / float(rsum) * 100.0)).rjust(
+                        width)
+                     for x in r]))
+    if do_totals:
         lines.append("-" * barlen)
         totals = get_totals_from_tagtotals(tagtotals)
         totalcount = sum(totals.values())
         if totalcount > 0:
-            tagopenpct = (1.0 - (float(totals["open"]) / float(totalcount))) * 100.0
-            tagopenpct = str("{:.1f}".format(tagopenpct))
+            tagopenpct = (
+                1.0 - (float(totals["open"]) / float(totalcount))) * 100.0
+            s_tagopenpct = str("{:.1f}".format(tagopenpct))
             if absolute:
                 lines.append(
                     "total".ljust(rhlen)
                     + "".join([str(totals[dm]).rjust(width) for dm in dsmethods])
                     + str(totalcount).rjust(10)
-                    + tagopenpct.rjust(width)
-                )
+                    + s_tagopenpct.rjust(width))
             scale = float(totalcount) / 100.0
             lines.append(
                 "percent".ljust(rhlen)
                 + "".join(
-                    [
-                        str("{:.2f}".format(float(totals[dm]) / scale)).rjust(width)
-                        for dm in dsmethods
-                    ]
-                )
-            )
+                    [str("{:.2f}".format(float(totals[dm]) / scale)).rjust(width)
+                        for dm in dsmethods]))
     return lines
 
 
 def totals_to_presentation_string(
-    ppototals, spototals, projectstats, absolute=True, totals=True
-):
-    lines = []
+        ppototals: Dict[str, Dict[str, int]],
+        spototals: Dict[str, Dict[str, int]],
+        projectstats: Dict[str, Tuple[int, int, int]],
+        absolute: bool = True,
+        totals: bool = True) -> List[str]:
+    lines: List[str] = []
     rhlen = max([max([len(t) for t in ppototals]), 12])
     header1 = ""
     dsmethods = get_dsmethods([])
@@ -818,8 +890,7 @@ def totals_to_presentation_string(
         + "total ppo's".rjust(15)
         + "%closed".rjust(10)
         + "total spo'".rjust(15)
-        + "%closed".rjust(10)
-    )
+        + "%closed".rjust(10))
     barlen = 64 + rhlen
     lines.append("-" * barlen)
     for t in sorted(ppototals):
@@ -831,21 +902,20 @@ def totals_to_presentation_string(
         if rpposum == 0:
             continue
         ppoopenpct = (1.0 - (float(ppototals[t]["open"]) / float(rpposum))) * 100.0
-        ppoopenpct = str("{:.1f}".format(ppoopenpct))
+        s_ppoopenpct = str("{:.1f}".format(ppoopenpct))
         if rsposum == 0:
             continue
         spoopenpct = (1.0 - (float(spototals[t]["open"]) / float(rsposum))) * 100.0
-        spoopenpct = str("{:.1f}".format(spoopenpct))
+        s_spoopenpct = str("{:.1f}".format(spoopenpct))
 
         if absolute:
             lines.append(
                 t.ljust(rhlen)
                 + str(lc).rjust(10)
                 + str(sum(rppo)).rjust(15)
-                + ppoopenpct.rjust(10)
+                + s_ppoopenpct.rjust(10)
                 + str(sum(rspo)).rjust(15)
-                + spoopenpct.rjust(10)
-            )
+                + s_spoopenpct.rjust(10))
             """
             lines.append(t.ljust(rhlen) + ''.join([str(x).rjust(8) for x in r])
                             + str(sum(r)).rjust(10) + ppoopenpct.rjust(8))
@@ -854,17 +924,13 @@ def totals_to_presentation_string(
             lines.append(
                 t.ljust(rhlen)
                 + "".join(
-                    [
-                        str("{:.2f}".format(float(x) / float(rsum) * 100.0)).rjust(8)
-                        for x in r
-                    ]
-                )
-            )
+                    [str("{:.2f}".format(float(x) / float(rsum) * 100.0)).rjust(8)
+                     for x in r]))
     if totals:
         lines.append("-" * barlen)
         lctotal = sum([projectstats[t][0] for t in projectstats])
-        dmppototals = {}
-        dmspototals = {}
+        dmppototals: Dict[str, int] = {}
+        dmspototals: Dict[str, int] = {}
         for dm in dsmethods:
             dmppototals[dm] = sum([ppototals[t][dm] for t in ppototals])
             dmspototals[dm] = sum([spototals[t][dm] for t in spototals])
@@ -874,20 +940,19 @@ def totals_to_presentation_string(
             ppotagopenpct = (
                 1.0 - (float(dmppototals["open"]) / float(ppototalcount))
             ) * 100.0
-            ppotagopenpct = str("{:.1f}".format(ppotagopenpct))
+            s_ppotagopenpct = str("{:.1f}".format(ppotagopenpct))
             spotagopenpct = (
                 1.0 - (float(dmspototals["open"]) / float(spototalcount))
             ) * 100.0
-            spotagopenpct = str("{:.1f}".format(spotagopenpct))
+            s_spotagopenpct = str("{:.1f}".format(spotagopenpct))
             if absolute:
                 lines.append(
                     "total".ljust(rhlen)
                     + str(lctotal).rjust(10)
                     + str(ppototalcount).rjust(15)
-                    + ppotagopenpct.rjust(10)
+                    + s_ppotagopenpct.rjust(10)
                     + str(spototalcount).rjust(15)
-                    + spotagopenpct.rjust(10)
-                )
+                    + s_spotagopenpct.rjust(10))
             """
             scale = float(totalcount)/100.0
             lines.append('percent'.ljust(rhlen) +
