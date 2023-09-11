@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,33 +27,58 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
+from typing import Dict, Tuple, TYPE_CHECKING
 
-class TestSPORef(object):
-    def __init__(self, testcfunctionref, r):
-        self.testcfunctionref = testcfunctionref
-        self.r = r
+if TYPE_CHECKING:
+    from chc.cmdline.kendra.TestCFunctionRef import TestCFunctionRef
 
-    def get_line(self):
-        return int(self.r["line"])
 
-    def get_context(self):
-        return self.r["cfgctxt"]
+class TestSPORef:
 
-    def get_tgt_status(self):
-        return self.r["tgtstatus"]
+    def __init__(
+            self, testcfunctionref: "TestCFunctionRef", refd: Dict[str, str]
+    ) -> None:
+        self._testcfunctionref = testcfunctionref
+        self._refd = refd
 
-    def get_status(self):
-        return self.r["status"]
+    @property
+    def testcfunctionref(self) -> "TestCFunctionRef":
+        return self._testcfunctionref
 
-    def get_predicate(self):
-        return self.r["predicate"]
+    @property
+    def refd(self) -> Dict[str, str]:
+        return self._refd
 
-    def get_type(self):
-        return self.r["type"]
+    @property
+    def line(self) -> int:
+        return int(self.refd["line"])
 
-    def get_argnr(self):
-        return self.r["argnr"]
+    @property
+    def context(self) -> str:
+        return self.refd["cfgctxt"]
 
-    def get_id(self):
-        if self.get_type() == "callsite":
-            return (self.get_predicate(), self.get_argnr())
+    @property
+    def tgt_status(self) -> str:
+        return self.refd["tgtstatus"]
+
+    @property
+    def status(self) -> str:
+        return self.refd["status"]
+
+    @property
+    def predicate(self) -> str:
+        return self.refd["predicate"]
+
+    @property
+    def type(self) -> str:
+        return self.refd["type"]
+
+    @property
+    def argnr(self) -> str:
+        return self.refd["argnr"]
+
+    @property
+    def id(self) -> Tuple[str, str]:
+        if self.type == "callsite":
+            return (self.predicate, self.argnr)
+        return ("?", "?")

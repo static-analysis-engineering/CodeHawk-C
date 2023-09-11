@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,32 +27,57 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
+from typing import Any, Dict, Tuple, TYPE_CHECKING
 
-class TestPPORef(object):
-    def __init__(self, testcfunctionref, r):
-        self.testcfunctionref = testcfunctionref
-        self.r = r
 
-    def get_line(self):
-        return int(self.r["line"])
+if TYPE_CHECKING:
+    from chc.cmdline.kendra.TestCFunctionRef import TestCFunctionRef
 
-    def get_cfg_context(self):
-        return self.r["cfgctxt"]
 
-    def get_exp_context(self):
-        return self.r["expctxt"]
+class TestPPORef:
 
-    def get_context(self):
-        return (self.get_cfg_context(), self.get_exp_context())
+    def __init__(
+            self, testcfunctionref: "TestCFunctionRef", refd: Dict[str, str]
+    ) -> None:
+        self._testcfunctionref = testcfunctionref
+        self._refd = refd
 
-    def get_context_string(self):
-        return "(" + str(self.get_cfg_context()) + "," + self.get_exp_context() + ")"
+    @property
+    def testcfunctionref(self) -> "TestCFunctionRef":
+        return self._testcfunctionref
 
-    def get_predicate(self):
-        return self.r["predicate"]
+    @property
+    def refd(self) -> Dict[str, str]:
+        return self._refd
 
-    def get_tgt_status(self):
-        return self.r["tgtstatus"]
+    @property
+    def line(self) -> int:
+        return int(self.refd["line"])
 
-    def get_status(self):
-        return self.r["status"]
+    @property
+    def cfg_context(self) -> str:
+        return self.refd["cfgctxt"]
+
+    @property
+    def exp_context(self) -> str:
+        return self.refd["expctxt"]
+
+    @property
+    def context(self) -> Tuple[str, str]:
+        return (self.cfg_context, self.exp_context)
+
+    @property
+    def context_string(self) -> str:
+        return "(" + str(self.cfg_context) + "," + self.exp_context + ")"
+
+    @property
+    def predicate(self) -> str:
+        return self.refd["predicate"]
+
+    @property
+    def tgt_status(self) -> str:
+        return self.refd["tgtstatus"]
+
+    @property
+    def status(self) -> str:
+        return self.refd["status"]

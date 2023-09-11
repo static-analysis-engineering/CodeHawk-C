@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -27,84 +29,117 @@
 
 import json
 
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
+
 from chc.cmdline.kendra.TestCFileRef import TestCFileRef
 
 
-class TestSetRef(object):
+class TestSetRef:
     """Provides access to the reference results of a set of C files."""
 
-    def __init__(self, specfilename):
-        self.specfilename = specfilename
-        with open(specfilename) as fp:
-            self.r = json.load(fp)
-        self.cfiles = {}
-        self._initialize()
+    def __init__(self, specfilename: str) -> None:
+        self._specfilename = specfilename
+        self._cfiles: Dict[str, TestCFileRef] = {}
+        self._refd: Dict[str, Any] = {}
 
+    @property
+    def specfilename(self) -> str:
+        return self._specfilename
+
+    @property
+    def refd(self) -> Dict[str, Any]:
+        if len(self._refd) == 0:
+            with open(self.specfilename) as fp:
+                self._refd = json.load(fp)
+        return self._refd
+
+    @property
+    def cfiles(self) -> Dict[str, TestCFileRef]:
+        if len(self._cfiles) == 0:
+            for (f, fdata) in self.refd["cfiles"].items():
+                self._cfiles[f] = TestCFileRef(self, f, fdata)
+        return self._cfiles
+
+    '''
     def iter(self, f):
         for cfile in self.cfiles.values():
             f(cfile)
+    '''
 
-    def get_cfilenames(self):
+    @property
+    def cfilenames(self) -> List[str]:
         return sorted(self.cfiles.keys())
 
+    '''
     def get_cfiles(self):
         return sorted(self.cfiles.values(), key=lambda f: f.name)
+    '''
 
-    def get_cfile(self, cfilename):
+    def cfile(self, cfilename: str) -> Optional[TestCFileRef]:
         if cfilename in self.cfiles:
             return self.cfiles[cfilename]
+        else:
+            return None
 
-    def set_ppos(self, cfilename, cfun, ppos):
-        self.r["cfiles"][cfilename]["functions"][cfun]["ppos"] = ppos
+    def set_ppos(
+            self, cfilename: str, cfun: str, ppos: List[Dict[str, str]]
+    ) -> None:
+        self._refd["cfiles"][cfilename]["functions"][cfun]["ppos"] = ppos
 
-    def set_spos(self, cfilename, cfun, spos):
-        self.r["cfiles"][cfilename]["functions"][cfun]["spos"] = spos
+    def set_spos(self, cfilename: str, cfun: str, spos: List[Dict[str, str]]
+    ) -> None:
+        self._refd["cfiles"][cfilename]["functions"][cfun]["spos"] = spos
 
-    def has_characteristics(self):
-        return "characteristics" in self.r
+    def has_characteristics(self) -> bool:
+        return "characteristics" in self.refd
 
-    def get_characteristics(self):
-        if "characteristics" in self.r:
-            return self.r["characteristics"]
-
-    def has_restrictions(self):
-        return "restrictions" in self.r
-
-    def get_restrictions(self):
-        if "restrictions" in self.r:
-            return self.r["restrictions"]
+    @property
+    def characteristics(self) -> List[str]:
+        if "characteristics" in self.refd:
+            return self.refd["characteristics"]
         else:
             return []
 
-    def is_linux_only(self):
-        return "linux-only" in self.get_restrictions()
+    def has_restrictions(self) -> bool:
+        return "restrictions" in self.refd
 
-    def save(self):
+    @property
+    def restrictions(self) -> List[str]:
+        if "restrictions" in self.refd:
+            return self.refd["restrictions"]
+        else:
+            return []
+
+    @property
+    def is_linux_only(self) -> bool:
+        return "linux-only" in self.restrictions
+
+    def save(self) -> None:
         with open(self.specfilename, "w") as fp:
-            fp.write(json.dumps(self.r, indent=4, sort_keys=True))
+            fp.write(json.dumps(self._refd, indent=4, sort_keys=True))
 
-    def __str__(self):
-        lines = []
-        for cfile in self.get_cfiles():
+    def __str__(self) -> str:
+        lines: List[str] = []
+        for cfile in self.cfiles.values():
             lines.append(cfile.name)
-            for cfun in cfile.get_functions():
+            for cfun in sorted(cfile.functions.values(), key=lambda f:f.name):
                 lines.append("  " + cfun.name)
                 if cfun.has_ppos():
-                    for ppo in sorted(cfun.get_ppos(), key=lambda p: p.get_line()):
+                    for ppo in sorted(cfun.ppos, key=lambda p: p.line):
                         hasmultiple = cfun.has_multiple(
-                            ppo.get_line(), ppo.get_predicate()
+                            ppo.line, ppo.predicate
                         )
-                        ctxt = ppo.get_context_string() if hasmultiple else ""
-                        status = ppo.get_status().ljust(12)
-                        if ppo.get_status() == ppo.get_tgt_status():
+                        ctxt = ppo.context_string if hasmultiple else ""
+                        status = ppo.status.ljust(12)
+                        if ppo.status == ppo.tgt_status:
                             tgtstatus = ""
                         else:
-                            tgtstatus = "(" + ppo.get_tgt_status() + ")"
+                            tgtstatus = "(" + ppo.tgt_status + ")"
                         lines.append(
                             "    "
-                            + str(ppo.get_line()).rjust(4)
+                            + str(ppo.line).rjust(4)
                             + "  "
-                            + ppo.get_predicate().ljust(24)
+                            + ppo.predicate.ljust(24)
                             + " "
                             + status
                             + " "
@@ -113,6 +148,8 @@ class TestSetRef(object):
                         )
         return "\n".join(lines)
 
+    '''
     def _initialize(self):
         for f in self.r["cfiles"]:
             self.cfiles[f] = TestCFileRef(self, f, self.r["cfiles"][f])
+    '''
