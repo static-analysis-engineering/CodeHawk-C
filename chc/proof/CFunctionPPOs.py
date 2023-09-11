@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,45 +27,81 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
+import xml.etree.ElementTree as ET
+
+from typing import Dict, List, Optional, TYPE_CHECKING
+
+from chc.proof.CFunctionPO import get_dependencies, get_diagnostic
+
 from chc.proof.CFunctionPPO import CFunctionPPO
 from chc.proof.CFunctionPOs import CFunctionPOs
 from chc.proof.CFunctionPO import CProofDependencies
 from chc.proof.CFunctionPO import CProofDiagnostic
+
+import chc.util.fileutil as UF
+
+if TYPE_CHECKING:
+    from chc.proof.CFunctionProofs import CFunctionProofs
 
 
 po_status = {"g": "safe", "o": "open", "r": "violation", "x": "dead-code"}
 
 
 class CFunctionPPOs(CFunctionPOs):
+    """Represents the set of primary proof obligations for a function.
 
-    """Represents the set of primary proof obligations for a function."""
+    xnode received is the content of the <"ppos"> element
+    """
 
-    def __init__(self, cproofs, xnode):
+    def __init__(self, cproofs: "CFunctionProofs", xnode: ET.Element) -> None:
         CFunctionPOs.__init__(self, cproofs)
         self.xnode = xnode
-        self.ppos = {}  # ppoid -> CFunctionPPO
-        self._initialize()
+        self._ppos: Optional[Dict[int, CFunctionPPO]] = None  # ppoid -> CFunctionPPO
+        # self._initialize()
 
-    def get_ppo(self, id):
+    @property
+    def ppos(self) -> Dict[int, CFunctionPPO]:
+        if self._ppos is None:
+            self._ppos = {}
+            for xp in self.xnode.findall("ppo"):
+                ppotype = self.podictionary.read_xml_ppo_type(xp)
+                id = ppotype.index
+                status = po_status[xp.get("s", "o")]
+                deps = get_dependencies(self, xp)
+                diagnostic = get_diagnostic(xp)
+
+                # get explanation
+                enode = xp.find("e")
+                if enode is not None:
+                    expl: Optional[str] = enode.get("txt", "")
+                else:
+                    expl = None
+
+                self._ppos[id] = CFunctionPPO(
+                    self, ppotype, status, deps, expl, diagnostic)
+        return self._ppos
+
+    def get_ppo(self, id: int) -> CFunctionPPO:
         if id in self.ppos:
             return self.ppos[id]
+        else:
+            raise UF.CHCError("Ppo with id " + str(id) + " not found")
 
+    '''
     def iter(self, f):
         for ppo in sorted(
             self.ppos,
             key=lambda p: (self.ppos[p].location.get_line(), int(self.ppos[p].id)),
         ):
             f(self.ppos[ppo])
+    '''
 
-    def __str__(self):
-        lines = []
-
-        def f(ppo):
+    def __str__(self) -> str:
+        lines: List[str] = []
+        for ppo in self.ppos.values():
             lines.append(str(ppo))
-
-        self.iter(f)
         return "\n".join(lines)
-
+'''
     def _initialize(self):
         for p in self.xnode.find("ppos").findall("ppo"):
             ppotype = self.cfun.podictionary.read_xml_ppo_type(p)
@@ -111,3 +149,4 @@ class CFunctionPPOs(CFunctionPOs):
                         kmsgs[key] = msgs
                 diag = CProofDiagnostic(pinvs, pmsgs, amsgs, kmsgs)
             self.ppos[id] = CFunctionPPO(self, ppotype, status, deps, expl, diag)
+'''

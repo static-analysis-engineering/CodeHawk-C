@@ -27,7 +27,7 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
-from typing import cast, List, TYPE_CHECKING
+from typing import cast, Dict, List, TYPE_CHECKING
 
 import chc.app.CExp as CX
 
@@ -43,6 +43,74 @@ if TYPE_CHECKING:
     from chc.proof.CFilePredicateDictionary import CFilePredicateDictionary
 
 
+po_predicate_names: Dict[str, str] = {
+    'ab'  : 'allocation-base',
+    'b'   : 'buffer',    
+    'c'   : 'cast',
+    'cb'  : 'common-base',
+    'cbt' : 'common-base-type',    
+    'cls' : 'can-leave-scope',
+    'cr'  : 'controlled-resource',
+    'cssl': 'signed-to-signed-cast-lb',
+    'cssu': 'signed-to-signed-cast-ub',    
+    'csul': 'signed-to-unsigned-cast-lb',
+    'csuu': 'signed-to-unsigned-cast-ub',
+    'cus' : 'unsigned-to-signed-cast',    
+    'cuu' : 'unsigned-to-unsigned-cast',
+    'dr'  : 'distinct-region',
+    'fc'  : 'format-cast',
+    'ft'  : 'format-string',
+    'ga'  : 'global-address',
+    'ha'  : 'heap-address',
+    'i'   : 'initialized',    
+    'ilb' : 'index-lower-bound',
+    'io'  : 'int-overflow',    
+    'ir'  : 'initialized-range',    
+    'is'  : 'in-scope',
+    'iu'  : 'int-underflow',    
+    'iub' : 'index-upper-bound',    
+    'lb'  : 'lower-bound',    
+    'nm'  : 'new-memory',    
+    'nn'  : 'not-null',
+    'nneg': 'non-negative',
+    'no'  : 'no-overlap',    
+    'nt'  : 'null-terminated',
+    'null': 'null',
+    'pc'  : 'pointer-cast',
+    'plb' : 'ptr-lower-bound',
+    'pre' : 'precondition',
+    'prm' : 'preserved-all-memory',    
+    'pub' : 'ptr-upper-bound',
+    'pubd': 'ptr-upper-bound-deref',
+    'pv'  : 'preserves-value',
+    'sae' : 'stack-address-escape',
+    'tao' : 'type-at-offset',
+    'ub'  : 'upper-bound',
+    'uio' : 'uint-overflow',
+    'uiu' : 'uint-underflow',
+    'va'  : 'var-args',   
+    'vc'  : 'value-constraint',    
+    'vm'  : 'valid-mem',
+    'w'   : 'width-overflow',    
+    'z'   : 'not-zero'
+    }
+
+
+def get_predicate_tag(name: str) -> str:
+    revnames = { v:k for (k,v) in po_predicate_names.items() }
+    if name in revnames:
+        return revnames[name]
+    else:
+        return name
+
+
+def get_predicate_name(tag: str) -> str:
+    if tag in po_predicate_names:
+        return po_predicate_names[tag]
+    else:
+        return tag
+    
+
 class CPOPredicate(CFilePredicateRecord):
     """Base class for all predicates."""
 
@@ -50,6 +118,10 @@ class CPOPredicate(CFilePredicateRecord):
             self, pd: "CFilePredicateDictionary", ixval: IT.IndexedTableValue
     ) -> None:
         CFilePredicateRecord.__init__(self, pd, ixval)
+
+    @property
+    def predicate_name(self) -> str:
+        return get_predicate_name(self.tags[0])
 
     @property
     def is_allocation_base(self) -> bool:
@@ -883,7 +955,7 @@ class CPOInitialized(CPOPredicate):
         return self.lval.has_ref_type()
 
     def __str__(self) -> str:
-        return "initial,ized(" + str(self.lval) + ")"
+        return "initialized(" + str(self.lval) + ")"
 
 
 @pdregistry.register_tag("ir", CPOPredicate)

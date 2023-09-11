@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,29 +27,56 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from chc.app.CContextDictionary import CContextDictionary
+    from chc.app.CFile import CFile
+    from chc.app.CFunction import CFunction
+    from chc.proof.CFunctionProofs import CFunctionProofs
+    from chc.proof.CFunPODictionary import CFunPODictionary
+
 
 class CFunctionPOs(object):
     """Superclass of CFunctionPPOs and CFunctionSPOs."""
 
-    def __init__(self, cproofs):
-        self.cproofs = cproofs
-        self.cfun = self.cproofs.cfun
-        self.cfile = self.cfun.cfile
+    def __init__(self, cproofs: "CFunctionProofs") -> None:
+        self._cproofs = cproofs
 
-    def is_ppo_discharged(self, id):
+    @property
+    def cproofs(self) -> "CFunctionProofs":
+        return self._cproofs
+
+    @property
+    def cfun(self) -> "CFunction":
+        return self.cproofs.cfun
+
+    @property
+    def cfile(self) -> "CFile":
+        return self.cfun.cfile
+
+    @property
+    def contextdictionary(self) -> "CContextDictionary":
+        return self.cfile.contextdictionary
+
+    @property
+    def podictionary(self) -> "CFunPODictionary":
+        return self.cfun.podictionary
+
+    def is_ppo_discharged(self, id: int) -> bool:
         return self.cproofs.is_ppo_discharged(id)
 
-    def is_spo_discharged(self, id):
+    def is_spo_discharged(self, id: int) -> bool:
         return self.cproofs.is_spo_discharged(id)
 
-    def is_ppo_violated(self, id):
+    def is_ppo_violated(self, id: int) -> bool:
         return self.cproofs.is_ppo_violated(id)
 
-    def is_spo_violated(self, id):
+    def is_spo_violated(self, id: int) -> bool:
         return self.cproofs.is_spo_violated(id)
 
-    def get_ppo_evidence(self, id):
+    def get_ppo_evidence(self, id: int):
         return self.cproofs.get_ppo_evidence(id)
 
-    def get_spo_evidence(self, id):
+    def get_spo_evidence(self, id: int):
         return self.cproofs.get_spo_evidence(id)

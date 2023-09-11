@@ -178,7 +178,7 @@ class PostconditionType(AssumptionType):
 
     @property
     def xpredicate(self) -> "XPredicate":
-        return self.id.get_xpredicate(self.args[1])
+        return self.ifd.get_xpredicate(self.args[1])
 
     @property
     def callee(self) -> int:
@@ -209,7 +209,7 @@ class GlobalAssumptionType(AssumptionType):
 
     @property
     def xpredicate(self) -> "XPredicate":
-        return self.id.get_xpredicate(self.args[0])
+        return self.ifd.get_xpredicate(self.args[0])
 
     @property
     def is_global_assumption(self) -> bool:

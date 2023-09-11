@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,19 +27,30 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
+from typing import Optional, TYPE_CHECKING
+
 from chc.app.CLocation import CLocation
 
-import chc.proof.CFunctionPO as S
+from chc.proof.CFunctionPO import (
+    CFunctionPO, CProofDependencies, CProofDiagnostic)
+
+if TYPE_CHECKING:
+    from chc.proof.CFunctionPOs import CFunctionPOs
+    from chc.proof.CFunPODictionaryRecord import CFunPOType
 
 
-class CFunctionPPO(S.CFunctionPO):
+class CFunctionPPO(CFunctionPO):
     """Represents a primary proof obligation within a function."""
 
-    def __init__(self, cpos, ppotype, status, deps, expl, diag):
-        S.CFunctionPO.__init__(self, cpos, ppotype, status, deps, expl, diag)
+    def __init__(
+            self,
+            cpos: "CFunctionPOs",
+            ppotype: "CFunPOType",
+            status: str = "open",
+            deps: Optional[CProofDependencies] = None,
+            expl: Optional[str] = None,
+            diag: Optional[CProofDiagnostic] = None) -> None:
+        CFunctionPO.__init__(self, cpos, ppotype, status, deps, expl, diag)
 
-    def is_ppo(self):
+    def is_ppo(self) -> bool:
         return True
-
-    def get_predicate_tag(self):
-        return self.predicate.get_tag()

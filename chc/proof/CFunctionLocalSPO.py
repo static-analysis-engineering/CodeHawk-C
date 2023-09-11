@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -27,24 +29,38 @@
 
 import xml.etree.ElementTree as ET
 
-from chc.proof.CFunctionPO import CFunctionPO
+from typing import Optional, TYPE_CHECKING
+
+from chc.proof.CFunctionPO import (
+    CFunctionPO, CProofDependencies, CProofDiagnostic)
+
+if TYPE_CHECKING:
+    from chc.proof.CFunctionSPOs import CFunctionSPOs
+    from chc.proof.CFunPODictionaryRecord import CFunPOType
 
 
 class CFunctionLocalSPO(CFunctionPO):
     """Represents a supporting proof obligation associated with a call site."""
 
-    def __init__(self, csspos, potype, status="open", deps=None, expl=None, diag=None):
+    def __init__(
+            self,
+            csspos: "CFunctionSPOs",
+            potype: "CFunPOType",
+            status: str = "open",
+            deps: Optional[CProofDependencies] = None,
+            expl: Optional[str] = None,
+            diag: Optional[CProofDiagnostic] = None) -> None:
         CFunctionPO.__init__(self, csspos, potype, status, deps, expl, diag)
         self.csspos = csspos  # CFunctionSPOs
 
-    def is_spo(self):
+    def is_spo(self) -> bool:
         return True
 
-    def __str__(self):
+    def __str__(self) -> str:
         return (
-            str(self.id).rjust(4)
+            str(self.po_index).rjust(4)
             + " "
-            + str(self.location.get_line()).rjust(4)
+            + str(self.location.line).rjust(4)
             + "   "
             + str(self.predicate)
             + " ("

@@ -32,7 +32,7 @@ constructs that may lead to undefined behavior (UB).
 
 from typing import TYPE_CHECKING
 
-from chc.proof.CFunPODictionaryRecord import CFunPODictionaryRecord, podregistry
+from chc.proof.CFunPODictionaryRecord import CFunPOType, podregistry
 
 import chc.util.fileutil as UF
 from chc.util.IndexedTable import IndexedTableValue
@@ -46,12 +46,12 @@ if TYPE_CHECKING:
     from chc.proof.CPOPredicate import CPOPredicate
 
 
-class PPOType(CFunPODictionaryRecord):
+class PPOType(CFunPOType):
     """Base class for primary proof obligation types."""
 
     def __init__(self, pod: "CFunPODictionary", ixval: IndexedTableValue
     ) -> None:
-        CFunPODictionaryRecord.__init__(self, pod, ixval)
+        CFunPOType.__init__(self, pod, ixval)
 
     @property
     def is_program_ppo(self) -> bool:
@@ -142,7 +142,7 @@ class LibPPOType(PPOType):
 
     @property
     def precondition(self) -> "XPredicate":
-        return self.id.get_xpredicate(self.args[3])
+        return self.ifd.get_xpredicate(self.args[3])
 
     def __str__(self) -> str:
         return (
