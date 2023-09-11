@@ -31,7 +31,7 @@
 
 from typing import TYPE_CHECKING
 
-from chc.proof.CFunPODictionaryRecord import CFunPODictionaryRecord, podregistry
+from chc.proof.CFunPODictionaryRecord import CFunPOType, podregistry
 
 import chc.util.fileutil as UF
 from chc.util.IndexedTable import IndexedTableValue
@@ -45,12 +45,12 @@ if TYPE_CHECKING:
     from chc.proof.CPOPredicate import CPOPredicate
 
 
-class SPOType(CFunPODictionaryRecord):
+class SPOType(CFunPOType):
     """Base class for supporting proof obligation types."""
 
     def __init__(self, pod: "CFunPODictionary", ixval: IndexedTableValue
     ) -> None:
-        CFunPODictionaryRecord.__init__(self, pod, ixval)
+        CFunPOType.__init__(self, pod, ixval)
 
     @property
     def is_local_spo(self) -> bool:
@@ -153,7 +153,7 @@ class CallsiteSPOType(SPOType):
             + ")")
     
 
-@podregistry.register_tag("cs", SPOType)
+@podregistry.register_tag("rs", SPOType)
 class ReturnsiteSPOType(SPOType):
     """Proof obligation that supports an assumption on a return value.
 
@@ -185,7 +185,7 @@ class ReturnsiteSPOType(SPOType):
 
     @property
     def postcondition(self) -> "XPredicate":
-        return self.id.get_xpredicate(self.args[3])
+        return self.ifd.get_xpredicate(self.args[3])
 
     @property
     def external_id(self) -> int:

@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +31,8 @@ import logging
 
 import xml.etree.ElementTree as ET
 
+from typing import Dict, List, Optional, TYPE_CHECKING
+
 import chc.util.xmlutil as UX
 
 import chc.proof.CFunctionPO as PO
@@ -37,22 +41,100 @@ from chc.app.CLocation import CLocation
 from chc.app.CFileDictionary import CKeyLookupError
 
 from chc.proof.CFunctionCallsiteSPO import CFunctionCallsiteSPO
-from chc.proof.CFunctionPO import CProofDependencies
+from chc.proof.CFunctionPO import (
+    CProofDependencies,
+    CProofDiagnostic,
+    po_status,
+    get_diagnostic,
+    get_dependencies)
 from chc.proof.CFunctionPO import po_status
 from chc.proof.CFunctionPO import CProofDiagnostic
 
+import chc.util.fileutil as UF
 
-class CFunctionCallsiteSPOs(object):
+if TYPE_CHECKING:
+    from chc.app.CContext import ProgramContext, CfgContext
+    from chc.app.CContextDictionary import CContextDictionary
+    from chc.app.CExp import CExp
+    from chc.app.CFile import CFile
+    from chc.app.CFunction import CFunction
+    from chc.app.CVarInfo import CVarInfo
+    from chc.proof.CFunctionSPOs import CFunctionSPOs
+    from chc.proof.CFunPODictionary import CFunPODictionary
+
+
+class CallsiteTarget:
+
+    def __init__(self, cspos: "CFunctionSPOs", xnode: ET.Element) -> None:
+        self.xnode = xnode
+        self._cspos = cspos
+
+    @property
+    def cspos(self) -> "CFunctionSPOs":
+        return self._cspos
+
+    @property
+    def cfile(self) -> "CFile":
+        return self.cspos.cfile
+
+    def has_callee(self) -> bool:
+        return "ivinfo" in self.xnode.attrib
+
+    @property
+    def callee(self) -> "CVarInfo":
+        if self.has_callee():
+            return self.cfile.declarations.read_xml_varinfo(self.xnode)
+        else:
+            raise UF.CHCError("Call target does not have a callee")
+
+    def has_callee_exp(self) -> bool:
+        return "iexp" in self.xnode.attrib
+
+    @property
+    def callee_exp(self) -> "CExp":
+        if self.has_callee_exp():
+            return self.cfile.dictionary.read_xml_exp(self.xnode)
+        else:
+            raise UF.CHCError("Call target does not have a callee expression")
+
+    def has_callees(self) -> bool:
+        return "icallee" in self.xnode.attrib
+
+    @property
+    def callees(self) -> List["CVarInfo"]:
+        if "icallees" in self.xnode.attrib:
+            xicallees = self.xnode.get("icallees")
+            if xicallees is not None:
+                return [
+                    self.cfile.declarations.get_varinfo(int(i))
+                    for i in xicallees.split(",")]
+            else:
+                raise UF.CHCError("Inconsistent icallees element")
+        else:
+            raise UF.CHCError("Call target does not have resolved callees")
+        
+
+
+class CFunctionCallsiteSPOs:
     """Represents the supporting proof obligations associated with a call site."""
 
-    def __init__(self, cspos, xnode):
-        self.cspos = cspos
-        self.cfile = self.cspos.cfile
-        self.context = self.cfile.contexttable.read_xml_context(xnode)
-        self.header = xnode.get("header", "")
-        self.cfun = self.cspos.cfun
-        self.location = self.cfile.declarations.read_xml_location(xnode)
+    def __init__(self, cspos: "CFunctionSPOs", xnode: ET.Element) -> None:
+        self._cspos = cspos
+        self.xnode = xnode
+        self._calltarget = CallsiteTarget(self._cspos, self.xnode)
+        self._iargs: Optional[List[int]] = None
+        self._callargs: Optional[List["CExp"]] = None
+        self._spos: Optional[Dict[int, List[CFunctionCallsiteSPO]]] = None
+        self._postassumes: Optional[List[int]] = None
+        self._icallees: Optional[List[int]] = None
+        self._callees: Optional[List["CVarInfo"]] = None
+        # self.cfile = self.cspos.cfile
+        # self.context = self.cfile.contexttable.read_xml_context(xnode)
+        # self.header = xnode.get("header", "")
+        # self.cfun = self.cspos.cfun
+        # self.location = self.cfile.declarations.read_xml_location(xnode)
         # direct call
+        '''
         if "ivinfo" in xnode.attrib:
             self.callee = self.cfile.declarations.read_xml_varinfo(xnode)
         else:
@@ -87,23 +169,152 @@ class CFunctionCallsiteSPOs(object):
                 for i in self.iargs.split(",")
             ]
         self._initialize(xnode)
+        '''
 
-    def is_indirect_call(self):
-        return not (self.callee_exp is None)
+    @property
+    def calltarget(self) -> CallsiteTarget:
+        return self._calltarget
 
-    def is_direct_call(self):
-        return self.callee_exp is None
+    @property
+    def iargs(self) -> List[int]:
+        if self._iargs is None:
+            xargs = self.xnode.get("iargs")
+            if xargs is None:
+                self._iargs = []
+            elif xargs == "":
+                self._iargs = []
+            else:
+                self._iargs = [int(i) for i in xargs.split(",")]
+        return self._iargs
 
-    def has_callee(self):
-        return not (self.callee is None)
+    @property
+    def call_arguments(self) -> List["CExp"]:
+        if self._callargs is None:
+            self._callargs = [
+                self.cfile.dictionary.get_exp(i) for i in self.iargs]
+        return self._callargs
 
-    def get_line(self):
-        return self.location.get_line()
+    @property
+    def cspos(self) -> "CFunctionSPOs":
+        return self._cspos
 
-    def get_cfg_context_string(self):
-        return str(self.context)
+    @property
+    def cfile(self) -> "CFile":
+        return self.cspos.cfile
 
-    def update(self):
+    @property
+    def cfun(self) -> "CFunction":
+        return self.cspos.cfun
+
+    @property
+    def podictionary(self) -> "CFunPODictionary":
+        return self.cspos.podictionary
+
+    @property
+    def header(self) -> str:
+        return self.xnode.get("header", "")
+
+    @property
+    def context(self) -> "ProgramContext":
+        return self.contextdictionary.read_xml_context(self.xnode)
+
+    @property
+    def location(self) -> "CLocation":
+        return self.cfile.declarations.read_xml_location(self.xnode)
+
+    @property
+    def contextdictionary(self) -> "CContextDictionary":
+        return self.cspos.contextdictionary
+
+    @property
+    def spos(self) -> Dict[int, List[CFunctionCallsiteSPO]]:
+        if self._spos is None:
+            self._spos = {}
+            xanode = self.xnode.find("api-conditions")
+            if xanode is not None:
+                for p in xanode.findall("api-c"):
+                    xapid = p.get("iapi")
+                    if xapid is not None:
+                        self._spos[int(xapid)] = []
+                        for xpo in p.findall("po"):
+                            spotype = self.podictionary.read_xml_spo_type(xpo)
+                            deps = get_dependencies(self.cspos, xpo)
+                            status = po_status[xpo.get("s", "o")]
+                            xexpl = xpo.find("e")
+                            expl = None if xexpl is None else xexpl.get("txt")
+                            dnode = xpo.find("d")
+                            if dnode is not None:
+                                diag: Optional[CProofDiagnostic] = get_diagnostic(dnode)
+                            else:
+                                diag = None
+                            self._spos[int(xapid)].append(
+                                CFunctionCallsiteSPO(
+                                    self.cspos, spotype, status, deps, expl, diag))
+        return self._spos
+
+    @property
+    def postassumes(self) -> List[int]:
+        if self._postassumes is None:
+            self._postassumes = []
+            xpost = self.xnode.find("post-assumes")
+            if xpost is not None:
+                xipcs = xpost.get("iipcs")
+                if xipcs is not None:
+                    self._postassumes = [int(x) for x in xipcs.split(",")]
+        return self._postassumes
+
+    @property
+    def is_indirect_call(self) -> bool:
+        return self.calltarget.has_callee_exp()
+
+    @property
+    def is_direct_call(self) -> bool:
+        return self.calltarget.has_callee()
+
+    def has_callee(self) -> bool:
+        return self.calltarget.has_callee()
+
+    @property
+    def callee(self) -> "CVarInfo":
+        return self.calltarget.callee
+
+    def has_callee_exp(self) -> bool:
+        return self.calltarget.has_callee_exp()
+
+    @property
+    def icallees(self) -> List[int]:
+        """Indices of indirect calls."""
+
+        if self._icallees is None:
+            icallees = self.xnode.get("icallees")
+            if icallees is None:
+                self._icallees = []
+            else:
+                self._icallees = [int(i) for i in icallees.split(",")]
+        return self._icallees
+
+    @property
+    def callees(self) -> List["CVarInfo"]:
+        """Resolved indirect call targets."""
+
+        if self._callees is None:
+            self._callees = [
+                self.cfile.declarations.get_varinfo(i) for i in self.icallees]
+        return self._callees
+
+    @property
+    def callee_exp(self) -> "CExp":
+        return self.calltarget.callee_exp
+
+    @property
+    def line(self) -> int:
+        return self.location.line
+
+    @property
+    def cfgcontext(self) -> "CfgContext":
+        return self.context.cfg_context
+
+    def update(self) -> None:
         """Update the spo's associated with the call site."""
 
         if not self.has_callee():
@@ -115,8 +326,9 @@ class CFunctionCallsiteSPOs(object):
         # retrieve callee information
         if self.header.startswith("lib:"):
             return
-        cfile = self.cfile
-        calleefun = cfile.capp.resolve_vid_function(cfile.index, self.callee.get_vid())
+
+        calleefun = self.cfile.capp.resolve_vid_function(
+            self.cfile.index, self.callee.vid)
         if calleefun is None:
             logging.warning(
                 "Missing external function in "
@@ -130,20 +342,20 @@ class CFunctionCallsiteSPOs(object):
 
         # retrieve callee's api assumptions and substitute parameters by
         # arguments
-        api = calleefun.get_api()
+        api = calleefun.api
         calleefile = calleefun.cfile
-        if len(api.get_api_assumptions()) > 0:
-            pars = api.get_parameters()
-            vids = api.get_formal_vids()
+        if len(api.api_assumptions) > 0:
+            pars = api.parameters
+            vids = api.formal_vids
             subst = {}
-            if len(pars) == len(self.args):
-                substitutions = zip(vids, self.args)
+            if len(pars) == len(self.call_arguments):
+                substitutions = zip(vids, self.call_arguments)
                 for (vid, arg) in substitutions:
                     subst[vid] = arg
             else:
                 logging.warning(
                     "Number of arguments ("
-                    + str(len(self.args))
+                    + str(len(self.call_arguments))
                     + ") is not the same as the number of parameters ("
                     + str(len(pars))
                     + ") in call to "
@@ -151,17 +363,18 @@ class CFunctionCallsiteSPOs(object):
                     + " in function "
                     + self.cfun.name
                     + " in file "
-                    + cfile.name
+                    + self.cfile.name
                 )
                 return
-            if len(api.get_api_assumptions()) > 0:
+            if len(api.api_assumptions) > 0:
+                '''
                 if (
                     calleefile.has_file_contracts()
                     and calleefile.index != self.cfile.index
                 ):
                     gvarinfos = calleefile.contracts.globalvariables.values()
                     for othergvar in gvarinfos:
-                        othervid = othergvar.gvinfo.get_vid()
+                        othervid = othergvar.gvinfo.vid
                         thisvid = self.cfile.capp.convert_vid(
                             calleefile.index, othervid, self.cfile.index
                         )
@@ -182,7 +395,7 @@ class CFunctionCallsiteSPOs(object):
                             )
                             thisvinfo = self.cfile.declarations.get_varinfo(thisvinfoix)
                             logging.warning(
-                                cfile.name
+                                self.cfile.name
                                 + ": "
                                 + self.cfun.name
                                 + " call to "
@@ -205,7 +418,7 @@ class CFunctionCallsiteSPOs(object):
                             )
                             if thisvinfo is None:
                                 logging.warning(
-                                    cfile.name
+                                    self.cfile.name
                                     + ": "
                                     + self.cfun.name
                                     + " call to "
@@ -225,7 +438,8 @@ class CFunctionCallsiteSPOs(object):
                         subst[othervid] = self.cfile.declarations.dictionary.get_exp(
                             expindex
                         )
-            for a in api.get_api_assumptions():
+                '''
+            for a in api.api_assumptions.values():
                 if a.id in self.spos:
                     continue
                 if a.isfile:
@@ -236,16 +450,16 @@ class CFunctionCallsiteSPOs(object):
                     )
                     apiid = a.id
                     self.spos[apiid] = []
-                    ictxt = self.cfile.contexttable.index_context(self.context)
+                    ictxt = self.contextdictionary.index_context(self.context)
                     iloc = self.cfile.declarations.index_location(self.location)
                     ispotype = self.cfun.podictionary.index_spo_type(
                         ["cs"], [iloc, ictxt, pid, apiid]
                     )
                     spotype = self.cfun.podictionary.get_spo_type(ispotype)
-                    self.spos[apiid].append(CFunctionCallsiteSPO(self, spotype))
+                    self.spos[apiid].append(CFunctionCallsiteSPO(self.cspos, spotype))
                 except CKeyLookupError as e:
                     logging.warning(
-                        cfile.name
+                        self.cfile.name
                         + ": "
                         + self.cfun.name
                         + " call to "
@@ -260,7 +474,7 @@ class CFunctionCallsiteSPOs(object):
                     )
                 except LookupError as e:
                     logging.warning(
-                        cfile.name
+                        self.cfile.name
                         + ": "
                         + self.cfun.name
                         + " call to "
@@ -275,7 +489,7 @@ class CFunctionCallsiteSPOs(object):
                     )
                 except Exception as e:
                     logging.warning(
-                        cfile.name
+                        self.cfile.name
                         + ": "
                         + self.cfun.name
                         + " call to "
@@ -288,15 +502,15 @@ class CFunctionCallsiteSPOs(object):
                         + str(e)
                     )
 
-    def collect_post_assumes(self):
+    def collect_post_assumes(self) -> None:
         """Collect postconditions from callee's contract and add as assume."""
         if self.header.startswith("lib:"):
             return
         if not self.has_callee():
             return
         # retrieve callee information
-        cfile = self.cfile
-        calleefun = cfile.capp.resolve_vid_function(cfile.index, self.callee.get_vid())
+        calleefun = self.cfile.capp.resolve_vid_function(
+            self.cfile.index, self.callee.vid)
         if calleefun is None:
             return
 
@@ -311,39 +525,42 @@ class CFunctionCallsiteSPOs(object):
     def get_context_string(self):
         return self.context.context_strings()
 
+    '''
     def iter(self, f):
         for id in self.spos:
             for spo in self.spos[id]:
                 f(spo)
+    '''
 
-    def get_spo(self, id):
+    def get_spo(self, id: int) -> CFunctionCallsiteSPO:
         for apiid in self.spos:
             for spo in self.spos[apiid]:
-                if spo.id == id:
+                if spo.po_index == id:
                     return spo
+        raise UF.CHCError("Call site spos does not include id " + str(id))
 
-    def has_spo(self, id):
+    def has_spo(self, id: int) -> bool:
         for apiid in self.spos:
             for spo in self.spos[apiid]:
-                if spo.id == id:
+                if spo.po_index == id:
                     return True
         return False
 
-    def write_xml(self, cnode):
+    def write_xml(self, cnode: ET.Element) -> None:
         # write location
         self.cfile.declarations.write_xml_location(cnode, self.location)
-        self.cfile.contexttable.write_xml_context(cnode, self.context)
+        self.cfile.contextdictionary.write_xml_context(cnode, self.context)
         if self.header != "":
             cnode.set("header", self.header)
 
         # write information about the callee
-        if self.callee is not None:
+        if self.has_callee():
             self.cfile.declarations.write_xml_varinfo(cnode, self.callee)
-        if self.callee_exp is not None:
+        if self.has_callee_exp():
             self.cfile.declarations.dictionary.write_xml_exp(cnode, self.callee_exp)
-        if self.icallees is not None:
-            cnode.set("icallees", self.icallees)
-        cnode.set("iargs", self.iargs)
+        if len(self.icallees) > 0:
+            cnode.set("icallees", ",".join(str(i) for i in self.icallees))
+        cnode.set("iargs", ",".join(str(i) for i in self.iargs))
 
         # write api assumptions associated with the callee at the call site
         oonode = ET.Element("api-conditions")
@@ -363,6 +580,7 @@ class CFunctionCallsiteSPOs(object):
             panode.set("iipcs", ",".join([str(i) for i in sorted(self.postassumes)]))
             cnode.append(panode)
 
+    '''
     def _initialize(self, xnode):
         # read in api assumptions associated with the call site
         oonode = xnode.find("api-conditions")
@@ -391,3 +609,4 @@ class CFunctionCallsiteSPOs(object):
         ppnode = xnode.find("post-assumes")
         if ppnode is not None:
             self.postassumes = [int(x) for x in ppnode.get("iipcs").split(",")]
+    '''

@@ -33,7 +33,7 @@ import os
 
 import xml.etree.ElementTree as ET
 
-from typing import List, TYPE_CHECKING
+from typing import Callable, Dict, List, Mapping, TYPE_CHECKING
 
 from chc.proof.AssumptionType import AssumptionType
 from chc.proof.CFunPODictionaryRecord import podregistry
@@ -41,7 +41,7 @@ from chc.proof.PPOType import PPOType
 from chc.proof.SPOType import SPOType
 
 import chc.util.fileutil as UF
-import chc.util.IndexedTable as IT
+from chc.util.IndexedTable import IndexedTable, IndexedTableValue
 
 
 if TYPE_CHECKING:
@@ -54,7 +54,8 @@ if TYPE_CHECKING:
     from chc.proof.CFilePredicateDictionary import CFilePredicateDictionary
 
 importlib.import_module("chc.proof.AssumptionType")
-importlib.import_module("chc.proof.POType")
+importlib.import_module("chc.proof.PPOType")
+importlib.import_module("chc.proof.SPOType")
 
 
 class CFunPODictionary(object):
@@ -65,14 +66,17 @@ class CFunPODictionary(object):
             cfun: "CFunction",
             xnode: ET.Element) -> None:
         self._cfun = cfun
-        self.assumption_type_table = IT.IndexedTable("assumption-table")
-        self.ppo_type_table = IT.IndexedTable("ppo-type-table")
-        self.spo_type_table = IT.IndexedTable("spo-type-table")
+        self.assumption_type_table = IndexedTable("assumption-table")
+        self.ppo_type_table = IndexedTable("ppo-type-table")
+        self.spo_type_table = IndexedTable("spo-type-table")
         self.tables = [
             self.assumption_type_table,
             self.ppo_type_table,
-            self.spo_type_table
-        ]
+            self.spo_type_table]
+        self._objmaps: Dict[str, Callable[[], Mapping[int, IndexedTableValue]]] = {
+            "assumption": self.get_assumption_type_map,
+            "ppo": self.get_ppo_type_map,
+            "spo": self.get_spo_type_map}
         self.initialize(xnode)
 
     @property
@@ -101,13 +105,22 @@ class CFunPODictionary(object):
         return podregistry.mk_instance(
             self, self.assumption_type_table.retrieve(ix), AssumptionType)
 
+    def get_assumption_type_map(self) -> Dict[int, IndexedTableValue]:
+        return self.assumption_type_table.objectmap(self.get_assumption_type)
+
     def get_ppo_type(self, ix: int) -> PPOType:
         return podregistry.mk_instance(
             self, self.ppo_type_table.retrieve(ix), PPOType)
 
+    def get_ppo_type_map(self) -> Dict[int, IndexedTableValue]:
+        return self.ppo_type_table.objectmap(self.get_ppo_type)
+
     def get_spo_type(self, ix: int) -> SPOType:
         return podregistry.mk_instance(
             self, self.spo_type_table.retrieve(ix), SPOType)
+
+    def get_spo_type_map(self) -> Dict[int, IndexedTableValue]:
+        return self.spo_type_table.objectmap(self.get_spo_type)
 
     # ------------------------- Provide read/write xml service ---------------
 
@@ -142,7 +155,7 @@ class CFunPODictionary(object):
     def index_assumption_type(self, tags: List[str], args: List[int]) -> int:
 
         def f(index: int, tags: List[str], args: List[int]) -> AssumptionType:
-            itv = IT.IndexedTableValue(index, tags, args)
+            itv = IndexedTableValue(index, tags, args)
             return AssumptionType(self, itv)
 
         return self.assumption_type_table.add_tags_args(tags, args, f)
@@ -150,7 +163,7 @@ class CFunPODictionary(object):
     def index_ppo_type(self, tags: List[str], args: List[int]) -> int:
 
         def f(index: int, tags: List[str], args: List[int]) -> PPOType:
-            itv = IT.IndexedTableValue(index, tags, args)
+            itv = IndexedTableValue(index, tags, args)
             return PPOType(self, itv)
 
         return self.ppo_type_table.add_tags_args(tags, args, f)
@@ -158,7 +171,7 @@ class CFunPODictionary(object):
     def index_spo_type(self, tags: List[str], args: List[int]) -> int:
 
         def f(index: int, tags: List[str], args: List[int]) -> SPOType:
-            itv = IT.IndexedTableValue(index, tags, args)
+            itv = IndexedTableValue(index, tags, args)
             return SPOType(self, itv)
 
         return self.spo_type_table.add_tags_args(tags, args, f)
@@ -179,13 +192,27 @@ class CFunPODictionary(object):
 
     def write_xml(self, node: ET.Element) -> None:
 
-        def f(n: ET.Element, r: IT.IndexedTableValue) -> None:
+        def f(n: ET.Element, r: IndexedTableValue) -> None:
             r.write_xml(n)
 
         for t in self.tables:
             tnode = ET.Element(t.name)
             t.write_xml(tnode, f)
             node.append(tnode)
+
+    def objectmap_to_string(self, name: str) -> str:
+        if name in self._objmaps:
+            objmap = self._objmaps[name]()
+            lines: List[str] = []
+            if len(objmap) == 0:
+                lines.append("Table is empty")
+            else:
+                for (ix, obj) in objmap.items():
+                    lines.append(str(ix).rjust(3) + "  " + str(obj))
+            return "\n".join(lines)
+        else:
+            raise UF.CHCError(
+                "Name: " + name +  " does not correspond to a table")            
 
     def __str__(self) -> str:
         lines: List[str] = []

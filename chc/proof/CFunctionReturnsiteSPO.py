@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -36,7 +38,7 @@ class CFunctionReturnsiteSPO(CFunctionPO):
     def __init__(self, crspos, potype, status="open", deps=None, expl=None, diag=None):
         CFunctionPO.__init__(self, crspos.cspos, potype, status, deps, expl, diag)
         self.crspos = crspos  # CFunctionReturnsiteSPOs
-        self.external_id = self.potype.get_external_id()
+        self.external_id = self.potype.external_id
 
     def write_xml(self, cnode):
         self.pod.write_xml_spo_type(cnode, self.potype)

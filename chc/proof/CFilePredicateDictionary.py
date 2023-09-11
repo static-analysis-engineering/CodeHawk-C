@@ -28,11 +28,12 @@
 # ------------------------------------------------------------------------------
 import xml.etree.ElementTree as ET
 
-from typing import Optional, TYPE_CHECKING
+from typing import Any, cast, Dict, List, Optional, TYPE_CHECKING
 
 import chc.util.fileutil as UF
-import chc.util.IndexedTable as IT
+from chc.util.IndexedTable import IndexedTable, IndexedTableValue
 
+from chc.proof.CFilePredicateRecord import pdregistry
 import chc.proof.CPOPredicate as PO
 
 if TYPE_CHECKING:
@@ -40,67 +41,13 @@ if TYPE_CHECKING:
     from chc.app.CFileDictionary import CFileDictionary
 
 
-po_predicate_constructors = {
-    "ab": lambda x: PO.CPOAllocationBase(*x),
-    "b": lambda x: PO.CPOBuffer(*x),
-    "c": lambda x: PO.CPOCast(*x),
-    "cb": lambda x: PO.CPOCommonBase(*x),
-    "cbt": lambda x: PO.CPOCommonBaseType(*x),
-    "cls": lambda x: PO.CPOCanLeaveScope(*x),
-    "cr": lambda x: PO.CPOControlledResource(*x),
-    "cssl": lambda x: PO.CPOSignedToSignedCastLB(*x),
-    "cssu": lambda x: PO.CPOSignedToSignedCastUB(*x),
-    "csul": lambda x: PO.CPOSignedToUnsignedCastLB(*x),
-    "csuu": lambda x: PO.CPOSignedToUnsignedCastUB(*x),
-    "cus": lambda x: PO.CPOUnsignedToSignedCast(*x),
-    "cuu": lambda x: PO.CPOUnsignedToUnsignedCast(*x),
-    "dr": lambda x: PO.CPODistinctRegion(*x),
-    "fc": lambda x: PO.CPOFormatCast(*x),
-    "ft": lambda x: PO.CPOFormatString(*x),
-    "ga": lambda x: PO.CPOGlobalAddress(*x),
-    "ha": lambda x: PO.CPOHeapAddress(*x),
-    "i": lambda x: PO.CPOInitialized(*x),
-    "ilb": lambda x: PO.CPOIndexLowerBound(*x),
-    "io": lambda x: PO.CPOIntOverflow(*x),
-    "ir": lambda x: PO.CPOInitializedRange(*x),
-    "is": lambda x: PO.CPOInScope(*x),
-    "iu": lambda x: PO.CPOIntUnderflow(*x),
-    "iub": lambda x: PO.CPOIndexUpperBound(*x),
-    "lb": lambda x: PO.CPOLowerBound(*x),
-    "nm": lambda x: PO.CPONewMemory(*x),
-    "nn": lambda x: PO.CPONotNull(*x),
-    "nneg": lambda x: PO.CPONonNegative(*x),
-    "no": lambda x: PO.CPONoOverlap(*x),
-    "nt": lambda x: PO.CPONullTerminated(*x),
-    "null": lambda x: PO.CPONull(*x),
-    "pc": lambda x: PO.CPOPointerCast(*x),
-    "plb": lambda x: PO.CPOPtrLowerBound(*x),
-    "pre": lambda x: PO.CPOPredicate(*x),
-    "prm": lambda x: PO.CPOPreservedAllMemory(*x),
-    "pub": lambda x: PO.CPOPtrUpperBound(*x),
-    "pubd": lambda x: PO.CPOPtrUpperBoundDeref(*x),
-    "pv": lambda x: PO.CPOPreservedValue(*x),
-    "rb": lambda x: PO.CPORevBuffer(*x),
-    "sae": lambda x: PO.CPOStackAddressEscape(*x),
-    "tao": lambda x: PO.CPOTypeAtOffset(*x),
-    "ub": lambda x: PO.CPOUpperBound(*x),
-    "uio": lambda x: PO.CPOUIntOverflow(*x),
-    "uiu": lambda x: PO.CPOUIntUnderflow(*x),
-    "va": lambda x: PO.CPOVarArgs(*x),
-    "vc": lambda x: PO.CPOValueConstraint(*x),
-    "vm": lambda x: PO.CPOValidMem(*x),
-    "w": lambda x: PO.CPOWidthOverflow(*x),
-    "z": lambda x: PO.CPONotZero(*x),
-}
-
-
 class CFilePredicateDictionary(object):
     """Dictionary that encodes proof obligation predicates."""
 
     def __init__(self, cfile: "CFile", xnode: Optional[ET.Element]) -> None:
         self._cfile = cfile
-        self.po_predicate_table = IT.IndexedTable("po-predicate-table")
-        self.tables = [(self.po_predicate_table, self._read_xml_po_predicate_table)]
+        self.po_predicate_table = IndexedTable("po-predicate-table")
+        self.tables = [self.po_predicate_table]
         self.initialize(xnode)
 
     @property
@@ -111,16 +58,24 @@ class CFilePredicateDictionary(object):
     def dictionary(self) -> "CFileDictionary":
         return self.cfile.dictionary
 
-    def get_predicate(self, ix):
-        return self.po_predicate_table.retrieve(ix)
+    def get_predicate(self, ix: int) -> PO.CPOPredicate:
+        return pdregistry.mk_instance(
+            self, self.po_predicate_table.retrieve(ix), PO.CPOPredicate)
 
-    def mk_predicate_index(self, tags, args):
-        def f(index, key):
-            return po_predicate_constructors[tags[0]]((self, index, tags, args))
+    def get_predicate_map(self) -> Dict[int, IndexedTableValue]:
+        return self.po_predicate_table.objectmap(self.get_predicate)
 
-        return self.po_predicate_table.add(IT.get_key(tags, args), f)
+    '''
+    def mk_predicate_index(self, tags: List[str], args: List[int]) -> int:
 
-    def index_xpredicate(self, p, subst={}):
+        def f(index:int, tags: List[str], args: List[int]) -> int:
+            itv = IndexedTableValue(index, tags, args)
+            return pdregistry.mk_instance(self, itv, PO.CPOPredicate)
+            # return po_predicate_constructors[tags[0]]((self, index, tags, args))
+
+        return self.po_predicate_table.add_tags_args(tags, args, f)
+
+    def index_xpredicate(self, p: CPOPredicate, subst={}) -> int:
         def gett(t):
             return self.dictionary.s_term_to_exp_index(t, subst=subst)
 
@@ -131,7 +86,7 @@ class CFilePredicateDictionary(object):
             def f(index, key):
                 return PO.CPONotNull(self, index, tags, args)
 
-            return self.po_predicate_table.add(IT.get_key(tags, args), f)
+            return self.po_predicate_table.add(get_key(tags, args), f)
         if p.is_relational_expr():
             expsubst = {}
             for name in subst:
@@ -146,329 +101,421 @@ class CFilePredicateDictionary(object):
             def f(index, key):
                 return PO.CPOValueConstraint(self, index, tags, args)
 
-            return self.po_predicate_table.add(IT.get_key(tags, args), f)
+            return self.po_predicate_table.add(get_key(tags, args), f)
         print("Index xpredicate missing: " + str(p))
         exit(1)
+    '''
 
-    def index_predicate(self, p, subst={}):
-        if p.is_not_null():
-            args = [self.dictionary.index_exp(p.get_exp(), subst=subst)]
+    def index_predicate(
+            self,
+            p: PO.CPOPredicate,
+            subst: Dict[Any, Any]={}) -> int:
 
+        def f(index: int, tags: List[str], args: List[int]) -> PO.CPOPredicate:
+            itv = IndexedTableValue(index, tags, args)
+            return pdregistry.mk_instance(self, itv, PO.CPOPredicate)
+
+        if p.is_not_null:
+            p = cast(PO.CPONotNull, p)
+            args = [self.dictionary.index_exp(p.exp, subst=subst)]
+            '''
             def f(index, key):
                 return PO.CPONotNull(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(IT.get_key(p.tags, args), f)
-        if p.is_null():
-            args = [self.dictionary.index_exp(p.get_exp(), subst=subst)]
+            return self.po_predicate_table.add(get_key(p.tags, args), f)
+            '''
 
+        elif p.is_null:
+            p = cast(PO.CPONull, p)
+            args = [self.dictionary.index_exp(p.exp, subst=subst)]
+            '''
             def f(index, key):
                 return PO.CPONull(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(IT.get_key(p.tags, args), f)
-        if p.is_valid_mem():
-            args = [self.dictionary.index_exp(p.get_exp(), subst=subst)]
-
+            return self.po_predicate_table.add(get_key(p.tags, args), f)
+            '''
+        elif p.is_valid_mem:
+            p = cast(PO.CPOValidMem, p)
+            args = [self.dictionary.index_exp(p.exp, subst=subst)]
+            '''
             def f(index, key):
                 return PO.CPOValidMem(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(IT.get_key(p.tags, args), f)
-        if p.is_in_scope():
-            args = [self.dictionary.index_exp(p.get_exp(), subst=subst)]
-
+            return self.po_predicate_table.add(get_key(p.tags, args), f)
+            '''
+        elif p.is_in_scope:
+            p = cast(PO.CPOInScope, p)
+            args = [self.dictionary.index_exp(p.exp, subst=subst)]
+            '''
             def f(index, key):
                 return PO.CPOInScope(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(IT.get_key(p.tags, args), f)
-        if p.is_can_leave_scope():
-            args = [self.dictionary.index_exp(p.get_exp(), subst=subst)]
+            return self.po_predicate_table.add(get_key(p.tags, args), f)
+
+        elif p.is_can_leave_scope:
+            p = cast(PO.CPOCanLeaveScope, p)
+            args = [self.dictionary.index_exp(p.exp, subst=subst)]
 
             def f(index, key):
                 return PO.CPOCanLeaveScope(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(IT.get_key(p.tags, args), f)
-        if p.is_stack_address_escape():
+            return self.po_predicate_table.add(get_key(p.tags, args), f)
+            '''
+        elif p.is_stack_address_escape:
+            p = cast(PO.CPOStackAddressEscape, p)
             if p.has_lval():
                 args = [
-                    self.dictional.index_lval(p.get_lval(), subst=subst),
-                    self.dictionary.index_exp(p.get_exp(), subst=subst),
+                    self.dictionary.index_lval(p.lval, subst=subst),
+                    self.dictionary.index_exp(p.exp, subst=subst),
                 ]
             else:
-                args = [-1, self.dictionary.index_exp(p.get_exp(), subst=subst)]
-
+                args = [-1, self.dictionary.index_exp(p.exp, subst=subst)]
+            '''
             def f(index, key):
                 return PO.CPOStackAddressEscape(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(IT.get_key(p.tags, args), f)
-        if p.is_allocation_base():
-            args = [self.dictionary.index_exp(p.get_exp(), subst=subst)]
-
+            return self.po_predicate_table.add(get_key(p.tags, args), f)
+            '''
+        elif p.is_allocation_base:
+            p = cast(PO.CPOAllocationBase, p)
+            args = [self.dictionary.index_exp(p.exp, subst=subst)]
+            '''
             def f(index, key):
                 return PO.CPOAllocationBase(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(IT.get_key(p.tags, args), f)
-        if p.is_type_at_offset():
+            return self.po_predicate_table.add(get_key(p.tags, args), f)
+            '''
+        elif p.is_type_at_offset:
+            p = cast(PO.CPOTypeAtOffset, p)
             args = [
-                self.dictionary.index_typ(p.get_type()),
-                self.dictionary.index_exp(p.get_exp(), subst=subst),
+                self.dictionary.index_typ(p.typ),
+                self.dictionary.index_exp(p.exp, subst=subst),
             ]
-
+            '''
             def f(index, key):
                 return PO.CPOTypeAtOffset(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(IT.get_key(p.tags, args), f)
-        if p.is_lower_bound():
+            return self.po_predicate_table.add(get_key(p.tags, args), f)
+            '''
+        elif p.is_lower_bound:
+            p = cast(PO.CPOLowerBound, p)
             args = [
-                self.dictionary.index_typ(p.get_type()),
-                self.dictionary.index_exp(p.get_exp(), subst=subst),
+                self.dictionary.index_typ(p.typ),
+                self.dictionary.index_exp(p.exp, subst=subst),
             ]
-
+            '''
             def f(index, key):
                 return PO.CPOLowerBound(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(IT.get_key(p.tags, args), f)
-        if p.is_upper_bound():
+            return self.po_predicate_table.add(get_key(p.tags, args), f)
+            '''
+        elif p.is_upper_bound:
+            p = cast(PO.CPOUpperBound, p)
             args = [
-                self.dictionary.index_typ(p.get_type()),
-                self.dictionary.index_exp(p.get_exp(), subst=subst),
+                self.dictionary.index_typ(p.typ),
+                self.dictionary.index_exp(p.exp, subst=subst),
             ]
-
+            '''
             def f(index, key):
                 return PO.CPOUpperBound(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(IT.get_key(p.tags, args), f)
-        if p.is_index_lower_bound():
-            args = [self.dictionary.index_exp(p.get_exp(), subst=subst)]
-
+            return self.po_predicate_table.add(get_key(p.tags, args), f)
+            '''
+        elif p.is_index_lower_bound:
+            p = cast(PO.CPOIndexLowerBound, p)
+            args = [self.dictionary.index_exp(p.exp, subst=subst)]
+            '''
             def f(index, key):
                 return PO.CPOIndexLowerBound(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(IT.get_key(p.tags, args), f)
-        if p.is_index_upper_bound():
+            return self.po_predicate_table.add(get_key(p.tags, args), f)
+            '''
+        elif p.is_index_upper_bound:
+            p = cast(PO.CPOIndexUpperBound, p)
             args = [
-                self.dictionary.index_exp(p.get_exp(), subst=subst),
-                self.dictionary.index_exp(p.get_bound(), subst=subst),
+                self.dictionary.index_exp(p.exp, subst=subst),
+                self.dictionary.index_exp(p.bound, subst=subst),
             ]
-
+            '''
             def f(index, key):
                 return PO.CPOIndexUpperBound(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(IT.get_key(p.tags, args), f)
-        if p.is_initialized():
-            args = [self.dictionary.index_lval(p.get_lval(), subst=subst)]
-
+            return self.po_predicate_table.add(get_key(p.tags, args), f)
+            '''
+        elif p.is_initialized:
+            p = cast(PO.CPOInitialized, p)
+            args = [self.dictionary.index_lval(p.lval, subst=subst)]
+            '''
             def f(index, key):
                 return PO.CPOInitialized(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(IT.get_key(p.tags, args), f)
-        if p.is_initialized_range():
+            return self.po_predicate_table.add(get_key(p.tags, args), f)
+            '''
+        elif p.is_initialized_range:
+            p = cast(PO.CPOInitializedRange, p)
             args = [
-                self.dictionary.index_exp(p.get_exp(), subst=subst),
-                self.dictionary.index_exp(p.get_length(), subst=subst),
+                self.dictionary.index_exp(p.exp, subst=subst),
+                self.dictionary.index_exp(p.size, subst=subst),
             ]
-
+            '''
             def f(index, key):
                 return PO.CPOInitializedRange(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(IT.get_key(p.tags, args), f)
-        if p.is_cast():
+            return self.po_predicate_table.add(get_key(p.tags, args), f)
+            '''
+        elif p.is_cast:
+            p = cast(PO.CPOCast, p)
             args = [
-                self.dictionary.index_typ(p.get_from_type()),
-                self.dictionary.index_typ(p.get_tgt_type()),
-                self.dictionary.index_exp(p.get_exp(), subst=subst),
+                self.dictionary.index_typ(p.srctyp),
+                self.dictionary.index_typ(p.tgttyp),
+                self.dictionary.index_exp(p.exp, subst=subst),
             ]
-
+            '''
             def f(index, key):
                 return PO.CPOCast(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(IT.get_key(p.tags, args), f)
-        if p.is_pointer_cast():
+            return self.po_predicate_table.add(get_key(p.tags, args), f)
+            '''
+        elif p.is_pointer_cast:
+            p = cast(PO.CPOPointerCast, p)
             args = [
-                self.dictionary.index_typ(p.get_from_type()),
-                self.dictionary.index_typ(p.get_tgt_type()),
-                self.dictionary.index_exp(p.get_exp(), subst=subst),
+                self.dictionary.index_typ(p.srctyp),
+                self.dictionary.index_typ(p.tgttyp),
+                self.dictionary.index_exp(p.exp, subst=subst),
             ]
-
+            '''
             def f(index, key):
                 return PO.CPOPointerCast(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(IT.get_key(p.tags, args), f)
-        if p.is_signed_to_signed_cast_lb():
-            args = [self.dictionary.index_exp(p.get_exp(), subst=subst)]
-
+            return self.po_predicate_table.add(get_key(p.tags, args), f)
+            '''
+        elif p.is_signed_to_signed_cast_lb:
+            p = cast(PO.CPOSignedToSignedCastLB, p)
+            args = [self.dictionary.index_exp(p.exp, subst=subst)]
+            '''
             def f(index, key):
                 return PO.CPOSignedToSignedCastLB(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(IT.get_key(p.tags, args), f)
-        if p.is_signed_to_signed_cast_ub():
-            args = [self.dictionary.index_exp(p.get_exp(), subst=subst)]
-
+            return self.po_predicate_table.add(get_key(p.tags, args), f)
+            '''
+        elif p.is_signed_to_signed_cast_ub:
+            p = cast(PO.CPOSignedToSignedCastUB, p)
+            args = [self.dictionary.index_exp(p.exp, subst=subst)]
+            '''
             def f(index, key):
                 return PO.CPOSignedToSignedCastUB(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(IT.get_key(p.tags, args), f)
-        if p.is_signed_to_unsigned_cast_lb():
-            args = [self.dictionary.index_exp(p.get_exp(), subst=subst)]
-
+            return self.po_predicate_table.add(get_key(p.tags, args), f)
+            '''
+        elif p.is_signed_to_unsigned_cast_lb:
+            p = cast(PO.CPOSignedToUnsignedCastLB, p)
+            args = [self.dictionary.index_exp(p.exp, subst=subst)]
+            '''
             def f(index, key):
                 return PO.CPOSignedToUnsignedCastLB(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(IT.get_key(p.tags, args), f)
-        if p.is_signed_to_unsigned_cast_ub():
-            args = [self.dictionary.index_exp(p.get_exp(), subst=subst)]
-
+            return self.po_predicate_table.add(get_key(p.tags, args), f)
+            '''
+        elif p.is_signed_to_unsigned_cast_ub:
+            p = cast(PO.CPOSignedToUnsignedCastUB, p)
+            args = [self.dictionary.index_exp(p.exp, subst=subst)]
+            '''
             def f(index, key):
                 return PO.CPOSignedToUnsignedCastUB(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(IT.get_key(p.tags, args), f)
-        if p.is_unsigned_to_signed_cast():
-            args = [self.dictionary.index_exp(p.get_exp(), subst=subst)]
-
+            return self.po_predicate_table.add(get_key(p.tags, args), f)
+            '''
+        elif p.is_unsigned_to_signed_cast:
+            p = cast(PO.CPOUnsignedToSignedCast, p)
+            args = [self.dictionary.index_exp(p.exp, subst=subst)]
+            '''
             def f(index, key):
                 return PO.CPOUnsignedToSignedCast(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(IT.get_key(p.tags, args), f)
-        if p.is_unsigned_to_unsigned_cast():
-            args = [self.dictionary.index_exp(p.get_exp(), subst=subst)]
-
+            return self.po_predicate_table.add(get_key(p.tags, args), f)
+            '''
+        elif p.is_unsigned_to_unsigned_cast:
+            p = cast(PO.CPOUnsignedToSignedCast, p)
+            args = [self.dictionary.index_exp(p.exp, subst=subst)]
+            '''
             def f(index, key):
                 return PO.CPOUnsignedToUnsignedCast(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(IT.get_key(p.tags, args), f)
-        if p.is_not_zero():
-            args = [self.dictionary.index_exp(p.get_exp(), subst=subst)]
-
+            return self.po_predicate_table.add(get_key(p.tags, args), f)
+            '''
+        elif p.is_not_zero:
+            p = cast(PO.CPONotZero, p)
+            args = [self.dictionary.index_exp(p.exp, subst=subst)]
+            '''
             def f(index, key):
                 return PO.CPONotZero(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(IT.get_key(p.tags, args), f)
-        if p.is_non_negative():
-            args = [self.dictionary.index_exp(p.get_exp(), subst=subst)]
-
+            return self.po_predicate_table.add(get_key(p.tags, args), f)
+            '''
+        elif p.is_non_negative:
+            p = cast(PO.CPONonNegative, p)
+            args = [self.dictionary.index_exp(p.exp, subst=subst)]
+            '''
             def f(index, key):
                 return PO.CPONonNegative(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(IT.get_key(p.tags, args), f)
-        if p.is_no_overlap():
+            return self.po_predicate_table.add(get_key(p.tags, args), f)
+            '''
+        elif p.is_no_overlap:
+            p = cast(PO.CPONoOverlap, p)
             args = [
-                self.dictionary.index_exp(p.get_exp1(), subst=subst),
-                self.dictionary.index_exp(p.get_exp2(), subst=subst),
+                self.dictionary.index_exp(p.exp1, subst=subst),
+                self.dictionary.index_exp(p.exp2, subst=subst),
             ]
-
+            '''
             def f(index, key):
                 return PO.CPONoOverlap(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(IT.get_key(p.tags, args), f)
-        if p.is_null_terminated():
-            args = [self.dictionary.index_exp(p.get_exp(), subst=subst)]
-
+            return self.po_predicate_table.add(get_key(p.tags, args), f)
+            '''
+        elif p.is_null_terminated:
+            p = cast(PO.CPONullTerminated, p)
+            args = [self.dictionary.index_exp(p.exp, subst=subst)]
+            '''
             def f(index, key):
                 return PO.CPONullTerminated(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(IT.get_key(p.tags, args), f)
-        if p.is_int_underflow():
+            return self.po_predicate_table.add(get_key(p.tags, args), f)
+            '''
+        elif p.is_int_underflow:
+            p = cast(PO.CPOIntUnderflow, p)
             args = [
-                self.dictionary.index_exp(p.get_exp1(), subst=subst),
-                self.dictionary.index_exp(p.get_exp2(), subst=subst),
+                self.dictionary.index_exp(p.exp1, subst=subst),
+                self.dictionary.index_exp(p.exp2, subst=subst),
             ]
-
+            '''
             def f(index, key):
                 return PO.CPOIntUnderflow(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(IT.get_key(p.tags, args), f)
-        if p.is_int_overflow():
+            return self.po_predicate_table.add(get_key(p.tags, args), f)
+            '''
+        elif p.is_int_overflow:
+            p = cast(PO.CPOIntOverflow, p)
             args = [
-                self.dictionary.index_exp(p.get_exp1(), subst=subst),
-                self.dictionary.index_exp(p.get_exp2(), subst=subst),
+                self.dictionary.index_exp(p.exp1, subst=subst),
+                self.dictionary.index_exp(p.exp2, subst=subst),
             ]
-
+            '''
             def f(index, key):
                 return PO.CPOIntOverflow(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(IT.get_key(p.tags, args), f)
-        if p.is_width_overflow():
-            args = [self.dictionary.index_exp(p.get_exp(), subst=subst)]
-
+            return self.po_predicate_table.add(get_key(p.tags, args), f)
+            '''
+        elif p.is_width_overflow:
+            p = cast(PO.CPOWidthOverflow, p)
+            args = [self.dictionary.index_exp(p.exp, subst=subst)]
+            '''
             def f(index, key):
                 return PO.CPOWidthOverflow(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(IT.get_key(p.tags, args), f)
-        if p.is_ptr_lower_bound():
+            return self.po_predicate_table.add(get_key(p.tags, args), f)
+            '''
+        elif p.is_ptr_lower_bound:
+            p = cast(PO.CPOPtrLowerBound, p)
             args = [
-                self.dictionary.index_typ(p.get_type()),
-                self.dictionary.index_exp(p.get_exp1(), subst=subst),
-                self.dictionary.index_exp(p.get_exp2(), subst=subst),
+                self.dictionary.index_typ(p.typ),
+                self.dictionary.index_exp(p.exp1, subst=subst),
+                self.dictionary.index_exp(p.exp2, subst=subst),
             ]
-
+            '''
             def f(index, key):
                 return PO.CPOPtrLowerBound(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(IT.get_key(p.tags, args), f)
-        if p.is_ptr_upper_bound():
+            return self.po_predicate_table.add(get_key(p.tags, args), f)
+            '''
+        elif p.is_ptr_upper_bound:
+            p = cast(PO.CPOPtrUpperBound, p)
             args = [
-                self.dictionary.index_typ(p.get_type()),
-                self.dictionary.index_exp(p.get_exp1(), subst=subst),
-                self.dictionary.index_exp(p.get_exp2(), subst=subst),
+                self.dictionary.index_typ(p.typ),
+                self.dictionary.index_exp(p.exp1, subst=subst),
+                self.dictionary.index_exp(p.exp2, subst=subst),
             ]
-
+            '''
             def f(index, key):
                 return PO.CPOPtrUpperBound(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(IT.get_key(p.tags, args), f)
-        if p.is_ptr_upper_bound_deref():
+            return self.po_predicate_table.add(get_key(p.tags, args), f)
+            '''
+        elif p.is_ptr_upper_bound_deref:
+            p = cast(PO.CPOPtrUpperBoundDeref, p)
             args = [
-                self.dictionary.index_typ(p.get_type()),
-                self.dictionary.index_exp(p.get_exp1(), subst=subst),
-                self.dictionary.index_exp(p.get_exp2(), subst=subst),
+                self.dictionary.index_typ(p.typ),
+                self.dictionary.index_exp(p.exp1, subst=subst),
+                self.dictionary.index_exp(p.exp2, subst=subst),
             ]
-
+            '''
             def f(index, key):
                 return PO.CPOPtrUpperBoundDeref(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(IT.get_key(p.tags, args), f)
-        if p.is_value_constraint():
-            args = [self.dictionary.index_exp(p.get_exp(), subst=subst)]
-
+            return self.po_predicate_table.add(get_key(p.tags, args), f)
+            '''
+        elif p.is_value_constraint:
+            p = cast(PO.CPOValueConstraint, p)
+            args = [self.dictionary.index_exp(p.exp, subst=subst)]
+            '''
             def f(index, key):
                 return PO.CPOValueConstraint(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(IT.get_key(p.tags, args), f)
-        if p.is_common_base():
+            return self.po_predicate_table.add(get_key(p.tags, args), f)
+            '''
+        elif p.is_common_base:
+            p = cast(PO.CPOCommonBase, p)
             args = [
-                self.dictionary.index_exp(p.get_exp1(), subst=subst),
-                self.dictionary.index_exp(p.get_exp2(), subst=subst),
+                self.dictionary.index_exp(p.exp1, subst=subst),
+                self.dictionary.index_exp(p.exp2, subst=subst),
             ]
-
+            '''
             def f(index, key):
                 return PO.CPOCommonBase(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(IT.get_key(p.tags, args), f)
-        if p.is_buffer():
+            return self.po_predicate_table.add(get_key(p.tags, args), f)
+            '''
+        elif p.is_buffer:
+            p = cast(PO.CPOBuffer, p)
             args = [
-                self.dictionary.index_exp(p.get_exp(), subst=subst),
-                self.dictionary.index_exp(p.get_length(), subst=subst),
+                self.dictionary.index_exp(p.exp, subst=subst),
+                self.dictionary.index_exp(p.size, subst=subst),
             ]
-
+            '''
             def f(index, key):
                 return PO.CPOBuffer(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(IT.get_key(p.tags, args), f)
-        if p.is_rev_buffer():
+            return self.po_predicate_table.add(get_key(p.tags, args), f)
+            '''
+        elif p.is_rev_buffer:
+            p = cast(PO.CPORevBuffer, p)
             args = [
-                self.dictionary.index_exp(p.get_exp(), subst=subst),
-                self.dictionary.index_exp(p.get_length(), subst=subst),
+                self.dictionary.index_exp(p.exp, subst=subst),
+                self.dictionary.index_exp(p.size, subst=subst),
             ]
-
+            '''
             def f(index, key):
                 return PO.CPORevBuffer(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(IT.get_key(p.tags, args), f)
-        print("***** Predicate without indexing: " + str(p))
-        exit(1)
+            return self.po_predicate_table.add(get_key(p.tags, args), f)
+            '''
+        else:
+            raise UF.CHCError("**** Predicate without indexing: " + str(p))
 
-    def read_xml_predicate(self, xnode, tag="ipr"):
-        return self.get_predicate(int(xnode.get(tag)))
+        return self.po_predicate_table.add_tags_args(p.tags, args, f)
+        # print("***** Predicate without indexing: " + str(p))
+        # exit(1)
 
-    def write_xml_predicate(self, xnode, pred, tag="ipr"):
+    def read_xml_predicate(self, xnode: ET.Element, tag: str = "ipr") -> PO.CPOPredicate:
+        xipr = xnode.get(tag)
+        if xipr is not None:
+            return self.get_predicate(int(xipr))
+        else:
+            raise UF.CHCError("ipr attribute missing from cpo predicate")
+
+    def write_xml_predicate(
+            self, xnode: ET.Element, pred: PO.CPOPredicate, tag: str = "ipr"
+    ) -> None:
         xnode.set(tag, str(self.index_predicate(pred)))
 
     def initialize(
@@ -477,29 +524,49 @@ class CFilePredicateDictionary(object):
             return
         if xnode is None:
             return
-        for (t, f) in self.tables:
-            f(xnode.find(t.name))
+        for t in self.tables:
+            t.reset()
+            xtable = xnode.find(t.name)
+            if xtable is not None:
+                t.read_xml(xtable, "n")
+            else:
+                raise UF.CHCError("Error reading table " + t.name)
+
+    # ----------------------------- printing -----------------------------------
+    
+    def objectmap_to_string(self, name: str) -> str:
+        if name == "predicate":
+            objmap = self.get_predicate_map()
+            lines: List[str] = []
+            for (ix, obj) in objmap.items():
+                lines.append(str(ix).rjust(3) + "  " + str(obj))
+            return "\n".join(lines)
+        else:
+            raise UF.CHCError(
+                "Name: " + name +  " does not correspond to a table")            
 
     def __str__(self) -> str:
-        lines = []
-        for (t, _) in self.tables:
+        lines: List[str] = []
+        for t in self.tables:
             lines.append(str(t))
         return "\n".join(lines)
 
-    def write_xml(self, node):
-        def f(n, r):
+    def write_xml(self, node: ET.Element) -> None:
+        def f(n: ET.Element, r: PO.CPOPredicate) -> None:
             r.write_xml(n)
 
-        for (t, _) in self.tables:
+        for t in self.tables:
             tnode = ET.Element(t.name)
             t.write_xml(tnode, f)
             node.append(tnode)
 
-    def _read_xml_po_predicate_table(self, txnode):
+    '''
+    def _read_xml_po_predicate_table(self, txnode: ET.Element) -> CPOPredicate:
         def get_value(node):
-            rep = IT.get_rep(node)
+            rep = get_rep(node)
             tag = rep[1][0]
             args = (self,) + rep
             return po_predicate_constructors[tag](args)
 
         self.po_predicate_table.read_xml(txnode, "n", get_value)
+    '''

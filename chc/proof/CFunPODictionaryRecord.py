@@ -33,12 +33,15 @@ from chc.util.IndexedTable import IndexedTableValue
 if TYPE_CHECKING:
     from chc.api.InterfaceDictionary import InterfaceDictionary
     from chc.app.CApplication import CApplication
+    from chc.app.CContext import ProgramContext
     from chc.app.CContextDictionary import CContextDictionary
     from chc.app.CFile import CFile
     from chc.app.CFileDeclarations import CFileDeclarations
     from chc.app.CFunction import CFunction
+    from chc.app.CLocation import CLocation
     from chc.proof.CFilePredicateDictionary import CFilePredicateDictionary
     from chc.proof.CFunPODictionary import CFunPODictionary
+    from chc.proof.CPOPredicate import CPOPredicate
 
 
 class CFunPODictionaryRecord(IndexedTableValue):
@@ -56,7 +59,7 @@ class CFunPODictionaryRecord(IndexedTableValue):
         return self.pod.pd
 
     @property
-    def id(self) -> "InterfaceDictionary":
+    def ifd(self) -> "InterfaceDictionary":
         return self.pod.interfacedictionary
 
     @property
@@ -81,6 +84,28 @@ class CFunPODictionaryRecord(IndexedTableValue):
 
     def __str__(self) -> str:
         return "po-dictionary-record: " + str(self.key)
+
+
+class CFunPOType(CFunPODictionaryRecord):
+
+    def __init__(self, pod: "CFunPODictionary", ixval: IndexedTableValue) -> None:
+        CFunPODictionaryRecord.__init__(self, pod, ixval)
+
+    @property
+    def location(self) -> "CLocation":
+        return self.cdecls.get_location(self.args[0])
+
+    @property
+    def context(self) -> "ProgramContext":
+        return self.cxd.get_program_context(self.args[1])
+
+    @property
+    def predicate(self) -> "CPOPredicate":
+        return self.pd.get_predicate(self.args[2])
+
+    @property
+    def po_index(self) -> int:
+        return self.index
 
 
 PodR = TypeVar("PodR", bound=CFunPODictionaryRecord, covariant=True)
