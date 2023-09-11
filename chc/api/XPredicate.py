@@ -26,6 +26,69 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Object representation of sum type xpredicate_t.
+
+Predicate used in representation of external conditions
+
+cchlib/CCHLibTypes.xpredicate_t =    predicate                properties
+                                     --------------------------------------------
+  | XAllocationBase of s_term_t      is_allocation_base       term: STerm
+  | XControlledResource              is_controlled_resource   term: STerm
+      of string * s_term_t                                    resource: str
+  | XBlockWrite                      is_block_write           term: STerm
+      of s_term_t * s_term_t                                  length: STerm
+  | XBuffer of s_term_t * s_term_t   is_buffer                buffer: STerm
+                                                              length: STerm
+  | XConfined of s_term_t            is_confined              term: STerm
+  | XConstTerm of s_term_t           is_const_term            term: STerm
+  | XFormattedInput of s_term_t      is_formatted_input       term: STerm
+  | XFalse                           is_false                 -
+  | XFreed of s_term_t               is_freed                 term: STerm
+  | XFunctional                      is_functional            -
+  | XInitialized of s_term_t         is_initialized           term: STerm
+  | XInitializedRange                is_initialize_range      buffer: STerm
+      of s_term_t * s_term_t                                  length: STerm
+  | XInputFormatString of s_term_t   is_input_formatstring    term: STerm
+  | XInvalidated of s_term_t         is_invalidated           term: STerm
+  | XNewMemory of s_term_t           is_new_memory            term: STerm
+  | XStackAddress of s_term_t        is_stack_address         term: STerm
+  | XHeapAddress of s_term_t         is_heap_address          term: STerm
+  | XGlobalAddress of s_term_t       is_global_address        term: STerm
+  | XNoOverlap                       is_no_overlap            term1: STerm
+      of s_term_t * s_term_t                                  term2: STerm
+  | XNotNull of s_term_t             is_not_null              term: STerm
+  | XNull of s_term_t                is_null                  term: STerm
+  | XNotZero of s_term_t             is_not_zero              term: STerm
+  | XNonNegative of s_term_t         is_non_negative          term: STerm
+  | XNullTerminated of s_term_t      is_null_terminated       term: STerm
+  | XOutputFormatString of s_term_t  is_output_formatstring   term: STerm
+  | XPreservesAllMemory              is_preserves_all_memory  term: STerm
+  | XPreservesAllMemoryX             is_preserves_all_memory_x terms: STerm list
+      of s_term_t list
+  | XPreservesMemory of s_term_t     is_preserves_memory      term: STerm
+  | XPreservesValue of s_term_t      is_preserves_value       term: STerm
+  | XPreservesNullTermination        is_preserves_null_termination   term: STerm
+  | XPreservesValidity of s_term_t   is_preserves_validity    term: STerm
+  | XRelationalExpr of               is_relational_expr       op: str
+      binop * s_term_t * s_term_t                             term1: STerm
+                                                              term2: STerm
+  | XRepositioned of s_term_t        is_repositioned          term: STerm
+  | XRevBuffer of                    is_rev_buffer            buffer: STerm
+      s_term_t * s_term_t                                     length: STerm
+  | XTainted of                      is_tainted               term: STerm 
+      s_term_t                                                lower_bound: STerm
+      * s_term_t option                                       upper_bound: STerm
+      * s_term_t option
+  | XUniquePointer of s_term_t       is_unique_pointer        term: STerm
+  | XValidMem of s_term_t            is_valid_mem             term: STerm
+
+(* policy-related predicates *)
+  | XPolicyPre of s_term_t * string * string list  (* the term has to be in one of the given states *)
+  | XPolicyValue of s_term_t * string * string option
+  (* the term is a newly created policy value and optionally makes a first transition *)
+  | XPolicyTransition of s_term_t * string * string (* the term transitions according to a named transition
+
+"""
 
 from typing import cast, List, Optional, TYPE_CHECKING
 import xml.etree.ElementTree as ET
@@ -52,13 +115,13 @@ def get_printop(s: str) -> str:
 class XPredicate(InterfaceDictionaryRecord):
 
     def __init__(
-            self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+            self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
     ) -> None:
-        InterfaceDictionaryRecord.__init__(self, cd, ixval)
+        InterfaceDictionaryRecord.__init__(self, ifd, ixval)
 
     def get_iterm(self, argix: int) -> "STerm":
         if len(self.args) >= argix:
-            return self.cd.get_s_term(int(self.args[argix]))
+            return self.ifd.get_s_term(int(self.args[argix]))
         raise Exception(
             "Term index "
             + str(argix)
@@ -67,114 +130,151 @@ class XPredicate(InterfaceDictionaryRecord):
             + " args found)"
         )
 
+    @property
     def is_allocation_base(self) -> bool:
         return False
 
+    @property
     def is_block_write(self) -> bool:
         return False
 
+    @property
     def is_buffer(self) -> bool:
         return False
 
+    @property
     def is_confined(self) -> bool:
         return False
 
+    @property
     def is_const_term(self) -> bool:
         return False
 
+    @property
     def is_controlled_resource(self) -> bool:
         return False
 
+    @property
     def is_false(self) -> bool:
         return False
 
+    @property
     def is_formatted_input(self) -> bool:
         return False
 
+    @property
     def is_freed(self) -> bool:
         return False
 
+    @property
     def is_functional(self) -> bool:
         return False
 
+    @property
     def is_global_address(self) -> bool:
         return False
 
+    @property
     def is_heap_address(self) -> bool:
         return False
 
+    @property
     def is_initialized(self) -> bool:
         return False
 
+    @property
     def is_initialized_range(self) -> bool:
         return False
 
+    @property
     def is_input_formatstring(self) -> bool:
         return False
 
+    @property
     def is_invalidated(self) -> bool:
         return False
 
+    @property
     def is_new_memory(self) -> bool:
         return False
 
+    @property
     def is_no_overlap(self) -> bool:
         return False
 
+    @property
     def is_not_zero(self) -> bool:
         return False
 
+    @property
     def is_non_negative(self) -> bool:
         return False
 
+    @property
     def is_not_null(self) -> bool:
         return False
 
+    @property
     def is_null(self) -> bool:
         return False
 
+    @property
     def is_null_terminated(self) -> bool:
         return False
 
+    @property
     def is_output_formatstring(self) -> bool:
         return False
 
+    @property
     def is_preserves_all_memory(self) -> bool:
         return False
 
+    @property
     def is_preserves_all_memory_x(self) -> bool:
         return False
 
+    @property
     def is_preserves_memory(self) -> bool:
         return False
 
+    @property
     def is_preserves_null_termination(self) -> bool:
         return False
 
+    @property
     def is_preserves_validity(self) -> bool:
         return False
 
+    @property
     def is_preserves_value(self) -> bool:
         return False
 
+    @property
     def is_relational_expr(self) -> bool:
         return False
 
+    @property
     def is_repositioned(self) -> bool:
         return False
 
+    @property
     def is_rev_buffer(self) -> bool:
         return False
 
+    @property
     def is_stack_address(self) -> bool:
         return False
 
+    @property
     def is_tainted(self) -> bool:
         return False
 
+    @property
     def is_unique_pointer(self) -> bool:
         return False
 
+    @property
     def is_valid_mem(self) -> bool:
         return False
 
@@ -190,157 +290,209 @@ class XPredicate(InterfaceDictionaryRecord):
 
 @ifdregistry.register_tag("ab", XPredicate)
 class XAllocationBase(XPredicate):
-    def __init__(
-            self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue
-    ) -> None:
-        XPredicate.__init__(self, cd, ixval)
+    """Term points to start of allocated region that can be freed.
 
-    def get_term(self) -> "STerm":
+    args[0]: index of term in interface dictionary
+    """
+    def __init__(
+            self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+    ) -> None:
+        XPredicate.__init__(self, ifd, ixval)
+
+    @property
+    def term(self) -> "STerm":
         return self.get_iterm(0)
 
+    @property
     def is_allocation_base(self) -> bool:
         return True
 
     def __str__(self) -> str:
-        return "allocation-base(" + str(self.get_term()) + ")"
+        return "allocation-base(" + str(self.term) + ")"
 
 
 @ifdregistry.register_tag("bw", XPredicate)
 class XBlockWrite(XPredicate):
-    def __init__(
-            self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue
-    ) -> None:
-        XPredicate.__init__(self, cd, ixval)
+    """Unstructured write of bytes to pointed address with given length.
 
-    def get_term(self) -> "STerm":
+    args[0]: index of address term in interface dictionary
+    args[1]: index of length term in interface dictionary
+    """
+
+    def __init__(
+            self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+    ) -> None:
+        XPredicate.__init__(self, ifd, ixval)
+
+    @property
+    def term(self) -> "STerm":
         return self.get_iterm(0)
 
-    def get_length(self) -> "STerm":
+    @property
+    def length(self) -> "STerm":
         return self.get_iterm(1)
 
+    @property
     def is_block_write(self) -> bool:
         return True
 
     def __str__(self) -> str:
-        return (
-            "block-write(" + str(self.get_term()) + "," + str(self.get_length()) + ")"
-        )
+        return "block-write(" + str(self.term) + "," + str(self.length) + ")"
 
 
 @ifdregistry.register_tag("b", XPredicate)
 class XBuffer(XPredicate):
-    def __init__(
-            self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue
-    ) -> None:
-        XPredicate.__init__(self, cd, ixval)
+    """Denotes a pointer to a buffer with at least a given number of bytes.
 
-    def get_buffer(self) -> "STerm":
+    args[0]: index of pointer to buffer in interface dictionary
+    args[1]: index of size term in interface dictionary
+    """
+
+    def __init__(
+            self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+    ) -> None:
+        XPredicate.__init__(self, ifd, ixval)
+
+    @property
+    def buffer(self) -> "STerm":
         return self.get_iterm(0)
 
-    def get_length(self) -> "STerm":
+    @property
+    def length(self) -> "STerm":
         return self.get_iterm(1)
 
+    @property
     def is_buffer(self) -> bool:
         return True
 
     def __str__(self) -> str:
-        return "buffer(" + str(self.get_buffer()) + "," + str(self.get_length()) + ")"
+        return "buffer(" + str(self.buffer) + "," + str(self.length) + ")"
 
 
 @ifdregistry.register_tag("rb", XPredicate)
 class XRevBuffer(XPredicate):
-    """number of bytes before the pointer"""
+    """Term points to buffer with at least given number of bytes before the pointer
+
+    args[0]: index of buffer-term in interface dictionary
+    args[1]: index of length term in interface dictionary
+    """
 
     def __init__(
-            self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+            self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
     ) -> None:
-        XPredicate.__init__(self, cd, ixval)
+        XPredicate.__init__(self, ifd, ixval)
 
-    def get_buffer(self) -> "STerm":
+    @property
+    def buffer(self) -> "STerm":
         return self.get_iterm(0)
 
-    def get_length(self) -> "STerm":
+    @property
+    def length(self) -> "STerm":
         return self.get_iterm(1)
 
+    @property
     def is_rev_buffer(self) -> bool:
         return True
 
     def __str__(self) -> str:
         return (
-            "rev-buffer(" + str(self.get_buffer()) + "," + str(self.get_length()) + ")"
+            "rev-buffer(" + str(self.buffer) + "," + str(self.length) + ")"
         )
 
 
 @ifdregistry.register_tag("cr", XPredicate)
 class XControlledResource(XPredicate):
+    """Term is not / must not be tainted.
+
+    tags[1]: name of resource
+    args[0]: index of term in interface dictionary
+    """
 
     def __init__(
-            self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+            self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
     ) -> None:
-        XPredicate.__init__(self, cd, ixval)
+        XPredicate.__init__(self, ifd, ixval)
 
-    def get_size(self) -> "STerm":
+    @property
+    def size(self) -> "STerm":
         return self.get_iterm(0)
 
-    def get_resource(self) -> str:
+    @property
+    def resource(self) -> str:
         return self.tags[1]
 
+    @property
     def is_controlled_resource(self) -> bool:
         return True
 
     def __str__(self) -> str:
         return (
             "controlled-resource:"
-            + self.get_resource()
+            + self.resource
             + "("
-            + str(self.get_size())
+            + str(self.size)
             + ")"
         )
 
 
 @ifdregistry.register_tag("cf", XPredicate)
 class XConfined(XPredicate):
+    """Pointer expression that is out of scope without leaking references.
+
+    args[0]: index of pointer term in interface dictionary
+    """
 
     def __init__(
-            self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+            self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
     ) -> None:
-        XPredicate.__init__(self, cd, ixval)
+        XPredicate.__init__(self, ifd, ixval)
 
-    def get_term(self) -> "STerm":
+    @property
+    def term(self) -> "STerm":
         return self.get_iterm(0)
 
+    @property
     def is_confined(self) -> bool:
         return True
 
     def __str__(self) -> str:
-        return "confined(" + str(self.get_term()) + ")"
+        return "confined(" + str(self.term) + ")"
 
 
 @ifdregistry.register_tag("c", XPredicate)
 class XConstTerm(XPredicate):
-    def __init__(
-            self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue
-    ) -> None:
-        XPredicate.__init__(self, cd, ixval)
+    """Pointed-to term is not modified.
 
-    def get_term(self) -> "STerm":
+    args[0]: index of pointed-to term in interface dictionary
+    """
+
+    def __init__(
+            self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+    ) -> None:
+        XPredicate.__init__(self, ifd, ixval)
+
+    @property
+    def term(self) -> "STerm":
         return self.get_iterm(0)
 
+    @property
     def is_const_term(self) -> bool:
         return True
 
     def __str__(self) -> str:
-        return "const-term(" + str(self.get_term()) + ")"
+        return "const-term(" + str(self.term) + ")"
 
 
 @ifdregistry.register_tag("f", XPredicate)
 class XFalse(XPredicate):
+    """Property is always false."""
 
     def __init__(
-            self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+            self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
     ) -> None:
-        XPredicate.__init__(self, cd, ixval)
+        XPredicate.__init__(self, ifd, ixval)
 
+    @property
     def is_false(self) -> bool:
         return True
 
@@ -356,47 +508,61 @@ class XFalse(XPredicate):
 
 @ifdregistry.register_tag("fi", XPredicate)
 class XFormattedInput(XPredicate):
+    """Argument that provides the format string.
+
+    args[0]: index of term in interface dictionary
+    """
 
     def __init__(
-            self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+            self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
     ) -> None:
-        XPredicate.__init__(self, cd, ixval)
+        XPredicate.__init__(self, ifd, ixval)
 
-    def get_term(self) -> "STerm":
+    @property
+    def term(self) -> "STerm":
         return self.get_iterm(0)
 
+    @property
     def is_formatted_input(self) -> bool:
         return True
 
     def __str__(self) -> str:
-        return "formatte-input(" + str(self.get_term()) + ")"
+        return "formatte-input(" + str(self.term) + ")"
 
 
 @ifdregistry.register_tag("fr", XPredicate)
 class XFreed(XPredicate):
-    def __init__(
-            self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue
-    ) -> None:
-        XPredicate.__init__(self, cd, ixval)
+    """Term pointed to is freed.
 
-    def get_term(self) -> "STerm":
+    args[0]: index of term in interface dictionary.
+    """
+    def __init__(
+            self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+    ) -> None:
+        XPredicate.__init__(self, ifd, ixval)
+
+    @property
+    def term(self) -> "STerm":
         return self.get_iterm(0)
 
+    @property
     def is_freed(self) -> bool:
         return True
 
     def __str__(self) -> str:
-        return "freed(" + str(self.get_term()) + ")"
+        return "freed(" + str(self.term) + ")"
 
 
 @ifdregistry.register_tag("fn", XPredicate)
 class XFunctional(XPredicate):
+    """Function has no observable side-effects."""
 
     def __init__(
-            self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+            self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
     ) -> None:
-        XPredicate.__init__(self, cd, ixval)
+        XPredicate.__init__(self, ifd, ixval)
 
+    @property
     def is_functional(self) -> bool:
         return True
 
@@ -406,318 +572,416 @@ class XFunctional(XPredicate):
 
 @ifdregistry.register_tag("i", XPredicate)
 class XInitialized(XPredicate):
+    """Lval denoted is initialized.
+
+    args[0]: index of lval term in interface dictionary
+    """
 
     def __init__(
-            self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+            self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
     ) -> None:
-        XPredicate.__init__(self, cd, ixval)
+        XPredicate.__init__(self, ifd, ixval)
 
-    def get_term(self) -> "STerm":
+    @property
+    def term(self) -> "STerm":
         return self.get_iterm(0)
 
+    @property
     def is_initialized(self) -> bool:
         return True
 
     def write_mathml(self, node: ET.Element, signature: List[str]) -> None:
         anode = ET.Element("apply")
         opnode = ET.Element("initialized")
-        rnode = self.get_term().get_mathml_node(signature)
+        rnode = self.term.get_mathml_node(signature)
         anode.extend([opnode, rnode])
         node.append(anode)
 
     def __str__(self) -> str:
-        return "initialized(" + str(self.get_term()) + ")"
+        return "initialized(" + str(self.term) + ")"
 
 
 @ifdregistry.register_tag("ir", XPredicate)
 class XInitializedRange(XPredicate):
+    """Term pointed to is initialized for the given length (in bytes).
+
+    args[0]: index of buffer pointed-to term in interface dictionary
+    args[1]: index of length term in interface dictionary
+    """
 
     def __init__(
-            self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+            self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
     ) -> None:
-        XPredicate.__init__(self, cd, ixval)
+        XPredicate.__init__(self, ifd, ixval)
 
-    def get_buffer(self) -> "STerm":
+    @property
+    def buffer(self) -> "STerm":
         return self.get_iterm(0)
 
-    def get_length(self) -> "STerm":
+    @property
+    def length(self) -> "STerm":
         return self.get_iterm(1)
 
+    @property
     def is_initialized_range(self) -> bool:
         return True
 
     def __str__(self) -> str:
         return (
-            "initialized-range(" + str(self.get_buffer()) + str(self.get_length()) + ")"
+            "initialized-range(" + str(self.buffer) + str(self.length) + ")"
         )
 
 
 @ifdregistry.register_tag("ifs", XPredicate)
 class XInputFormatString(XPredicate):
+    """Term points to scanf format string.
+
+    args[0]: index of format-string term in interface dictionary.
+    """
 
     def __init__(
-            self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+            self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
     ) -> None:
-        XPredicate.__init__(self, cd, ixval)
+        XPredicate.__init__(self, ifd, ixval)
 
-    def get_term(self) -> "STerm":
+    @property
+    def term(self) -> "STerm":
         return self.get_iterm(0)
 
+    @property
     def is_input_formatstring(self) -> bool:
         return True
 
     def __str__(self) -> str:
-        return "input-formatstring(" + str(self.get_term()) + ")"
+        return "input-formatstring(" + str(self.term) + ")"
 
 
 @ifdregistry.register_tag("iv", XPredicate)
 class XInvalidated(XPredicate):
+    """Term pointed to may not be valid any more.
+
+    args[0]: index of pointed-to term in interface dictionary
+    """
 
     def __init__(
-            self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+            self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
     ) -> None:
-        XPredicate.__init__(self, cd, ixval)
+        XPredicate.__init__(self, ifd, ixval)
 
-    def get_term(self) -> "STerm":
+    @property
+    def term(self) -> "STerm":
         return self.get_iterm(0)
 
+    @property
     def is_invalidated(self) -> bool:
         return True
 
     def __str__(self) -> str:
-        return "invalidated(" + str(self.get_term()) + ")"
+        return "invalidated(" + str(self.term) + ")"
 
 
 @ifdregistry.register_tag("nm", XPredicate)
 class XNewMemory(XPredicate):
+    """Term points to newly allocated memory (stack or heap).
+
+    Specifically, memory that is newly allocated since the start of the function.
+
+    args[0]: index of term pointing to new memory in interface dictionary
+    """
 
     def __init__(
-            self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+            self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
     ) -> None:
-        XPredicate.__init__(self, cd, ixval)
+        XPredicate.__init__(self, ifd, ixval)
 
-    def get_term(self) -> "STerm":
+    @property
+    def term(self) -> "STerm":
         return self.get_iterm(0)
 
+    @property
     def is_new_memory(self) -> bool:
         return True
 
     def __str__(self) -> str:
-        return "new-memory(" + str(self.get_term())
+        return "new-memory(" + str(self.term)
 
 
 @ifdregistry.register_tag("ga", XPredicate)
 class XGlobalAddress(XPredicate):
+    """Term points to global memory.
+
+    args[0]: index of term in interface dictionary
+    """
 
     def __init__(
-            self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+            self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
     ) -> None:
-        XPredicate.__init__(self, cd, ixval)
+        XPredicate.__init__(self, ifd, ixval)
 
-    def get_term(self) -> "STerm":
+    @property
+    def term(self) -> "STerm":
         return self.get_iterm(0)
 
+    @property
     def is_global_address(self) -> bool:
         return True
 
     def __str__(self) -> str:
-        return "global-address(" + str(self.get_term())
+        return "global-address(" + str(self.term)
 
 
 @ifdregistry.register_tag("ha", XPredicate)
 class XHeapAddress(XPredicate):
+    """Term points to heap memory.
+
+    args[0]: index of term in interface dictionary
+    """
 
     def __init__(
-            self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+            self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
     ) -> None:
-        XPredicate.__init__(self, cd, ixval)
+        XPredicate.__init__(self, ifd, ixval)
 
-    def get_term(self) -> "STerm":
+    @property
+    def term(self) -> "STerm":
         return self.get_iterm(0)
 
+    @property
     def is_heap_address(self) -> bool:
         return True
 
     def __str__(self) -> str:
-        return "heap-address(" + str(self.get_term())
+        return "heap-address(" + str(self.term)
 
 
 @ifdregistry.register_tag("sa", XPredicate)
 class XStackAddress(XPredicate):
+    """Term points to stack memory.
+
+    args[0]: index of term in interface dictionary
+    """
 
     def __init__(
-            self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+            self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
     ) -> None:
-        XPredicate.__init__(self, cd, ixval)
+        XPredicate.__init__(self, ifd, ixval)
 
-    def get_term(self) -> "STerm":
+    @property
+    def term(self) -> "STerm":
         return self.get_iterm(0)
 
+    @property
     def is_stack_address(self) -> bool:
         return True
 
     def __str__(self) -> str:
-        return "stack-address(" + str(self.get_term())
+        return "stack-address(" + str(self.term)
 
 
 @ifdregistry.register_tag("no", XPredicate)
 class XNoOverlap(XPredicate):
+    """The two pointed-to memory regions do not overlap.
+
+    args[0]: index of first term in interface dictionary
+    args[1]: index of second term in interface dictionary
+    """
 
     def __init__(
-            self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+            self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
     ) -> None:
-        XPredicate.__init__(self, cd, ixval)
+        XPredicate.__init__(self, ifd, ixval)
 
-    def get_term1(self) -> "STerm":
+    @property
+    def term1(self) -> "STerm":
         return self.get_iterm(0)
 
-    def get_term2(self) -> "STerm":
+    @property
+    def term2(self) -> "STerm":
         return self.get_iterm(1)
 
+    @property
     def is_no_overlap(self) -> bool:
         return True
 
     def __str__(self) -> str:
-        return "no-overlap(" + str(self.get_term1()) + "," + str(self.get_term2()) + ")"
+        return "no-overlap(" + str(self.term1) + "," + str(self.term2) + ")"
 
 
 @ifdregistry.register_tag("nn", XPredicate)
 class XNotNull(XPredicate):
+    """Term is not null.
+
+    args[0]: index of term in interface dictionary
+    """
 
     def __init__(
-            self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+            self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
     ) -> None:
-        XPredicate.__init__(self, cd, ixval)
+        XPredicate.__init__(self, ifd, ixval)
 
-    def get_term(self) -> "STerm":
+    @property
+    def term(self) -> "STerm":
         return self.get_iterm(0)
 
+    @property
     def is_not_null(self) -> bool:
         return True
 
     def write_mathml(self, cnode: ET.Element, signature: List[str]) -> None:
         anode = ET.Element("apply")
         opnode = ET.Element("not-null")
-        rnode = self.get_term().get_mathml_node(signature)
+        rnode = self.term.get_mathml_node(signature)
         anode.extend([opnode, rnode])
         cnode.append(anode)
 
     def __str__(self) -> str:
-        return "not-null(" + str(self.get_term()) + ")"
+        return "not-null(" + str(self.term) + ")"
 
 
 @ifdregistry.register_tag("nng", XPredicate)
 class XNonNegative(XPredicate):
+    """Term is non-negative.
+
+    args[0]: index of term in interface dictionary
+    """
 
     def __init__(
-            self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+            self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
     ) -> None:
-        XPredicate.__init__(self, cd, ixval)
+        XPredicate.__init__(self, ifd, ixval)
 
-    def get_term(self) -> "STerm":
+    @property
+    def term(self) -> "STerm":
         return self.get_iterm(0)
 
+    @property
     def is_non_negative(self) -> bool:
         return True
 
     def write_mathml(self, cnode: ET.Element, signature: List[str]) -> None:
         anode = ET.Element("apply")
         opnode = ET.Element("non-negative")
-        rnode = self.get_term().get_mathml_node(signature)
+        rnode = self.term.get_mathml_node(signature)
         anode.extend([opnode, rnode])
         cnode.append(anode)
 
     def __str__(self) -> str:
-        return "non-negative(" + str(self.get_term()) + ")"
+        return "non-negative(" + str(self.term) + ")"
 
 
 @ifdregistry.register_tag("nz", XPredicate)
 class XNotZero(XPredicate):
+    """Term is not zero.
+
+    args[0]: index of term in interface dictionary
+    """
 
     def __init__(
-            self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+            self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
     ) -> None:
-        XPredicate.__init__(self, cd, ixval)
+        XPredicate.__init__(self, ifd, ixval)
 
-    def get_term(self) -> "STerm":
+    @property
+    def term(self) -> "STerm":
         return self.get_iterm(0)
 
+    @property
     def is_not_zero(self) -> bool:
         return True
 
     def write_mathml(self, cnode: ET.Element, signature: List[str]) -> None:
         anode = ET.Element("apply")
         opnode = ET.Element("not-zero")
-        rnode = self.get_term().get_mathml_node(signature)
+        rnode = self.term.get_mathml_node(signature)
         anode.extend([opnode, rnode])
         cnode.append(anode)
 
     def __str__(self) -> str:
-        return "not-zero(" + str(self.get_term()) + ")"
+        return "not-zero(" + str(self.term) + ")"
 
 
 @ifdregistry.register_tag("null", XPredicate)
 class XNull(XPredicate):
+    """Term is null.
+
+    args[0]: index of term in interface dictionary
+    """
 
     def __init__(
-            self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+            self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
     ) -> None:
-        XPredicate.__init__(self, cd, ixval)
+        XPredicate.__init__(self, ifd, ixval)
 
-    def get_term(self) -> "STerm":
+    @property
+    def term(self) -> "STerm":
         return self.get_iterm(0)
 
+    @property
     def is_null(self) -> bool:
         return True
 
     def __str__(self) -> str:
-        return "null(" + str(self.get_term()) + ")"
+        return "null(" + str(self.term) + ")"
 
 
 @ifdregistry.register_tag("nt", XPredicate)
 class XNullTerminated(XPredicate):
+    """Term is null-terminated.
+
+    args[0]: index of interface dictionary
+    """
 
     def __init__(
-            self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+            self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
     ) -> None:
-        XPredicate.__init__(self, cd, ixval)
+        XPredicate.__init__(self, ifd, ixval)
 
-    def get_term(self) -> "STerm":
+    @property
+    def term(self) -> "STerm":
         return self.get_iterm(0)
 
+    @property
     def is_null_terminated(self) -> bool:
         return True
 
     def __str__(self) -> str:
-        return "null-terminated(" + str(self.get_term()) + ")"
+        return "null-terminated(" + str(self.term) + ")"
 
 
 @ifdregistry.register_tag("ofs", XPredicate)
 class XOutputFormatString(XPredicate):
+    """Term points to printf-style format string.
+
+    args[0]: index of term in interface dictionary
+    """
 
     def __init__(
-            self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+            self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
     ) -> None:
-        XPredicate.__init__(self, cd, ixval)
+        XPredicate.__init__(self, ifd, ixval)
 
-    def get_term(self) -> "STerm":
+    @property
+    def term(self) -> "STerm":
         return self.get_iterm(0)
 
+    @property
     def is_output_formatstring(self) -> bool:
         return True
 
     def __str__(self) -> str:
-        return "output-formatstring(" + str(self.get_term()) + ")"
+        return "output-formatstring(" + str(self.term) + ")"
 
 
 @ifdregistry.register_tag("prm", XPredicate)
 class XPreservesAllMemory(XPredicate):
+    """Function does not free any external memory."""
 
     def __init__(
-            self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+            self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
     ) -> None:
-        XPredicate.__init__(self, cd, ixval)
+        XPredicate.__init__(self, ifd, ixval)
 
+    @property
     def is_preserves_all_memory(self) -> bool:
         return True
 
@@ -727,226 +991,296 @@ class XPreservesAllMemory(XPredicate):
 
 @ifdregistry.register_tag("prmx", XPredicate)
 class XPreservesAllMemoryX(XPredicate):
+    """Function does not free any external memory except for given terms.
+
+    args[0..]: indices of terms in interface dictionary
+    """
 
     def __init__(
-            self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+            self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
     ) -> None:
-        XPredicate.__init__(self, cd, ixval)
+        XPredicate.__init__(self, ifd, ixval)
 
+    @property
     def is_preserves_all_memory_x(self) -> bool:
         return True
 
-    def get_terms(self) -> List["STerm"]:
+    @property
+    def terms(self) -> List["STerm"]:
         return [self.get_iterm(i) for i in self.args]
 
     def __str__(self) -> str:
         return (
             "preserves-all-memory-x("
-            + ",".join([str(x) for x in self.get_terms()])
+            + ",".join([str(x) for x in self.terms])
             + ")"
         )
 
 
 @ifdregistry.register_tag("pr", XPredicate)
 class XPreservesMemory(XPredicate):
+    """Function does not free pointed-to memory.
+
+    args[0]: index of term in interface dictionary
+    """
 
     def __init__(
-            self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+            self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
     ) -> None:
-        XPredicate.__init__(self, cd, ixval)
+        XPredicate.__init__(self, ifd, ixval)
 
-    def get_term(self) -> "STerm":
+    @property
+    def term(self) -> "STerm":
         return self.get_iterm(0)
 
+    @property
     def is_preserves_memory(self) -> bool:
         return True
 
     def __str__(self) -> str:
-        return "preserves-memory(" + str(self.get_term()) + ")"
+        return "preserves-memory(" + str(self.term) + ")"
 
 
 @ifdregistry.register_tag("prn", XPredicate)
 class XPreservesNullTermination(XPredicate):
+    """Function does not strip null-terminating byte from string pointed-to
+
+    args[0]: index of term in interface dictionary
+    """
 
     def __init__(
-            self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+            self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
     ) -> None:
-        XPredicate.__init__(self, cd, ixval)
+        XPredicate.__init__(self, ifd, ixval)
 
-    def get_term(self) -> "STerm":
+    @property
+    def term(self) -> "STerm":
         return self.get_iterm(0)
 
+    @property
     def is_preserves_null_termination(self) -> bool:
         return True
 
     def __str__(self) -> str:
-        return "preserves-null-termination(" + str(self.get_term()) + ")"
+        return "preserves-null-termination(" + str(self.term) + ")"
 
 
 @ifdregistry.register_tag("prv", XPredicate)
 class XPreservesValidity(XPredicate):
+    """Validity of pointed-to resources is maintained.
+
+    args[0]: index of term in interface dictionary
+    """
 
     def __init__(
-            self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+            self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
     ) -> None:
-        XPredicate.__init__(self, cd, ixval)
+        XPredicate.__init__(self, ifd, ixval)
 
-    def get_term(self) -> "STerm":
+    @property
+    def term(self) -> "STerm":
         return self.get_iterm(0)
 
+    @property
     def is_preserves_validity(self) -> bool:
         return True
 
     def __str__(self) -> str:
-        return "preserves-validity(" + str(self.get_term()) + ")"
+        return "preserves-validity(" + str(self.term) + ")"
 
 
 @ifdregistry.register_tag("pv", XPredicate)
 class XPreservesValue(XPredicate):
+    """Function does not modify the value of the term.
+
+    args[0]: index of term in interface dictionary
+    """
 
     def __init__(
-            self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+            self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
     ) -> None:
-        XPredicate.__init__(self, cd, ixval)
+        XPredicate.__init__(self, ifd, ixval)
 
-    def get_term(self) -> "STerm":
+    @property
+    def term(self) -> "STerm":
         return self.get_iterm(0)
 
+    @property
     def is_preserves_value(self) -> bool:
         return True
 
     def __str__(self) -> str:
-        return "preserves-value(" + str(self.get_term()) + ")"
+        return "preserves-value(" + str(self.term) + ")"
 
 
 @ifdregistry.register_tag("x", XPredicate)
 class XRelationalExpr(XPredicate):
+    """Relational expression of terms.
+
+    tags[1]: operator
+    args[0]: index of first term in interface dictionary
+    args[1]: index of second term in interface dictionary
+    """
 
     def __init__(
-            self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+            self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
     ) -> None:
-        XPredicate.__init__(self, cd, ixval)
+        XPredicate.__init__(self, ifd, ixval)
 
-    def get_op(self) -> str:
+    @property
+    def op(self) -> str:
         return self.tags[1]
 
-    def get_term1(self) -> "STerm":
+    @property
+    def term1(self) -> "STerm":
         return self.get_iterm(0)
 
-    def get_term2(self) -> "STerm":
+    @property
+    def term2(self) -> "STerm":
         return self.get_iterm(1)
 
+    @property
     def is_relational_expr(self) -> bool:
         return True
 
     def write_mathml(self, cnode: ET.Element, signature: List[str]) -> None:
         anode = ET.Element("apply")
-        opnode = ET.Element(self.get_op())
+        opnode = ET.Element(self.op)
         anode.append(opnode)
         cnode.append(anode)
-        anode.append(self.get_term1().get_mathml_node(signature))
-        anode.append(self.get_term2().get_mathml_node(signature))
+        anode.append(self.term1.get_mathml_node(signature))
+        anode.append(self.term2.get_mathml_node(signature))
 
     def pretty(self) -> str:
         return (
-            self.get_term1().pretty()
+            self.term1.pretty()
             + " "
-            + get_printop(self.get_op())
+            + get_printop(self.op)
             + " "
-            + self.get_term2().pretty()
+            + self.term2.pretty()
         )
 
     def __str__(self) -> str:
         return (
             "expr("
-            + self.get_op()
+            + self.op
             + " "
-            + str(self.get_term1())
+            + str(self.term1)
             + ","
-            + str(self.get_term2())
+            + str(self.term2)
             + ")"
         )
 
 
 @ifdregistry.register_tag("rep", XPredicate)
 class XRepositioned(XPredicate):
-    def __init__(
-            self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue
-    ) -> None:
-        XPredicate.__init__(self, cd, ixval)
+    """Term pointed to may be freed and reassigned.
 
-    def get_term(self) -> "STerm":
+    args[0]: index of term in interface dictionary
+    """
+
+    def __init__(
+            self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+    ) -> None:
+        XPredicate.__init__(self, ifd, ixval)
+
+    @property
+    def term(self) -> "STerm":
         return self.get_iterm(0)
 
+    @property
     def is_repositioned(self) -> bool:
         return True
 
     def __str__(self) -> str:
-        return "repositioned(" + str(self.get_term()) + ")"
+        return "repositioned(" + str(self.term) + ")"
 
 
 @ifdregistry.register_tag("tt", XPredicate)
 class XTainted(XPredicate):
-    def __init__(
-            self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue
-    ) -> None:
-        XPredicate.__init__(self, cd, ixval)
+    """Value of term is externally controlled with optional upper/lower bound.
 
-    def get_term(self) -> "STerm":
+    args[0]: index of term in interface dictionary
+    args[1]: index of lower bound in interface dictionary (optional)
+    args[2]: index of upper bound in interface dictionary (optional)
+    """
+
+    def __init__(
+            self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+    ) -> None:
+        XPredicate.__init__(self, ifd, ixval)
+
+    @property
+    def term(self) -> "STerm":
         return self.get_iterm(0)
 
-    def get_lower_bound(self) -> Optional["STerm"]:
+    @property
+    def lower_bound(self) -> Optional["STerm"]:
         if (int(self.args[1])) > 0:
             return self.get_iterm(1)
         return None
 
-    def get_upper_bound(self) -> Optional["STerm"]:
+    @property
+    def upper_bound(self) -> Optional["STerm"]:
         if (int(self.args[2])) > 0:
             return self.get_iterm(2)
         return None
 
+    @property
     def is_tainted(self) -> bool:
         return True
 
     def __str__(self) -> str:
-        lb = self.get_lower_bound()
-        ub = self.get_upper_bound()
+        lb = self.lower_bound
+        ub = self.upper_bound
         slb = "" if lb is None else " LB:" + str(lb)
         sub = "" if ub is None else " UB:" + str(ub)
-        return "tainted(" + str(self.get_term()) + ")" + slb + sub
+        return "tainted(" + str(self.term) + ")" + slb + sub
 
 
 @ifdregistry.register_tag("up", XPredicate)
 class XUniquePointer(XPredicate):
+    """Term is the only pointer pointing at resource.
+
+    args[0]: index of term in interface dictionary
+    """
 
     def __init__(
-            self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+            self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
     ) -> None:
-        XPredicate.__init__(self, cd, ixval)
+        XPredicate.__init__(self, ifd, ixval)
 
-    def get_term(self) -> "STerm":
+    @property
+    def term(self) -> "STerm":
         return self.get_iterm(0)
 
+    @property
     def is_unique_pointer(self) -> bool:
         return True
 
     def __str__(self) -> str:
-        return "unique-pointer(" + str(self.get_term()) + ")"
+        return "unique-pointer(" + str(self.term) + ")"
 
 
 @ifdregistry.register_tag("vm", XPredicate)
 class XValidMem(XPredicate):
+    """Pointed-to memory has not been freed (at time of delivery).
+
+    args[0]: index of term in interface dictionary
+    """
 
     def __init__(
-            self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+            self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
     ) -> None:
-        XPredicate.__init__(self, cd, ixval)
+        XPredicate.__init__(self, ifd, ixval)
 
-    def get_term(self) -> "STerm":
+    @property
+    def term(self) -> "STerm":
         return self.get_iterm(0)
 
+    @property
     def is_valid_mem(self) -> bool:
         return True
 
     def __str__(self) -> str:
-        return "valid-mem(" + str(self.get_term()) + ")"
+        return "valid-mem(" + str(self.term) + ")"

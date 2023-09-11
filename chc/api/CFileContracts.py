@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -27,66 +29,94 @@
 
 import xml.etree.ElementTree as ET
 
+from typing import Callable, Dict, List, Optional, TYPE_CHECKING
+
 import chc.util.fileutil as UF
 
 from chc.api.CFunctionContract import CFunctionContract
 
+if TYPE_CHECKING:
+    from chc.app.CFile import CFile
+    from chc.app.CVarInfo import CVarInfo
 
-class CFileContractGlobalVar(object):
+
+class CFileContractGlobalVar:
     """User assertion about global variable."""
 
-    def __init__(self, gvinfo, gvalue=None, gconst=False):
+    def __init__(
+            self,
+            gvinfo: "CVarInfo",
+            gvalue: Optional[int] = None,
+            gconst: bool = False) -> None:
         self.gvinfo = gvinfo
         self.gvalue = gvalue
         self.gconst = gconst
 
-    def __str__(self):
+    def __str__(self) -> str:
         pconst = " (const)" if self.gconst else ""
         pvalue = "" if self.gvalue is None else ": " + str(self.gvalue)
         return self.gvinfo.vname + pvalue + pconst
 
 
-class CFileContracts(object):
+class CFileContracts:
     """User-provided contracts for the functions in a c-file."""
 
-    def __init__(self, cfile, contractpath):
-        self.cfile = cfile
-        self.contractpath = contractpath
-        self.xnode = UF.get_contracts(self.contractpath, self.cfile.name)
-        self.functions = {}  # function name -> CFunctionContract
-        self.globalvariables = {}  # name -> CVarInfo
+    def __init__(self, cfile: "CFile", contractpath: str) -> None:
+        self._cfile = cfile
+        self._contractpath = contractpath
+        self.xnode = UF.get_contracts(self._contractpath, self._cfile.name)
+        self._functions: Dict[str, CFunctionContract] = {}
+        self._globalvariables: Dict[str, CFileContractGlobalVar] = {}
         self._initialize(self.xnode)
 
-    def get_function_contract(self, name):
+    @property
+    def cfile(self) -> "CFile":
+        return self._cfile
+
+    @property
+    def contractpath(self) -> str:
+        return self._contractpath
+
+    @property
+    def functions(self) -> Dict[str, CFunctionContract]:
+        return self._functions
+
+    @property
+    def globalvariables(self) -> Dict[str, CFileContractGlobalVar]:
+        return self._globalvariables
+
+    def function_contract(self, name: str) -> CFunctionContract:
         if name in self.functions:
             return self.functions[name]
+        else:
+            raise UF.CHCError("No function contract found for " + name)
 
-    def has_function_contract(self, name):
+    def has_function_contract(self, name: str) -> bool:
         return name in self.functions
 
-    def has_assertions(self):
+    def has_assertions(self) -> bool:
         hasfns = any([f.has_assertions() for f in self.functions.values()])
         hasglobals = len(self.globalvariables) > 0
         return hasfns or hasglobals
 
-    def has_postconditions(self):
+    def has_postconditions(self) -> bool:
         return any([f.has_postconditions() for f in self.functions.values()])
 
-    def has_preconditions(self):
+    def has_preconditions(self) -> bool:
         return any([f.has_preconditions() for f in self.functions.values()])
 
-    def count_postconditions(self):
+    def count_postconditions(self) -> int:
         return sum([len(f.postconditions) for f in self.functions.values()])
 
-    def count_preconditions(self):
+    def count_preconditions(self) -> int:
         return sum([len(f.preconditions) for f in self.functions.values()])
 
-    def iter_functions(self, f):
+    def iter_functions(self, f: Callable[[CFunctionContract], None]) -> None:
         for fn in self.functions:
             f(self.functions[fn])
 
-    def report_postconditions(self):
-        lines = []
+    def report_postconditions(self) -> str:
+        lines: List[str] = []
         if self.has_postconditions():
             lines.append("\nFile: " + self.cfile.name + " - postconditions")
             lines.append("-" * 80)
@@ -97,8 +127,8 @@ class CFileContracts(object):
             return "\n".join(lines)
         return ""
 
-    def report_preconditions(self):
-        lines = []
+    def report_preconditions(self) -> str:
+        lines: List[str] = []
         if self.has_preconditions():
             lines.append("\nFile: " + self.cfile.name + " - preconditions")
             lines.append("-" * 80)
@@ -109,8 +139,8 @@ class CFileContracts(object):
             return "\n".join(lines)
         return ""
 
-    def __str__(self):
-        lines = []
+    def __str__(self) -> str:
+        lines: List[str] = []
         if self.has_assertions():
             lines.append("\nFile: " + self.cfile.name)
             lines.append("-" * 80)
@@ -122,19 +152,24 @@ class CFileContracts(object):
             lines.append("-" * 80)
         return "\n".join(lines)
 
-    def _initialize(self, xnode):
+    def _initialize(self, xnode: Optional[ET.Element]) -> None:
         if xnode is None:
             return
         gvnode = xnode.find("global-variables")
         if gvnode is not None:
             for gnode in gvnode.findall("gvar"):
                 name = gnode.get("name")
+                if name is None:
+                    raise UF.CHCError("No name specified for global variable")
                 gvinfo = self.cfile.declarations.get_global_varinfo_by_name(name)
                 gconst = "const" in gnode.attrib and gnode.get("const") == "yes"
-                gvalue = int(gnode.get("value")) if "value" in gnode.attrib else None
+                gval = gnode.get("value")
+                gvalue = int(gval) if gval else None
                 self.globalvariables[name] = CFileContractGlobalVar(
                     gvinfo, gvalue, gconst
                 )
-        for fnode in xnode.find("functions").findall("function"):
-            fn = CFunctionContract(self, fnode)
-            self.functions[fn.name] = fn
+        ffnode = xnode.find("functions")
+        if ffnode is not None:
+            for fnode in ffnode.findall("function"):
+                fn = CFunctionContract(self, fnode)
+                self._functions[fn.name] = fn

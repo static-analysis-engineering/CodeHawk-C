@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,27 +27,59 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
+from typing import List, TYPE_CHECKING
 
-class PostConditionRequest(object):
-    def __init__(self, capi, postrequest, ppos, spos):
-        self.capi = capi
-        self.cfun = self.capi.cfun
-        self.postrequest = postrequest
-        self.postcondition = self.postrequest.get_postcondition()
-        self.callee = self.postrequest.get_callee()
+if TYPE_CHECKING:
+    from chc.app.CFunction import CFunction
+    from chc.api.CFunctionApi import CFunctionApi
+    from chc.api.PostRequest import PostRequest
+    from chc.api.XPredicate import XPredicate
+    from chc.app.CVarInfo import CVarInfo
+    
+
+class PostConditionRequest:
+
+    def __init__(
+            self,
+            capi: "CFunctionApi",
+            postrequest: "PostRequest",
+            ppos: List[int],
+            spos: List[int]) -> None:
+        self._capi = capi
+        self._postrequest = postrequest
         self.ppos = ppos
         self.spos = spos
 
-    def has_open_pos(self):
+    @property
+    def capi(self) -> "CFunctionApi":
+        return self._capi
+
+    @property
+    def cfun(self) -> "CFunction":
+        return self.capi.cfun
+
+    @property
+    def postrequest(self) -> "PostRequest":
+        return self._postrequest
+
+    @property
+    def postcondition(self) -> "XPredicate":
+        return self.postrequest.postcondition
+
+    @property
+    def callee(self) -> "CVarInfo":
+        return self.postrequest.callee
+
+    def has_open_pos(self) -> bool:
         return (len(self.get_open_ppos()) + len(self.get_open_spos())) > 0
 
-    def get_open_ppos(self):
-        return [i for i in self.ppos if self.cfun.get_ppo(i).is_open()]
+    def get_open_ppos(self) -> List[int]:
+        return [i for i in self.ppos if self.cfun.get_ppo(i).is_open]
 
-    def get_open_spos(self):
-        return [i for i in self.spos if self.cfun.get_spo(i).is_open()]
+    def get_open_spos(self) -> List[int]:
+        return [i for i in self.spos if self.cfun.get_spo(i).is_open]
 
-    def __str__(self):
+    def __str__(self) -> str:
         dppos = ""
         if len(self.ppos) > 0 and len(self.get_open_ppos()) > 0:
             dppos = (

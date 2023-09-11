@@ -27,37 +27,33 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
-from typing import Any, cast, Callable, Dict, List, Tuple, Optional, TYPE_CHECKING
+from typing import (
+    Any, cast, Callable, Dict, List, Mapping, Tuple, Optional, TYPE_CHECKING)
 import xml.etree.ElementTree as ET
 
-import chc.util.fileutil as UF
-import chc.util.IndexedTable as IT
-from chc.util.IndexedTable import (
-    IndexedTable,
-    IndexedTableValue,
-    IndexedTableSuperclass,
-)
-
-import chc.api.ApiParameter as AP
 from chc.api.ApiParameter import ApiParameter, APFormal, APGlobal
-
-from chc.api.InterfaceDictionaryRecord import InterfaceDictionaryRecord, ifdregistry
-
-import chc.api.GlobalAssumption as GA
-import chc.api.PostRequest as PR
-from chc.api.PostRequest import PostRequest
-import chc.api.PostAssume as PA
+from chc.api.GlobalAssumption import GlobalAssumption
+from chc.api.InterfaceDictionaryRecord import (
+    InterfaceDictionaryRecord, ifdregistry)
 from chc.api.PostAssume import PostAssume
-import chc.api.STerm as ST
-from chc.api.STerm import (
-    SOffset,
-    STerm,
-    STArgNoOffset,
-    STArgFieldOffset,
-    STArgIndexOffset,
-)
-import chc.api.XPredicate as XP
+from chc.api.PostRequest import PostRequest
+from chc.api.SOffset import (
+    SOffset, STArgNoOffset, STArgFieldOffset, STArgIndexOffset)
+from chc.api.STerm import STerm
 from chc.api.XPredicate import XPredicate
+
+import chc.util.fileutil as UF
+from chc.util.IndexedTable import IndexedTable, IndexedTableValue
+
+# import chc.api.GlobalAssumption as GA
+# import chc.api.PostRequest as PR
+
+# import chc.api.PostAssume as PA
+
+import chc.api.STerm as ST
+import chc.api.XPredicate as XP
+
+
 
 if TYPE_CHECKING:
     from chc.app.CFile import CFile
@@ -81,7 +77,7 @@ macroconstants = {
 class InterfaceDictionary(object):
     """Function interface constructs."""
 
-    def __init__(self, cfile: "CFile", xnode: ET.Element):
+    def __init__(self, cfile: "CFile", xnode: Optional[ET.Element]):
         self.cfile = cfile
         self.declarations = self.cfile.declarations
         self.dictionary = self.declarations.dictionary
@@ -99,9 +95,15 @@ class InterfaceDictionary(object):
             self.xpredicate_table,
             self.postrequest_table,
             self.postassume_table,
-            self.ds_condition_table
-        ]
-        self.initialize(xnode)
+            self.ds_condition_table]
+        self._objmaps: Dict[str, Callable[[], Mapping[int, IndexedTableValue]]] = {
+            "apiparam": self.get_api_parameter_map,
+            "postassume": self.get_postassume_map,
+            "postrequest": self.get_postrequest_map,
+            "sterm": self.get_s_term_map,
+            "soffset": self.get_s_offset_map,
+            "xpred": self.get_xpredicate_map}
+        self._initialize(xnode)
 
     # ----------------- Retrieve items from dictionary tables ----------------
 
@@ -109,36 +111,51 @@ class InterfaceDictionary(object):
         return ifdregistry.mk_instance(
             self, self.api_parameter_table.retrieve(ix), ApiParameter)
 
+    def get_api_parameter_map(self) -> Dict[int, IndexedTableValue]:
+        return self.api_parameter_table.objectmap(self.get_api_parameter)
+
     def get_s_offset(self, ix: int) -> SOffset:
         return ifdregistry.mk_instance(
             self, self.s_offset_table.retrieve(ix), SOffset)
+
+    def get_s_offset_map(self) -> Dict[int, IndexedTableValue]:
+        return self.s_offset_table.objectmap(self.get_s_offset)
 
     def get_s_term(self, ix: int) -> STerm:
         return ifdregistry.mk_instance(
             self, self.s_term_table.retrieve(ix), STerm)
 
+    def get_s_term_map(self) -> Dict[int, IndexedTableValue]:
+        return self.s_term_table.objectmap(self.get_s_term)
+
     def get_xpredicate(self, ix: int) -> XPredicate:
         return ifdregistry.mk_instance(
             self, self.xpredicate_table.retrieve(ix), XPredicate)
 
+    def get_xpredicate_map(self) -> Dict[int, IndexedTableValue]:
+        return self.xpredicate_table.objectmap(self.get_xpredicate)
+
     def get_postrequest(self, ix: int) -> PostRequest:
-        return ifdregistry.mk_instance(
-            self, self.postrequest_table.retrieve(ix), PostRequest)
+        return PostRequest(self, self.postrequest_table.retrieve(ix))
+
+    def get_postrequest_map(self) -> Dict[int, IndexedTableValue]:
+        return self.postrequest_table.objectmap(self.get_postrequest)
+
+    def get_postassume(self, ix: int) -> PostAssume:
+        return PostAssume(self, self.postassume_table.retrieve(ix))
+
+    def get_postassume_map(self) -> Dict[int, IndexedTableValue]:
+        return self.postassume_table.objectmap(self.get_postassume)
 
     # --------------------- Index items by category --------------------------
 
     def index_api_parameter(self, p: ApiParameter) -> int:
-
-        def f(index: int, tags: List[str], args: List[int]) -> ApiParameter:
-            itv = IT.IndexedTableValue(index, tags, args)
-            return ifdregistry.mk_instance(self, itv, ApiParameter)
-
-        return self.api_parameter_table.add_tags_args(p.tags, p.args, f)
+        return self.mk_api_parameter(p.tags, p.args)
 
     def mk_api_parameter(self, tags: List[str], args: List[int]) -> int:
 
         def f(index: int, tags: List[str], args: List[int]) -> ApiParameter:
-            itv = IT.IndexedTableValue(index, tags, args)
+            itv = IndexedTableValue(index, tags, args)
             return ifdregistry.mk_instance(self, itv, ApiParameter)
 
         return self.api_parameter_table.add_tags_args(tags, args, f)
@@ -150,24 +167,21 @@ class InterfaceDictionary(object):
         return self.get_api_parameter(self.mk_api_parameter(["pg", g], []))
 
     def index_s_offset(self, t: SOffset) -> int:
-
-        def f(index: int, tags: List[str], args: List[int]) -> SOffset:
-            itv = IT.IndexedTableValue(index, tags, args)
-            return ifdregistry.mk_instance(self, itv, SOffset)
-
-        if t.is_field_offset():
-            args = [self.index_s_offset(cast(STArgFieldOffset, t).get_offset())]
-        elif t.is_index_offset():
-            args = [self.index_s_offset(cast(STArgIndexOffset, t).get_offset())]
+        if t.is_field:
+            t = cast(STArgFieldOffset, t)
+            args = [self.index_s_offset(t.offset)]
+        elif t.is_index:
+            t = cast(STArgIndexOffset, t)
+            args = [self.index_s_offset(t.offset)]
         else:
             args = t.args
 
-        return self.s_offset_table.add_tags_args(t.tags, args, f)
+        return self.mk_s_offset(t.tags, args)
 
     def mk_s_offset(self, tags: List[str], args: List[int]) -> int:
 
         def f(index: int, tags: List[str], args: List[int]) -> SOffset:
-            itv = IT.IndexedTableValue(index, tags, args)
+            itv = IndexedTableValue(index, tags, args)
             return ifdregistry.mk_instance(self, itv, SOffset)
 
         return self.s_offset_table.add_tags_args(tags, args, f)
@@ -177,40 +191,40 @@ class InterfaceDictionary(object):
 
     def index_s_term(self, t: STerm) -> int:
 
-        def f(index: int, tags: List[str], args: List[int]) -> STerm:
-            itv = IT.IndexedTableValue(index, tags, args)
-            return ifdregistry.mk_instance(self, itv, STerm)
-
-        if t.is_arg_value():
+        if t.is_arg_value:
+            t = cast(ST.STArgValue, t)
             args = [
-                self.index_api_parameter(cast(ST.STArgValue, t).get_parameter()),
-                self.index_s_offset(cast(ST.STArgValue, t).get_offset()),
+                self.index_api_parameter(t.parameter),
+                self.index_s_offset(t.offset),
             ]
-        elif t.is_index_size():
-            args = [self.index_s_term(cast(ST.STIndexSize, t).get_term())]
-        elif t.is_byte_size():
-            args = [self.index_s_term(cast(ST.STByteSize, t).get_term())]
-        elif t.is_arg_addressed_value():
-            args = [
-                self.index_s_term(cast(ST.STArgAddressedValue, t).get_base_term()),
-                self.index_s_offset(cast(ST.STArgAddressedValue, t).get_offset()),
-            ]
-        elif t.is_arg_null_terminator_pos():
-            args = [self.index_s_term(cast(ST.STArgNullTerminatorPos, t).get_term())]
-        elif t.is_arg_size_of_type():
-            args = [self.index_s_term(cast(ST.STArgSizeOfType, t).get_term())]
-        elif t.is_formatted_output_size():
-            args = [self.index_s_term(cast(ST.STFormattedOutputSize, t).get_term())]
-        elif t.is_arithmetic_expr():
+        elif t.is_index_size:
+            t = cast(ST.STIndexSize, t)
+            args = [self.index_s_term(t.term)]
+        elif t.is_byte_size:
+            t = cast(ST.STByteSize, t)
+            args = [self.index_s_term(t.term)]
+        elif t.is_arg_addressed_value:
+            t = cast(ST.STArgAddressedValue, t)
+            args = [self.index_s_term(t.term), self.index_s_offset(t.offset)]
+        elif t.is_arg_null_terminator_pos:
+            t = cast(ST.STArgNullTerminatorPos, t)
+            args = [self.index_s_term(t.term)]
+        elif t.is_arg_size_of_type:
+            t = cast(ST.STArgSizeOfType, t)
+            args = [self.index_s_term(t.term)]
+        elif t.is_formatted_output_size:
+            t = cast(ST.STFormattedOutputSize, t)
+            args = [self.index_s_term(t.term)]
+        elif t.is_arithmetic_expr:
             t_arith = cast(ST.STArithmeticExpr, t)
             args = [
-                self.index_s_term(t_arith.get_term1()),
-                self.index_s_term(t_arith.get_term2()),
+                self.index_s_term(t_arith.term1),
+                self.index_s_term(t_arith.term2),
             ]
         else:
             args = t.args
 
-        return self.s_term_table.add_tags_args(t.tags, args, f)
+        return self.mk_s_term(t.tags, args)
 
     def index_opt_s_term(self, t: Optional[STerm]) -> int:
         if t is None:
@@ -221,9 +235,8 @@ class InterfaceDictionary(object):
     def mk_s_term(self, tags: List[str], args: List[int]) -> int:
 
         def f(index: int, tags: List[str], args: List[int]) -> STerm:
-            itv = IT.IndexedTableValue(index, tags, args)
+            itv = IndexedTableValue(index, tags, args)
             return ifdregistry.mk_instance(self, itv, STerm)
-            # return s_term_constructors[tags[0]]((self, index, tags, args))
 
         return self.s_term_table.add_tags_args(tags, args, f)
 
@@ -234,7 +247,7 @@ class InterfaceDictionary(object):
     def mk_xpredicate(self, tags: List[str], args: List[int]) -> int:
 
         def f(index: int, tags: List[str], args: List[int]) -> XPredicate:
-            itv = IT.IndexedTableValue(index, tags, args)
+            itv = IndexedTableValue(index, tags, args)
             return ifdregistry.mk_instance(self, itv, XPredicate)
 
         return self.xpredicate_table.add_tags_args(tags, args, f)
@@ -246,89 +259,93 @@ class InterfaceDictionary(object):
     def index_xpredicate(self, p: XPredicate) -> int:
 
         def f(index: int, tags: List[str], args: List[int]) -> XPredicate:
-            itv = IT.IndexedTableValue(index, tags, args)
+            itv = IndexedTableValue(index, tags, args)
             return ifdregistry.mk_instance(self, itv, XPredicate)
 
-        if p.is_new_memory():
-            args = [self.index_s_term(cast(XP.XNewMemory, p).get_term())]
+        if p.is_new_memory:
+            p = cast(XP.XNewMemory, p)
+            args = [self.index_s_term(p.term)]
 
-        elif p.is_heap_address():
-            args = [self.index_s_term(cast(XP.XHeapAddress, p).get_term())]
+        elif p.is_heap_address:
+            p = cast(XP.XHeapAddress, p)
+            args = [self.index_s_term(p.term)]
 
-        elif p.is_global_address():
-            args = [self.index_s_term(cast(XP.XGlobalAddress, p).get_term())]
+        elif p.is_global_address:
+            p = cast(XP.XGlobalAddress, p)
+            args = [self.index_s_term(p.term)]
 
-        elif p.is_stack_address():
+        elif p.is_stack_address:
             args = p.args
 
-        elif p.is_allocation_base():
-            args = [self.index_s_term(cast(XP.XAllocationBase, p).get_term())]
+        elif p.is_allocation_base:
+            p = cast(XP.XAllocationBase, p)
+            args = [self.index_s_term(p.term)]
 
-        elif p.is_block_write():
+        elif p.is_block_write:
             bw = cast(XP.XBlockWrite, p)
             args = [
-                self.index_s_term(bw.get_term()),
-                self.index_s_term(bw.get_length()),
+                self.index_s_term(bw.term),
+                self.index_s_term(bw.length),
             ]
 
-        elif p.is_null():
-            args = [self.index_s_term(cast(XP.XNull, p).get_term())]
+        elif p.is_null:
+            p = cast(XP.XNull, p)
+            args = [self.index_s_term(p.term)]
 
-        elif p.is_not_null():
-            args = [self.index_s_term(cast(XP.XNotNull, p).get_term())]
+        elif p.is_not_null:
+            p = cast(XP.XNotNull, p)
+            args = [self.index_s_term(p.term)]
 
-        elif p.is_not_zero():
-            args = [self.index_s_term(cast(XP.XNotZero, p).get_term())]
+        elif p.is_not_zero:
+            p = cast(XP.XNotZero, p)
+            args = [self.index_s_term(p.term)]
 
-        elif p.is_non_negative():
-            args = [self.index_s_term(cast(XP.XNonNegative, p).get_term())]
+        elif p.is_non_negative:
+            p  = cast(XP.XNonNegative, p)
+            args = [self.index_s_term(p.term)]
 
-        elif p.is_initialized():
-            args = [self.index_s_term(cast(XP.XInitialized, p).get_term())]
+        elif p.is_initialized:
+            p = cast(XP.XInitialized, p)
+            args = [self.index_s_term(p.term)]
 
-        elif p.is_initialized_range():
-            args = [
-                self.index_s_term(cast(XP.XInitializedRange, p).get_buffer()),
-                self.index_s_term(cast(XP.XInitializedRange, p).get_length()),
-            ]
+        elif p.is_initialized_range:
+            p = cast(XP.XInitializedRange, p)
+            args = [self.index_s_term(p.buffer), self.index_s_term(p.length)]
 
-        elif p.is_null_terminated():
-            args = [self.index_s_term(cast(XP.XNullTerminated, p).get_term())]
+        elif p.is_null_terminated:
+            p = cast(XP.XNullTerminated, p)
+            args = [self.index_s_term(p.term)]
 
-        elif p.is_false():
+        elif p.is_false:
             args = p.args
 
-        elif p.is_relational_expr():
+        elif p.is_relational_expr:
             re = cast(XP.XRelationalExpr, p)
-            args = [
-                self.index_s_term(re.get_term1()),
-                self.index_s_term(re.get_term2()),
-            ]
+            args = [self.index_s_term(re.term1), self.index_s_term(re.term2)]
 
-        elif p.is_preserves_all_memory():
+        elif p.is_preserves_all_memory:
             args = p.args
 
-        elif p.is_tainted():
+        elif p.is_tainted:
+            p = cast(XP.XTainted, p)
             args = [
-                self.index_s_term(cast(XP.XTainted, p).get_term()),
-                self.index_opt_s_term(cast(XP.XTainted, p).get_lower_bound()),
-                self.index_opt_s_term(cast(XP.XTainted, p).get_upper_bound()),
+                self.index_s_term(p.term),
+                self.index_opt_s_term(p.lower_bound),
+                self.index_opt_s_term(p.upper_bound),
             ]
 
-        elif p.is_buffer():
+        elif p.is_buffer:
+            p = cast(XP.XBuffer, p)
             args = [
-                self.index_s_term(cast(XP.XBuffer, p).get_buffer()),
-                self.index_s_term(cast(XP.XBuffer, p).get_length()),
-            ]
+                self.index_s_term(p.buffer), self.index_s_term(p.length)]
 
-        elif p.is_rev_buffer():
-            args = [
-                self.index_s_term(cast(XP.XRevBuffer, p).get_buffer()),
-                self.index_s_term(cast(XP.XRevBuffer, p).get_length()),
-            ]
+        elif p.is_rev_buffer:
+            p = cast(XP.XRevBuffer, p)
+            args = [self.index_s_term(p.buffer), self.index_s_term(p.length)]
 
-        elif p.is_controlled_resource():
-            args = [self.index_s_term(cast(XP.XControlledResource, p).get_size())]
+        elif p.is_controlled_resource:
+            p = cast(XP.XControlledResource, p)
+            args = [self.index_s_term(p.size)]
 
         else:
             args = p.args
@@ -604,7 +621,7 @@ class InterfaceDictionary(object):
 
     # ------------------- Initialize dictionary ------------------------------
 
-    def initialize(self, xnode: ET.Element) -> None:
+    def _initialize(self, xnode: Optional[ET.Element]) -> None:
         if xnode is None:
             return
         for t in self.tables:
@@ -615,7 +632,24 @@ class InterfaceDictionary(object):
                 t.reset()
                 t.read_xml(xtable, "n")
 
+    def reinitialize(self, xnode: ET.Element) -> None:
+        self._initialize(xnode)
+
     # ----------------------- Printing ---------------------------------------
+
+    def objectmap_to_string(self, name: str) -> str:
+        if name in self._objmaps:
+            objmap = self._objmaps[name]()
+            lines: List[str] = []
+            if len(objmap) == 0:
+                lines.append("Table is empty")
+            else:
+                for (ix, obj) in objmap.items():
+                    lines.append(str(ix).rjust(3) + "  " + str(obj))
+            return "\n".join(lines)
+        else:
+            raise UF.CHCError(
+                "Name: " + name +  " does not correspond to a table")    
 
     def write_xml(self, node: ET.Element) -> None:
         def f(n: ET.Element, r: Any) -> None:
