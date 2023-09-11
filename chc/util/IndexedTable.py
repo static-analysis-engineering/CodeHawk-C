@@ -83,6 +83,16 @@ class IndexedTableValueMismatchError(UF.CHCError):
             + str(actargcount))
 
 
+def get_attribute_int_list(node: ET.Element, attr: str) -> List[int]:
+    """Return list of integers in attr if attr is present or [] otherwise."""
+
+    xattr = node.get(attr)
+    if xattr is None or xattr == "":
+        return []
+    else:
+        return [int(x) for x in xattr.split(",")]
+
+
 def get_rep(node: ET.Element) -> Tuple[int, List[str], List[int]]:
     tags = node.get("t")
     args = node.get("a")
@@ -362,6 +372,17 @@ class IndexedTable(IndexedTableSuperclass):
             self.indextable[index] = obj
             if index >= self.next:
                 self.next = index + 1
+
+    def objectmap(
+            self,
+            p: Callable[[int], IndexedTableValue]) -> Dict[int, IndexedTableValue]:
+        result: Dict[int, IndexedTableValue] = {}
+
+        def f(ix: int, v: IndexedTableValue) -> None:
+            result[ix] = p(ix)
+
+        self.iter(f)
+        return result
 
     def __str__(self) -> str:
         lines: List[str] = []

@@ -30,6 +30,7 @@ import xml.etree.ElementTree as ET
 import datetime
 import os
 
+
 replace_lst = [
     ("&", "&amp;"),
     ("<", "&lt;"),
@@ -39,10 +40,10 @@ replace_lst = [
 ]
 
 
-def sanitize(str: str) -> str:
+def sanitize(s: str) -> str:
     for (c, r) in replace_lst:
-        str = str.replace(c, r)
-    return str
+        s = s.replace(c, r)
+    return s
 
 
 def attributes_to_pretty(attr: Dict[str, str], indent: int = 0) -> str:
@@ -91,6 +92,7 @@ def get_xml_header(filename: str, info: str) -> ET.Element:
     root = ET.Element("c-analysis")
     tree = ET.ElementTree(root)
     header = ET.Element("header")
+    header.set("origin", "CodeHawk-C")
     header.set("info", info)
     header.set("name", filename)
     header.set("time", str(datetime.datetime.now()))
