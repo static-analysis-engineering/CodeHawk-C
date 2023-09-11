@@ -26,6 +26,37 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Object representation of CIL attrparam sum type
+
+
+cchlib/CCHBasicTypes.attrparam =                  predicate     properties
+                                                  ------------------------------
+| AInt of int                                     is_int        intvalue: int
+| AStr of string                                  is_str        stringvalue: str
+| ACons of string * attrparam list                is_cons       name: str
+                                                                params: List[CAttr]
+| ASizeOf of typ                                  is_sizeof     typ: CTyp  
+| ASizeOfE of attrparam                           is_sizeofe    param: CAttr
+| ASizeOfS of typsig                              is_sizeofs    typsig: CTypsig
+| AAlignOf of typ                                 is_alignof    typ: CTyp
+| AAlignOfE of attrparam                          is_alignofe   param: CAttr
+| AAlignOfS of typsig                             is_alignofs   typsig: CTypsig
+| AUnOp of unop * attrparam                       is_unop       op: str
+                                                                param: CAttr
+| ABinOp of binop * attrparam * attrparam         is_binop      binop: str
+                                                                param1: CAttr
+                                                                param2: CAttr
+| ADot of attrparam * string                      is_dot        suffix: str
+                                                                param: CAttr
+| AStar of attrparam                              is_star       param: CAttr
+| AAddrOf of attrparam                            is_addrof     param: CAttr
+| AIndex of attrparam * attrparam                 is_index      param1: CAttr
+                                                                param2: CAttr
+| AQuestion of attrparam * attrparam * attrparam  is_question   param1: CAttr
+                                                                param2: CAttr
+                                                                param3: CAttr
+
+"""
 
 from typing import List, Tuple, TYPE_CHECKING
 
@@ -36,65 +67,77 @@ import chc.util.IndexedTable as IT
 
 if TYPE_CHECKING:
     from chc.app.CDictionary import CDictionary
-    import chc.app.CTyp as CT
-    import chc.app.CTypsig as CS
+    from chc.app.CTyp import CTyp
+    from chc.app.CTypsig import CTypsig
 
 
-class CAttrBase(CDictionaryRecord):
+class CAttr(CDictionaryRecord):
     """Attribute that comes with a C type."""
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue
-    ) -> None:
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
         CDictionaryRecord.__init__(self, cd, ixval)
 
+    @property
     def is_int(self) -> bool:
         return False
 
+    @property
     def is_str(self) -> bool:
         return False
 
+    @property
     def is_cons(self) -> bool:
         return False
 
+    @property
     def is_sizeof(self) -> bool:
         return False
 
+    @property
     def is_sizeofe(self) -> bool:
         return False
 
+    @property
     def is_sizeofs(self) -> bool:
         return False
 
+    @property
     def is_alignof(self) -> bool:
         return False
 
+    @property
     def is_alignofe(self) -> bool:
         return False
 
+    @property
     def is_alignofs(self) -> bool:
         return False
 
+    @property
     def is_unop(self) -> bool:
         return False
 
+    @property
     def is_binop(self) -> bool:
         return False
 
+    @property
     def is_dot(self) -> bool:
         return False
 
+    @property
     def is_star(self) -> bool:
         return False
 
+    @property
     def is_addrof(self) -> bool:
         return False
 
+    @property
     def is_index(self) -> bool:
         return False
 
+    @property
     def is_question(self) -> bool:
         return False
 
@@ -102,394 +145,439 @@ class CAttrBase(CDictionaryRecord):
         return "attrparam:" + self.tags[0]
 
 
-@cdregistry.register_tag("aint", CAttrBase)
-class CAttrInt(CAttrBase):
+@cdregistry.register_tag("aint", CAttr)
+class CAttrInt(CAttr):
+    """Integer attribute.
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CAttrBase.__init__(self, cd, ixval)
+    args[0]: integer value
+    """
 
-    def get_int(self) -> int:
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CAttr.__init__(self, cd, ixval)
+
+    @property
+    def intvalue(self) -> int:
         return int(self.args[0])
 
+    @property
     def is_int(self) -> bool:
         return True
 
     def __str__(self) -> str:
-        return "aint(" + str(self.get_int()) + ")"
+        return "aint(" + str(self.intvalue) + ")"
 
 
-@cdregistry.register_tag("astr", CAttrBase)
-class CAttrStr(CAttrBase):
+@cdregistry.register_tag("astr", CAttr)
+class CAttrStr(CAttr):
+    """String attribute.
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CAttrBase.__init__(self, cd, ixval)
+    args[0]: index in string table of string attribute
+    """
 
-    def get_str(self) -> int:
-        return self.args[0]
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CAttr.__init__(self, cd, ixval)
 
+    @property
+    def stringvalue(self) -> str:
+        return self.cd.get_string(self.args[0])
+
+    @property
     def is_str(self) -> bool:
         return True
 
     def __str__(self) -> str:
-        return "astr(" + str(self.get_str()) + ")"
+        return "astr(" + str(self.stringvalue) + ")"
 
 
-@cdregistry.register_tag("acons", CAttrBase)
-class CAttrCons(CAttrBase):
+@cdregistry.register_tag("acons", CAttr)
+class CAttrCons(CAttr):
+    """Constructed attributes.
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CAttrBase.__init__(self, cd, ixval)
+    tags[1]: name
+    args[0..]: indices of attribute parameters in cdictionary.
+    """
 
-    def get_cons(self) -> str:
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CAttr.__init__(self, cd, ixval)
+
+    @property
+    def name(self) -> str:
         return self.tags[1]
 
-    def get_params(self) -> List[CAttrBase]:
+    @property
+    def params(self) -> List[CAttr]:
         return [self.cd.get_attrparam(int(i)) for i in self.args]
 
+    @property
     def is_cons(self) -> bool:
         return True
 
     def __str__(self) -> str:
-        return "acons(" + str(self.get_cons()) + ")"
+        return "acons(" + str(self.name) + ")"
 
 
-@cdregistry.register_tag("asizeof", CAttrBase)
-class CAttrSizeOf(CAttrBase):
+@cdregistry.register_tag("asizeof", CAttr)
+class CAttrSizeOf(CAttr):
+    """Attribute that describes the size of a type.
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CAttrBase.__init__(self, cd, ixval)
+    args[0]: index of target type in cdictionary
+    """
 
-    def get_type(self) -> 'CT.CTypBase':
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CAttr.__init__(self, cd, ixval)
+
+    @property
+    def typ(self) -> "CTyp":
         return self.cd.get_typ(int(self.args[0]))
 
+    @property
     def is_sizeof(self) -> bool:
         return True
 
     def __str__(self) -> str:
-        return "asizeof(" + str(self.get_type()) + ")"
+        return "asizeof(" + str(self.typ) + ")"
 
 
-@cdregistry.register_tag("asizeofe", CAttrBase)
-class CAttrSizeOfE(CAttrBase):
+@cdregistry.register_tag("asizeofe", CAttr)
+class CAttrSizeOfE(CAttr):
+    """Size of an attribute parameter.
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CAttrBase.__init__(self, cd, ixval)
+    args[0]: index of argument parameter in cdictionary
+    """
 
-    def get_param(self) -> CAttrBase:
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CAttr.__init__(self, cd, ixval)
+
+    @property
+    def param(self) -> CAttr:
         return self.cd.get_attrparam(int(self.args[0]))
 
+    @property
     def is_sizeofe(self) -> bool:
         return True
 
     def __str__(self) -> str:
-        return "asizeofe(" + str(self.get_param()) + ")"
+        return "asizeofe(" + str(self.param) + ")"
 
 
-@cdregistry.register_tag("asizeofs", CAttrBase)
-class CAttrSizeOfS(CAttrBase):
+@cdregistry.register_tag("asizeofs", CAttr)
+class CAttrSizeOfS(CAttr):
+    """Replacement ASizeOf in type signatures.
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CAttrBase.__init__(self, cd, ixval)
+    args[0]: index of target typsig in cdictionary
+    """
 
-    def get_typsig(self) -> "CS.CTypsigTSBase":
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CAttr.__init__(self, cd, ixval)
+
+    @property
+    def typsig(self) -> "CTypsig":
         return self.cd.get_typsig(int(self.args[0]))
 
+    @property
     def is_sizeofs(self) -> bool:
         return True
 
     def __str__(self) -> str:
-        return "asizeofs(" + str(self.get_typsig()) + ")"
+        return "asizeofs(" + str(self.typsig) + ")"
 
 
-@cdregistry.register_tag("aalignof", CAttrBase)
-class CAttrAlignOf(CAttrBase):
+@cdregistry.register_tag("aalignof", CAttr)
+class CAttrAlignOf(CAttr):
+    """Alignment of a type.
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CAttrBase.__init__(self, cd, ixval)
+    args[0]: index of target type in cdictionary
+    """
 
-    def get_type(self) -> "CT.CTypBase":
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CAttr.__init__(self, cd, ixval)
+
+    @property
+    def typ(self) -> "CTyp":
         return self.cd.get_typ(int(self.args[0]))
 
+    @property
     def is_alignof(self) -> bool:
         return True
 
     def __str__(self) -> str:
-        return "aalignof(" + str(self.get_type()) + ")"
+        return "aalignof(" + str(self.typ) + ")"
 
 
-@cdregistry.register_tag("aalignofe", CAttrBase)
-class CAttrAlignOfE(CAttrBase):
+@cdregistry.register_tag("aalignofe", CAttr)
+class CAttrAlignOfE(CAttr):
+    """Alignment of an attribute parameter.
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CAttrBase.__init__(self, cd, ixval)
+    args[0]: index of attribute parameter in cdictionary
+    """
 
-    def get_param(self) -> CAttrBase:
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CAttr.__init__(self, cd, ixval)
+
+    @property
+    def param(self) -> CAttr:
         return self.cd.get_attrparam(int(self.args[0]))
 
+    @property
     def is_alignofe(self) -> bool:
         return True
 
     def __str__(self) -> str:
-        return "aalignofe(" + str(self.get_param()) + ")"
+        return "aalignofe(" + str(self.param) + ")"
 
 
-@cdregistry.register_tag("aalignofs", CAttrBase)
-class CAttrAlignOfS(CAttrBase):
+@cdregistry.register_tag("aalignofs", CAttr)
+class CAttrAlignOfS(CAttr):
+    """Alignment of a type signature.
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CAttrBase.__init__(self, cd, ixval)
+    args[0]: target type signature
+    """
 
-    def get_typsig(self) -> 'CS.CTypsigTSBase':
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CAttr.__init__(self, cd, ixval)
+
+    @property
+    def typsig(self) -> "CTypsig":
         return self.cd.get_typsig(int(self.args[0]))
 
+    @property
     def is_alignofs(self) -> bool:
         return True
 
     def __str__(self) -> str:
-        return "aalignofs(" + str(self.get_typsig()) + ")"
+        return "aalignofs(" + str(self.typsig) + ")"
 
 
-@cdregistry.register_tag("aunop", CAttrBase)
-class CAttrUnOp(CAttrBase):
+@cdregistry.register_tag("aunop", CAttr)
+class CAttrUnOp(CAttr):
+    """Unary attribute parameter operation.
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CAttrBase.__init__(self, cd, ixval)
+    tags[1]: operator
+    args[0]: index of attribute parameter in cdictionary
+    """
 
-    def get_op(self) -> str:
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CAttr.__init__(self, cd, ixval)
+
+    @property
+    def op(self) -> str:
         return self.tags[1]
 
-    def get_param(self) -> CAttrBase:
+    @property
+    def param(self) -> CAttr:
         return self.cd.get_attrparam(int(self.args[0]))
 
+    @property
     def is_unop(self) -> bool:
         return True
 
     def __str__(self) -> str:
-        return "aunop(" + self.get_op() + "," + str(self.get_param()) + ")"
+        return "aunop(" + self.op + "," + str(self.param) + ")"
 
 
-@cdregistry.register_tag("abinop", CAttrBase)
-class CAttrBinOp(CAttrBase):
+@cdregistry.register_tag("abinop", CAttr)
+class CAttrBinOp(CAttr):
+    """Binary attribute parameter operation.
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CAttrBase.__init__(self, cd, ixval)
+    tags[1]: operator
+    args[0]: index of first attribute parameter in cdictionary
+    args[1]: index of second attribute parameter in cdictionary
+    """
 
-    def get_op(self) -> str:
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CAttr.__init__(self, cd, ixval)
+
+    @property
+    def op(self) -> str:
         return self.tags[1]
 
-    def get_param1(self) -> CAttrBase:
+    @property
+    def param1(self) -> CAttr:
         return self.cd.get_attrparam(int(self.args[0]))
 
-    def get_param2(self) -> CAttrBase:
+    @property
+    def param2(self) -> CAttr:
         return self.cd.get_attrparam(int(self.args[1]))
 
+    @property
     def is_binop(self) -> bool:
         return True
 
     def __str__(self) -> str:
         return (
             "abinop("
-            + str(self.get_param1())
+            + str(self.param1)
             + " "
-            + self.get_op()
+            + self.op
             + " "
-            + str(self.get_param2())
+            + str(self.param2)
             + ")"
         )
 
 
-@cdregistry.register_tag("adot", CAttrBase)
-class CAttrDot(CAttrBase):
+@cdregistry.register_tag("adot", CAttr)
+class CAttrDot(CAttr):
+    """Dot operator on attributes.
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CAttrBase.__init__(self, cd, ixval)
+    tags[1]: string suffix
+    args[0]: index of attribute parameter in cdictionary
+    """
 
-    def get_name(self) -> str:
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CAttr.__init__(self, cd, ixval)
+
+    @property
+    def suffix(self) -> str:
         return self.tags[1]
 
-    def get_param(self) -> CAttrBase:
+    @property
+    def param(self) -> CAttr:
         return self.cd.get_attrparam(int(self.args[0]))
 
+    @property
     def is_dot(self) -> bool:
         return True
 
     def __str__(self) -> str:
-        return "adot(" + self.get_name() + "," + str(self.get_param()) + ")"
+        return "adot(" + str(self.param) + "." + self.suffix + ")"
 
 
-@cdregistry.register_tag("astr", CAttrBase)
-class CAttrStar(CAttrBase):
+@cdregistry.register_tag("astr", CAttr)
+class CAttrStar(CAttr):
+    """Star operation on attribute.
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CAttrBase.__init__(self, cd, ixval)
+    args[0]: index of attribute parameter in cdictionary
+    """
 
-    def get_param(self) -> CAttrBase:
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CAttr.__init__(self, cd, ixval)
+
+    @property
+    def param(self) -> CAttr:
         return self.cd.get_attrparam(int(self.args[0]))
 
+    @property
     def is_star(self) -> bool:
         return True
 
     def __str__(self) -> str:
-        return "astar(" + str(self.get_param()) + ")"
+        return "astar(" + str(self.param) + ")"
 
 
-@cdregistry.register_tag("aaddrof", CAttrBase)
-class CAttrAddrOf(CAttrBase):
+@cdregistry.register_tag("aaddrof", CAttr)
+class CAttrAddrOf(CAttr):
+    """Addressof operator on attribute.
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CAttrBase.__init__(self, cd, ixval)
+    args[0]: index of attribute parameter in cdictionary
+    """
 
-    def get_param(self) -> CAttrBase:
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CAttr.__init__(self, cd, ixval)
+
+    @property
+    def param(self) -> CAttr:
         return self.cd.get_attrparam(int(self.args[0]))
 
+    @property
     def is_addrof(self) -> bool:
         return True
 
     def __str__(self) -> str:
-        return "aaddrof(" + str(self.get_param()) + ")"
+        return "aaddrof(" + str(self.param) + ")"
 
 
-@cdregistry.register_tag("aindex", CAttrBase)
-class CAttrIndex(CAttrBase):
+@cdregistry.register_tag("aindex", CAttr)
+class CAttrIndex(CAttr):
+    """Index operation on attributes
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CAttrBase.__init__(self, cd, ixval)
+    args[0]: index of first attribute parameter in cdictionary
+    args[1]: index of second attribute parameter in cdictionary
+    """
 
-    def get_param1(self) -> CAttrBase:
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CAttr.__init__(self, cd, ixval)
+
+    @property
+    def param1(self) -> CAttr:
         return self.cd.get_attrparam(int(self.args[0]))
 
-    def get_param2(self) -> CAttrBase:
+    @property
+    def param2(self) -> CAttr:
         return self.cd.get_attrparam(int(self.args[1]))
 
+    @property
     def is_index(self) -> bool:
         return True
 
     def __str__(self) -> str:
-        return "aindex(" + str(self.get_param1()) + "," + str(self.get_param2()) + ")"
+        return "aindex(" + str(self.param1) + "," + str(self.param2) + ")"
 
 
-@cdregistry.register_tag("aquestion", CAttrBase)
-class CAttrQuestion(CAttrBase):
+@cdregistry.register_tag("aquestion", CAttr)
+class CAttrQuestion(CAttr):
+    """Question operator on attributes
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CAttrBase.__init__(self, cd, ixval)
+    args[0]: index of first attribute paramter in cdictionary
+    args[1]: index of second attribute parameter in cdictionary
+    args[2]: index of third attribute parameter in cdictionary
+    """
 
-    def get_param1(self) -> CAttrBase:
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CAttr.__init__(self, cd, ixval)
+
+    @property
+    def param1(self) -> CAttr:
         return self.cd.get_attrparam(int(self.args[0]))
 
-    def get_param2(self) -> CAttrBase:
+    @property
+    def param2(self) -> CAttr:
         return self.cd.get_attrparam(int(self.args[1]))
 
-    def get_param3(self) -> CAttrBase:
+    @property
+    def param3(self) -> CAttr:
         return self.cd.get_attrparam(int(self.args[2]))
 
     def __str__(self) -> str:
         return (
             "aquestion("
-            + str(self.get_param1())
+            + str(self.param1)
             + ","
-            + str(self.get_param2())
+            + str(self.param2)
             + ","
-            + str(self.get_param3())
+            + str(self.param3)
             + ")"
         )
 
 
 class CAttribute(CDictionaryRecord):
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
+
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
         CDictionaryRecord.__init__(self, cd, ixval)
 
-    def get_name(self) -> str:
+    @property
+    def name(self) -> str:
         return self.tags[0]
 
-    def get_params(self) -> List[CAttrBase]:
+    @property
+    def params(self) -> List[CAttr]:
         return [self.cd.get_attrparam(int(i)) for i in self.args]
 
     def __str__(self) -> str:
-        return self.get_name() + ": " + ",".join([str(p) for p in self.get_params()])
+        return self.name + ": " + ",".join([str(p) for p in self.params])
 
 
 class CAttributes(CDictionaryRecord):
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
+
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
         CDictionaryRecord.__init__(self, cd, ixval)
 
-    def get_attributes(self) -> List[CAttribute]:
+    @property
+    def attributes(self) -> List[CAttribute]:
         return [self.cd.get_attribute(int(i)) for i in self.args]
 
+    @property
     def length(self) -> int:
-        return len(self.get_attributes())
+        return len(self.attributes)
 
     def __str__(self) -> str:
-        return ",".join([str(p) for p in self.get_attributes()])
+        return ",".join([str(p) for p in self.attributes])

@@ -35,8 +35,16 @@ class CGVarDecl(object):
     """Global variable declaration within a file."""
 
     def __init__(self, varinfo: "CVarInfo", location: "CLocation") -> None:
-        self.varinfo = varinfo
-        self.location = location
+        self._varinfo = varinfo
+        self._location = location
+
+    @property
+    def varinfo(self) -> "CVarInfo":
+        return self._varinfo
+
+    @property
+    def location(self) -> "CLocation":
+        return self._location
 
     def __str__(self) -> str:
         return str(self.varinfo)

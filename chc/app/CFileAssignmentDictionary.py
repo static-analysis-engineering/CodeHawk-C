@@ -28,19 +28,20 @@
 # ------------------------------------------------------------------------------
 import xml.etree.ElementTree as ET
 
-from typing import Optional, TYPE_CHECKING
+from typing import List, Optional, TYPE_CHECKING
 
 import chc.util.fileutil as UF
 import chc.util.IndexedTable as IT
 
-import chc.app.GlobalAssignment as GA
+from chc.app.AssignDictionaryRecord import AssignDictionaryRecord, adregistry
+from chc.app.CFileAssignment import CFileAssignment
 
 if TYPE_CHECKING:
     from chc.app.CFile import CFile
     from chc.app.CFileDeclarations import CFileDeclarations
     from chc.app.CFileDictionary import CFileDictionary
 
-
+'''
 assignment_constructors = {
     "init": lambda x: GA.InitAssignment(*x),
     "g": lambda x: GA.GlobalAssignment(*x),
@@ -50,19 +51,20 @@ assignment_constructors = {
     "f": lambda x: GA.FieldAssignment(*x),
     "u": lambda x: GA.UnknownAssignment(*x),
 }
+'''
 
 class CFileAssignmentDictionary(object):
     """Dictionary that encodes assignments to global and static variables and fields."""
 
-    def __init__(self, cfile: "CFile", xnode: Optional[ET.Element]):
+    def __init__(self, cfile: "CFile", xnode: Optional[ET.Element]) -> None:
         self._cfile = cfile
         self.assignment_table = IT.IndexedTable("assignment-table")
         self.function_name_table = IT.IndexedTable("function-name-table")
         self.tables = [
-            (self.function_name_table, self._read_xml_function_name_table),
-            (self.assignment_table, self._read_xml_assignment_table),
+            self.function_name_table,
+            self.assignment_table
         ]
-        self.initialize(xnode)
+        self._initialize(xnode)
 
     @property
     def cfile(self) -> "CFile":
@@ -76,32 +78,49 @@ class CFileAssignmentDictionary(object):
     def dictionary(self) -> "CFileDictionary":
         return self.cfile.dictionary
 
-    def get_function_name(self, ix):
-        return self.function_name_table.retrieve(ix)
+    # --------------- Retrieve items from dictionary tables --------------------
 
-    def get_assignment(self, ix):
-        return self.assignment_table.retrieve(ix)
+    def get_function_name(self, ix: int) -> str:
+        return (self.function_name_table.retrieve(ix)).tags[0]
 
-    def mk_assignment_index(self, tags, args):
-        def f(index, key):
-            return assignment_constructors[tags[0]]((self, index, tags, args))
+    def get_assignment(self, ix: int) -> CFileAssignment:
+        return adregistry.mk_instance(
+            self, self.assignment_table.retrieve(ix), CFileAssignment)
 
-        return self.assignment_table.add(IT.get_key(tags, args), f)
+    # ------------------- Index items ------------------------------------------
 
-    def initialize(self, xnode: Optional[ET.Element]) -> None:
+    def mk_assignment_index(self, tags: List[str], args: List[int]) -> int:
+
+        def f(index: int, tags: List[str], args: List[int]) -> CFileAssignment:
+            itv = IT.IndexedTableValue(index, tags, args)
+            return adregistry.mk_instance(self, itv, CFileAssignment)
+            # return assignment_constructors[tags[0]]((self, index, tags, args))
+
+        return self.assignment_table.add_tags_args(tags, args, f)
+
+    # ----------------------- Initialize dictionary ----------------------------
+
+    def _initialize(self, xnode: Optional[ET.Element]) -> None:
         if self.assignment_table.size() > 0:
             return
         if xnode is None:
             return
-        for (t, f) in self.tables:
-            f(xnode.find(t.name))
+        for t in self.tables:
+            xtable = xnode.find(t.name)
+            if xtable is None:
+                raise UF.CHCError(
+                    "Assign dictionary table " + t.name + " not found")
+            else:
+                t.reset()
+                t.read_xml(xtable, "n")
 
-    def __str__(self):
-        lines = []
-        for (t, _) in self.tables:
+    def __str__(self) -> str:
+        lines: List[str] = []
+        for t in self.tables:
             lines.append(str(t))
         return "\n".join(lines)
 
+    '''
     def _read_xml_function_name_table(self, txnode):
         def get_value(node):
             rep = IT.get_rep(node)
@@ -118,3 +137,4 @@ class CFileAssignmentDictionary(object):
             return assignment_constructors[tag](args)
 
         self.assignment_table.read_xml(txnode, "n", get_value)
+    '''

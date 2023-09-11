@@ -35,7 +35,8 @@ from chc.app.CDictionary import CDictionary
 if TYPE_CHECKING:
     from chc.app.CFieldInfo import CFieldInfo
     from chc.app.CFile import CFile
-    from chc.app.CInitInfo import CInitInfoBase, COffsetInitInfo
+    from chc.app.CInitInfo import CInitInfo, COffsetInitInfo
+    from chc.app.CLocation import CLocation
 
 
 class CDeclarations(ABC):
@@ -54,7 +55,7 @@ class CDeclarations(ABC):
         ...
 
     @abstractmethod
-    def get_initinfo(self, ix: int) -> "CInitInfoBase":
+    def get_initinfo(self, ix: int) -> "CInitInfo":
         ...
 
     @abstractmethod
@@ -67,4 +68,8 @@ class CDeclarations(ABC):
 
     @abstractmethod
     def is_struct(self, ckey: int) -> bool:
+        ...
+
+    @abstractmethod
+    def get_location(self, ix: int) -> "CLocation":
         ...

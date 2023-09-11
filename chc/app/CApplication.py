@@ -26,7 +26,63 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Main access point to the analysis of a C application.
 
+C Applications are analyzed by individual compilation unit (cfile called here)
+by the OCaml analyzer in multiple rounds. After each round, the results of those 
+analyses are integrated by the python interface. This integration includes the
+generation of supporting proof obligations that reach across compilation units,
+and making available return value assumptions, by request. These new proof
+obligations and assumptions are added to the results files to be consumed by the
+OCaml analyzer. This process continues until stabilization, or when a specified
+maximum number of rounds is reached.
+
+In the following descriptions we use the abbreviations:
+ppo    primary proof obligation
+spo    supporting proof obligation
+
+The various intermediate files passed between the OCaml analyzer and python are
+the following.
+
+- at the file level:
+  * <filename>_cfile.xml    global declarations, created by cchcil upon parsing
+                            the C source code; never modified
+  * <filename>_cdict.xml    dictionary of types and expressions. Originally 
+                            created by cchcil upon parsing the C source code,
+                            but updated by cchlib in subsequent rounds
+  * <filename>_ctxt.xml     dictionary of contexts used in expressing locations
+                            created and updated by cchcil
+  * <filename>_prd.xml      dictionary of predicates used in expressing proof
+                            obligations, created and updated by cchpre
+  * <filename>_ixf.xml      dictionary of interface predicates used in
+                            expressing assumptions and guarantees external to
+                            functions
+  * <filename>_cgl.xml      dictionary of assignments to global variables
+  * <filename>_gxrefs.xml   association table that relates file identifiers of
+                            variables (varinfo's) and structs (compinfo's) to
+                            global identifiers, to facilitate communication and
+                            exchange of assumptions/guarantees between different
+                            files.
+
+- at the function level (all prefixed with <filename_functionname>:
+  * _cfun.xml               function semantics, as produced by CIL, created by
+                            cchcil upon parsing the C source code, never
+                            modified
+  * _ppo.xml                primary proof obligations for the function, generated
+                            once by cchpre, not updated afterwards
+  * _spo.xml                supporting proof obligations for the function,
+                            primarily generated and updated by the python side
+  * _pod.xml                dictionary for assumptions, ppos, and spos, initially
+                            created by cchpre, and updated by both cchpre and the
+                            python side as new spos are added in each round.
+  * _api.xml                external assumptions and guarantees from other functions,
+                            global variables, and possibly user-provided contracts.
+  * _vars.xml               variable and expression dictionary containing all 
+                            variables and expressions used in the invariants
+  * _invs.xml               invariant dictionary containing all location invariants
+                            (with locations specified by context)
+
+"""
 from typing import Any, Callable, Dict, Iterable, List, Optional, TYPE_CHECKING
 import os
 import logging
@@ -66,12 +122,12 @@ class CApplication(object):
         self.singlefile = not (cfilename is None)
         self.path = UF.get_chc_artifacts_path(path)
         self.srcpath = os.path.join(path, "sourcefiles") if srcpath is None else srcpath
-        self.contractpath = contractpath
+        self._contractpath = contractpath
         self.globalcontract = None
         self.excludefiles = excludefiles  # files analyzed: all excluding these
         # files analyzed (if not None): these
         self.includefiles = includefiles
-        if self.contractpath is not None:
+        if self._contractpath is not None:
             self.globalcontract = CGlobalContract(self)
         self.candidate_contractpath = candidate_contractpath
         self.filenames: Dict[int, str] = {}  # file index -> filename
@@ -82,6 +138,15 @@ class CApplication(object):
         self._dictionary: Optional[CGlobalDictionary] = None
         self._declarations: Optional[CGlobalDeclarations] = None
         self._initialize(cfilename)
+
+    @property
+    def contractpath(self) -> str:
+        if self._contractpath is not None:
+            return self._contractpath
+        raise UF.CHCError("Contract path was not provided by the user")
+
+    def has_contractpath(self) -> bool:
+        return self._contractpath is not None
 
     @property
     def dictionary(self) -> CGlobalDictionary:
@@ -213,7 +278,7 @@ class CApplication(object):
 
         self.iter_files_parallel(g, maxprocesses)
 
-    def resolve_vid_function(self, fid, vid):
+    def resolve_vid_function(self, fid: int, vid: int) -> Optional["CFunction"]:
         msg = "resolve-vid-function(" + str(fid) + "," + str(vid) + "):"
         result = self.indexmanager.resolve_vid(fid, vid)
         if result is not None:
@@ -229,6 +294,7 @@ class CApplication(object):
             logging.warning(msg + "Target fid " + str(tgtfid) + " not found")
             return None
         logging.warning(msg + "Unable to resolve")
+        return None
 
     def convert_vid(self, fidsrc, vid, fidtgt):
         return self.indexmanager.convert_vid(fidsrc, vid, fidtgt)
@@ -516,7 +582,7 @@ class CApplication(object):
 
         def collectcallers(fn: "CFunction") -> None:
             fid = fn.cfile.index
-            vid = fn.svar.get_vid()
+            vid = fn.svar.vid
 
             def g(cs):
                 if cs.callee is None:

@@ -99,8 +99,12 @@ class CfgContext(CContextDictionaryRecord):
     def nodes(self) -> List[CContextNode]:
         return [self.cxd.get_node(x) for x in self.args]
 
+    @property
+    def reverse_repr(self) -> str:
+        return "_".join(str(x) for x in reversed(self.nodes))
+
     def __str__(self) -> str:
-        return "cfg:" + "_".join(str(x) for x in self.nodes)
+        return "_".join(str(x) for x in self.nodes)
 
 
 class ExpContext(CContextDictionaryRecord):
@@ -119,7 +123,7 @@ class ExpContext(CContextDictionaryRecord):
         return [self.cxd.get_node(x) for x in self.args]
 
     def __str__(self) -> str:
-        return "exp:" + "_".join(str(x) for x in self.nodes)
+        return "_".join(str(x) for x in self.nodes)
 
 
 class ProgramContext(CContextDictionaryRecord):
@@ -142,5 +146,5 @@ class ProgramContext(CContextDictionaryRecord):
         return self.cxd.get_exp_context(self.args[1])
 
     def __str__(self) -> str:
-        return "(" + str(self.cfg_context) + ", " + str(self.exp_context) + ")"
+        return "(" + str(self.cfg_context) + "," + str(self.exp_context) + ")"
 

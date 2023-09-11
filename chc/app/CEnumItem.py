@@ -34,12 +34,18 @@ from chc.app.CDictionaryRecord import CDeclarationsRecord
 import chc.util.IndexedTable as IT
 
 if TYPE_CHECKING:
-    from chc.app.CExp import CExpBase
+    from chc.app.CExp import CExp
     from chc.app.CFileDeclarations import CFileDeclarations
     from chc.app.CLocation import CLocation
 
 
 class CEnumItem(CDeclarationsRecord):
+    """Enum Item.
+
+    tags[0]: name of the item
+    args[0]: index of expression associated with the item in cdictionary
+    args[1]: index of definition location in the declarations
+    """
     def __init__(self, decls: "CFileDeclarations", ixval: IT.IndexedTableValue):
         CDeclarationsRecord.__init__(self, decls, ixval)
 
@@ -48,7 +54,7 @@ class CEnumItem(CDeclarationsRecord):
         return self.tags[0]
 
     @property
-    def exp(self) -> "CExpBase":
+    def exp(self) -> "CExp":
         return self.dictionary.get_exp(self.args[0])
 
     @property

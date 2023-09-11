@@ -33,6 +33,7 @@ from typing import Any, Callable, Dict, Iterable, Optional, Tuple, TYPE_CHECKING
 import chc.util.fileutil as UF
 import chc.util.xmlutil as UX
 
+from chc.app.CContextDictionary import CContextDictionary
 from chc.app.CFunction import CFunction
 from chc.app.CGCompTag import CGCompTag
 from chc.app.CGEnumTag import CGEnumTag
@@ -44,9 +45,10 @@ from chc.app.CGVarDef import CGVarDef
 from chc.api.InterfaceDictionary import InterfaceDictionary
 from chc.api.CFileContracts import CFileContracts
 from chc.api.CFileCandidateContracts import CFileCandidateContracts
+
 from chc.app.CGXrefs import CGXrefs
 from chc.source.CSrcFile import CSrcFile
-from chc.app.CContextTable import CContextTable
+from chc.app.CContextDictionary import CContextDictionary
 from chc.app.CFileDictionary import CFileDictionary
 from chc.app.CFileDeclarations import CFileDeclarations
 from chc.app.CFileAssignmentDictionary import CFileAssignmentDictionary
@@ -95,7 +97,7 @@ class CFile(object):
         self.name = found_name
         self._declarations: Optional[CFileDeclarations] = None
         self._dictionary: Optional[CFileDictionary] = None
-        self.contexttable = CContextTable(self)
+        self._contextdictionary: Optional[CContextDictionary] = None
         self._predicatedictionary: Optional[CFilePredicateDictionary] = None
         self._interfacedictionary: Optional[InterfaceDictionary] = None
         self._assigndictionary: Optional[CFileAssignmentDictionary] = None
@@ -105,7 +107,7 @@ class CFile(object):
         self.sourcefile = None  # CSrcFile
         self.contracts = None
         self.candidate_contracts = None
-        if not (self.capp.contractpath is None) and UF.has_contracts(
+        if self.capp.has_contractpath() and UF.has_contracts(
             self.capp.contractpath, self.name
         ):
             self.contracts = CFileContracts(self, self.capp.contractpath)
@@ -137,6 +139,21 @@ class CFile(object):
             self._dictionary = CFileDictionary(self, xdict)
         return self._dictionary
 
+    def reset_dictionary(self) -> None:
+        self._dictionary = None
+
+    @property
+    def contextdictionary(self) -> CContextDictionary:
+        if self._contextdictionary is None:
+            xnode = UF.get_cfile_contexttable_xnode(self.capp.path, self.name)
+            if xnode is None:
+                raise UF.CHCError("Context table file not found")
+            self._contextdictionary = CContextDictionary(self, xnode)
+        return self._contextdictionary
+
+    def reset_contextdictionary(self) -> None:
+        self._contextdictionary = None
+
     @property
     def declarations(self) -> CFileDeclarations:
         d = self.dictionary
@@ -147,17 +164,26 @@ class CFile(object):
             xdecls = xnode.find("c-declarations")
             if xdecls is None:
                 raise UF.CHCError("File declarations node not found")
-            self._declarations = CFileDeclarations(self, xdecls)
+            xdefs = UF.get_cfile_xnode(self.capp.path, self.name)
+            if xdefs is None:
+                raise UF.CHCError("File with definitions not found")
+            self._declarations = CFileDeclarations(self, xdecls, xdefs)
         return self._declarations
+
+    def reset_declarations(self) -> None:
+        self._declarations = None
 
     @property
     def interfacedictionary(self) -> InterfaceDictionary:
         if self._interfacedictionary is None:
             xnode = UF.get_cfile_interface_dictionary_xnode(self.capp.path, self.name)
-            if xnode is None:
-                raise UF.CHCError("Interface dictionary file not found")
+            # if xnode is None:
+            #    raise UF.CHCError("Interface dictionary file not found")
             self._interfacedictionary = InterfaceDictionary(self, xnode)
         return self._interfacedictionary
+
+    def reset_interfacedictionary(self) -> None:
+        self._interfacedictionary = None
 
     @property
     def assigndictionary(self) -> CFileAssignmentDictionary:
@@ -173,6 +199,9 @@ class CFile(object):
             self._predicatedictionary = CFilePredicateDictionary(self, xnode)
         return self._predicatedictionary
 
+    def reset_predicatedictionary(self) -> None:
+        self._predicatedictionary = None
+
     def collect_post_assumes(self) -> None:
         """For all call sites collect postconditions from callee's contracts and add as assume."""
 
@@ -182,8 +211,8 @@ class CFile(object):
         self.save_declarations()
 
     def save_candidate_contracts(self) -> None:
-        if self.contracts is not None:
-            self.contracts.save_mathml_contract()
+        if self.candidate_contracts is not None:
+            self.candidate_contracts.save_mathml_contract()
         self.save_predicate_dictionary()
         self.save_interface_dictionary()
 
@@ -200,7 +229,7 @@ class CFile(object):
 
     def get_function_contract(self, name):
         if not (self.contracts is None):
-            return self.contracts.get_function_contract(name)
+            return self.contracts.function_contract(name)
 
     def get_max_functionname_length(self) -> int:
         if len(self.functionnames) > 0:
@@ -214,6 +243,7 @@ class CFile(object):
             return self.sourcefile.get_line(n)
 
     def reinitialize_tables(self) -> None:
+        '''
         xnode = UF.get_cfile_dictionary_xnode(self.capp.path, self.name)
         if xnode is None:
             raise UF.CHCError("File dictionary file not found")
@@ -231,7 +261,12 @@ class CFile(object):
         xnode = UF.get_cfile_interface_dictionary_xnode(self.capp.path, self.name)
         if xnode is None:
             raise UF.CHCError("Interface dictionary file not found")
-        self.interfacedictionary.initialize(xnode)
+        self.interfacedictionary.reinitialize(xnode)
+        '''
+        self.reset_dictionary()
+        self.reset_declarations()
+        self.reset_predicatedictionary()
+        self.reset_interfacedictionary()
         self.iter_functions(lambda f: f.reinitialize_tables())
 
     def is_struct(self, ckey):
@@ -278,8 +313,9 @@ class CFile(object):
         for fn in self.get_functions():
             f(fn)
 
-    # returns function name -> list of strings
     def get_strings(self):
+        """Returns a list of the strings referenced in this file."""
+
         result = {}
 
         def f(fn):
@@ -288,9 +324,11 @@ class CFile(object):
         self.iter_functions(f)
         return result
 
-    # returns function name -> count   (* references to variable with given
-    # vid *)
     def get_variable_uses(self, vid):
+        """Returns a mapping from function name to a count of variable refs.
+
+        function name -> number of references with a given vid.
+        """
         result = {}
 
         def f(fn):
@@ -605,20 +643,20 @@ class CFile(object):
             vid = int(f.find("svar").get("vid"))
             self.declarations.gfunctions[vid] = CGFunction(self, f)
 
-    def _initialize_function(self, vid):
+    def _initialize_function(self, vid: int) -> None:
         if vid in self.functions:
             return
-        fname = self.declarations.get_gfunction(vid).get_name()
-        f = UF.get_cfun_xnode(self.capp.path, self.name, fname)
-        if f is not None:
-            self.functions[vid] = CFunction(self, f)
+        fname = self.declarations.get_gfunction(vid).name
+        xnode = UF.get_cfun_xnode(self.capp.path, self.name, fname)
+        if xnode is not None:
+            self.functions[vid] = CFunction(self, xnode, fname)
             self.functionnames[fname] = vid
 
-    def _initialize_functions(self):
+    def _initialize_functions(self) -> None:
         self._initialize_gfunctions()
         for vid in self.declarations.gfunctions.keys():
             self._initialize_function(vid)
 
-    def _initialize_source(self):
+    def _initialize_source(self) -> None:
         if self.sourcefile is None:
             self.sourcefile = self.capp.get_srcfile(self.name)

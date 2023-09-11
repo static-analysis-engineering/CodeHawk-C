@@ -43,28 +43,28 @@ if TYPE_CHECKING:
 class CLocation(CDeclarationsRecord):
     """Location in a C source program.
 
-    tags: -
-
-    args:
-        0: filename index
-        1: byte number
-        2: line number
+    args[0]: filename index
+    args[1]: byte number
+    args[2]: line number
     """
 
     def __init__(self, decls: "CDeclarations", ixval: IT.IndexedTableValue):
         CDeclarationsRecord.__init__(self, decls, ixval)
 
-    def get_byte(self) -> int:
+    @property
+    def byte(self) -> int:
         return int(self.args[1])
 
-    def get_line(self) -> int:
+    @property
+    def line(self) -> int:
         return int(self.args[2])
 
-    def get_file(self) -> str:
+    @property
+    def file(self) -> str:
         return cast("CFileDeclarations", self.decls).get_filename(int(self.args[0]))
 
     def get_loc(self) -> Tuple[str, int, int]:
-        return (self.get_file(), self.get_line(), self.get_byte())
+        return (self.file, self.line, self.byte)
 
     def __ge__(self, loc: "CLocation") -> bool:
         return self.get_loc() >= loc.get_loc()
@@ -89,4 +89,4 @@ class CLocation(CDeclarationsRecord):
         return self.get_loc() != loc.get_loc()
 
     def __str__(self) -> str:
-        return str(self.get_file()) + ":" + str(self.get_line())
+        return str(self.file) + ":" + str(self.line)

@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,30 +27,73 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
+import xml.etree.ElementTree as ET
 
-class CGXrefs(object):
-    def __init__(self, cfile, xnode):
-        self.cfile = cfile
-        self.xnode = xnode
-        self.compkeys = {}  # local id -> global id
-        self.varinfos = {}  # local id -> global id
-        self._initialize()
+from typing import Dict, Optional, TYPE_CHECKING
 
-    def getglobalkey(self, localkey):
-        if self.xnode is None:
-            return localkey
+import chc.util.fileutil as UF
+
+if TYPE_CHECKING:
+    from chc.app.CFile import CFile
+
+
+class CGXrefs:
+
+    def __init__(self, cfile: "CFile", xnode: Optional[ET.Element]) -> None:
+        self._xnode = xnode
+        self._cfile = cfile
+        self._compkeys: Optional[Dict[int, int]] = None  # local id -> global id
+        self._varinfos: Optional[Dict[int, int]] = None  # local id -> global id
+        # self._initialize(xnode)
+
+    @property
+    def cfile(self) -> "CFile":
+        return self._cfile
+
+    @property
+    def compkeys(self) -> Dict[int, int]:
+        if self._compkeys is None:
+            self._compkeys = {}
+            if self._xnode is not None:
+                xcompxrefs = self._xnode.find("compinfo-xrefs")
+                if xcompxrefs is not None:
+                    for c in xcompxrefs.findall("cxref"):
+                        xckey = c.get("ckey")
+                        xgckey = c.get("gckey")
+                        if xckey is None or xgckey is None:
+                            raise UF.CHCError(
+                                "compinfo-xrefs: ckey or gckey not found")
+                        self._compkeys[int(xckey)] = int(xgckey)
+        return self._compkeys
+
+    @property
+    def varinfos(self) -> Dict[int, int]:
+        if self._varinfos is None:
+            self._varinfos = {}
+            if self._xnode is not None:
+                xvarxrefs = self._xnode.find("varinfo-xrefs")
+                if xvarxrefs is not None:
+                    for v in xvarxrefs.findall("vxref"):
+                        xvid = v.get("vid")
+                        xgvid = v.get("gvid")
+                        if xvid is None or xgvid is None:
+                            raise UF.CHCError(
+                                "varinfo-xrefs: vid or gvid not found")
+                        self._varinfos[int(xvid)] = int(xgvid)
+        return self._varinfos
+
+    def get_globalkey(self, localkey: int) -> int:
         if localkey in self.compkeys:
             return self.compkeys[localkey]
         return localkey
 
-    def getglobalvid(self, localvid):
-        if self.xnode is None:
-            return localvid
+    def getglobalvid(self, localvid: int) -> int:
         if localvid in self.varinfos:
             return self.varinfos[localvid]
         return localvid
 
-    def _initialize(self):
+    '''
+    def _initialize(self, xnode: Optional[ET.Element]):
         if self.xnode is None:
             return
         if len(self.compkeys) == 0 or len(self.varinfos) == 0:
@@ -56,3 +101,4 @@ class CGXrefs(object):
                 self.compkeys[int(c.get("ckey"))] = int(c.get("gckey"))
             for v in self.xnode.find("varinfo-xrefs").findall("vxref"):
                 self.varinfos[int(v.get("vid"))] = int(v.get("gvid"))
+    '''

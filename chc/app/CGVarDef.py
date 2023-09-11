@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,14 +27,47 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
+from typing import TYPE_CHECKING
 
-class CGVarDef(object):
+import chc.util.fileutil as UF
+
+if TYPE_CHECKING:
+    from chc.app.CInitInfo import CInitInfo
+    from chc.app.CLocation import CLocation
+    from chc.app.CVarInfo import CVarInfo
+
+class CGVarDef:
     """Global variable definition."""
 
-    def __init__(self, varinfo, location, initializer=None):
-        self.varinfo = varinfo
-        self.location = location
-        self.initializer = initializer
+    def __init__(
+            self,
+            varinfo: "CVarInfo",
+            location: "CLocation",
+            initializer: "CInitInfo" =  None) -> None:
+        self._varinfo = varinfo
+        self._location = location
+        self._initializer = initializer
 
-    def __str__(self):
+    @property
+    def varinfo(self) -> "CVarInfo":
+        return self._varinfo
+
+    @property
+    def location(self) -> "CLocation":
+        return self._location
+
+    def has_initializer(self) -> bool:
+        return self._initializer is not None
+
+    @property
+    def initializer(self) -> "CInitInfo":
+        if self._initializer is not None:
+            return self._initializer
+        else:
+            raise UF.CHCError(
+                "Variable definition: "
+                + str(self.varinfo)
+                + " without initializer")
+
+    def __str__(self) -> str:
         return str(self.varinfo)

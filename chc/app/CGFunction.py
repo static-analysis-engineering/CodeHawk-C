@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,24 +27,33 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
-from chc.app.CVarInfo import CVarInfo
+
 from chc.app.CLocation import CLocation
+from chc.app.CVarInfo import CVarInfo
+from chc.app.CTyp import CTyp
 
 
 class CGFunction(object):
     """Function declaration."""
 
     def __init__(self, varinfo: CVarInfo) -> None:
-        self.varinfo = varinfo
+        self._varinfo = varinfo
 
-    def get_name(self) -> str:
+    @property
+    def varinfo(self) -> CVarInfo:
+        return self._varinfo
+
+    @property
+    def name(self) -> str:
         return self.varinfo.vname
 
-    def get_type(self):
+    @property
+    def typ(self) -> CTyp:
         return self.varinfo.vtype
 
-    def get_line_nr(self):
-        return self.varinfo.get_line()
+    @property
+    def line_nr(self) -> int:
+        return self.varinfo.line
 
-    def __str__(self):
-        return self.get_name() + ": " + str(self.get_type())
+    def __str__(self) -> str:
+        return self.name + ": " + str(self.typ)

@@ -43,62 +43,58 @@ if TYPE_CHECKING:
 class CCompInfo(CDeclarationsRecord):
     """Struct definition.
 
-    tags:
-        0: cname                 ('?' for global struct)
+    tags[0]: cname                 ('?' for global struct)
 
-    args:
-        0: ckey                  (-1 for global struct)
-        1: isstruct
-        2: iattr                 (-1 for global struct)
-        3 ->: field indices
+    args[0]: ckey                  (-1 for global struct)
+    args[1]: isstruct
+    args[2]: iattr                 (-1 for global struct)
+    args[3..]: field indices
     """
 
     def __init__(
-        self,
-        decls: "CDeclarations",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
+        self, decls: "CDeclarations", ixval: IT.IndexedTableValue) -> None:
         CDeclarationsRecord.__init__(self, decls, ixval)
-        '''
-        self.fields = [self.decls.get_fieldinfo(i) for i in self.args[3:]]
-        self.isstruct = self.args[1] == 1
-        self.cattr = self.get_dictionary().get_attributes(args[2])
-        '''
 
     @property
     def fields(self) -> List["CFieldInfo"]:
         return [self.decls.get_fieldinfo(i) for i in self.args[3:]]
 
     @property
-    def isstruct(self) -> bool:
+    def is_struct(self) -> bool:
         return self.args[1] == 1
 
     @property
     def cattr(self) -> "CAttributes":
         return self.dictionary.get_attributes(self.args[2])
 
-    def get_ckey(self) -> int:
+    @property
+    def ckey(self) -> int:
         ckey = int(self.args[0])
         return ckey if ckey >= 0 else self.index
 
-    def get_size(self) -> int:
-        return sum([f.get_size() for f in self.fields])
+    @property
+    def size(self) -> int:
+        return sum([f.size for f in self.fields])
 
-    def get_name(self) -> str:
+    @property
+    def name(self) -> str:
         if self.tags[0] == "?":
-            name = list(cast("CGlobalDeclarations", self.decls).compinfo_names[self.get_ckey()])[0]
+            name = list(
+                cast("CGlobalDeclarations",
+                     self.decls).compinfo_names[self.ckey])[0]
         else:
             name = self.tags[0]
         return name
 
-    def get_field_strings(self) -> str:
+    @property
+    def field_strings(self) -> str:
         return ":".join([f.fname for f in self.fields])
 
     def __str__(self) -> str:
         lines = []
-        lines.append("struct " + self.get_name())
+        lines.append("struct " + self.name)
         offset = 0
         for f in self.fields:
             lines.append((" " * 25) + str(offset).rjust(4) + "  " + str(f))
-            offset += f.get_size()
+            offset += f.size
         return "\n".join(lines)

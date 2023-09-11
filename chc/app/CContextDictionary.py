@@ -30,12 +30,12 @@
 
 import xml.etree.ElementTree as ET
 
-from typing import List, TYPE_CHECKING
+from typing import Callable, Dict, List, Mapping, TYPE_CHECKING
 
 from chc.app.CContext import CContextNode, CfgContext, ExpContext, ProgramContext
 
 import chc.util.fileutil as UF
-import chc.util.IndexedTable as IT
+from chc.util.IndexedTable import IndexedTable, IndexedTableValue
 
 if TYPE_CHECKING:
     from chc.app.CFile import CFile
@@ -45,16 +45,19 @@ class CContextDictionary:
 
     def __init__(self, cfile: "CFile", xnode: ET.Element) -> None:
         self._cfile = cfile
-        self.node_table = IT.IndexedTable("nodes")
-        self.cfgcontext_table = IT.IndexedTable("cfg-contexts")
-        self.expcontext_table = IT.IndexedTable("exp-contexts")
-        self.context_table = IT.IndexedTable("contexts")
+        self.node_table = IndexedTable("nodes")
+        self.cfgcontext_table = IndexedTable("cfg-contexts")
+        self.expcontext_table = IndexedTable("exp-contexts")
+        self.context_table = IndexedTable("contexts")
         self.tables = [
             self.node_table,
             self.cfgcontext_table,
             self.expcontext_table,
-            self.context_table
-        ]
+            self.context_table]
+        self._objmaps: Dict[str, Callable[[], Mapping[int, IndexedTableValue]]] = {
+            "cfg": self.get_cfg_context_map,            
+            "exp": self.get_exp_context_map,
+            "p": self.get_program_context_map}
         self.initialize(xnode)
 
     @property
@@ -69,18 +72,40 @@ class CContextDictionary:
     def get_cfg_context(self, ix: int) -> CfgContext:
         return CfgContext(self, self.cfgcontext_table.retrieve(ix))
 
+    def get_cfg_context_map(self) -> Dict[int, IndexedTableValue]:
+        return self.cfgcontext_table.objectmap(self.get_cfg_context)
+
     def get_exp_context(self, ix: int) -> ExpContext:
         return ExpContext(self, self.expcontext_table.retrieve(ix))
 
+    def get_exp_context_map(self) -> Dict[int, IndexedTableValue]:
+        return self.expcontext_table.objectmap(self.get_exp_context)
+
     def get_program_context(self, ix: int) -> ProgramContext:
         return ProgramContext(self, self.context_table.retrieve(ix))
+
+    def get_program_context_map(self) -> Dict[int, IndexedTableValue]:
+        return self.context_table.objectmap(self.get_program_context)
+
+    # ----------------------- printing -----------------------------------------
+
+    def objectmap_to_string(self, name: str) -> str:
+        if name in self._objmaps:
+            objmap = self._objmaps[name]()
+            lines: List[str] = []
+            for (ix, obj) in objmap.items():
+                lines.append(str(ix).rjust(3) + "  " + str(obj))
+            return "\n".join(lines)
+        else:
+            raise UF.CHCError(
+                "Name: " + name +  " does not correspond to a table")
 
     # ------------------- create new contexts ----------------------------------
 
     def index_node(self, cnode: CContextNode) -> int:
 
         def f(index: int, tags: List[str], args: List[int]) -> CContextNode:
-            itv = IT.IndexedTableValue(index, tags, args)
+            itv = IndexedTableValue(index, tags, args)
             return CContextNode(self, itv)
 
         return self.node_table.add_tags_args(cnode.tags, cnode.args, f)
@@ -89,7 +114,7 @@ class CContextDictionary:
         args = [self.index_node(x) for x in expcontext.nodes]
 
         def f(index: int, tags: List[str], args: List[int]) -> ExpContext:
-            itv = IT.IndexedTableValue(index, tags, args)
+            itv = IndexedTableValue(index, tags, args)
             return ExpContext(self, itv)
 
         return self.expcontext_table.add_tags_args([], args, f)
@@ -97,7 +122,7 @@ class CContextDictionary:
     def index_empty_exp_context(self) -> int:
 
         def f(index: int, tags: List[str], args: List[int]) -> ExpContext:
-            itv = IT.IndexedTableValue(index, tags, args)
+            itv = IndexedTableValue(index, tags, args)
             return ExpContext(self, itv)
 
         return self.expcontext_table.add_tags_args([], [], f)
@@ -106,7 +131,7 @@ class CContextDictionary:
         args = [self.index_node(x) for x in cfgcontext.nodes]
 
         def f(index: int, tags: List[str], args: List[int]) -> CfgContext:
-            itv = IT.IndexedTableValue(index, tags, args)
+            itv = IndexedTableValue(index, tags, args)
             return CfgContext(self, itv)
 
         return self.cfgcontext_table.add_tags_args([], args, f)
@@ -114,11 +139,10 @@ class CContextDictionary:
     def index_context(self, context: ProgramContext) -> int:
         args = [
             self.index_cfg_context(context.cfg_context),
-            self.index_exp_context(context.exp_context),
-        ]
+            self.index_exp_context(context.exp_context)]
 
         def f(index: int, tags: List[str], args: List[int]) -> ProgramContext:
-            itv = IT.IndexedTableValue(index, tags, args)
+            itv = IndexedTableValue(index, tags, args)
             return ProgramContext(self, itv)
 
         return self.context_table.add_tags_args([], args, f)
@@ -126,14 +150,23 @@ class CContextDictionary:
     def index_cfg_projection(self, context: ProgramContext) -> int:
         args = [
             self.index_cfg_context(context.cfg_context),
-            self.index_empty_exp_context(),
-        ]
+            self.index_empty_exp_context()]
 
         def f(index: int, tags: List[str], args: List[int]) -> ProgramContext:
-            itv = IT.IndexedTableValue(index, tags, args)
+            itv = IndexedTableValue(index, tags, args)
             return ProgramContext(self, itv)
 
-        return self.context_table.add_tags_args([], args, f)    
+        return self.context_table.add_tags_args([], args, f)
+
+    def read_xml_context(self, xnode: ET.Element) -> ProgramContext:
+        ictxt = xnode.get("ictxt")
+        if ictxt is None:
+            raise UF.CHCError("ictxt attribute is missing")
+        return self.get_program_context(int(ictxt))
+
+    # assume that python never adds new contexts
+    def write_xml_context(self, xnode: ET.Element, context: ProgramContext) -> None:
+        xnode.set("ictxt", str(context.index))
 
     # --------------------- initialize dictionary from file --------------------
 
