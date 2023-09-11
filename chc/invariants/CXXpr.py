@@ -94,7 +94,6 @@ class CXXVar(CXXpr):
     def variable(self) -> "CXVariable":
         return self.xd.get_variable(self.args[0])
 
-    @property
     def __str__(self) -> str:
         return str(self.variable)
 

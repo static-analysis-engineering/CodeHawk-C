@@ -35,6 +35,7 @@ from chc.util.IndexedTable import IndexedTableValue
 if TYPE_CHECKING:
     from chc.app.CFileDeclarations import CFileDeclarations
     from chc.app.CFileDictionary import CFileDictionary
+    from chc.app.CFunDeclarations import CFunDeclarations
     from chc.invariants.CFunInvDictionary import CFunInvDictionary
     from chc.invariants.CFunVarDictionary import CFunVarDictionary
     from chc.invariants.CFunXprDictionary import CFunXprDictionary
@@ -80,6 +81,10 @@ class CFunVarDictionaryRecord(IndexedTableValue):
     @property
     def fdecls(self) -> "CFileDeclarations":
         return self.vd.fdecls
+
+    @property
+    def fundecls(self) -> "CFunDeclarations":
+        return self.vd.fundecls
 
 
 class CFunInvDictionaryRecord(IndexedTableValue):

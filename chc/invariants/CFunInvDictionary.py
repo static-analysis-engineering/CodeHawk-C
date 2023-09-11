@@ -57,7 +57,7 @@ class CFunInvDictionary(object):
         self.tables: List[IT.IndexedTable] = [
             self.non_relational_value_table,
             self.invariant_fact_table,
-            self.invariant_list_table
+            # self.invariant_list_table
         ]
         self.initialize(xnode)
 

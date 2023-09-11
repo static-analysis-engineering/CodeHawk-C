@@ -130,7 +130,7 @@ class CVVFunctionReturnValue(CVConstantValueVariable):
 
     @property
     def callee(self) -> "CVarInfo":
-        return self.fdecls.get_varinfo(self.args[2])
+        return self.fundecls.get_varinfo(self.args[2])
 
     @property
     def arguments(self) -> List[Optional["CXXpr"]]:
