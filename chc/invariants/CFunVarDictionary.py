@@ -31,10 +31,10 @@ import os
 
 import xml.etree.ElementTree as ET
 
-from typing import List, Optional, TYPE_CHECKING
+from typing import Callable, Dict, List, Mapping, Optional, TYPE_CHECKING
 
 import chc.util.fileutil as UF
-import chc.util.IndexedTable as IT
+from chc.util.IndexedTable import IndexedTable, IndexedTableValue
 
 from chc.invariants.CFunDictionaryRecord import varregistry
 
@@ -61,19 +61,23 @@ class CFunVarDictionary:
         self._cfun = cfun
         self.xnode = xnode
         self._xd: Optional[CFunXprDictionary] = None
-        self.memory_base_table = IT.IndexedTable("memory-base-table")
-        self.memory_reference_data_table = IT.IndexedTable(
+        self.memory_base_table = IndexedTable("memory-base-table")
+        self.memory_reference_data_table = IndexedTable(
             "memory-reference-data-table")
-        self.constant_value_variable_table = IT.IndexedTable(
+        self.constant_value_variable_table = IndexedTable(
             "constant-value-variable-table")
-        self.c_variable_denotation_table = IT.IndexedTable(
+        self.c_variable_denotation_table = IndexedTable(
             "c-variable-denotation-table")
-        self.tables: List[IT.IndexedTable] = [
+        self.tables: List[IndexedTable] = [
             self.memory_base_table,
             self.memory_reference_data_table,
             self.constant_value_variable_table,
-            self.c_variable_denotation_table
-        ]
+            self.c_variable_denotation_table]
+        self._objmaps: Dict[str, Callable[[], Mapping[int, IndexedTableValue]]] = {
+            "membase": self.get_memory_base_map,
+            "memref": self.get_memory_reference_data_map,
+            "cvv": self.get_constant_value_variable_map,
+            "cvd": self.get_c_variable_denotation_map}
         self.initialize(xnode)
 
     @property
@@ -117,12 +121,19 @@ class CFunVarDictionary:
         else:
             raise UF.CHCError("Illegal memory base index value: " + str(ix))
 
+    def get_memory_base_map(self) -> Dict[int, IndexedTableValue]:
+        return self.memory_base_table.objectmap(self.get_memory_base)
+
     def get_memory_reference_data(self, ix: int) -> CVMemoryReferenceData:
         if ix > 0:
             return CVMemoryReferenceData(
                 self, self.memory_reference_data_table.retrieve(ix))
         else:
             raise UF.CHCError("Illegal memory reference data index value")
+
+    def get_memory_reference_data_map(self) -> Dict[int, IndexedTableValue]:
+        return self.memory_reference_data_table.objectmap(
+            self.get_memory_reference_data)
 
     def get_constant_value_variable(self, ix: int) -> CVConstantValueVariable:
         if ix > 0:
@@ -131,7 +142,12 @@ class CFunVarDictionary:
                 self.constant_value_variable_table.retrieve(ix),
                 CVConstantValueVariable)
         else:
-            raise UF.CHCError("Illegal constant-value-variable index value: " + str(ix))
+            raise UF.CHCError(
+                "Illegal constant-value-variable index value: " + str(ix))
+
+    def get_constant_value_variable_map(self) -> Dict[int, IndexedTableValue]:
+        return self.constant_value_variable_table.objectmap(
+            self.get_constant_value_variable)
 
     def get_c_variable_denotation(self, ix: int) -> CVariableDenotation:
         if ix > 0:
@@ -140,7 +156,12 @@ class CFunVarDictionary:
                 self.c_variable_denotation_table.retrieve(ix),
                 CVariableDenotation)
         else:
-            raise UF.CHCError("Illegal c-variable denotation index value: " + str(ix))
+            raise UF.CHCError(
+                "Illegal c-variable denotation index value: " + str(ix))
+
+    def get_c_variable_denotation_map(self) -> Dict[int, IndexedTableValue]:
+        return self.c_variable_denotation_table.objectmap(
+            self.get_c_variable_denotation)
 
     # ------------------- Provide read_xml service ---------------------------
 
@@ -163,6 +184,20 @@ class CFunVarDictionary:
                     "Var dictionary table " + t.name + " not found")
 
     # ---------------------- Printing ------------------------------------------
+
+    def objectmap_to_string(self, name: str) -> str:
+        if name in self._objmaps:
+            objmap = self._objmaps[name]()
+            lines: List[str] = []
+            if len(objmap) == 0:
+                lines.append("Table is empty")
+            else:
+                for (ix, obj) in objmap.items():
+                    lines.append(str(ix).rjust(3) + "  " + str(obj))
+            return "\n".join(lines)
+        else:
+            raise UF.CHCError(
+                "Name: " + name +  " does not correspond to a table")    
 
     def __str__(self) -> str:
         lines: List[str] = []

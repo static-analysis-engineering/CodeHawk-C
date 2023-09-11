@@ -106,7 +106,7 @@ class CVLocalVariable(CVariableDenotation):
 
     @property
     def varinfo(self) -> "CVarInfo":
-        return self.fdecls.get_varinfo(self.args[0])
+        return self.fundecls.get_varinfo(self.args[0])
 
     @property
     def offset(self) -> "COffset":
@@ -129,7 +129,7 @@ class CVGlobalVariable(CVariableDenotation):
 
     @property
     def varinfo(self) -> "CVarInfo":
-        return self.fdecls.get_varinfo(self.args[0])
+        return self.fundecls.get_varinfo(self.args[0])
 
     def __str__(self) -> str:
         return "gv:" + str(self.varinfo)

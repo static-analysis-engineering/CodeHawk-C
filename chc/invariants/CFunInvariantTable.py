@@ -61,7 +61,7 @@ class CFunInvariantTable:
 
     @property
     def cfun(self) -> "CFunction":
-        return self.cfun
+        return self._cfun
 
     @property
     def cfile(self) -> "CFile":
@@ -145,7 +145,7 @@ class CFunInvariantTable:
         varsets: Dict[int, CInvariantNRVFact] = {}
         for r in rsinvs:
             cvar = r.variable
-            if var.seqnr not in varsets:
+            if cvar.seqnr not in varsets:
                 varsets[cvar.seqnr] = r
             else:
                 if (
