@@ -5,6 +5,9 @@ semantics
 # CodeHawk-C local configuration file
 ConfigLocal.py
 
+# Emacs
+*.py~
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
