@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -29,7 +31,7 @@ import datetime
 import time
 
 
-def reportheader(title):
+def reportheader(title: str) -> str:
     lines = []
     lines.append("* " + ("=" * 80))
     lines.append("* CodeHawk C Analyzer: " + title)
