@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -33,6 +35,8 @@ import shutil
 
 import xml.etree.ElementTree as ET
 
+from typing import Any, Dict, List, Optional, Tuple
+
 from chc.util.Config import Config
 
 import chc.util.xmlutil as UX
@@ -49,14 +53,14 @@ class ParseManager(object):
 
     def __init__(
         self,
-        cpath,
-        tgtpath,
-        filter=False,
-        posix=False,
-        verbose=True,
-        keepUnused=False,
-        tgtplatform="-m64",
-    ):
+        cpath: str,
+        tgtpath: str,
+        filter: bool = False,
+        posix: bool = False,
+        verbose: bool = True,
+        keepUnused: bool = False,
+        tgtplatform: str= "-m64",
+    ) -> None:
         """Initialize paths to code, results, and parser executable.
 
         Args:
@@ -66,28 +70,72 @@ class ParseManager(object):
         Effects:
             creates tgtpath and subdirectories if necessary.
         """
-        self.cpath = cpath
-        self.tgtpath = tgtpath
-        self.filter = filter
-        self.posix = posix
-        self.keepUnused = keepUnused  # keep variables that are not used
-        self.sempath = os.path.join(self.tgtpath, "semantics")
-        self.tgtxpath = os.path.join(self.sempath, "chcartifacts")
-        self.tgtspath = os.path.join(self.sempath, "sourcefiles")  # for .c and .i files
-        self.config = Config()
-        self.verbose = verbose
+        self._cpath = cpath
+        self._tgtpath = tgtpath
+        self._filter = filter
+        self._posix = posix
+        self._keepUnused = keepUnused
+        self._verbose = verbose
         # compile to 32 bit or 64 bit platform (default 64 bit)
-        self.tgtplatform = tgtplatform
+        self._tgtplatform = tgtplatform
         if not (self.tgtplatform in ["-m64", "-m32"]):
-            printf(
+            print(
                 "Warning: invalid target platform: "
                 + self.tgtplatform
                 + ". Target platform is set to -m64"
             )
-            self.tgtplatform = "-m64"
+            self._tgtplatform = "-m64"
+        self.config = Config()            
 
-    def save_semantics(self):
+    @property
+    def cpath(self) -> str:
+        return self._cpath
+
+    @property
+    def tgtpath(self) -> str:
+        return self._tgtpath
+
+    @property
+    def tgtplatform(self) -> str:
+        return self._tgtplatform
+
+    @property
+    def filter(self) -> bool:
+        return self._filter
+
+    @property
+    def posix(self) -> bool:
+        return self._posix
+
+    @property
+    def verbose(self) -> bool:
+        return self._verbose
+
+    @property
+    def keepUnused(self) -> bool:
+        """If true keep variables parsed that are never used."""
+
+        return self._keepUnused
+
+    @property
+    def sempath(self) -> str:
+        return os.path.join(self.tgtpath, "semantics")
+
+    @property
+    def tgtxpath(self) -> str:
+        """Return path to analysis results files."""
+
+        return os.path.join(self.sempath, "chcartifacts")
+
+    @property
+    def tgtspath(self) -> str:
+        """Return path to .c and .i files"""
+
+        return os.path.join(self.sempath, "sourcefiles")
+
+    def save_semantics(self) -> None:
         """Save the semantics directory as a tar.gz file."""
+
         os.chdir(self.cpath)
         tarfilename = "semantics_" + self.config.platform + ".tar"
         if os.path.isfile(tarfilename):
@@ -115,7 +163,11 @@ class ParseManager(object):
                 stderr=subprocess.STDOUT,
             )
 
-    def preprocess_file_with_gcc(self, cfilename, copyfiles=True, moreoptions=[]):
+    def preprocess_file_with_gcc(
+            self,
+            cfilename: str,
+            copyfiles: bool = True,
+            moreoptions: List[str] = []) -> str:
         """Invoke gcc preprocessor on c source file.
 
         Args:
@@ -127,6 +179,7 @@ class ParseManager(object):
             the original source file and the generated .i file to the
             tgtpath/sourcefiles directory
         """
+
         mac = self.config.platform == "mac"
         ifilename = cfilename[:-1] + "i"
         macoptions = ["-U___BLOCKS___", "-D_DARWIN_C_SOURCE", "-D_FORTIFY_SOURCE=0"]
@@ -166,14 +219,15 @@ class ParseManager(object):
                 shutil.copy(ifilename, tgtifilename)
         return ifilename
 
-    def get_file_length(self, fname):
+    def get_file_length(self, fname: str) -> int:
         """Return the number of lines in named file."""
+
         with open(fname) as f:
             for i, l in enumerate(f):
                 pass
         return i + 1
 
-    def normalize_filename(self, filename):
+    def normalize_filename(self, filename: str) -> str:
         """Make filename relative to application directory (if in application directory)."""
 
         filename = os.path.normpath(filename)
@@ -182,10 +236,10 @@ class ParseManager(object):
         else:
             return filename
 
-    def has_platform(self, cmd):
+    def has_platform(self, cmd: List[str]) -> bool:
         return ("-m32" in cmd) or ("-m64" in cmd)
 
-    def get_platform_index(self, cmd):
+    def get_platform_index(self, cmd: List[str]) -> int:
         if "-m32" in cmd:
             return cmd.index("-m32")
         elif "-m64" in cmd:
@@ -193,7 +247,7 @@ class ParseManager(object):
         else:
             return -1
 
-    def set_platform(self, cmd):
+    def set_platform(self, cmd: List[str]) -> None:
         index = self.get_platform_index(cmd)
         if index >= 0:
             platform = cmd[index]
@@ -204,23 +258,26 @@ class ParseManager(object):
         else:
             cmd.append(self.tgtplatform)
 
-    def preprocess(self, ccommand, copyfiles=True):
+    def preprocess(
+            self,
+            ccommand: Dict[str, Any],
+            copyfiles: bool = True) -> Tuple[Optional[str], Optional[str]]:
         """Modify and replay compile_commands.json file produced by bear."""
 
         if self.verbose:
             print("\n\n" + ("=" * 80))
         if self.verbose:
-            print("***** " + ccommand["file"] + " *****")
+            print("***** " + str(ccommand["file"]) + " *****")
         if self.verbose:
             print("=" * 80)
         for p in ccommand:
-            print(p + ": " + str(ccommand[p]))
+            print(str(p) + ": " + str(ccommand[p]))
         if "arguments" in ccommand:
-            command = ccommand["arguments"]
+            command: List[str] = ccommand["arguments"]
         else:
             command = shlex.split(ccommand["command"], self.posix)
         ecommand = command[:]
-        cfilename = os.path.join(ccommand["directory"], ccommand["file"])
+        cfilename: str = os.path.join(ccommand["directory"], ccommand["file"])
         if cfilename.endswith(".c"):
             ifilename = cfilename[:-1] + "i"
             try:
@@ -244,10 +301,10 @@ class ParseManager(object):
             # issue modified command to produce i files
             if self.verbose:
                 print("\nIssue command: " + str(ecommand) + "\n")
-                p = subprocess.call(
+                resultcode = subprocess.call(
                     ecommand, cwd=ccommand["directory"], stderr=subprocess.STDOUT
                 )
-                print("result: " + str(p))
+                print("result: " + str(resultcode))
             else:
                 subprocess.call(
                     ecommand,
@@ -259,10 +316,10 @@ class ParseManager(object):
             # issue original command
             if self.verbose:
                 print("\nIssue original command: " + str(command) + "\n")
-                p = subprocess.call(
+                resultcode = subprocess.call(
                     command, cwd=ccommand["directory"], stderr=subprocess.STDOUT
                 )
-                print("result: " + str(p))
+                print("result: " + str(resultcode))
             else:
                 subprocess.call(
                     command,
@@ -290,14 +347,17 @@ class ParseManager(object):
             print("\nCCWarning: Filename not recognized: " + cfilename)
             return (None, None)
 
-    def parse_with_ccommands(self, compilecommands, copyfiles=True):
+    def parse_with_ccommands(
+            self, compilecommands: List[Dict[str, Any]], copyfiles: bool = True) -> None:
         """Preprocess and call C parser to produce xml semantics files."""
 
-        cfiles = {}
+        cfiles: Dict[str, int] = {}
         targetfiles = TargetFiles()
         for c in compilecommands:
             (cfilename, ifilename) = self.preprocess(c, copyfiles)
             if cfilename is None:
+                continue
+            if ifilename is None:
                 continue
             cfilename = os.path.abspath(cfilename)
             ifilename = os.path.abspath(ifilename)
@@ -341,7 +401,7 @@ class ParseManager(object):
         os.chdir(self.cpath)
         shutil.copy("compile_commands.json", self.tgtspath)
 
-    def parse_ifiles(self, copyfiles=True):
+    def parse_ifiles(self, copyfiles: bool = True) -> None:
         """Run the CodeHawk C parser on all .i files in the directory."""
 
         os.chdir(self.cpath)
@@ -355,7 +415,7 @@ class ParseManager(object):
                     targetfiles.add_file(self.normalize_filename(cfile))
         targetfiles.save_xml_file(self.tgtxpath)
 
-    def parse_cfiles(self, copyfiles=True):
+    def parse_cfiles(self, copyfiles: bool = True) -> None:
         """Preprocess (with gcc) and run the CodeHawk C parser on all .c files in the directory."""
 
         os.chdir(self.cpath)
@@ -369,9 +429,9 @@ class ParseManager(object):
                     ifilename = self.preprocess_file_with_gcc(fname, copyfiles)
                     self.parse_ifile(ifilename)
                     targetfiles.add_file(self.normalize_filename(fname))
-        targetfiles.savexmlfile(self.tgtxpath)
+        targetfiles.save_xml_file(self.tgtxpath)
 
-    def parse_ifile(self, ifilename):
+    def parse_ifile(self, ifilename: str) -> int:
         """Invoke the CodeHawk C parser frontend on preprocessed source file
 
         Args:
@@ -406,7 +466,7 @@ class ParseManager(object):
         sys.stdout.flush()
         return p
 
-    def initialize_paths(self):
+    def initialize_paths(self) -> None:
         """Create directories for the target path."""
         if not os.path.isdir(self.tgtpath):
             os.mkdir(self.tgtpath)
@@ -418,14 +478,15 @@ class ParseManager(object):
             os.mkdir(self.tgtspath)
 
 
-class TargetFiles(object):
-    def __init__(self):
-        self.files = {}
+class TargetFiles:
 
-    def add_file(self, fname):
+    def __init__(self) -> None:
+        self.files: Dict[str, int] = {}   # filename -> file length
+
+    def add_file(self, fname: str) -> None:
         self.files.setdefault(fname, len(self.files))
 
-    def save_xml_file(self, tgtpath):
+    def save_xml_file(self, tgtpath: str) -> None:
         tgtroot = UX.get_xml_header("target_files", "c-files")
         cfilesnode = ET.Element("c-files")
         tgtroot.append(cfilesnode)

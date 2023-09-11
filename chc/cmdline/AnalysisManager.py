@@ -33,22 +33,28 @@ import subprocess
 import os
 import shutil
 
+from typing import List, Optional, TYPE_CHECKING
+
 import chc.util.fileutil as UF
 from chc.util.Config import Config
 
+if TYPE_CHECKING:
+    from chc.app.CApplication import CApplication
+    from chc.app.CFile import CFile
 
-class AnalysisManager(object):
+
+class AnalysisManager:
     """Provide the interface to the codehawk (ocaml) analyzer."""
 
     def __init__(
         self,
-        capp,
-        wordsize=0,
-        unreachability=False,
-        thirdpartysummaries=[],
-        nofilter=True,
-        verbose=True,
-    ):
+        capp: "CApplication",
+        wordsize: int = 0,
+        unreachability: bool = False,
+        thirdpartysummaries: List[str] = [],
+        nofilter: bool = True,
+        verbose: bool = True,
+    ) -> None:
         """Initialize the analyzer location and target file location.
 
         Args:
@@ -76,14 +82,14 @@ class AnalysisManager(object):
         self.unreachability = unreachability
         self.verbose = verbose
 
-    def reset(self):
+    def reset(self) -> None:
         """Remove all file- and function-level files produced by the analysis."""
 
-        def remove(f):
+        def remove(f: str) -> None:
             if os.path.isfile(f):
                 os.remove(f)
 
-        def g(fi):
+        def g(fi: "CFile") -> None:
             cfiledir = UF.get_cfile_directory(self.path, fi.name)
             if os.path.isdir(cfiledir):
                 for f in os.listdir(cfiledir):
@@ -101,10 +107,10 @@ class AnalysisManager(object):
         self.capp.iter_files(g)
         remove(UF.get_global_definitions_filename(self.capp.path))
 
-    def reset_logfiles(self):
+    def reset_logfiles(self) -> None:
         """Remove all log files from semantics directory."""
 
-        def g(fi):
+        def g(fi: "CFile") -> None:
             logfiledir = UF.get_cfile_logfiles_directory(self.path, fi.name)
             if os.path.isdir(logfiledir):
                 for f in os.listdir(logfiledir):
@@ -117,7 +123,7 @@ class AnalysisManager(object):
 
         self.capp.iter_files(g)
 
-    def reset_tables(self, cfilename):
+    def reset_tables(self, cfilename: str) -> None:
         """Reload dictionaries from file (to get updated data from analyzer)."""
 
         cfile = self.capp.get_file(cfilename)
@@ -125,18 +131,19 @@ class AnalysisManager(object):
         cfile.reload_ppos()
         cfile.reload_spos()
 
-    def _execute_cmd(self, CMD):
+    def _execute_cmd(self, CMD: List[str]) -> None:
         try:
             print(CMD)
             result = subprocess.check_output(CMD)
             print(result.decode("utf-8"))
         except subprocess.CalledProcessError as args:
-            print(args.output)
+            print(str(args.output))
             print(args)
             exit(1)
 
-    def _create_file_primary_proofobligations_cmd_partial(self):
-        cmd = [self.canalyzer, "-summaries", self.chsummaries, "-command", "primary"]
+    def _create_file_primary_proofobligations_cmd_partial(self) -> List[str]:
+        cmd: List[str] = [
+            self.canalyzer, "-summaries", self.chsummaries, "-command", "primary"]
         if not (self.thirdpartysummaries is None):
             for s in self.thirdpartysummaries:
                 cmd.extend(["-summaries", s])
@@ -151,12 +158,15 @@ class AnalysisManager(object):
         cmd.append("-cfile")
         return cmd
 
-    def rungui(self, name, outputpath=None):
+    def rungui(self, name: str, outputpath: Optional[str] = None) -> None:
         semdir = os.path.dirname(self.path)
         analysisdir = os.path.dirname(semdir)
         if outputpath is None:
             outputpath = analysisdir
-        cmd = [
+        if self.gui is None:
+            print("Gui has not been configured.")
+            exit(1)
+        cmd: List[str] = [
             self.gui,
             "-summaries",
             self.chsummaries,
@@ -184,7 +194,7 @@ class AnalysisManager(object):
             print(args)
             exit(1)
 
-    def create_file_primary_proofobligations(self, cfilename):
+    def create_file_primary_proofobligations(self, cfilename: str) -> None:
         """Call analyzer to create primary proof obligations for a single application file."""
 
         try:
@@ -195,7 +205,7 @@ class AnalysisManager(object):
                 print(str(cmd))
                 result = subprocess.call(cmd, cwd=self.path, stderr=subprocess.STDOUT)
                 print("\nResult: " + str(result))
-                self.capp.get_file(cfilename).predicatedictionary.initialize()
+                # self.capp.get_file(cfilename).predicatedictionary.initialize()
             else:
                 result = subprocess.call(
                     cmd,
@@ -215,12 +225,12 @@ class AnalysisManager(object):
             print(args)
             exit(1)
 
-    def create_app_primary_proofobligations(self, processes=1):
+    def create_app_primary_proofobligations(self, processes: int = 1) -> None:
         """Call analyzer to create primary proof obligations for all application files."""
 
         if processes > 1:
 
-            def f(cfile):
+            def f(cfile: str) -> None:
                 cmd = self._create_file_primary_proofobligations_cmd_partial()
                 cmd.append(cfile)
                 self._execute_cmd(cmd)
@@ -228,13 +238,13 @@ class AnalysisManager(object):
             self.capp.iter_filenames_parallel(f, processes)
         else:
 
-            def f(cfile):
+            def f(cfile: str) -> None:
                 self.create_file_primary_proofobligations(cfile)
 
             self.capp.iter_filenames(f)
 
-    def _generate_and_check_file_cmd_partial(self, domains):
-        cmd = [
+    def _generate_and_check_file_cmd_partial(self, domains: str) -> List[str]:
+        cmd: List[str] = [
             self.canalyzer,
             "-summaries",
             self.chsummaries,
@@ -260,7 +270,7 @@ class AnalysisManager(object):
         cmd.append("-cfile")
         return cmd
 
-    def generate_and_check_file(self, cfilename, domains):
+    def generate_and_check_file(self, cfilename: str, domains: str) -> None:
         """Generate invariants and check proof obligations for a single file."""
 
         try:
@@ -289,12 +299,12 @@ class AnalysisManager(object):
             print(args)
             exit(1)
 
-    def generate_and_check_app(self, domains, processes=1):
+    def generate_and_check_app(self, domains: str, processes: int = 1) -> None:
         """Generate invariants and check proof obligations for application."""
 
         if processes > 1:
 
-            def f(cfile):
+            def f(cfile: str) -> None:
                 cmd = self._generate_and_check_file_cmd_partial(domains)
                 cmd.append(cfile)
                 self._execute_cmd(cmd)
@@ -302,7 +312,7 @@ class AnalysisManager(object):
             self.capp.iter_filenames_parallel(f, processes)
         else:
 
-            def f(cfile):
+            def f(cfile: str) -> None:
                 self.generate_and_check_file(cfile, domains)
 
             self.capp.iter_filenames(f)

@@ -1,0 +1,148 @@
+#!/usr/bin/env python3
+# ------------------------------------------------------------------------------
+# CodeHawk C Analyzer
+# Author: Henny Sipma
+# ------------------------------------------------------------------------------
+# The MIT License (MIT)
+#
+# Copyright (c) 2023  Aarno Labs, LLC
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+# ------------------------------------------------------------------------------
+"""Command-line interface to the CodeHawk C Analyzer."""
+
+import argparse
+import json
+import os
+import subprocess
+import sys
+
+from typing import NoReturn
+
+
+from chc.app.CHVersion import chcversion
+
+import chc.cmdline.kendra.kendrautil as K
+import chc.reporting.DictionaryTables as DT
+
+from chc.util.Config import Config
+
+
+def showversion(args: argparse.Namespace) -> NoReturn:
+    print("CodeHawk-C Analyzer (python) Version: " + chcversion)
+    config = Config()
+    canalyzer = config.canalyzer
+    cmd = [canalyzer, "version"]
+    subprocess.call(cmd, stderr=subprocess.STDOUT)
+    exit(0)
+
+
+def showinfo(args: argparse.Namespace) -> NoReturn:
+    print(str(Config()))
+    exit(0)
+
+
+def parse() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    if len(sys.argv) == 1:
+        parser.print_help(sys.stderr)
+        exit(0)
+    subparsers = parser.add_subparsers(title="subcommands")
+    parser_info = subparsers.add_parser("info")
+    parser_info.set_defaults(func=showinfo)
+
+    parser_version = subparsers.add_parser("version")
+    parser_version.set_defaults(func=showversion)
+
+    # --------------------------------------------------------------- kendra ---
+    kendracmd = subparsers.add_parser("kendra")
+    kendraparsers = kendracmd.add_subparsers(title="show options")
+
+    # --- kendra list
+    kendralist = kendraparsers.add_parser("list")
+    kendralist.set_defaults(func=K.kendra_list)
+
+    # --- kendra show-set
+    kendrashowset = kendraparsers.add_parser("show-set")
+    kendrashowset.add_argument("testset", help="name of test directory")
+    kendrashowset.set_defaults(func=K.kendra_show_set)
+
+    # --- kendra test-set
+    kendratestset = kendraparsers.add_parser("test-set")
+    kendratestset.add_argument("testset", help="name of test directory")
+    kendratestset.add_argument(
+        "--logfile", help="name of logfile (default is <testset>_log.txt)")
+    kendratestset.add_argument(
+        "--loglevel",
+        help="logging level",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        default="WARNING")
+    kendratestset.add_argument(
+        "--verbose", "-v", help="print verbose output", action="store_true")
+    kendratestset.set_defaults(func=K.kendra_test_set)
+
+    # --- kendra test-sets
+    kendratestsets = kendraparsers.add_parser("test-sets")
+    kendratestsets.add_argument(
+        "--verbose", "-v", help="print_verbose_output", action="store_true")
+    kendratestsets.set_defaults(func=K.kendra_test_sets)
+
+    # --- kendra report-file
+    kendrareportfile = kendraparsers.add_parser("report-file")
+    kendrareportfile.add_argument(
+        "cfilename", help="name of kendra c file (e.g., id115.c)")
+    kendrareportfile.add_argument(
+        "--show_invariants",
+        help="show invariants at each line in the source code",
+        action="store_true")
+    kendrareportfile.set_defaults(func=K.kendra_report_file)
+
+    # --- kendra show-file-table
+    kendrashowfiletable = kendraparsers.add_parser("show-file-table")
+    kendrashowfiletable.add_argument(
+        "cfilename", help="name of kendra c file (e.g., id115.c)")
+    kendrashowfiletable.add_argument(
+        "tablename",
+        help="name of table",
+        choices = DT.file_table_list())
+    kendrashowfiletable.set_defaults(func=K.kendra_show_file_table)
+
+    # --- kendra show-function-table
+    kendrashowfunctiontable = kendraparsers.add_parser("show-function-table")
+    kendrashowfunctiontable.add_argument(
+        "cfilename", help="name of kendra c file (e.g., id115.c)")
+    kendrashowfunctiontable.add_argument(
+        "functionname", help="name of function in c file (e.g., main)")
+    kendrashowfunctiontable.add_argument(
+        "tablename",
+        help="name of table",
+        choices = DT.function_table_list())
+    kendrashowfunctiontable.set_defaults(func=K.kendra_show_function_table)
+
+    args = parser.parse_args()
+    return args
+
+
+if __name__ == "__main__":
+
+    args = parse()
+    args.func(args)
+    
+          
+    
