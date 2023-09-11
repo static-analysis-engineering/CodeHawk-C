@@ -28,18 +28,22 @@
 # ------------------------------------------------------------------------------
 
 import logging
-from typing import cast, Dict, List, Optional, Tuple, TYPE_CHECKING
+
 import xml.etree.ElementTree as ET
+
+from typing import Any, cast, Dict, List, Optional, Tuple, TYPE_CHECKING
 
 from chc.app.CDictionaryRecord import CDictionaryRecord, cdregistry
 
+import chc.util.fileutil as UF
 import chc.util.IndexedTable as IT
 
 if TYPE_CHECKING:
     from chc.app.CDictionary import CDictionary
-    import chc.app.CExp as CE
-    import chc.app.CAttributes as CA
-    import chc.app.CConstExp as CC
+    from chc.app.CExp import CExp, CExpConst
+    from chc.app.CAttributes import CAttributes
+    from chc.app.CCompInfo import CCompInfo
+    from chc.app.CConst import CConst, CConstInt
 
 
 integernames = {
@@ -73,20 +77,16 @@ attribute_index = {
 }
 
 
-class CTypBase(CDictionaryRecord):
+class CTyp(CDictionaryRecord):
     """Variable type. """
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
         CDictionaryRecord.__init__(self, cd, ixval)
 
-    def expand(self) -> "CTypBase":
+    def expand(self) -> "CTyp":
         return self
 
-    def strip_attributes(self) -> "CTypBase":
+    def strip_attributes(self) -> "CTyp":
         aindex = attribute_index[self.tags[0]]
         if aindex >= len(self.args):
             return self
@@ -99,7 +99,7 @@ class CTypBase(CDictionaryRecord):
                 newtyp = self.cd.get_typ(newtypix)
                 logging.info(
                     "Stripping attributes "
-                    + self.get_attributes_string()
+                    + self.attributes_string
                     + " ; changing type from "
                     + str(self)
                     + " to "
@@ -107,71 +107,86 @@ class CTypBase(CDictionaryRecord):
                 )
             return newtyp
 
-    def get_typ(self, ix: int) -> "CTypBase":
+    def get_typ(self, ix: int) -> "CTyp":
         return self.cd.get_typ(ix)
 
-    def get_exp(self, ix: int) -> "CE.CExpBase":
+    def get_exp(self, ix: int) -> "CExp":
         return self.cd.get_exp(ix)
 
-    def get_exp_opt(self, ix: int) -> Optional["CE.CExpBase"]:
+    def get_exp_opt(self, ix: int) -> Optional["CExp"]:
         return self.cd.get_exp_opt(ix)
 
-    def get_size(self) -> int:
+    @property
+    def size(self) -> int:
         return -1000
 
-    def get_attributes(self) -> "CA.CAttributes":
+    @property
+    def attributes(self) -> "CAttributes":
         aindex = attribute_index[self.tags[0]]
         if len(self.args) > aindex:
             return self.cd.get_attributes(int(self.args[aindex]))
         else:
             return self.cd.get_attributes(1)
 
-    def get_attributes_string(self) -> str:
-        attrs = self.get_attributes()
-        if attrs.length() > 0:
+    @property
+    def attributes_string(self) -> str:
+        attrs = self.attributes
+        if attrs.length > 0:
             return "[" + str(attrs) + "]"
         else:
             return ""
 
-    def get_opaque_type(self) -> "CTypBase":
+    def get_opaque_type(self) -> "CTyp":
         return self
 
-    def equal(self, other: "CTypBase") -> bool:
+    def equal(self, other: "CTyp") -> bool:
         return self.expand().index == other.expand().index
 
+    @property
     def is_array(self) -> bool:
         return False
 
+    @property
     def is_builtin_vaargs(self) -> bool:
         return False
 
+    @property
     def is_comp(self) -> bool:
         return False
 
+    @property
     def is_enum(self) -> bool:
         return False
 
+    @property
     def is_float(self) -> bool:
         return False
 
+    @property
     def is_function(self) -> bool:
         return False
 
+    @property
     def is_int(self) -> bool:
         return False
 
+    @property
     def is_named_type(self) -> bool:
         return False
 
+    @property
     def is_pointer(self) -> bool:
         return False
 
+    @property
     def is_struct(self) -> bool:
         return False
 
+    @property
     def is_void(self) -> bool:
         return False
 
+    @property
     def is_default_function_prototype(self) -> bool:
         return False
 
@@ -190,436 +205,409 @@ class CTypBase(CDictionaryRecord):
         return {"t": self.tags, "a": self.args}
 
 
-@cdregistry.register_tag("tvoid", CTypBase)
-class CTypVoid(CTypBase):
-    """
-    tags:
-        0: 'tvoid'
+@cdregistry.register_tag("tvoid", CTyp)
+class CTypVoid(CTyp):
+    """ Void type.
 
-    args:
-        0: attributes
+    args[0]: attributes
     """
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CTypBase.__init__(self, cd, ixval)
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CTyp.__init__(self, cd, ixval)
 
+    @property
     def is_void(self) -> bool:
         return True
 
-    def get_opaque_type(self) -> CTypBase:
+    def get_opaque_type(self) -> CTyp:
         return self
 
     def to_dict(self) -> Dict[str, object]:
         return {"base": "void"}
 
     def __str__(self) -> str:
-        return "void" + "[" + str(self.get_attributes()) + "]"
+        return "void" + "[" + str(self.attributes) + "]"
 
 
-@cdregistry.register_tag("tint", CTypBase)
-class CTypInt(CTypBase):
-    """
-    tags:
-        0: 'tint'
-        1: ikind
+@cdregistry.register_tag("tint", CTyp)
+class CTypInt(CTyp):
+    """ Integer type.
 
-    args:
-        0: attributes
+    tags[1]: ikind
+
+    args[0]: index of attributes in cdictionary
     """
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CTypBase.__init__(self, cd, ixval)
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CTyp.__init__(self, cd, ixval)
 
+    @property
     def is_int(self) -> bool:
         return True
 
-    def get_size(self) -> int:
-        k = self.get_kind()
+    @property
+    def size(self) -> int:
+        k = self.ikind
         if "char" in integernames[k]:
             return 1
         else:
             return 4  # TBD: adjust for other kinds
 
-    def get_kind(self) -> str:
+    @property
+    def ikind(self) -> str:
         return self.tags[1]
 
-    def get_opaque_type(self) -> CTypBase:
+    def get_opaque_type(self) -> CTyp:
         return self
 
     def to_dict(self) -> Dict[str, object]:
-        return {"base": "int", "kind": self.get_kind()}
+        return {"base": "int", "kind": self.ikind}
 
     def __str__(self) -> str:
-        return integernames[self.get_kind()] + str(self.get_attributes_string())
+        return integernames[self.ikind] + str(self.attributes_string)
 
 
-@cdregistry.register_tag("tfloat", CTypBase)
-class CTypFloat(CTypBase):
-    """
-    tags:
-        0: 'tfloat'
-        1: fkind
+@cdregistry.register_tag("tfloat", CTyp)
+class CTypFloat(CTyp):
+    """ Float type.
 
-    args:
-        0: attributes
+    tags[1]: fkind
+
+    args[0]: attributes
     """
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CTypBase.__init__(self, cd, ixval)
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue ) -> None:
+        CTyp.__init__(self, cd, ixval)
 
+    @property
     def is_float(self) -> bool:
         return True
 
-    def get_kind(self) -> str:
+    @property
+    def fkind(self) -> str:
         return self.tags[1]
 
-    def get_size(self) -> int:
+    @property
+    def size(self) -> int:
         return 4  # TBD: adjust for kind
 
-    def get_opaque_type(self) -> CTypBase:
+    def get_opaque_type(self) -> CTyp:
         return self
 
     def to_dict(self) -> Dict[str, object]:
-        return {"base": "float", "kind": self.get_kind()}
+        return {"base": "float", "kind": self.fkind}
 
     def __str__(self) -> str:
-        return floatnames[self.get_kind()]
+        return floatnames[self.fkind]
 
 
-@cdregistry.register_tag("tnamed", CTypBase)
-class CTypNamed(CTypBase):
-    """
-    tags:
-        0: 'tnamed'
-        1: tname
+@cdregistry.register_tag("tnamed", CTyp)
+class CTypNamed(CTyp):
+    """ Type definition
 
-    args:
-        0: attributes
+    tags[1]: tname
+
+    args[0]: attributes
     """
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CTypBase.__init__(self, cd, ixval)
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CTyp.__init__(self, cd, ixval)
 
-    def get_name(self) -> str:
+    @property
+    def name(self) -> str:
         return self.tags[1]
 
-    def expand(self):
-        return self.cd.decls.expand(self.get_name())
+    def expand(self) -> CTyp:
+        return self.cd.decls.expand(self.name)
 
-    def get_size(self) -> int:
-        return self.expand().get_size()
+    @property
+    def size(self) -> int:
+        return self.expand().size
 
+    @property
     def is_named_type(self) -> bool:
         return True
 
-    def get_opaque_type(self):
+    def get_opaque_type(self) -> CTyp:
         return self.expand().get_opaque_type()
 
     def to_dict(self) -> Dict[str, object]:
         return {
             "base": "named",
-            "name": self.get_name(),
+            "name": self.name,
             "expand": self.expand().to_dict(),
         }
 
     def __str__(self) -> str:
-        return self.get_name() + str(self.get_attributes_string())
+        return self.name + str(self.attributes_string)
 
 
-@cdregistry.register_tag("tcomp", CTypBase)
-class CTypComp(CTypBase):
+@cdregistry.register_tag("tcomp", CTyp)
+class CTypComp(CTyp):
+    """ Struct type (composite type; also includes union)
+
+    tags[0]: struct name
+
+    args[0]: ckey
+    args[1]: index of attributes in cdictionary
     """
-    tags:
-        0: 'tcomp'
 
-    args:
-        0: ckey
-        1: attributes
-    """
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CTyp.__init__(self, cd, ixval)
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CTypBase.__init__(self, cd, ixval)
-
-    def get_ckey(self) -> int:
+    @property
+    def ckey(self) -> int:
         return self.args[0]
 
-    def get_struct(self):
-        return self.decls.get_struct(self.get_ckey())
+    @property
+    def struct(self) -> "CCompInfo":
+        return self.decls.get_struct(self.ckey)
 
-    def get_name(self):
-        return self.decls.get_structname(self.get_ckey())
+    @property
+    def name(self) -> str:
+        return self.decls.get_structname(self.ckey)
 
+    @property
     def is_struct(self) -> bool:
-        return self.decls.is_struct(self.get_ckey())
+        return self.decls.is_struct(self.ckey)
 
-    def get_size(self) -> int:
-        return self.get_struct().get_size()
+    @property
+    def size(self) -> int:
+        return self.struct.size
 
+    @property
     def is_comp(self) -> bool:
         return True
 
-    def get_opaque_type(self):
+    def get_opaque_type(self) -> CTyp:
         tags = ["tvoid"]
-        args = []
+        args: List[int] = []
         return self.cd.get_typ(self.cd.mk_typ(tags, args))
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         return {
             "base": "struct",
-            "kind": "struct" if self.is_struct() else "union",
-            "name": self.get_name(),
-            "key": self.get_ckey(),
+            "kind": "struct" if self.is_struct else "union",
+            "name": self.name,
+            "key": self.ckey,
         }
 
     def __str__(self) -> str:
-        if self.is_struct():
-            return "struct " + self.get_name() + "(" + str(self.get_ckey()) + ")"
+        if self.is_struct:
+            return "struct " + self.name + "(" + str(self.ckey) + ")"
         else:
-            return "union " + self.get_name() + "(" + str(self.get_ckey()) + ")"
+            return "union " + self.name + "(" + str(self.ckey) + ")"
 
 
-@cdregistry.register_tag("tenum", CTypBase)
-class CTypEnum(CTypBase):
-    """
-    tags:
-        0: 'tenum'
-        1: ename
+@cdregistry.register_tag("tenum", CTyp)
+class CTypEnum(CTyp):
+    """ Enum type.
 
-    args:
-        0: attributes
+    tags[1]: name of enum (ename)
+    args[0]: index of attributes in cdictionary
     """
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CTypBase.__init__(self, cd, ixval)
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CTyp.__init__(self, cd, ixval)
 
-    def get_name(self) -> str:
+    @property
+    def name(self) -> str:
         return self.tags[1]
 
-    def get_size(self) -> int:
+    @property
+    def size(self) -> int:
         return 4
 
+    @property
     def is_enum(self) -> bool:
         return True
 
-    def get_opaque_type(self):
+    def get_opaque_type(self) -> CTyp:
         tags = ["tint", "iint"]
-        args = []
+        args: List[int] = []
         return self.cd.get_typ(self.cd.mk_typ(tags, args))
 
-    def to_dict(self):
-        return {"base": "enum", "name": self.get_name()}
+    def to_dict(self) -> Dict[str, Any]:
+        return {"base": "enum", "name": self.name}
 
     def __str__(self) -> str:
-        return "enum " + self.get_name()
+        return "enum " + self.name
 
 
-@cdregistry.register_tag("tbuiltinvaargs", CTypBase)
-@cdregistry.register_tag("tbuiltin-va-list", CTypBase)
-class CTypBuiltinVaargs(CTypBase):
-    """
-    tags:
-        0: 'tbuiltinvaargs'
+@cdregistry.register_tag("tbuiltinvaargs", CTyp)
+@cdregistry.register_tag("tbuiltin-va-list", CTyp)
+class CTypBuiltinVaargs(CTyp):
+    """ Builtin variable arguments
 
-    args:
-        0: attributes
+    args[0]: index of attributes in cdictionary
     """
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CTypBase.__init__(self, cd, ixval)
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CTyp.__init__(self, cd, ixval)
 
+    @property
     def is_builtin_vaargs(self) -> bool:
         return True
 
-    def get_opaque_type(self) -> CTypBase:
+    def get_opaque_type(self) -> CTyp:
         return self
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         return {"base": "builtin_vaargs"}
 
     def __str__(self) -> str:
         return "tbuiltin_va_args"
 
 
-@cdregistry.register_tag("tptr", CTypBase)
-class CTypPtr(CTypBase):
-    """
-    tags:
-        0: 'tptr'
+@cdregistry.register_tag("tptr", CTyp)
+class CTypPtr(CTyp):
+    """ Pointer type
 
-    args:
-        0: pointed-to type
-        1: attributes
+    args[0]: index of pointed-to type in cdictionary
+    args[1]: index of attributes in cdictionary
     """
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CTypBase.__init__(self, cd, ixval)
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CTyp.__init__(self, cd, ixval)
 
-    def get_pointedto_type(self) -> CTypBase:
+    @property
+    def pointedto_type(self) -> CTyp:
         return self.get_typ(self.args[0])
 
-    def get_size(self) -> int:
+    @property
+    def size(self) -> int:
         return 4
 
+    @property
     def is_pointer(self) -> bool:
         return True
 
-    def get_opaque_type(self) -> CTypBase:
-        tgttype = self.get_pointedto_type().get_opaque_type()
+    def get_opaque_type(self) -> CTyp:
+        tgttype = self.pointedto_type.get_opaque_type()
         tags = ["tptr"]
         args = [self.cd.index_typ(tgttype)]
         return self.cd.get_typ(self.cd.mk_typ(tags, args))
 
-    def to_dict(self):
-        return {"base": "ptr", "tgt": self.get_pointedto_type().to_dict()}
+    def to_dict(self) -> Dict[str, Any]:
+        return {"base": "ptr", "tgt": self.pointedto_type.to_dict()}
 
     def __str__(self) -> str:
-        return "(" + str(self.get_pointedto_type()) + " *)"
+        return "(" + str(self.pointedto_type) + " *)"
 
 
-@cdregistry.register_tag("tarray", CTypBase)
-class CTypArray(CTypBase):
-    """
-    tags:
-        0: 'tarray'
+@cdregistry.register_tag("tarray", CTyp)
+class CTypArray(CTyp):
+    """ Array type
 
-    args:
-        0: base type
-        1: size expression (optional)
-        2: attributes
+    args[0]: index of base type in cdictionary
+    args[1]: index of size expression in cdictionary (optional)
+    args[2]: index of attributes in cdictionary
     """
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CTypBase.__init__(self, cd, ixval)
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CTyp.__init__(self, cd, ixval)
 
-    def get_array_basetype(self) -> CTypBase:
+    @property
+    def array_basetype(self) -> CTyp:
         return self.get_typ(self.args[0])
 
-    def get_array_size_expr(self) -> "CE.CExpBase":
-        return self.get_exp(self.args[1])
+    @property
+    def array_size_expr(self) -> "CExp":
+        if self.args[1] >= 0:
+            return self.get_exp(self.args[1])
+        else:
+            raise UF.CHCError("Array type does not have a size")
 
     def has_array_size_expr(self) -> bool:
         return self.args[1] >= 0
 
-    def get_size(self) -> int:
+    @property
+    def size(self) -> int:
         try:
             if self.has_array_size_expr():
-                array_size_const = cast("CE.CExpConst", self.get_array_size_expr()).get_constant()
-                array_size_int = cast("CC.CConstInt", array_size_const).get_int()
-                return self.get_array_basetype().get_size() * array_size_int
+                array_size_const = cast(
+                    "CExpConst", self.array_size_expr).constant
+                array_size_int = cast(
+                    "CConstInt", array_size_const).intvalue
+                return self.array_basetype.size * array_size_int
         except BaseException:
             return -1000
         else:
             return -1000
 
+    @property
     def is_array(self) -> bool:
         return True
 
-    def get_opaque_type(self) -> CTypBase:
+    def get_opaque_type(self) -> CTyp:
         tags = ["tvoid"]
         args: List[int] = []
         return self.cd.get_typ(self.cd.mk_typ(tags, args))
 
-    def to_dict(self):
-        result = {"base": "array", "elem": self.get_array_basetype().to_dict()}
-        if self.has_array_size_expr() and self.get_array_size_expr().is_constant():
-            result["size"] = str(self.get_array_size_expr())
+    def to_dict(self) -> Dict[str, Any]:
+        result = {"base": "array", "elem": self.array_basetype.to_dict()}
+        if self.has_array_size_expr() and self.array_size_expr.is_constant:
+            result["size"] = str(self.array_size_expr)
         return result
 
     def __str__(self) -> str:
-        size = self.get_array_size_expr()
+        size = self.array_size_expr
         ssize = str(size) if size is not None else "?"
-        return str(self.get_array_basetype()) + "[" + ssize + "]"
+        return str(self.array_basetype) + "[" + ssize + "]"
 
 
-@cdregistry.register_tag("tfun", CTypBase)
-class CTypFun(CTypBase):
-    """
-    tags:
-        0: 'tfun'
+@cdregistry.register_tag("tfun", CTyp)
+class CTypFun(CTyp):
+    """ Function type
 
-    args:
-        0: return type
-        1: argument types list (optional)
-        2: varargs
-        3: attributes
+    args[0]: index of return type in cdictionary
+    args[1]: index of argument types list in cdictionary (optional
+    args[2]: 1 = varargs
+    args[3]: index of attributes in cdictionary
     """
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CTypBase.__init__(self, cd, ixval)
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CTyp.__init__(self, cd, ixval)
 
-    def get_return_type(self) -> CTypBase:
+    @property
+    def return_type(self) -> CTyp:
         return self.get_typ(self.args[0])
 
-    def get_args(self) -> Optional["CFunArgs"]:
+    @property
+    def funargs(self) -> Optional["CFunArgs"]:
         return self.cd.get_funargs_opt(self.args[1])
 
-    def get_size(self) -> int:
+    @property
+    def size(self) -> int:
         return 4
 
+    @property
     def is_function(self) -> bool:
         return True
 
-    def get_opaque_type(self) -> CTypBase:
+    def get_opaque_type(self) -> CTyp:
         tags = ["tvoid"]
         args: List[int] = []
         return self.cd.get_typ(self.cd.mk_typ(tags, args))
 
-    def is_default_function_prototype(self):
-        args = self.get_args()
-        if args is None:
+    @property
+    def is_default_function_prototype(self) -> bool:
+        funargs = self.funargs
+        if funargs is None:
             return True
         else:
-            args = args.get_args()
+            args = funargs.arguments
             return len(args) > 0 and all(
-                [x.get_name().startswith("$par$") for x in args]
+                [x.name.startswith("$par$") for x in args]
             )
 
+    @property
     def is_vararg(self) -> bool:
         return self.args[2] == 1
 
-    def strip_attributes(self) -> CTypBase:
-        rtype = self.get_return_type().strip_attributes()
-        if rtype.index != self.get_return_type().index:
+    def strip_attributes(self) -> CTyp:
+        rtype = self.return_type.strip_attributes()
+        if rtype.index != self.return_type.index:
             newargs = self.args[:]
             newargs[0] = rtype.index
             newtypix = self.cd.mk_typ(self.tags, newargs)
@@ -631,72 +619,64 @@ class CTypFun(CTypBase):
         else:
             return self
 
-    def to_dict(self):
-        result = {"base": "fun", "rvtype": self.get_return_type().to_dict()}
-        if self.is_default_function_prototype():
+    def to_dict(self) -> Dict[str, Any]:
+        result = {"base": "fun", "rvtype": self.return_type.to_dict()}
+        if self.is_default_function_prototype:
             result["default"] = "true"
-        else:
-            result["args"] = self.get_args().to_dict()
+        elif self.funargs is not None:
+            result["args"] = self.funargs.to_dict()
         return result
 
     def __str__(self) -> str:
-        rtyp = self.get_return_type()
-        args = self.get_args()
+        rtyp = self.return_type
+        args = self.funargs
         return "(" + str(args) + "):" + str(rtyp)
 
 
 class CFunArg(CDictionaryRecord):
-    """
-    tags:
-        0: argument name
+    """ Function argument
 
-    args:
-        0: argument type
-        1: attributes
+    tags[0]: argument name
+    args[0]: index of argument type in cdictionary
+    args[1]: index of attributes in cdictionary
     """
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
         CDictionaryRecord.__init__(self, cd, ixval)
 
-    def get_name(self) -> str:
+    @property
+    def name(self) -> str:
         if len(self.tags) > 0:
             return self.tags[0]
         else:
             return "__"
 
-    def get_type(self) -> CTypBase:
+    @property
+    def typ(self) -> CTyp:
         return self.cd.get_typ(self.args[0])
 
-    def to_dict(self):
-        return self.get_type().to_dict()
+    def to_dict(self) -> Dict[str, Any]:
+        return self.typ.to_dict()
 
     def __str__(self) -> str:
-        return str(self.get_type()) + " " + self.get_name()
+        return str(self.typ) + " " + self.name
 
 
 class CFunArgs(CDictionaryRecord):
-    """
-    tags: -
+    """ Function arguments
 
-    args: function arguments
+    args[0..]: indices of function arguments in cdictionary
     """
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
         CDictionaryRecord.__init__(self, cd, ixval)
 
-    def get_args(self) -> List[CFunArg]:
+    @property
+    def arguments(self) -> List[CFunArg]:
         return [self.cd.get_funarg(i) for i in self.args]
 
-    def to_dict(self):
-        return [a.to_dict() for a in self.get_args()]
+    def to_dict(self) -> List[Dict[str, Any]]:
+        return [a.to_dict() for a in self.arguments]
 
     def __str__(self) -> str:
-        return ", ".join([str(x) for x in self.get_args()])
+        return ", ".join([str(x) for x in self.arguments])

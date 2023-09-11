@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,62 +28,248 @@
 # ------------------------------------------------------------------------------
 
 import xml.etree.ElementTree as ET
-from typing import Any, Dict, List, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
-import chc.util.fileutil as UF
 
-from chc.app.CFunctionBody import CCallInstr, CFunctionBody
+from chc.api.CFunctionApi import CFunctionApi
+
+
 from chc.app.CLocation import CLocation
 from chc.app.CFunDeclarations import CFunDeclarations
-from chc.app.CVarInfo import CVarInfo
+from chc.app.CInstr import CCallInstr
+from chc.app.CStmt import CFunctionBody
 from chc.invariants.CFunVarDictionary import CFunVarDictionary
 from chc.invariants.CFunInvDictionary import CFunInvDictionary
 from chc.invariants.CFunInvariantTable import CFunInvariantTable
+from chc.invariants.CInvariantFact import CInvariantFact
 
-from chc.api.CFunctionApi import CFunctionApi
 from chc.proof.CFunPODictionary import CFunPODictionary
+from chc.proof.CFunctionPO import CFunctionPO
+from chc.proof.CFunctionPPO import CFunctionPPO
+from chc.proof.CFunctionPPOs import CFunctionPPOs
 from chc.proof.CFunctionProofs import CFunctionProofs
+from chc.proof.CFunctionSPOs import CFunctionSPOs
+
+import chc.util.fileutil as UF
 
 if TYPE_CHECKING:
+    from chc.api.InterfaceDictionary import InterfaceDictionary
+    from chc.app.CApplication import CApplication
     from chc.app.CFile import CFile
-
+    from chc.app.CFileDeclarations import CFileDeclarations
+    from chc.app.CTyp import CTyp
+    from chc.app.CVarInfo import CVarInfo
+    
 
 class CFunction(object):
     """Function implementation."""
 
-    def __init__(self, cfile: "CFile", xnode: ET.Element) -> None:
-        self.cfile = cfile
-        self.capp = self.cfile.capp
-        self.xnode = xnode
-        self.fdecls = CFunDeclarations(self, xnode.find("declarations"))
-        xml_svar = xnode.find("svar")
-        if xml_svar is None:
-            raise Exception("xnode missing xml_svar")
-        xml_ivinfo = xml_svar.get("ivinfo")
-        if xml_ivinfo is None:
-            raise Exception("svar missing ivinfo")
-        self.svar = self.cfile.declarations.get_varinfo(int(xml_ivinfo))
-        self.ftype = self.svar.vtype
-        self.name = self.svar.vname
-        self.formals: Dict[int, CVarInfo] = {}  # vid -> CVarInfo
-        self.locals: Dict[int, CVarInfo] = {}  # vid -> CVarInfo
-        sbody = self.xnode.find("sbody")
-        if sbody is None:
-            raise Exception("missing element `sbody`")
-        self.body = CFunctionBody(self, sbody)
-        self.podictionary = CFunPODictionary(self)
-        self.proofs = CFunctionProofs(self)
-        self.api = CFunctionApi(self)
-        self.vard = CFunVarDictionary(self.fdecls)
-        self.invd = CFunInvDictionary(self.vard)
-        self.invtable = CFunInvariantTable(self.invd)
+    def __init__(self, cfile: "CFile", xnode: ET.Element, fname: str) -> None:
+        self.xnode = xnode        
+        self._cfile = cfile
+        self._name = fname
+        self._cfundecls: Optional[CFunDeclarations] = None
+        self._svar: Optional["CVarInfo"] = None
+        self._formals: Dict[int, "CVarInfo"] = {}  # vid -> CVarInfo
+        self._locals: Dict[int, "CVarInfo"] = {}  # vid -> CVarInfo
+        self._sbody: Optional[CFunctionBody] = None
+        self._podictionary: Optional[CFunPODictionary] = None
+        self._api: Optional[CFunctionApi] = None
+        self._proofs: Optional[CFunctionProofs] = None
+        self._vard: Optional[CFunVarDictionary] = None
+        self._invd: Optional[CFunInvDictionary] = None
+        self._invarianttable: Optional[CFunInvariantTable] = None
         self._initialize()
 
-    def reinitialize_tables(self) -> None:
-        self.api = CFunctionApi(self)
-        self.podictionary.initialize()
-        self.vard.initialize(force=True)
+    def xmsg(self, txt: str) -> str:
+        return "Function " + self.name + ": " + txt
 
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def formals(self) -> Dict[int, "CVarInfo"]:
+        if len(self._formals) == 0:
+            for (vid, vinfo) in self.cfundecls.varinfos.items():
+                if vinfo.is_param:
+                    self._formals[vid] = vinfo
+        return self._formals
+
+    @property
+    def locals(self) -> Dict[int, "CVarInfo"]:
+        if len(self._locals) == 0:
+            for (vid, vinfo) in self.cfundecls.varinfos.items():
+                if not vinfo.is_param:
+                    self._locals[vid] = vinfo
+        return self._locals
+
+    @property
+    def ftype(self) -> "CTyp":
+        return self.svar.vtype
+
+    @property
+    def cfile(self) -> "CFile":
+        return self._cfile
+
+    @property
+    def cfiledecls(self) -> "CFileDeclarations":
+        return self.cfile.declarations
+
+    @property
+    def capp(self) -> "CApplication":
+        return self.cfile.capp
+
+    @property
+    def interfacedictionary(self) -> "InterfaceDictionary":
+        return self.cfile.interfacedictionary
+
+    @property
+    def api(self) -> CFunctionApi:
+        if self._api is None:
+            axnode = UF.get_api_xnode(
+                self.capp.path, self.cfile.name, self.name)
+            if axnode is not None:
+                apinode = axnode.find("api")
+                if apinode is not None:
+                    self._api = CFunctionApi(self, apinode)
+                else:
+                    raise UF.CHCError(self.xmsg("api file has no api node"))
+            else:
+                raise UF.CHCError(self.xmsg("api file not found"))
+        return self._api
+
+    @property
+    def svar(self) -> "CVarInfo":
+        if self._svar is None:
+            xsvar = self.xnode.find("svar")
+            if xsvar is not None:
+                xivinfo = xsvar.get("ivinfo")
+                if xivinfo is not None:
+                    self._svar = self.cfiledecls.get_varinfo(int(xivinfo))
+                else:
+                    raise UF.CHCError(
+                        self.xmsg(
+                            "ivinfo attribute "
+                            + "is missing from svar element in cfun file"))
+            else:
+                raise UF.CHCError(
+                    self.xmsg("svar element is missing from cfun file"))
+        return self._svar
+
+    @property
+    def sbody(self) -> CFunctionBody:
+        if self._sbody is None:
+            xsbody = self.xnode.find("sbody")
+            if xsbody is not None:
+                self._sbody = CFunctionBody(self, xsbody)
+            else:
+                raise UF.CHCError(
+                    self.xmsg("sbody element is missing from cfun file"))
+        return self._sbody
+
+    @property
+    def cfundecls(self) -> CFunDeclarations:
+        if self._cfundecls is None:
+            dxnode = self.xnode.find("declarations")
+            if dxnode is not None:
+                self._cfundecls = CFunDeclarations(self, dxnode)
+            else:
+                raise UF.CHCError(
+                    self.xmsg("declarations are missing from cfun file"))
+        return self._cfundecls
+
+    @property
+    def vardictionary(self) -> CFunVarDictionary:
+        if self._vard is None:
+            vxnode = UF.get_vars_xnode(
+                self.capp.path, self.cfile.name, self.name)
+            if vxnode is not None:
+                xvard = vxnode.find("var-dictionary")
+                if xvard is not None:
+                    self._vard = CFunVarDictionary(self, xvard)
+                else:
+                    raise UF.CHCError(
+                        self.xmsg("var-dictionary missing from cfun-vars file"))
+            else:
+                raise UF.CHCError(
+                    self.xmsg(
+                        "var-dictionary file not found for function "
+                        + self.name
+                        + " in file "
+                        + self.cfile.name))
+        return self._vard
+
+    @property
+    def invdictionary(self) -> CFunInvDictionary:
+        if self._invd is None:
+            ixnode = UF.get_invs_xnode(
+                self.capp.path, self.cfile.name, self.name)
+            if ixnode is not None:
+                xinvs = ixnode.find("inv-dictionary")
+                if xinvs is not None:
+                    self._invd = CFunInvDictionary(self, xinvs)
+                else:
+                    raise UF.CHCError(
+                        self.xmsg("inv-dictionary missing from cfun-invs file"))
+            else:
+                raise UF.CHCError(
+                    self.xmsg("inv-dictionary file not found"))
+        return self._invd
+
+    @property
+    def invarianttable(self) -> CFunInvariantTable:
+        if self._invarianttable is None:
+            ixnode = UF.get_invs_xnode(
+                self.capp.path, self.cfile.name, self.name)
+            if ixnode is not None:
+                xinvs = ixnode.find("location-invariants")
+                if xinvs is not None:
+                    self._invarianttable = CFunInvariantTable(self, xinvs)
+                else:
+                    raise UF.CHCError(
+                        self.xmsg("inv-table missing from cfun-invs file"))
+            else:
+                raise UF.CHCError(
+                    self.xmsg("inv-dictionary file not found"))
+        return self._invarianttable
+
+    @property
+    def podictionary(self) -> CFunPODictionary:
+        if self._podictionary is None:
+            pxnode = UF.get_pod_xnode(
+                self.capp.path, self.cfile.name, self.name)
+            if pxnode is None:
+                raise UF.CHCError(self.xmsg("pod file not found"))
+            self._podictionary = CFunPODictionary(self, pxnode)
+        return self._podictionary
+
+    @property
+    def proofs(self) -> CFunctionProofs:
+        if self._proofs is None:
+            xpponode = UF.get_ppo_xnode(
+                self.capp.path, self.cfile.name, self.name)
+            if xpponode is None:
+                raise UF.CHCError(self.xmsg("ppo file is missing"))
+            xxpponode = xpponode.find("ppos")
+            if xxpponode is None:
+                raise UF.CHCError(self.xmsg("_ppo file has no ppos element"))
+            xsponode = UF.get_spo_xnode(
+                self.capp.path, self.cfile.name, self.name)
+            if xsponode is None:
+                raise UF.CHCError(self.xmsg("spo file is missing"))
+            xxsponode = xsponode.find("spos")
+            if xxsponode is None:
+                raise UF.CHCError(self.xmsg("_spo file has no spos element"))
+            self._proofs = CFunctionProofs(self, xxpponode, xxsponode)
+        return self._proofs
+
+    def reinitialize_tables(self) -> None:
+        self._api = None
+        self._podictionary = None
+        self._vardictionary = None
+
+    '''
     def export_function_data(self, result: Dict[str, object]) -> None:
         fnresult: Dict[str, object] = {}
         fnresult["type"] = self.ftype.to_idict()
@@ -91,30 +279,32 @@ class CFunction(object):
         fnresult["call-instrs"] = [i.to_dict() for i in self.get_call_instrs()]
         fnresult["call-instrs-strs"] = [str(i) for i in self.get_call_instrs()]
         result[self.name] = fnresult
+    '''
 
     def get_formal_vid(self, name: str) -> int:
         for v in self.formals:
             if self.formals[v].vname == name:
                 return v
         else:
-            raise Exception("Formals: " + ",".join([str(v) for v in self.formals.values()]))
+            raise UF.CHCError(
+                "Formals: " + ",".join([str(v) for v in self.formals.values()]))
 
     def get_variable_vid(self, vname: str) -> int:
         for v in self.formals:
             if self.formals[v].vname == vname:
-                return self.formals[v].get_vid()
+                return self.formals[v].vid
         for v in self.locals:
             if self.locals[v].vname == vname:
-                return self.locals[v].get_vid()
-        raise Exception("Could not find vid for variable \"" + vname + "\"")
+                return self.locals[v].vid
+        raise UF.CHCError("Could not find vid for variable \"" + vname + "\"")
 
-    # returns a list of strings
-    def get_strings(self) -> List[str]:
-        return self.body.get_strings()
+    @property
+    def strings(self) -> List[str]:
+        return self.sbody.strings
 
     # returns the number of occurrences of vid in expressions and lhs
-    def get_variable_uses(self, vid):
-        return self.body.get_variable_uses(vid)
+    def get_variable_uses(self, vid: int) -> int:
+        return self.sbody.get_variable_uses(vid)
 
     def has_function_contract(self) -> bool:
         return self.cfile.has_function_contract(self.name)
@@ -147,12 +337,12 @@ class CFunction(object):
     def get_location(self):
         return self.svar.vdecl
 
-    def get_source_code_file(self):
-        return self.get_location().get_file()
+    def get_source_code_file(self) -> str:
+        return self.get_location().file
 
     def get_line_number(self) -> int:
         if self.cfile.name + ".c" == self.get_source_code_file():
-            return self.get_location().get_line()
+            return self.get_location().line
         raise Exception("No relevant line number")
 
     def get_formals(self):
@@ -161,20 +351,26 @@ class CFunction(object):
     def get_locals(self):
         return self.locals.values()
 
+    '''
     def get_body(self) -> CFunctionBody:
         return self.body
+    '''
 
-    def get_block_count(self) -> int:
-        return self.body.get_block_count()
+    @property
+    def block_count(self) -> int:
+        return self.sbody.block_count
 
-    def get_stmt_count(self) -> int:
-        return self.body.get_stmt_count()
+    @property
+    def stmt_count(self) -> int:
+        return self.sbody.stmt_count
 
-    def get_instr_count(self) -> int:
-        return self.body.get_instr_count()
+    @property
+    def instr_count(self) -> int:
+        return self.sbody.instr_count
 
-    def get_call_instrs(self) -> List[CCallInstr]:
-        return self.body.get_call_instrs()
+    @property
+    def call_instrs(self) -> List[CCallInstr]:
+        return self.sbody.call_instrs
 
     def get_invariants(self):
         self._readinvariants()
@@ -208,8 +404,8 @@ class CFunction(object):
 
     def collect_post(self) -> None:
         """Add postcondition requests to the contract of the callee"""
-        for r in self.get_api().get_postcondition_requests():
-            tgtfid = r.callee.get_vid()
+        for r in self.api.postcondition_requests.values():
+            tgtfid = r.callee.vid
             tgtfun = self.capp.resolve_vid_function(self.cfile.index, tgtfid)
             if tgtfun is None:
                 print(
@@ -242,17 +438,17 @@ class CFunction(object):
     def reload_spos(self) -> None:
         self.proofs.reload_spos()
 
-    def get_ppos(self):
-        return self.proofs.get_ppos()
+    def get_ppos(self) -> List[CFunctionPPO]:
+        return self.proofs.ppolist
 
-    def get_spos(self):
-        return self.proofs.get_spos()
+    def get_spos(self) -> List[CFunctionPO]:
+        return self.proofs.spolist
 
-    def get_open_ppos(self):
-        return self.proofs.get_open_ppos()
+    def get_open_ppos(self) -> List[CFunctionPPO]:
+        return self.proofs.open_ppos
 
-    def get_open_spos(self):
-        return self.proofs.get_open_spos()
+    def get_open_spos(self) -> List[CFunctionPO]:
+        return self.proofs.open_spos
 
     def get_violations(self):
         return self.proofs.get_violations()
@@ -264,9 +460,12 @@ class CFunction(object):
         return self.proofs.get_delegated()
 
     def _initialize(self) -> None:
-        for v in self.fdecls.get_formals():
+        pass
+    '''
+        for v in self.cfundecls.get_formals():
             self.formals[v.get_vid()] = v
-        for v in self.fdecls.get_locals():
+        for v in self.cfundecls.get_locals():
             self.locals[v.get_vid()] = v
         self.vard.initialize()
         self.invtable.initialize()
+    '''

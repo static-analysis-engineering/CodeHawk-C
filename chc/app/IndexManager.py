@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -28,8 +30,14 @@
 import logging
 import xml.etree.ElementTree as ET
 
+from typing import Dict, List, Optional, Tuple, TYPE_CHECKING
+
 import chc.util.fileutil as UF
 import chc.util.xmlutil as UX
+
+if TYPE_CHECKING:
+    from chc.app.CFileDeclarations import CFileDeclarations
+    from chc.app.CFile import CFile
 
 fidvidmax_initial_value = 1000000
 
@@ -39,26 +47,27 @@ TODO:
 """
 
 
-class IndexManager(object):
-    def __init__(self, issinglefile):
+class IndexManager:
+
+    def __init__(self, issinglefile: bool) -> None:
         self.issinglefile = issinglefile  # application consists of a single file
 
-        self.vid2gvid = {}  # fid -> vid -> gvid
-        self.gvid2vid = {}  # gvid -> fid -> vid
+        self.vid2gvid: Dict[int, Dict[int, int]] = {}  # fid -> vid -> gvid
+        self.gvid2vid: Dict[int, Dict[int, int]] = {}  # gvid -> fid -> vid
 
-        self.fidvidmax = {}  # fid -> maximum vid in file with index fid
+        self.fidvidmax: Dict[int, int] = {}  # fid -> maximum vid in file with index fid
 
-        self.ckey2gckey = {}  # fid -> ckey -> gckey
-        self.gckey2ckey = {}  # gckey -> fid -> ckey
+        self.ckey2gckey: Dict[int, Dict[int, int]] = {}  # fid -> ckey -> gckey
+        self.gckey2ckey: Dict[int, Dict[int, int]] = {}  # gckey -> fid -> ckey
 
         # gvid -> fid  (file in which gvid is defined)
-        self.gviddefs = {}
+        self.gviddefs: Dict[int, int] = {}
 
-    def get_vid_gvid_subst(self, fid):
+    def get_vid_gvid_subst(self, fid: int) -> Dict[int, int]:
         return self.vid2gvid[fid]
 
-    def get_fid_gvid_subset(self, fileindex):
-        result = {}
+    def get_fid_gvid_subset(self, fileindex: int) -> Dict[int, int]:
+        result: Dict[int, int] = {}
         for gvid in self.gvid2vid:
             for fid in self.gvid2vid[gvid]:
                 if fid == fileindex:
@@ -67,7 +76,7 @@ class IndexManager(object):
 
     """return the fid of the file in which this vid is defined, with the local vid."""
 
-    def resolve_vid(self, fid, vid):
+    def resolve_vid(self, fid: int, vid: int) -> Optional[Tuple[int, int]]:
         if self.issinglefile:
             return (fid, vid)
         msg = "indexmgr:resolve-vid(" + str(fid) + "," + str(vid) + "): "
@@ -110,27 +119,28 @@ class IndexManager(object):
 
     """return a list of (fid,vid) pairs that refer to the same global variable."""
 
-    def get_gvid_references(self, gvid):
-        result = []
+    def get_gvid_references(self, gvid: int) -> List[Tuple[int, int]]:
+        result: List[Tuple[int, int]] = []
         for fid in self.gvid2vid[gvid]:
             result.append((fid, self.gvid2vid[gvid][fid]))
         return result
 
-    def has_gvid_reference(self, gvid, fid):
+    def has_gvid_reference(self, gvid: int, fid: int) -> bool:
         if gvid in self.gvid2vid:
             return fid in self.gvid2vid[gvid]
         else:
             return False
 
-    def get_gvid_reference(self, gvid, fid):
+    def get_gvid_reference(self, gvid: int, fid: int) -> Optional[int]:
         if gvid in self.gvid2vid:
             if fid in self.gvid2vid[gvid]:
                 return self.gvid2vid[gvid][fid]
+        return None
 
     """return a list of (fid,vid) pairs that refer to the same variable."""
 
-    def get_vid_references(self, srcfid, srcvid):
-        result = []
+    def get_vid_references(self, srcfid: int, srcvid: int) -> List[Tuple[int, int]]:
+        result: List[Tuple[int, int]] = []
         if self.issinglefile:
             return result
         if srcfid in self.vid2gvid:
@@ -148,7 +158,7 @@ class IndexManager(object):
     map the gvid.
     """
 
-    def convert_vid(self, fidsrc, vid, fidtgt):
+    def convert_vid(self, fidsrc: int, vid: int, fidtgt: int) -> Optional[int]:
         if self.issinglefile:
             return vid
         gvid = self.get_gvid(fidsrc, vid)
@@ -175,33 +185,37 @@ class IndexManager(object):
                     self.fidvidmax[fidtgt] += 1
                     return self.gvid2vid[gvid][fidtgt]
                 """
+        return None
 
     """return the gvid of the vid in the file with index fid."""
 
-    def get_gvid(self, fid, vid):
+    def get_gvid(self, fid: int, vid: int) -> Optional[int]:
         if self.issinglefile:
             return vid
         if fid in self.vid2gvid:
             if vid in self.vid2gvid[fid]:
                 return self.vid2gvid[fid][vid]
+        return None
 
     """return the vid of the gvid in the file with index fid."""
 
-    def get_vid(self, fid, gvid):
+    def get_vid(self, fid: int, gvid: int) -> Optional[int]:
         if self.issinglefile:
-            return vid
+            return gvid
         if gvid in self.gvid2vid:
             if fid in self.gvid2vid[gvid]:
                 return self.gvid2vid[gvid][fid]
+        return None
 
-    def get_gckey(self, fid, ckey):
+    def get_gckey(self, fid: int, ckey: int) -> Optional[int]:
         if self.issinglefile:
             return ckey
         if fid in self.ckey2gckey:
             if ckey in self.ckey2gckey[fid]:
                 return self.ckey2gckey[fid][ckey]
+        return None
 
-    def convert_ckey(self, fidsrc, ckey, fidtgt):
+    def convert_ckey(self, fidsrc: int, ckey: int, fidtgt: int) -> Optional[int]:
         if self.issinglefile:
             return ckey
         gckey = self.get_gckey(fidsrc, ckey)
@@ -222,8 +236,9 @@ class IndexManager(object):
             logging.debug(
                 "Local key " + str(ckey) + " not found for source file " + str(fidsrc)
             )
+        return None
 
-    def add_ckey2gckey(self, fid, ckey, gckey):
+    def add_ckey2gckey(self, fid: int, ckey: int, gckey: int) -> None:
         if fid not in self.ckey2gckey:
             self.ckey2gckey[fid] = {}
         self.ckey2gckey[fid][ckey] = gckey
@@ -231,7 +246,7 @@ class IndexManager(object):
             self.gckey2ckey[gckey] = {}
         self.gckey2ckey[gckey][fid] = ckey
 
-    def add_vid2gvid(self, fid, vid, gvid):
+    def add_vid2gvid(self, fid: int, vid: int, gvid: int) -> None:
         if fid not in self.vid2gvid:
             self.vid2gvid[fid] = {}
         self.vid2gvid[fid][vid] = gvid
@@ -239,7 +254,7 @@ class IndexManager(object):
             self.gvid2vid[gvid] = {}
         self.gvid2vid[gvid][fid] = vid
 
-    def add_file(self, cfile):
+    def add_file(self, cfile: "CFile") -> None:
         path = cfile.capp.path
         fname = cfile.name
         fid = cfile.index
@@ -249,7 +264,7 @@ class IndexManager(object):
         self._add_globaldefinitions(cfile.declarations, fid)
         self.fidvidmax[fid] = fidvidmax_initial_value
 
-    def save_xrefs(self, path, fname, fid):
+    def save_xrefs(self, path: str, fname: str, fid: int) -> None:
         xrefroot = UX.get_xml_header("global-xrefs", "global-xrefs")
         xrefsnode = ET.Element("global-xrefs")
         xrefroot.append(xrefsnode)
@@ -275,39 +290,62 @@ class IndexManager(object):
         xreffile = open(xreffilename, "w")
         xreffile.write(UX.doc_to_pretty(ET.ElementTree(xrefroot)))
 
-    def _add_xrefs(self, xnode, fid):
+    def _add_xrefs(self, xnode: ET.Element, fid: int) -> None:
         if fid not in self.ckey2gckey:
             self.ckey2gckey[fid] = {}
 
         xcompinfoxrefs = xnode.find("compinfo-xrefs")
-        for cxref in xcompinfoxrefs.findall("cxref"):
-            ckey = int(cxref.get("ckey"))
-            gckey = int(cxref.get("gckey"))
-            self.ckey2gckey[fid][ckey] = gckey
-            if gckey not in self.gckey2ckey:
-                self.gckey2ckey[gckey] = {}
-            self.gckey2ckey[gckey][fid] = ckey
+        if xcompinfoxrefs is not None:
+            for cxref in xcompinfoxrefs.findall("cxref"):
+                xckey = cxref.get("ckey")
+                if xckey is not None:
+                    ckey = int(xckey)
+                    xgckey = cxref.get("gckey")
+                    if xgckey is not None:
+                        gckey = int(xgckey)
+                        self.ckey2gckey[fid][ckey] = gckey
+                        self.gckey2ckey.setdefault(gckey, {})
+                        # if gckey not in self.gckey2ckey:
+                        #    self.gckey2ckey[gckey] = {}
+                        self.gckey2ckey[gckey][fid] = ckey
+                    else:
+                        raise UF.CHCError(
+                            "Compinfo xref without gckey attribute")
+                else:
+                    raise UF.CHCError("Compinfo xref without ckey attribute")
 
         if fid not in self.vid2gvid:
             self.vid2gvid[fid] = {}
 
         xvarinfoxrefs = xnode.find("varinfo-xrefs")
-        for vxref in xvarinfoxrefs.findall("vxref"):
-            vid = int(vxref.get("vid"))
-            gvid = int(vxref.get("gvid"))
-            self.vid2gvid[fid][vid] = gvid
-            if gvid not in self.gvid2vid:
-                self.gvid2vid[gvid] = {}
-            self.gvid2vid[gvid][fid] = vid
+        if xvarinfoxrefs is not None:
+            for vxref in xvarinfoxrefs.findall("vxref"):
+                xvid = vxref.get("vid")
+                if xvid is not None:
+                    vid = int(xvid)
+                    xgvid = vxref.get("gvid")
+                    if xgvid is not None:
+                        gvid = int(xgvid)
+                        self.vid2gvid[fid][vid] = gvid
+                        self.gvid2vid.setdefault(gvid, {})
+                        # if gvid not in self.gvid2vid:
+                        # self.gvid2vid[gvid] = {}
+                        self.gvid2vid[gvid][fid] = vid
+                    else:
+                        raise UF.CHCError(
+                            "Varinfo xref without gvid attribute")
+                else:
+                    raise UF.CHCError("Varinfo xref without vid attribute")
 
-    def _add_globaldefinitions(self, declarations, fid):
+    def _add_globaldefinitions(
+            self, declarations: "CFileDeclarations", fid: int) -> None:
         for gvar in declarations.get_globalvar_definitions():
-            gvid = self.get_gvid(fid, gvar.varinfo.get_vid())
+            gvid = self.get_gvid(fid, gvar.varinfo.vid)
             if gvid is not None:
                 self.gviddefs[gvid] = fid
 
         for gfun in declarations.get_global_functions():
-            gvid = self.get_gvid(fid, gfun.varinfo.get_vid())
+            gvid = self.get_gvid(fid, gfun.varinfo.vid)
             if gvid is not None:
                 logging.info(
                     "Set function "

@@ -34,18 +34,19 @@ from chc.app.CDictionaryRecord import CDeclarationsRecord
 import chc.util.IndexedTable as IT
 
 if TYPE_CHECKING:
-    import chc.app.CExp as CE
-    import chc.app.CTyp as CT
+    from chc.app.CExp import CExp
+    from chc.app.CTyp import CTyp
     from chc.app.CDeclarations import CDeclarations
-    from chc.app.COffsetExp import COffsetBase
+    from chc.app.COffset import COffset
 
 
-class CInitInfoBase(CDeclarationsRecord):
+class CInitInfo(CDeclarationsRecord):
     """Global variable initializer."""
 
     def __init__(self, decls: "CDeclarations", ixval: IT.IndexedTableValue):
         CDeclarationsRecord.__init__(self, decls, ixval)
 
+    @property
     def is_single(self) -> bool:
         return False
 
@@ -53,52 +54,69 @@ class CInitInfoBase(CDeclarationsRecord):
         return False
 
 
-class CSingleInitInfo(CInitInfoBase):
-    """Initializer of a simple variable."""
+class CSingleInitInfo(CInitInfo):
+    """Initializer of a simple variable.
+
+    args[0]: index of initialization expression in cdictionary
+    """
 
     def __init__(self, decls: "CDeclarations", ixval: IT.IndexedTableValue):
-        CInitInfoBase.__init__(self, decls, ixval)
+        CInitInfo.__init__(self, decls, ixval)
 
-    def get_exp(self) -> "CE.CExpBase":
+    @property
+    def exp(self) -> "CExp":
         return self.dictionary.get_exp(self.args[0])
 
+    @property
     def is_single(self) -> bool:
         return True
 
     def __str__(self) -> str:
-        return str(self.get_exp())
+        return str(self.exp)
 
 
-class CCompoundInitInfo(CInitInfoBase):
-    """Initializer of a struct or array."""
+class CCompoundInitInfo(CInitInfo):
+    """Initializer of a struct or array.
+
+    args[0]: index of type of initializer in cdictionary
+    """
 
     def __init__(self, decls: "CDeclarations", ixval: IT.IndexedTableValue):
-        CInitInfoBase.__init__(self, decls, ixval)
+        CInitInfo.__init__(self, decls, ixval)
 
-    def get_typ(self) -> "CT.CTypBase":
+    @property
+    def typ(self) -> "CTyp":
         return self.dictionary.get_typ(self.args[0])
 
-    def get_offset_initializers(self) -> List["COffsetInitInfo"]:
+    @property
+    def offset_initializers(self) -> List["COffsetInitInfo"]:
         return [self.decls.get_offset_init(x) for x in self.args[1:]]
 
+    @property
     def is_compound(self) -> bool:
         return True
 
     def __str__(self) -> str:
-        return "\n".join([str(x) for x in self.get_offset_initializers()])
+        return "\n".join([str(x) for x in self.offset_initializers])
 
 
 class COffsetInitInfo(CDeclarationsRecord):
-    """Component of a compound initializer."""
+    """Component of a compound initializer.
+
+    args[0]: index of offset expression in cdictionary
+    args[1]: index of initinfo in cdeclarations
+    """
 
     def __init__(self, decls: "CDeclarations", ixval: IT.IndexedTableValue):
         CDeclarationsRecord.__init__(self, decls, ixval)
 
-    def get_offset(self) -> "COffsetBase":
+    @property
+    def offset(self) -> "COffset":
         return self.dictionary.get_offset(self.args[0])
 
-    def get_initializer(self) -> CInitInfoBase:
+    @property
+    def initializer(self) -> CInitInfo:
         return self.decls.get_initinfo(self.args[1])
 
     def __str__(self) -> str:
-        return str(self.get_offset()) + ":=" + str(self.get_initializer())
+        return str(self.offset) + ":=" + str(self.initializer)

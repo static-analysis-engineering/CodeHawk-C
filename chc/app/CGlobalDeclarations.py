@@ -39,7 +39,7 @@ from chc.app.CCompInfo import CCompInfo
 from chc.app.CDeclarations import CDeclarations
 from chc.app.CFieldInfo import CFieldInfo
 from chc.app.CGlobalDictionary import CGlobalDictionary
-from chc.app.CInitInfo import CInitInfoBase, COffsetInitInfo
+from chc.app.CInitInfo import CInitInfo, COffsetInitInfo
 from chc.app.CVarInfo import CVarInfo
 
 from chc.util.IndexedTable import IndexedTable
@@ -184,9 +184,9 @@ class CGlobalDeclarations(CDeclarations):
         itv = self.compinfo_table.retrieve(ix)
         return CCompInfo(self, itv)
 
-    def get_initinfo(self, ix: int) -> CInitInfoBase:
+    def get_initinfo(self, ix: int) -> CInitInfo:
         itv = self.initinfo_table.retrieve(ix)
-        return CInitInfoBase(self, itv)
+        return CInitInfo(self, itv)
 
     def get_offset_init(self, ix: int) -> COffsetInitInfo:
         itv = self.offset_init_table.retrieve(ix)
@@ -224,7 +224,7 @@ class CGlobalDeclarations(CDeclarations):
         if cinfo is None:
             print("Compinfo " + str(ckey) + " not found")
             return False
-        return self.get_compinfo(ckey).isstruct
+        return self.get_compinfo(ckey).is_struct
 
     def convert_ckey(self, ckey: int, fid: int = -1) -> Optional[int]:
         if fid >= 0:
@@ -526,7 +526,7 @@ class CGlobalDeclarations(CDeclarations):
         if varinfo.vtype.is_default_function_prototype():
             self.default_function_prototypes.append((fid, varinfo))
             return
-        vid = varinfo.get_vid()
+        vid = varinfo.vid
         if varinfo.get_vstorage() == "s":
             vname = varinfo.vname + "__file__" + str(fid) + "__"
         else:
@@ -549,20 +549,20 @@ class CGlobalDeclarations(CDeclarations):
 
         gvarinfoindex = self.varinfo_table.add(key, f)
         gvarinfo = self.get_varinfo(gvarinfoindex)
-        gvid = gvarinfo.get_vid()
+        gvid = gvarinfo.vid
         if gvid not in self.varinfo_storage_classes:
             self.varinfo_storage_classes[gvid] = ""
         vstorageclass = varinfo.tags[1]
         if vstorageclass not in self.varinfo_storage_classes[gvid]:
             self.varinfo_storage_classes[gvid] += vstorageclass
-        self.vid2gvid[fid][vid] = gvarinfo.get_vid()
+        self.vid2gvid[fid][vid] = gvarinfo.vid
         logging.debug(
             "Fid: "
             + str(fid)
             + ", vid: "
             + str(vid)
             + ", gvid: "
-            + str(gvarinfo.get_vid())
+            + str(gvarinfo.vid)
             + ": "
             + gvarinfo.vname
         )
@@ -588,13 +588,13 @@ class CGlobalDeclarations(CDeclarations):
             itvcandidates = self.varinfo_table.retrieve_by_key(f)
             candidates = [(itv[0], CVarInfo(self, itv[1])) for itv in itvcandidates]
             if len(candidates) == 1:
-                self.vid2gvid[fid][varinfo.get_vid()] = candidates[0][1].get_vid()
+                self.vid2gvid[fid][varinfo.vid] = candidates[0][1].vid
                 logging.info("Resolved prototype for " + varinfo.vname)
             else:
                 pcandidates = ",".join([c[1].vname for c in candidates])
                 for (_, c) in candidates:
                     if c.vname == varinfo.vname:
-                        self.vid2gvid[fid][varinfo.get_vid()] = c.get_vid()
+                        self.vid2gvid[fid][varinfo.get_vid()] = c.vid
                         logging.warning(
                             "Selected prototype "
                             + c.vname

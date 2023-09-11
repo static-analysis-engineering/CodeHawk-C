@@ -35,25 +35,24 @@ import chc.util.IndexedTable as IT
 
 if TYPE_CHECKING:
     from chc.app.CDictionary import CDictionary
-    import chc.app.CExp as CE
+    from chc.app.CExp import CExp
 
 
-class CLHostBase(CDictionaryRecord):
+class CLHost(CDictionaryRecord):
     """Base class for variable and dereference."""
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
         CDictionaryRecord.__init__(self, cd, ixval)
 
+    @property
     def is_var(self) -> bool:
         return False
 
+    @property
     def is_mem(self) -> bool:
         return False
 
+    @property
     def is_tmpvar(self) -> bool:
         return False
 
@@ -67,7 +66,7 @@ class CLHostBase(CDictionaryRecord):
         return False
 
     def has_ref_type(self) -> bool:
-        return self.is_mem()
+        return self.is_mem
 
     def get_variable_uses(self, vid: int) -> int:
         raise NotImplementedError("Subclass needs to override get_variable_uses")
@@ -79,87 +78,78 @@ class CLHostBase(CDictionaryRecord):
         return "lhostbase:" + self.tags[0]
 
 
-@cdregistry.register_tag("var", CLHostBase)
-class CLHostVar(CLHostBase):
-    """
-    tags:
-        0: 'var'
-        1: vname
+@cdregistry.register_tag("var", CLHost)
+class CLHostVar(CLHost):
+    """ Variable.
 
-    args:
-        0: vid
+    tags[1]: vname (name of variable)
+    args[0]: vid (variable id)
     """
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CLHostBase.__init__(self, cd, ixval)
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CLHost.__init__(self, cd, ixval)
 
-    def get_name(self) -> str:
+    @property
+    def name(self) -> str:
         return self.tags[1]
 
-    def get_vid(self) -> int:
+    @property
+    def vid(self) -> int:
         return self.args[0]
 
+    @property
     def is_var(self) -> bool:
         return True
 
+    @property
     def is_tmpvar(self) -> bool:
-        return self.get_name().startswith("tmp___")
+        return self.name.startswith("tmp___")
 
     def has_variable(self, vid: int) -> bool:
-        return self.get_vid() == vid
+        return self.vid == vid
 
     def get_variable_uses(self, vid: int) -> int:
         return 1 if self.has_variable(vid) else 0
 
     def to_dict(self) -> Dict[str, object]:
-        return {"base": "var", "var": self.get_name()}
+        return {"base": "var", "var": self.name}
 
     def __str__(self) -> str:
-        # return self.get_name() +  ' (vid:' + str(self.get_vid()) + ')'
-        return self.get_name()
+        return self.name
 
 
-@cdregistry.register_tag("mem", CLHostBase)
-class CLHostMem(CLHostBase):
-    """
-    tags:
-        0: 'mem'
+@cdregistry.register_tag("mem", CLHost)
+class CLHostMem(CLHost):
+    """ Memory reference.
 
-    args:
-        0: exp
+    args[0]: index of address expression in cdictionary
     """
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CLHostBase.__init__(self, cd, ixval)
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CLHost.__init__(self, cd, ixval)
 
-    def get_exp(self) -> "CE.CExpBase":
+    @property
+    def exp(self) -> "CExp":
         return self.cd.get_exp(self.args[0])
 
+    @property
     def is_mem(self) -> bool:
         return True
 
     def has_variable(self, vid: int) -> bool:
-        return self.get_exp().has_variable(vid)
+        return self.exp.has_variable(vid)
 
     def get_strings(self) -> List[str]:
-        return self.get_exp().get_strings()
+        return self.exp.get_strings()
 
     def get_variable_uses(self, vid: int) -> int:
-        return self.get_exp().get_variable_uses(vid)
+        return self.exp.get_variable_uses(vid)
 
     def has_variable_deref(self, vid: int) -> bool:
-        return self.get_exp().has_variable(vid)
+        return self.exp.has_variable(vid)
 
     def to_dict(self) -> Dict[str, object]:
-        return {"base": "mem", "exp": self.get_exp().to_dict()}
+        return {"base": "mem", "exp": self.exp.to_dict()}
 
     def __str__(self) -> str:
-        return "(*" + str(self.get_exp()) + ")"
+        return "(*" + str(self.exp) + ")"

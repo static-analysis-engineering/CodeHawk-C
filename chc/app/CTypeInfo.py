@@ -35,17 +35,18 @@ import chc.util.IndexedTable as IT
 
 if TYPE_CHECKING:
     from chc.app.CDeclarations import CDeclarations
-    from chc.app.CTyp import CTypBase
+    from chc.app.CTyp import CTyp
 
 
 class CTypeInfo(CDeclarationsRecord):
-    """Type definition."""
+    """Type definition.
+
+    tags[0]: name of type definition
+    args[1]: index of type of type definition in cdictionary
+    """
 
     def __init__(
-        self,
-        cdecls: "CDeclarations",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
+            self, cdecls: "CDeclarations", ixval: IT.IndexedTableValue) -> None:
         CDeclarationsRecord.__init__(self, cdecls, ixval)
 
     @property
@@ -53,7 +54,7 @@ class CTypeInfo(CDeclarationsRecord):
         return self.tags[0]
 
     @property
-    def type(self) -> "CTypBase":
+    def type(self) -> "CTyp":
         return self.dictionary.get_typ(self.args[0])
 
     def __str__(self) -> str:

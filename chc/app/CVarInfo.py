@@ -27,19 +27,23 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
-from typing import cast, List, TYPE_CHECKING
+from typing import cast, List, Optional, TYPE_CHECKING
 
 from chc.app.CDictionaryRecord import CDictionaryRecord, CDeclarationsRecord
 
+import chc.util.fileutil as UF
 import chc.util.IndexedTable as IT
 
 if TYPE_CHECKING:
     from chc.app.CDeclarations import CDeclarations
     from chc.app.CFileDeclarations import CFileDeclarations
+    from chc.app.CInitInfo import CInitInfo
+    from chc.app.CLocation import CLocation
+    from chc.app.CTyp import CTyp
 
 
 class CVarInfo(CDeclarationsRecord):
-    """Global variable.
+    """Local or global variable.
 
     tags:
         0: vname
@@ -57,50 +61,100 @@ class CVarInfo(CDeclarationsRecord):
         8: vinit        (optional)
     """
 
-    def __init__(
-        self,
-        cdecls: "CDeclarations",
-        ixval: IT.IndexedTableValue,
+    def __init__(self, cdecls: "CDeclarations", ixval: IT.IndexedTableValue
     ) -> None:
         CDeclarationsRecord.__init__(self, cdecls, ixval)
-        self.vname = self.tags[0]
-        self.vtype = self.dictionary.get_typ(self.args[1])
-        self.vglob = self.args[3] == 1
-        self.vinline = self.args[4] == 1
-        self.vdecl = (
-            cast("CFileDeclarations", self.decls).get_location(self.args[5])
-            if not (self.args[5] == -1)
-            else None
-        )
-        self.vaddrof = self.args[6] == 1
-        self.vparam = self.args[7]
-        self.vinit = (
-            self.decls.get_initinfo(self.args[8]) if len(self.args) == 9 else None
-        )
 
-    def get_vid(self) -> int:
+    @property
+    def vname(self) -> str:
+        return self.tags[0]
+
+    @property
+    def vtype(self) -> "CTyp":
+        return self.dictionary.get_typ(self.args[1])
+
+    @property
+    def is_global(self) -> bool:
+        return self.vglob
+
+    @property
+    def vglob(self) -> bool:
+        return self.args[3] == 1
+
+    @property
+    def is_inline(self) -> bool:
+        return self.vinline
+
+    @property
+    def vinline(self) -> bool:
+        return self.args[4] == 1
+
+    @property
+    def vdecl(self) -> Optional["CLocation"]:
+        if self.args[5] >= 0:
+            return self.decls.get_location(self.args[5])
+        else:
+            return None
+
+    @property
+    def vaddrof(self) -> bool:
+        return self.args[6] == 1
+
+    @property
+    def vparam(self) -> int:
+        return self.args[7]
+
+    @property
+    def is_param(self) -> bool:
+        return self.args[7] > 0
+
+    @property
+    def vinit(self) -> Optional["CInitInfo"]:
+        if len(self.args) >  8:
+            return self.decls.get_initinfo(self.args[8])
+        else:
+            return None
+
+    @property
+    def vid(self) -> int:
         vid = self.args[0]
         return vid if vid >= 0 else self.index
 
-    def get_real_vid(self) -> int:
+    @property
+    def real_vid(self) -> int:
         return self.args[0]
 
-    def get_vstorage(self):
+    @property
+    def vstorage(self) -> str:
         if len(self.tags) > 1:
             return self.tags[1]
-        vid = self.get_vid()
+        vid = self.vid
         if vid in self.decls.varinfo_storage_classes:
             return self.decls.varinfo_storage_classes[vid]
         return "n"
 
-    def get_initializer(self):
-        return self.vinit
+    @property
+    def initializer(self) -> "CInitInfo":
+        if self.vinit is not None:
+            return self.vinit
+        else:
+            raise UF.CHCError(
+                "Varinfo " + self.vname + " does not have an initializer")
 
-    def has_initializer(self):
+    def has_initializer(self) -> bool:
         return self.vinit is not None
 
-    def get_line(self):
-        return self.vdecl.get_line()
+    def has_location(self) -> bool:
+        return self.vdecl is not None
+
+    @property
+    def line(self) -> int:
+        if self.vdecl is not None:
+            return self.vdecl.line
+        else:
+            raise UF.CHCError(
+                "Varinfo "
+                + self.vname + " does not have a declaration location")
 
     def __str__(self) -> str:
         return (

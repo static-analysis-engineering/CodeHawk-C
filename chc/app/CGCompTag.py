@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2023      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -39,14 +41,17 @@ class CGCompTag(object):
         self.compinfo = compinfo
         self.location = location
 
-    def get_struct(self) -> "CCompInfo":
+    @property
+    def struct(self) -> "CCompInfo":
         return self.compinfo
 
-    def get_name(self) -> str:
-        return self.compinfo.get_name()
+    @property
+    def name(self) -> str:
+        return self.compinfo.name
 
+    @property
     def is_struct(self) -> bool:
-        return self.compinfo.isstruct
+        return self.compinfo.is_struct
 
     def __str__(self) -> str:
         return str(self.compinfo)

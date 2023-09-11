@@ -72,7 +72,7 @@ class CGlobalDictionary(CDictionary):
 
     def index_funarg(self, funarg: CT.CFunArg) -> int:
         tags = ["arg"]
-        args = [self.index_typ(funarg.get_type())]
+        args = [self.index_typ(funarg.typ)]
 
         def f(index: int, tags: List[str], args: List[int]) -> CT.CFunArg:
             itv = IT.IndexedTableValue(index, tags, args)

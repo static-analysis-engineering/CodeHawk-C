@@ -35,59 +35,55 @@ import chc.util.IndexedTable as IT
 
 if TYPE_CHECKING:
     from chc.app.CDictionary import CDictionary
-    import chc.app.CLHost as CH
-    import chc.app.COffsetExp as CO
+    from chc.app.CLHost import CLHost
+    from chc.app.COffset import COffset
 
 
 class CLval(CDictionaryRecord):
-    """
-    tags: -
+    """Left-hand side value.
 
-    args:
-        0: lhost
-        1: offset
+    args[0]: index of lhost in cdictionary
+    args[1]: index of offset in cdictionary
     """
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
         CDictionaryRecord.__init__(self, cd, ixval)
 
-    def get_lhost(self) -> "CH.CLHostBase":
+    @property
+    def lhost(self) -> "CLHost":
         return self.cd.get_lhost(self.args[0])
 
-    def get_offset(self) -> "CO.COffsetBase":
+    @property
+    def offset(self) -> "COffset":
         return self.cd.get_offset(self.args[1])
 
     def has_variable(self, vid: int) -> bool:
-        return self.get_lhost().has_variable(vid)
+        return self.lhost.has_variable(vid)
 
     def get_strings(self) -> List[str]:
-        hostresult = self.get_lhost().get_strings()
-        offsetresult = self.get_offset().get_strings()
+        hostresult = self.lhost.get_strings()
+        offsetresult = self.offset.get_strings()
         return hostresult + offsetresult
 
     def get_variable_uses(self, vid: int) -> int:
-        hostresult = self.get_lhost().get_variable_uses(vid)
-        offsetresult = self.get_offset().get_variable_uses(vid)
+        hostresult = self.lhost.get_variable_uses(vid)
+        offsetresult = self.offset.get_variable_uses(vid)
         return hostresult + offsetresult
 
     def has_variable_deref(self, vid: int) -> bool:
-        return self.get_lhost().has_variable_deref(vid)
+        return self.lhost.has_variable_deref(vid)
 
     def has_ref_type(self) -> bool:
-        return self.get_lhost().has_ref_type()
+        return self.lhost.has_ref_type()
 
     def to_dict(self) -> Dict[str, object]:
         return {
-            "lhost": self.get_lhost().to_dict(),
-            "offset": self.get_offset().to_dict(),
+            "lhost": self.lhost.to_dict(),
+            "offset": self.offset.to_dict(),
         }
 
     def to_idict(self) -> Dict[str, object]:
         return {"t": self.tags, "a": self.args}
 
     def __str__(self) -> str:
-        return str(self.get_lhost()) + str(self.get_offset())
+        return str(self.lhost) + str(self.offset)

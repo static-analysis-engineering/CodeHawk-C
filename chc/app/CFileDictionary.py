@@ -29,14 +29,16 @@
 
 import xml.etree.ElementTree as ET
 
-from typing import TYPE_CHECKING
+from typing import Any, cast, Dict, List, TYPE_CHECKING
+
+from chc.app.CCompInfo import CCompInfo
+from chc.app.CExp import (CExp, CExpLval)
+from chc.app.CLHost import CLHost, CLHostVar
+from chc.app.CLval import CLval
+from chc.app.COffset import COffset
 
 import chc.util.fileutil as UF
 import chc.util.IndexedTable as IT
-
-import chc.app.CExp as CE
-import chc.app.CLval as CV
-
 
 from chc.app.CDictionary import CDictionary
 
@@ -63,6 +65,10 @@ class CKeyLookupError(Exception):
 
 
 class CFileDictionary(CDictionary):
+    """Handles indexing of variables across different files (with distinct vid).
+
+    All other indexing is handled by the superclass.
+    """
 
     def __init__(self, cfile: "CFile", xnode: ET.Element)  -> None:
         CDictionary.__init__(self)
@@ -80,10 +86,10 @@ class CFileDictionary(CDictionary):
     def _initialize(self, xnode: ET.Element, force: bool = False) -> None:
         CDictionary.initialize(self, xnode, force)
 
-    def index_compinfo_key(self, compinfo, _):
+    def index_compinfo_key(self, compinfo: CCompInfo, _: object) -> int:
         cfid = compinfo.decls.cfile.index
         fid = self.cfile.index
-        ckey = compinfo.get_ckey()
+        ckey = compinfo.ckey
         if not (cfid == fid):
             tgtkey = self.cfile.capp.indexmanager.convert_ckey(cfid, ckey, fid)
             if tgtkey is None:
@@ -100,7 +106,7 @@ class CFileDictionary(CDictionary):
         else:
             return ckey
 
-    def convert_ckey(self, ckey, fid=-1):
+    def convert_ckey(self, ckey: int, fid: int = -1) -> int:
         if fid == -1:
             return ckey
         thisfid = self.cfile.index
@@ -113,15 +119,17 @@ class CFileDictionary(CDictionary):
         else:
             return ckey
 
-    def index_lhost_offset(self, lhost, offset):
+
+    def index_lhost_offset(self, lhost: int, offset: int) -> int:
         args = [lhost, offset]
 
-        def f(index, key):
-            return CV.CLval(self, index, [], args)
+        def f(index: int, tags: List[str], args: List[int]) -> CLval:
+            itv = IT.IndexedTableValue(index, tags, args)
+            return CLval(self, itv)
 
-        return self.lval_table.add(IT.get_key([], args), f)
+        return self.lval_table.add_tags_args([], args, f)
 
-    def mk_lval_exp(self, lval):
+    def mk_lval_exp(self, lval: int) -> int:
         args = [lval]
         tags = ["lval"]
 
@@ -130,42 +138,56 @@ class CFileDictionary(CDictionary):
 
         return self.exp_table.add(IT.get_key(tags, args), f)
 
-    def index_exp(self, e, subst={}, fid=-1):
-        if e.is_lval():
-            lhost = e.get_lval().get_lhost()
-            if lhost.is_var() and lhost.get_vid() in subst:
-                if e.get_lval().get_offset().has_offset():
-                    if e.get_lval().get_offset().is_field():
-                        paroffset = e.get_lval().get_offset()
-                        newsubst = subst.copy()
-                        newsubst.pop(lhost.get_vid())
-                        iargexp = self.index_exp(subst[lhost.get_vid()], newsubst, fid)
-                        argexp = self.get_exp(iargexp)
-                        if argexp.is_lval():
-                            arghost = argexp.get_lval().get_lhost()
-                            if argexp.get_lval().get_offset().has_offset():
-                                argoffset = argexp.get_lval().get_offset()
-                                raise Exception(
-                                    "Unexpected offset in substitution argument: "
-                                    + str(argexp)
-                                    + "; offset: "
-                                    + str(argoffset)
-                                )
-                            iarghost = self.index_lhost(arghost, newsubst, fid)
-                            iargoffset = self.index_offset(paroffset, fid)
-                            iarglval = self.index_lhost_offset(iarghost, iargoffset)
-                            return self.mk_lval_exp(iarglval)
-                        else:
-                            raise Exception(
-                                "Unexpected type in substition argument (not an lval): "
-                                + str(callarg)
-                            )
-                    else:
-                        raise Exception(
-                            "Unexpected offset in exp to be substituted: " + str(e)
-                        )
-                # avoid re-substitution for recursive functions
+    def index_exp(
+            self, e: CExp, subst: Dict[int, CExp] = {}, fid: int = -1) -> int:
+
+        if not e.is_lval:
+            return CDictionary.index_exp(self, e, subst, fid)
+
+        e = cast(CExpLval, e)
+        lhost = e.lval.lhost
+
+        if not lhost.is_var:
+            return CDictionary.index_exp(self, e, subst, fid)
+    
+        lhost = cast(CLHostVar, lhost)
+        if not lhost.vid in subst:
+            return CDictionary.index_exp(self, e, subst, fid)
+
+        # if lhost.is_var and lhost.vid in subst:
+        if e.lval.offset.has_offset():
+            if e.lval.offset.is_field:
+                paroffset = e.lval.offset
                 newsubst = subst.copy()
-                newsubst.pop(lhost.get_vid())
-                return self.index_exp(subst[lhost.get_vid()], newsubst, fid)
-        return CDictionary.index_exp(self, e, subst, fid)
+                newsubst.pop(lhost.vid)
+                iargexp = self.index_exp(subst[lhost.vid], newsubst, fid)
+                argexp = self.get_exp(iargexp)
+                if argexp.is_lval:
+                    argexp = cast(CExpLval, argexp)
+                    arghost = argexp.lval.lhost
+                    if argexp.lval.offset.has_offset():
+                        argoffset = argexp.lval.offset
+                        raise Exception(
+                            "Unexpected offset in substitution argument: "
+                            + str(argexp)
+                            + "; offset: "
+                            + str(argoffset)
+                        )
+                    iarghost = self.index_lhost(arghost, newsubst, fid)
+                    iargoffset = self.index_offset(paroffset, fid)
+                    iarglval = self.index_lhost_offset(iarghost, iargoffset)
+                    return self.mk_lval_exp(iarglval)
+                else:
+                    raise Exception(
+                        "Unexpected type in substition argument (not an lval): "
+                        + str(argexp)
+                    )
+            else:
+                raise Exception(
+                    "Unexpected offset in exp to be substituted: " + str(e)
+                )
+
+        # avoid re-substitution for recursive functions
+        newsubst = subst.copy()
+        newsubst.pop(lhost.vid)
+        return self.index_exp(subst[lhost.vid], newsubst, fid)

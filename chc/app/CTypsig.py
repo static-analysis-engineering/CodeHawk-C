@@ -37,17 +37,13 @@ if TYPE_CHECKING:
     from chc.app.CDictionary import CDictionary
     from chc.app.CFile import CFile
     import chc.app.CFileDictionary
-    import chc.app.CAttributes as CA
-    import chc.app.CTyp as CT
+    from chc.app.CAttributes import CAttributes
+    from chc.app.CTyp import CTyp
 
 
-class CTypsigTSBase(CDictionaryRecord):
+class CTypsig(CDictionaryRecord):
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
         CDictionaryRecord.__init__(self, cd, ixval)
         self._cd = cd
         self._cfile = self.cd.cfile
@@ -61,123 +57,137 @@ class CTypsigTSBase(CDictionaryRecord):
         return self._cfile
 
 
-@cdregistry.register_tag("tsarray", CTypsigTSBase)
-class CTypsigArray(CTypsigTSBase):
-    def __init__(
-        self,
-        cd: "chc.app.CDictionary.CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CTypsigTSBase.__init__(self, cd, ixval)
+@cdregistry.register_tag("tsarray", CTypsig)
+class CTypsigArray(CTypsig):
+    """Array type signature.
 
-    def get_len_opt(self) -> Optional[int]:
+    tags[1]: length of array (optional)
+    args[0]: index of type signature of array base in cdictionary
+    args[1]: index of attributes in cdictionary
+    """
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CTypsig.__init__(self, cd, ixval)
+
+    @property
+    def opt_length(self) -> Optional[int]:
         return None if self.tags[1] == "" else int(self.tags[1])
 
-    def get_typsig(self) -> CTypsigTSBase:
+    @property
+    def typsig(self) -> CTypsig:
         return self.cd.get_typsig(self.args[0])
 
-    def get_attributes(self) -> "CA.CAttributes":
+    @property
+    def attributes(self) -> "CAttributes":
         return self.cd.get_attributes(self.args[1])
 
     def __str__(self) -> str:
-        return "tsarray(" + str(self.get_typsig()) + "," + str(self.get_len_opt)
+        return "tsarray(" + str(self.typsig) + "," + str(self.opt_length)
 
 
-@cdregistry.register_tag("tsptr", CTypsigTSBase)
-class CTypsigPtr(CTypsigTSBase):
-    def __init__(
-        self,
-        cd: "chc.app.CDictionary.CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CTypsigTSBase.__init__(self, cd, ixval)
+@cdregistry.register_tag("tsptr", CTypsig)
+class CTypsigPtr(CTypsig):
+    """Pointer type signature.
 
-    def get_typsig(self) -> CTypsigTSBase:
+    args[0]: index of target type signature in cdictionary
+    """
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CTypsig.__init__(self, cd, ixval)
+
+    @property
+    def typsig(self) -> CTypsig:
         return self.cd.get_typsig(self.args[0])
 
     def __str__(self) -> str:
-        return "tsptr(" + str(self.get_typsig()) + ")"
+        return "tsptr(" + str(self.typsig) + ")"
 
 
-@cdregistry.register_tag("tscomp", CTypsigTSBase)
-class CTypsigComp(CTypsigTSBase):
-    def __init__(
-        self,
-        cd: "chc.app.CDictionary.CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CTypsigTSBase.__init__(self, cd, ixval)
+@cdregistry.register_tag("tscomp", CTypsig)
+class CTypsigComp(CTypsig):
+    """Struct type signature.
 
-    def get_name(self) -> str:
+    tags[1]: name of struct
+    """
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CTypsig.__init__(self, cd, ixval)
+
+    @property
+    def name(self) -> str:
         return self.tags[1]
 
     def __str__(self) -> str:
-        return "tscomp(" + str(self.get_name()) + ")"
+        return "tscomp(" + str(self.name) + ")"
 
 
-@cdregistry.register_tag("tsfun", CTypsigTSBase)
-class CTypsigFun(CTypsigTSBase):
-    def __init__(
-        self,
-        cd: "chc.app.CDictionary.CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CTypsigTSBase.__init__(self, cd, ixval)
+@cdregistry.register_tag("tsfun", CTypsig)
+class CTypsigFun(CTypsig):
+    """Function type signature.
 
-    def get_typsig(self) -> CTypsigTSBase:
+    args[0]: index of return value type signature in cdictionary
+    args[1]: index of list of argument type signatures in cdictionary
+    """
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CTypsig.__init__(self, cd, ixval)
+
+    @property
+    def returnval_typsig(self) -> CTypsig:
         return self.cd.get_typsig(self.args[0])
 
-    def get_typsig_list_opt(self) -> Optional["CTypsigList"]:
+    def opt_arg_typsigs_list(self) -> Optional["CTypsigList"]:
         ix = self.args[1]
-        return self.cd.get_typesig_list(ix) if ix >= 0 else None
+        return self.cd.get_typsig_list(ix) if ix >= 0 else None
 
     def __str__(self) -> str:
-        return "(" + str(self.get_typsig_list_opt) + "):" + str(self.get_typsig()) + ")"
+        return (
+            "("
+            + str(self.opt_arg_typsigs_list)
+            + "):"
+            + str(self.returnval_typsig)
+            + ")")
 
 
-@cdregistry.register_tag("tsenum", CTypsigTSBase)
-class CTypsigEnum(CTypsigTSBase):
-    def __init__(
-        self,
-        cd: "chc.app.CDictionary.CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CTypsigTSBase.__init__(self, cd, ixval)
+@cdregistry.register_tag("tsenum", CTypsig)
+class CTypsigEnum(CTypsig):
+    """Enum type signature.
 
-    def get_name(self) -> str:
+    tags[1]: enum name
+    """
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CTypsig.__init__(self, cd, ixval)
+
+    @property
+    def name(self) -> str:
         return self.tags[1]
 
     def __str__(self) -> str:
-        return "tsenum(" + self.get_name() + ")"
+        return "tsenum(" + self.name + ")"
 
 
-@cdregistry.register_tag("tsbase", CTypsigTSBase)
-class CTypsigBase(CTypsigTSBase):
-    def __init__(
-        self,
-        cd: "chc.app.CDictionary.CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CTypsigTSBase.__init__(self, cd, ixval)
+@cdregistry.register_tag("tsbase", CTypsig)
+class CTypsigBase(CTypsig):
+    """Base type signature.
 
-    def get_type(self) -> "CT.CTypBase":
+    args[1]: index of type of base type signature in cdictionary.
+    """
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CTypsig.__init__(self, cd, ixval)
+
+    @property
+    def base_type(self) -> "CTyp":
         return self.cd.get_typ(self.args[0])
 
     def __str__(self) -> str:
-        return "tsbase(" + str(self.get_type()) + ")"
+        return "tsbase(" + str(self.base_type) + ")"
 
 
 class CTypsigList(IT.IndexedTableValue):
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
+
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
         self.cd = cd
         self.cfile = self.cd.cfile
 
-    def get_typsig_list(self) -> List[CTypsigTSBase]:
+    @property
+    def typsig_list(self) -> List[CTypsig]:
         return [self.cd.get_typsig(ix) for ix in self.args]
 
     def __str__(self) -> str:
-        return ",".join([str(x) for x in self.get_typsig_list()])
+        return ",".join([str(x) for x in self.typsig_list])

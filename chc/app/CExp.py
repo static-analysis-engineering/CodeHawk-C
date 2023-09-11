@@ -26,8 +26,57 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Object representation of CIL expression sum type
 
-from typing import Dict, List, Tuple, TYPE_CHECKING
+(derived from: https://goblint.github.io/cil/)
+
+cchlib/CCHBasicTypes.exp =            predicate       properties
+                                      ------------------------------------------
+| Const of constant                   is_constant      constant: CConst
+| Lval of lval                        is_lval          lval: CLval
+| SizeOf of typ                       is_sizeof        typ: CTyp
+| Real of exp                         --               --
+| Imag of exp                         --               --
+| SizeOfE exp                         is_sizeofe       exp: CExp
+| SizeOfStr of string                 is_sizeofstr     stringvalue: str
+| AlignOf typ                         is_alignof       typ: CTyp
+| AlignOfE exp                        is_alignofe      exp: CExp
+| UnOp of unop * exp * typ            is_unop          op: str
+                                                       exp: CExp
+                                                       typ: CTyp
+| BinOp of binop * exp * exp * typ    is_binop         op: str
+                                                       exp1: CExp
+                                                       exp2: CExp
+                                                       typ: CTyp
+| Question of exp * exp * exp * typ   is_question      condition: CExp
+                                                       true_exp: CExp
+                                                       false_exp: CExp
+                                                       typ: CTyp
+| CastE of typ * exp                  is_caste         typ: CTyp
+                                                       exp: CExp
+| AddrOf of lval                      is_addrof        lval: CLval
+| AddrOfLabel of stmt Stdlib.ref      is_addroflabel   label_sid: int
+| StartOf of lval                     is_startof       lval: CLval
+
+Not in GoblintCil:
+
+| FnApp of                            is_fn_app        (location: CLocation)
+   location * exp * (exp option) list                  exp: CExp
+                                                       arguments: List[Optional[CExp]]
+
+| CnApp of                            is_cn_app        name: str
+   string * (exp option) list * typ                    arguments: List[Optional[CExp]]
+                                                       typ: CTyp
+
+
+GoblintCil.exp variants currently missing:
+
+| Real of exp
+| Imag of exp
+"""
+
+
+from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
 
 from chc.app.CDictionaryRecord import CDictionaryRecord, cdregistry
 
@@ -35,9 +84,9 @@ import chc.util.IndexedTable as IT
 
 if TYPE_CHECKING:
     from chc.app.CDictionary import CDictionary
-    import chc.app.CConstExp as CC
-    import chc.app.CTyp as CT
-    import chc.app.CLval as CV
+    from chc.app.CConst import CConst
+    from chc.app.CTyp import CTyp
+    from chc.app.CLval import CLval
 
 
 binoperatorstrings = {
@@ -68,55 +117,69 @@ binoperatorstrings = {
 unoperatorstrings = {"neg": "-", "bnot": "~", "lnot": "!"}
 
 
-class CExpBase(CDictionaryRecord):
+class CExp(CDictionaryRecord):
     """Base class for all expressions."""
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
         CDictionaryRecord.__init__(self, cd, ixval)
 
+    @property
     def is_binop(self) -> bool:
         return False
 
+    @property
     def is_caste(self) -> bool:
         return False
 
+    @property
     def is_constant(self) -> bool:
         return False
 
+    @property
     def is_lval(self) -> bool:
         return False
 
+    @property
+    def is_question(self) -> bool:
+        return False
+
+    @property
     def is_sizeof(self) -> bool:
         return False
 
+    @property
     def is_sizeofe(self) -> bool:
         return False
 
+    @property
     def is_sizeofstr(self) -> bool:
         return False
 
+    @property
     def is_addrof(self) -> bool:
         return False
 
+    @property
     def is_startof(self) -> bool:
         return False
 
+    @property
     def is_unop(self) -> bool:
         return False
 
+    @property
     def is_alignof(self) -> bool:
         return False
 
+    @property
     def is_alignofe(self) -> bool:
         return False
 
+    @property
     def is_fn_app(self) -> bool:
         return False
 
+    @property
     def is_cn_app(self) -> bool:
         return False
 
@@ -132,638 +195,618 @@ class CExpBase(CDictionaryRecord):
     def get_variable_uses(self, vid: int) -> int:
         return 0
 
-    def to_dict(self) -> Dict[str, object]:
+    def to_dict(self) -> Dict[str, Any]:
         return {"base": "exp"}
 
-    def to_idict(self) -> Dict[str, object]:
+    def to_idict(self) -> Dict[str, Any]:
         return {"t": self.tags, "a": self.args}
 
     def __str__(self) -> str:
         return "baseexp:" + self.tags[0]
 
 
-@cdregistry.register_tag("const", CExpBase)
-class CExpConst(CExpBase):
+@cdregistry.register_tag("const", CExp)
+class CExpConst(CExp):
     """
-    tags:
-        0: 'const'
+    Constant expression
 
-    args:
-        0: constant
+    args[0]: constant
     """
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CExpBase.__init__(self, cd, ixval)
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CExp.__init__(self, cd, ixval)
 
+    @property
     def is_constant(self) -> bool:
         return True
 
-    def get_constant(self) -> 'CC.CConstBase':
+    @property
+    def constant(self) -> "CConst":
         return self.cd.get_constant(self.args[0])
 
     def get_strings(self) -> List[str]:
-        return self.get_constant().get_strings()
+        return self.constant.get_strings()
 
-    def to_dict(self) -> Dict[str, object]:
-        return {"base": "const", "value": str(self.get_constant())}
+    def to_dict(self) -> Dict[str, Any]:
+        return {"base": "const", "value": str(self.constant)}
 
     def __str__(self) -> str:
-        return str(self.get_constant())
+        return str(self.constant)
 
 
-@cdregistry.register_tag("lval", CExpBase)
-class CExpLval(CExpBase):
-    """
-    tags:
-        0: 'lval'
+@cdregistry.register_tag("lval", CExp)
+class CExpLval(CExp):
+    """ Lvalue expression.
 
-    args:
-        0: lval
+    args[0]: index of lval in cdictionary
     """
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CExpBase.__init__(self, cd, ixval)
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CExp.__init__(self, cd, ixval)
 
-    def get_lval(self) -> "CV.CLval":
+    @property
+    def lval(self) -> "CLval":
         return self.cd.get_lval(self.args[0])
 
+    @property
     def is_lval(self) -> bool:
         return True
 
     def has_variable(self, vid: int) -> bool:
-        return self.get_lval().has_variable(vid)
+        return self.lval.has_variable(vid)
 
     def get_strings(self) -> List[str]:
-        return self.get_lval().get_strings()
+        return self.lval.get_strings()
 
     def get_variable_uses(self, vid: int) -> int:
-        return self.get_lval().get_variable_uses(vid)
+        return self.lval.get_variable_uses(vid)
 
-    def to_dict(self) -> Dict[str, object]:
-        return {"base": "lval", "lval": self.get_lval().to_dict()}
+    def to_dict(self) -> Dict[str, Any]:
+        return {"base": "lval", "lval": self.lval.to_dict()}
 
     def __str__(self) -> str:
-        return str(self.get_lval())
+        return str(self.lval)
 
 
-@cdregistry.register_tag("sizeof", CExpBase)
-class CExpSizeOf(CExpBase):
-    """
-    tags:
-        0: 'sizeof'
+@cdregistry.register_tag("sizeof", CExp)
+class CExpSizeOf(CExp):
+    """ Sizeof type expression.
 
-    args:
-        0: typ
+    args[0]: index of target type in cdictionary
     """
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CExpBase.__init__(self, cd, ixval)
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CExp.__init__(self, cd, ixval)
 
-    def get_type(self) -> "CT.CTypBase":
+    @property
+    def typ(self) -> "CTyp":
         return self.cd.get_typ(self.args[0])
 
+    @property
     def is_sizeof(self) -> bool:
         return True
 
-    def to_dict(self) -> Dict[str, object]:
-        return {"base": "sizeof", "type": self.get_type().to_dict()}
+    def to_dict(self) -> Dict[str, Any]:
+        return {"base": "sizeof", "type": self.typ.to_dict()}
 
     def __str__(self) -> str:
-        return "sizeof(" + str(self.get_type()) + ")"
+        return "sizeof(" + str(self.typ) + ")"
 
 
-@cdregistry.register_tag("sizeofe", CExpBase)
-class CExpSizeOfE(CExpBase):
-    """
-    tags:
-        0: 'sizeofe'
+@cdregistry.register_tag("sizeofe", CExp)
+class CExpSizeOfE(CExp):
+    """ Sizeof expression expression
 
-    args:
-        0: exp
+    args[0]: exp
     """
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CExpBase.__init__(self, cd, ixval)
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CExp.__init__(self, cd, ixval)
 
-    def get_exp(self) -> CExpBase:
+    @property
+    def exp(self) -> CExp:
         return self.cd.get_exp(self.args[0])
 
+    @property
     def is_sizeofe(self) -> bool:
         return True
 
     def get_strings(self) -> List[str]:
-        return self.get_exp().get_strings()
+        return self.exp.get_strings()
 
     def get_variable_uses(self, vid: int) -> int:
-        return self.get_exp().get_variable_uses(vid)
+        return self.exp.get_variable_uses(vid)
 
-    def to_dict(self) -> Dict[str, object]:
-        return {"base": "sizeofe", "exp": self.get_exp().to_dict()}
+    def to_dict(self) -> Dict[str, Any]:
+        return {"base": "sizeofe", "exp": self.exp.to_dict()}
 
     def __str__(self) -> str:
-        return "sizeofe(" + str(self.get_exp()) + ")"
+        return "sizeofe(" + str(self.exp) + ")"
 
 
-@cdregistry.register_tag("sizeofstr", CExpBase)
-class CExpSizeOfStr(CExpBase):
-    """
-    tags:
-        0: 'sizeofstr'
+@cdregistry.register_tag("sizeofstr", CExp)
+class CExpSizeOfStr(CExp):
+    """ Sizeof string expression
 
-    args:
-        0: string index
+    args[0]:index of  string in the string table
     """
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CExpBase.__init__(self, cd, ixval)
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CExp.__init__(self, cd, ixval)
 
-    def get_string(self) -> str:
+    @property
+    def stringvalue(self) -> str:
         return self.cd.get_string(self.args[0])
 
     def get_strings(self) -> List[str]:
-        return [self.get_string()]
+        return [self.stringvalue]
 
+    @property
     def is_sizeofstr(self) -> bool:
         return True
 
-    def to_dict(self) -> Dict[str, object]:
-        return {"base": "sizeofstr", "string": self.get_string()}
+    def to_dict(self) -> Dict[str, Any]:
+        return {"base": "sizeofstr", "string": self.stringvalue}
 
     def __str__(self) -> str:
-        return "sizeofstr(" + str(self.get_string()) + ")"
+        return "sizeofstr(" + str(self.stringvalue) + ")"
 
 
-@cdregistry.register_tag("alignof", CExpBase)
-class CExpAlignOf(CExpBase):
-    """
-    tags:
-        0: 'alignof'
+@cdregistry.register_tag("alignof", CExp)
+class CExpAlignOf(CExp):
+    """ Alignof type expression
 
-    args:
-        0: typ
+    args[0]: index of type in cdictionary
     """
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CExpBase.__init__(self, cd, ixval)
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CExp.__init__(self, cd, ixval)
 
-    def get_type(self) -> "CT.CTypBase":
+    @property
+    def typ(self) -> "CTyp":
         return self.cd.get_typ(self.args[0])
 
+    @property
     def is_alignof(self) -> bool:
         return True
 
-    def to_dict(self) -> Dict[str, object]:
-        return {"base": "alignof", "type": self.get_type().to_dict()}
+    def to_dict(self) -> Dict[str, Any]:
+        return {"base": "alignof", "type": self.typ.to_dict()}
 
     def __str__(self) -> str:
-        return "alignof(" + str(self.get_type()) + ")"
+        return "alignof(" + str(self.typ) + ")"
 
 
-@cdregistry.register_tag("alignofe", CExpBase)
-class CExpAlignOfE(CExpBase):
-    """
-    tags:
-        0: 'alignofe'
+@cdregistry.register_tag("alignofe", CExp)
+class CExpAlignOfE(CExp):
+    """ Align of expression expression
 
-    args:
-        0: exp
+    args[0]: index of expression in cdictionary
     """
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CExpBase.__init__(self, cd, ixval)
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CExp.__init__(self, cd, ixval)
 
+    @property
     def is_alignofe(self) -> bool:
         return True
 
-    def get_exp(self) -> CExpBase:
+    @property
+    def exp(self) -> CExp:
         return self.cd.get_exp(self.args[0])
 
     def has_variable(self, vid: int) -> bool:
-        return self.get_exp().has_variable(vid)
+        return self.exp.has_variable(vid)
 
     def get_strings(self) -> List[str]:
-        return self.get_exp().get_strings()
+        return self.exp.get_strings()
 
     def get_variable_uses(self, vid: int) -> int:
-        return self.get_exp().get_variable_uses(vid)
+        return self.exp.get_variable_uses(vid)
 
-    def to_dict(self) -> Dict[str, object]:
-        return {"base": "alignofe", "exp": self.get_exp().to_dict()}
+    def to_dict(self) -> Dict[str, Any]:
+        return {"base": "alignofe", "exp": self.exp.to_dict()}
 
     def __str__(self) -> str:
-        return "alignofe(" + str(self.get_exp()) + ")"
+        return "alignofe(" + str(self.exp) + ")"
 
 
-@cdregistry.register_tag("unop", CExpBase)
-class CExpUnOp(CExpBase):
-    """
-    tags:
-        0: 'unop'
-        1: unop operator
+@cdregistry.register_tag("unop", CExp)
+class CExpUnOp(CExp):
+    """ Unary expression
 
-    args:
-        0: exp
-        1: typ
+    tags[1]: unary operator
+
+    args[0]: index of subexpression in cdictionary
+    args[1]: index of result type in cdictionary
     """
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CExpBase.__init__(self, cd, ixval)
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CExp.__init__(self, cd, ixval)
 
-    def get_exp(self) -> CExpBase:
+    @property
+    def exp(self) -> CExp:
         return self.cd.get_exp(self.args[0])
 
-    def get_type(self) -> "CT.CTypBase":
+    @property
+    def typ(self) -> "CTyp":
         return self.cd.get_typ(self.args[1])
 
-    def get_op(self) -> str:
+    @property
+    def op(self) -> str:
         return self.tags[1]
 
+    @property
     def is_unop(self) -> bool:
         return True
 
     def has_variable(self, vid: int) -> bool:
-        return self.get_exp().has_variable(vid)
+        return self.exp.has_variable(vid)
 
     def get_strings(self) -> List[str]:
-        return self.get_exp().get_strings()
+        return self.exp.get_strings()
 
     def get_variable_uses(self, vid: int) -> int:
-        return self.get_exp().get_variable_uses(vid)
+        return self.exp.get_variable_uses(vid)
 
-    def to_dict(self) -> Dict[str, object]:
-        return {"base": "unop", "op": self.get_op(), "exp": self.get_exp().to_dict()}
+    def to_dict(self) -> Dict[str, Any]:
+        return {"base": "unop", "op": self.op, "exp": self.exp.to_dict()}
 
     def __str__(self) -> str:
-        return "(" + unoperatorstrings[self.get_op()] + " " + str(self.get_exp()) + ")"
+        return "(" + unoperatorstrings[self.op] + " " + str(self.exp) + ")"
 
 
-@cdregistry.register_tag("binop", CExpBase)
-class CExpBinOp(CExpBase):
-    """
-    tags:
-        0: 'binop'
-        1: binop operator
+@cdregistry.register_tag("binop", CExp)
+class CExpBinOp(CExp):
+    """ Binary expression
 
-    args:
-        0: exp1
-        1: exp2
-        2 typ
+    tags[1]: binary operator
+    args[0]: index of exp1 in cdictionary
+    args[1]: index of exp2 in cdictionary
+    args[2]: index of typ in cdictionary
     """
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CExpBase.__init__(self, cd, ixval)
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CExp.__init__(self, cd, ixval)
 
-    def get_exp1(self) -> CExpBase:
+    @property
+    def exp1(self) -> CExp:
         return self.cd.get_exp(self.args[0])
 
-    def get_exp2(self) -> CExpBase:
+    @property
+    def exp2(self) -> CExp:
         return self.cd.get_exp(self.args[1])
 
-    def get_type(self) -> "CT.CTypBase":
+    @property
+    def typ(self) -> "CTyp":
         return self.cd.get_typ(self.args[2])
 
-    def get_op(self) -> str:
+    @property
+    def op(self) -> str:
         return self.tags[1]
 
+    @property
     def is_binop(self) -> bool:
         return True
 
     def has_variable(self, vid: int) -> bool:
-        return self.get_exp1().has_variable(vid) or self.get_exp2().has_variable(vid)
+        return self.exp1.has_variable(vid) or self.exp2.has_variable(vid)
 
     def has_variable_op(self, vid: int, op: str) -> bool:
         return (
-            self.get_exp1().has_variable(vid) or self.get_exp2().has_variable(vid)
-        ) and (op == binoperatorstrings[self.get_op()])
+            self.exp1.has_variable(vid) or self.exp2.has_variable(vid)
+        ) and (op == binoperatorstrings[self.op])
 
     def get_strings(self) -> List[str]:
-        c1 = self.get_exp1().get_strings()
-        c2 = self.get_exp2().get_strings()
+        c1 = self.exp1.get_strings()
+        c2 = self.exp2.get_strings()
         return c1 + c2
 
     def get_variable_uses(self, vid: int) -> int:
-        c1 = self.get_exp1().get_variable_uses(vid)
-        c2 = self.get_exp2().get_variable_uses(vid)
+        c1 = self.exp1.get_variable_uses(vid)
+        c2 = self.exp2.get_variable_uses(vid)
         return c1 + c2
 
-    def to_dict(self) -> Dict[str, object]:
+    def to_dict(self) -> Dict[str, Any ]:
         return {
             "base": "binop",
-            "op": self.get_op(),
-            "exp1": self.get_exp1().to_dict(),
-            "exp2": self.get_exp2().to_dict(),
+            "op": self.op,
+            "exp1": self.exp1.to_dict(),
+            "exp2": self.exp2.to_dict(),
         }
 
     def __str__(self) -> str:
         return (
             "("
-            + str(self.get_exp1())
+            + str(self.exp1)
             + " "
-            + binoperatorstrings[self.get_op()]
+            + binoperatorstrings[self.op]
             + " "
-            + str(self.get_exp2())
+            + str(self.exp2)
             + ")"
             + ":"
-            + str(self.get_type())
+            + str(self.typ)
         )
 
 
-@cdregistry.register_tag("question", CExpBase)
-class CExpQuestion(CExpBase):
-    """
-    tags:
-        0: 'question'
+@cdregistry.register_tag("question", CExp)
+class CExpQuestion(CExp):
+    """ Question expression.
 
-    args:
-        0: conditional exp
-        1: if-true exp
-        2: if-false exp
-        3: typ
+    args[0]: index of conditional expression in cdictionary
+    args[1]: index of if-true expression in cdictionary
+    args[2]: index of if-false expression in cdictionary
+    args[3]: index of result type in cdictionary
     """
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CExpBase.__init__(self, cd, ixval)
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CExp.__init__(self, cd, ixval)
 
-    def get_condition(self) -> CExpBase:
+    @property
+    def is_question(self) -> bool:
+        return True
+
+    @property
+    def condition(self) -> CExp:
         return self.cd.get_exp(self.args[0])
 
-    def get_true_exp(self) -> CExpBase:
+    @property
+    def true_exp(self) -> CExp:
         return self.cd.get_exp(self.args[1])
 
-    def get_false_exp(self) -> CExpBase:
+    @property
+    def false_exp(self) -> CExp:
         return self.cd.get_exp(self.args[2])
 
-    def get_type(self) -> "CT.CTypBase":
+    @property
+    def typ(self) -> "CTyp":
         return self.cd.get_typ(self.args[3])
 
     def has_variable(self, vid: int) -> bool:
         return (
-            self.get_condition().has_variable(vid)
-            or self.get_true_exp().has_variable(vid)
-            or self.get_false_exp().has_variable(vid)
+            self.condition.has_variable(vid)
+            or self.true_exp.has_variable(vid)
+            or self.false_exp.has_variable(vid)
         )
 
     def get_strings(self) -> List[str]:
-        c = self.get_condition().get_strings()
-        t = self.get_true_exp().get_strings()
-        f = self.get_false_exp().get_strings()
+        c = self.condition.get_strings()
+        t = self.true_exp.get_strings()
+        f = self.false_exp.get_strings()
         return c + t + f
 
     def get_variable_uses(self, vid: int) -> int:
-        c = self.get_condition().get_variable_uses(vid)
-        t = self.get_true_exp().get_variable_uses(vid)
-        f = self.get_false_exp().get_variable_uses(vid)
+        c = self.condition.get_variable_uses(vid)
+        t = self.true_exp.get_variable_uses(vid)
+        f = self.false_exp.get_variable_uses(vid)
         return c + t + f
 
     def to_dict(self) -> Dict[str, object]:
         return {
             "base": "question",
-            "cond": self.get_condition().to_dict(),
-            "true-exp": self.get_true_exp().to_dict(),
-            "false-exp": self.get_false_exp().to_dict(),
-            "type": self.get_type().to_dict(),
+            "cond": self.condition.to_dict(),
+            "true-exp": self.true_exp.to_dict(),
+            "false-exp": self.false_exp.to_dict(),
+            "type": self.typ.to_dict(),
         }
 
     def __str__(self) -> str:
         return (
             "("
-            + str(self.get_condition())
+            + str(self.condition)
             + " ? "
-            + str(self.get_true_exp())
+            + str(self.true_exp)
             + " : "
-            + str(self.get_false_exp())
+            + str(self.false_exp)
             + ")"
         )
 
 
-@cdregistry.register_tag("caste", CExpBase)
-class CExpCastE(CExpBase):
-    """
-    tags:
-        0: 'caste'
+@cdregistry.register_tag("caste", CExp)
+class CExpCastE(CExp):
+    """ Cast expression.
 
-    args:
-        0: target typ
-        1: exp
+    args[0]: index of target type in cdictionary
+    args[1]: index of expression to be cast in cdictionary
     """
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CExpBase.__init__(self, cd, ixval)
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CExp.__init__(self, cd, ixval)
 
-    def get_exp(self) -> CExpBase:
+    @property
+    def exp(self) -> CExp:
         return self.cd.get_exp(self.args[1])
 
-    def get_type(self) -> "CT.CTypBase":
+    @property
+    def typ(self) -> "CTyp":
         return self.cd.get_typ(self.args[0])
 
+    @property
     def is_caste(self) -> bool:
         return True
 
     def get_strings(self) -> List[str]:
-        return self.get_exp().get_strings()
+        return self.exp.get_strings()
 
     def has_variable(self, vid: int) -> bool:
-        return self.get_exp().has_variable(vid)
+        return self.exp.has_variable(vid)
 
     def get_variable_uses(self, vid: int) -> int:
-        return self.get_exp().get_variable_uses(vid)
+        return self.exp.get_variable_uses(vid)
 
     def to_dict(self) -> Dict[str, object]:
         return {
             "base": "caste",
-            "exp": self.get_exp().to_dict(),
-            "type": self.get_type().to_dict(),
+            "exp": self.exp.to_dict(),
+            "type": self.typ.to_dict(),
         }
 
     def __str__(self) -> str:
-        return "caste(" + str(self.get_type()) + "," + str(self.get_exp()) + ")"
+        return "caste(" + str(self.typ) + "," + str(self.exp) + ")"
 
 
-@cdregistry.register_tag("addrof", CExpBase)
-class CExpAddrOf(CExpBase):
-    """
-    tags:
-        0: 'addrof'
+@cdregistry.register_tag("addrof", CExp)
+class CExpAddrOf(CExp):
+    """ Address-of expression
 
-    args:
-        0: lval
+    args[0]: index of lval in cdictionary
     """
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CExpBase.__init__(self, cd, ixval)
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CExp.__init__(self, cd, ixval)
 
-    def get_lval(self) -> "CV.CLval":
+    @property
+    def lval(self) -> "CLval":
         return self.cd.get_lval(self.args[0])
 
+    @property
     def is_addrof(self) -> bool:
         return True
 
     def has_variable(self, vid: int) -> bool:
-        return self.get_lval().has_variable(vid)
+        return self.lval.has_variable(vid)
 
     def get_strings(self) -> List[str]:
-        return self.get_lval().get_strings()
+        return self.lval.get_strings()
 
     def get_variable_uses(self, vid: int) -> int:
-        return self.get_lval().get_variable_uses(vid)
+        return self.lval.get_variable_uses(vid)
 
     def to_dict(self) -> Dict[str, object]:
-        return {"base": "addrof", "lval": self.get_lval().to_dict()}
+        return {"base": "addrof", "lval": self.lval.to_dict()}
 
     def __str__(self) -> str:
-        return "&(" + str(self.get_lval()) + ")"
+        return "&(" + str(self.lval) + ")"
 
 
-@cdregistry.register_tag("addroflabel", CExpBase)
-class CExpAddrOfLabel(CExpBase):
-    """
-    tags:
-        0: 'addoflabel'
+@cdregistry.register_tag("addroflabel", CExp)
+class CExpAddrOfLabel(CExp):
+    """ Address-of label expression
 
-    args:
-        0: statement sid
+    args[0]: statement sid
     """
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CExpBase.__init__(self, cd, ixval)
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CExp.__init__(self, cd, ixval)
 
-    def get_label(self) -> int:
+    @property
+    def label_sid(self) -> int:
         return self.args[0]
 
     def to_dict(self) -> Dict[str, object]:
-        return {"base": "addroflabel", "label": self.get_label()}
+        return {"base": "addroflabel", "label": self.label_sid}
 
     def __str__(self) -> str:
-        return "addroflabel(" + str(self.get_label()) + ")"
+        return "addroflabel(" + str(self.label_sid) + ")"
 
 
-@cdregistry.register_tag("startof", CExpBase)
-class CExpStartOf(CExpBase):
-    """
-    tags:
-        0: 'startof'
+@cdregistry.register_tag("startof", CExp)
+class CExpStartOf(CExp):
+    """ Start-of expression
 
-    args:
-        0: lval
+    args[0]: index of lval in cdictionary
     """
 
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CExpBase.__init__(self, cd, ixval)
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CExp.__init__(self, cd, ixval)
 
-    def get_lval(self) -> "CV.CLval":
+    @property
+    def lval(self) -> "CLval":
         return self.cd.get_lval(self.args[0])
 
+    @property
     def is_startof(self) -> bool:
         return True
 
     def has_variable(self, vid: int) -> bool:
-        return self.get_lval().has_variable(vid)
+        return self.lval.has_variable(vid)
 
     def get_strings(self) -> List[str]:
-        return self.get_lval().get_strings()
+        return self.lval.get_strings()
 
     def get_variable_uses(self, vid: int) -> int:
-        return self.get_lval().get_variable_uses(vid)
+        return self.lval.get_variable_uses(vid)
 
-    def to_dict(self) -> Dict[str, object]:
-        return {"base": "startof", "lval": self.get_lval().to_dict()}
+    def to_dict(self) -> Dict[str, Any]:
+        return {"base": "startof", "lval": self.lval.to_dict()}
 
     def __str__(self) -> str:
-        return "&(" + str(self.get_lval()) + ")"
+        return "&(" + str(self.lval) + ")"
 
 
-@cdregistry.register_tag("fnapp", CExpBase)
-class CExpFnApp(CExpBase):
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CExpBase.__init__(self, cd, ixval)
+@cdregistry.register_tag("fnapp", CExp)
+class CExpFnApp(CExp):
+    """ Function application.
 
+    tags[1]: filename
+    args[0]: line number
+    args[1]: byte number
+    args[2]: index of target function expression in cdictionary
+    args[3..]: indices of arguments (optional) in cdictionary
+    """
+
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CExp.__init__(self, cd, ixval)
+
+    @property
     def is_fn_app(self) -> bool:
         return True
 
+    @property
+    def exp(self) -> CExp:
+        return self.cd.get_exp(self.args[2])
 
-@cdregistry.register_tag("cnapp", CExpBase)
-class CExpCnApp(CExpBase):
-    def __init__(
-        self,
-        cd: "CDictionary",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
-        CExpBase.__init__(self, cd, ixval)
-
-    def get_name(self) -> str:
-        return self.tags[1]
-
-    def get_type(self) -> "CT.CTypBase":
-        return self.cd.get_typ(int(self.args[0]))
-
-    def get_args(self) -> List[CExpBase]:
-        return [self.cd.get_exp(int(i)) for i in self.args[1:]]
+    @property
+    def arguments(self) -> List[Optional[CExp]]:
+        return [self.cd.get_exp_opt(int(i)) for i in self.args[3:]]
 
     def has_variable(self, vid: int) -> bool:
-        return any([a.has_variable(vid) for a in self.get_args()])
+        return any([a.has_variable(vid) for a in self.arguments if a])
 
+    def __str__(self) -> str:
+        return (
+            "fnapp("
+            + str(self.exp)
+            + "("
+            + ", ".join(str(a) for a in self.arguments)
+            + "))")
+
+
+@cdregistry.register_tag("cnapp", CExp)
+class CExpCnApp(CExp):
+    """ Constant function application.
+
+    tags[0]: name
+    args[0]: index of result type in cdictionary
+    args[1..]: indices of arguments (optional) in cdictionary
+    """
+
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
+        CExp.__init__(self, cd, ixval)
+
+    @property
     def is_cn_app(self) -> bool:
         return True
 
+    @property
+    def name(self) -> str:
+        return self.tags[1]
+
+    @property
+    def typ(self) -> "CTyp":
+        return self.cd.get_typ(int(self.args[0]))
+
+    @property
+    def arguments(self) -> List[Optional[CExp]]:
+        return [self.cd.get_exp_opt(int(i)) for i in self.args[1:]]
+
+    def has_variable(self, vid: int) -> bool:
+        return any([a.has_variable(vid) for a in self.arguments if a])
+
     def __str__(self) -> str:
-        return self.get_name() + "(" + ",".join([str(a) for a in self.get_args()]) + ")"
+        return (
+            "cnapp("
+            + self.name
+            + "("
+            + ",".join([str(a) for a in self.arguments])
+            + ")")

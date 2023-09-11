@@ -38,28 +38,23 @@ if TYPE_CHECKING:
     from chc.app.CDeclarations import CDeclarations
     from chc.app.CFileDeclarations import CFileDeclarations
     from chc.app.CLocation import CLocation
-    from chc.app.CTyp import CTypBase
+    from chc.app.CTyp import CTyp
 
 
 class CFieldInfo(CDeclarationsRecord):
     """Definition of a struct field.
 
-    tags:
-        0: fname
+    tags[0] fname
 
-    args:
-        0: fcomp.ckey  (-1 for global structs)
-        1: ftype
-        2: fbitfield
-        3: fattr       (-1 for global structs)
-        4: floc        (-1 for global structs)
+    args[0]: fcomp.ckey  (-1 for global structs)
+    args[1]: ftype
+    args[2]: fbitfield
+    args[3]: fattr       (-1 for global structs)
+    args[4]: floc        (-1 for global structs)
     """
 
     def __init__(
-        self,
-        cdecls: "CDeclarations",
-        ixval: IT.IndexedTableValue,
-    ) -> None:
+            self, cdecls: "CDeclarations", ixval: IT.IndexedTableValue) -> None:
         CDeclarationsRecord.__init__(self, cdecls, ixval)
 
     @property
@@ -67,22 +62,26 @@ class CFieldInfo(CDeclarationsRecord):
         return self.tags[0]
 
     @property
-    def ftype(self) -> "CTypBase":
+    def ftype(self) -> "CTyp":
         return self.dictionary.get_typ(self.args[1])
 
     @property
     def bitfield(self) -> int:
         return self.args[2]
 
-    def get_size(self) -> int:
-        return self.ftype.get_size()
+    @property
+    def size(self) -> int:
+        return self.ftype.size
 
-    def get_location(self) -> Optional["CLocation"]:
+    @property
+    def location(self) -> Optional["CLocation"]:
         if self.args[4] >= 0:
-            return cast("CFileDeclarations", self.decls).get_location(self.args[4])
+            return cast(
+                "CFileDeclarations", self.decls).get_location(self.args[4])
         return None
 
-    def get_attributes(self) -> Optional["CAttributes"]:
+    @property
+    def attributes(self) -> Optional["CAttributes"]:
         if self.args[3] >= 0:
             return self.dictionary.get_attributes(self.args[3])
         return None
