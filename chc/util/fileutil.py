@@ -1029,7 +1029,7 @@ def save_global_xml_contract(path: str, cnode: ET.Element) -> None:
         fp.write(UX.doc_to_pretty(ET.ElementTree(root)))
 
 
-def save_candidate_cotracts_file(path: str, cfilename: str, cnode: ET.Element) -> None:
+def save_candidate_contracts_file(path: str, cfilename: str, cnode: ET.Element) -> None:
     filename = os.path.join(path, cfilename + "_cc.xml")
     _save_contracts_file_aux(path, filename, cnode)
 
@@ -1498,6 +1498,27 @@ def check_semantics(path: str, deletesemantics: bool = False) -> None:
     if unpack_tar_file(path, deletesemantics=deletesemantics):
         return
     raise CHCSemanticsNotFoundError(path)
+
+
+def xfind_node(p: ET.Element, tag: str, msg: str) -> ET.Element:
+    xnode = p.find(tag)
+    if xnode is None:
+        raise CHCError(msg + ": element " + tag + " not found")
+    else:
+        return xnode
+
+
+def xget_attr(p: ET.Element, tag: str, msg: str) -> str:
+    xtag = p.get(tag)
+    if xtag is None:
+        raise CHCError(msg + ": tag: " + tag + " not found")
+    else:
+        return xtag
+
+
+def xget_int_attr(p: ET.Element, tag: str, msg: str) -> int:
+    xdata = xget_attr(p, tag, msg)
+    return int(xdata)
 
 
 if __name__ == "__main__":
