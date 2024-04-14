@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2020-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -27,12 +27,12 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
-import logging
 import xml.etree.ElementTree as ET
 
 from typing import Dict, List, Optional, Tuple, TYPE_CHECKING
 
 import chc.util.fileutil as UF
+from chc.util.loggingutil import chklogger
 import chc.util.xmlutil as UX
 
 if TYPE_CHECKING:
@@ -74,7 +74,9 @@ class IndexManager:
                     result[gvid] = self.gvid2vid[gvid][fid]
         return result
 
-    """return the fid of the file in which this vid is defined, with the local vid."""
+    """return the fid of the file in which this vid is defined, with the
+    local vid.
+    """
 
     def resolve_vid(self, fid: int, vid: int) -> Optional[Tuple[int, int]]:
         if self.issinglefile:
@@ -88,33 +90,27 @@ class IndexManager:
                     if gvid in self.gvid2vid:
                         if tgtfid in self.gvid2vid[gvid]:
                             return (tgtfid, self.gvid2vid[gvid][tgtfid])
-                        logging.debug(
-                            msg
-                            + "Target fid "
-                            + str(tgtfid)
-                            + " not found in gvid2vid["
-                            + str(gvid)
-                            + "]"
-                        )
+                        chklogger.logger.debug(
+                            "target fid: %s not found in gvid2vid[%s] for "
+                            + "(%s, %s)",
+                            str(tgtfid),
+                            str(gvid),
+                            str(fid),
+                            str(vid))
                         return None
-                    logging.debug(
-                        msg + "Global vid " + str(gvid) + " not found in gvid2vid"
-                    )
+                    chklogger.logger.debug(
+                        "global vid %s not found in gvid2vid for (%s, %s)",
+                        str(gvid), str(fid), str(vid))
                     return None
-                logging.debug(
-                    msg + "Global vid " + str(gvid) + " not found in gviddefs"
-                )
+                chklogger.logger.debug(
+                    "global vid %s not found gviddefs for (%s, %s)",
+                    str(gvid), str(fid), str(vid))
                 return None
-            logging.debug(
-                msg
-                + "Local vid "
-                + str(vid)
-                + " not found in vid2gvid["
-                + str(fid)
-                + "]"
-            )
+            chklogger.logger.debug(
+                "local vid %s not found in vid2gvid[%s] for (%s, %s)",
+                str(vid), str(fid), str(fid), str(vid))
             return None
-        logging.debug(msg + "File id " + str(fid) + " not found in vid2gvid")
+        chklogger.logger.debug("file id %s not found in vid2gvid", str(fid))
         return None
 
     """return a list of (fid,vid) pairs that refer to the same global variable."""
@@ -176,9 +172,13 @@ class IndexManager:
                 if fidtgt in self.gvid2vid[gvid]:
                     return self.gvid2vid[gvid][fidtgt]
                 else:
-                    logging.warning(
-                        msg + "Create new index for global variable: " + str(gvid)
-                    )
+                    chklogger.logger.warning(
+                        "create new index for global variable %s for "
+                        + "fidsrc: %s, vid: %s, fidtgt: %s",
+                        str(gvid),
+                        str(fidsrc),
+                        str(vid),
+                        str(fidtgt))
                     return None
                 """
                     self.gvid2vid[gvid][fidtgt] = self.fidvidmax[fidtgt]
@@ -224,18 +224,16 @@ class IndexManager:
                 if fidtgt in self.gckey2ckey[gckey]:
                     return self.gckey2ckey[gckey][fidtgt]
                 else:
-                    logging.debug(
-                        "Target fid "
-                        + str(fidtgt)
-                        + " not found for global key "
-                        + str(gckey)
-                    )
+                    chklogger.logger.debug(
+                        "target fid %s not found for global key %s",
+                        str(fidtgt), str(gckey))
             else:
-                logging.debug("Global key " + str(gckey) + " not found in converter")
+                chklogger.logger.debug(
+                    "global key %s not found in converter", str(gckey))
         else:
-            logging.debug(
-                "Local key " + str(ckey) + " not found for source file " + str(fidsrc)
-            )
+            chklogger.logger.debug(
+                "local key %s not found in source file %s",
+                str(ckey), str(fidsrc))
         return None
 
     def add_ckey2gckey(self, fid: int, ckey: int, gckey: int) -> None:
@@ -347,13 +345,7 @@ class IndexManager:
         for gfun in declarations.get_global_functions():
             gvid = self.get_gvid(fid, gfun.varinfo.vid)
             if gvid is not None:
-                logging.info(
-                    "Set function "
-                    + gfun.varinfo.vname
-                    + " ("
-                    + str(gvid)
-                    + ")"
-                    + " to file "
-                    + str(fid)
-                )
+                chklogger.logger.info(
+                    "set function %s (%s) to file %s",
+                    gfun.varinfo.vname, str(gvid), str(fid))
                 self.gviddefs[gvid] = fid

@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2020-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -85,11 +85,8 @@ the following.
 """
 from typing import Any, Callable, Dict, Iterable, List, Optional, TYPE_CHECKING
 import os
-import logging
 import multiprocessing
 import sys
-
-import chc.util.fileutil as UF
 
 from chc.api.CGlobalContract import CGlobalContract
 
@@ -101,6 +98,10 @@ from chc.app.CGlobalDeclarations import CGlobalDeclarations
 from chc.app.CGlobalDictionary import CGlobalDictionary
 
 from chc.source.CSrcFile import CSrcFile
+
+import chc.util.fileutil as UF
+from chc.util.loggingutil import chklogger
+
 
 if TYPE_CHECKING:
     from chc.app.CFunction import CFunction
@@ -288,21 +289,31 @@ class CApplication(object):
                 filename = self.filenames[tgtfid]
                 self._initialize_file(tgtfid, filename)
                 if not self.files[filename] is None:
-                    return self.files[filename].get_function_by_index(tgtvid)
-                logging.warning(msg + "Filename not found: " + filename)
+                    if self.files[filename].has_function_by_index(tgtvid):
+                        return self.files[filename].get_function_by_index(tgtvid)
+                    chklogger.logger.warning(
+                        "Target function vid not found: %s (fid:%s, vid:%s)",
+                        str(tgtvid), str(fid), str(vid))
+                    return None
+                chklogger.logger.warning(
+                    "Filename not found: %s (fid:%s, vid:%s)",
+                    filename, str(fid), str(vid))
                 return None
-            logging.warning(msg + "Target fid " + str(tgtfid) + " not found")
+            chklogger.logger.warning(
+                "Target fid %s not found (fid:%s, vid:%s)",
+                str(tgtfid), str(fid), str(vid))
             return None
-        logging.warning(msg + "Unable to resolve")
+        chklogger.logger.warning(
+            "Unable to resolve fid:%s, vid:%s", str(fid), str(vid))
         return None
 
-    def convert_vid(self, fidsrc, vid, fidtgt):
+    def convert_vid(self, fidsrc: int, vid: int, fidtgt: int) -> int:
         return self.indexmanager.convert_vid(fidsrc, vid, fidtgt)
 
     def get_gckey(self, fid, ckey):
         return self.indexmanager.get_gckey(fid, ckey)
 
-    def get_function_by_index(self, index):
+    def get_function_by_index(self, index: int):
         for f in self.files:
             if self.files[f].has_function_by_index(index):
                 return self.files[f].get_function_by_index(index)

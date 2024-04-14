@@ -6,7 +6,7 @@
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
 # Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -78,10 +78,10 @@ class GlobalAssumption:
         return (len(self.get_open_ppos()) + len(self.get_open_spos())) > 0
 
     def get_open_ppos(self) -> List[int]:
-        return [i for i in self.ppos if self.cfun.get_ppo(i).is_open()]
+        return [i for i in self.ppos if self.cfun.get_ppo(i).is_open]
 
     def get_open_spos(self) -> List[int]:
-        return [i for i in self.spos if self.cfun.get_spo(i).is_open()]
+        return [i for i in self.spos if self.cfun.get_spo(i).is_open]
 
     def __str__(self) -> str:
         strppos = ""

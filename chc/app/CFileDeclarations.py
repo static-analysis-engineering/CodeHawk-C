@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2020-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -28,7 +28,16 @@
 # ------------------------------------------------------------------------------
 
 from typing import (
-    Any, Callable, cast, Dict, Iterable, List, Mapping, NoReturn, Tuple, TYPE_CHECKING)
+    Any,
+    Callable,
+    cast,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    NoReturn,
+    Tuple,
+    TYPE_CHECKING)
 import xml.etree.ElementTree as ET
 
 from chc.app.CDictionaryRecord import CDeclarationsRecord

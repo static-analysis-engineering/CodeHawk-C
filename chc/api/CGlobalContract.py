@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2020-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -27,13 +27,12 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
-import logging
-
 import xml.etree.ElementTree as ET
 
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 import chc.util.fileutil as UF
+from chc.util.loggingutil import chklogger
 
 if TYPE_CHECKING:
     from chc.app.CApplication import CApplication
@@ -76,7 +75,7 @@ class CGlobalContract(object):
         if self._globalassumptions is None:
             self._globalassumptions = []
             if UF.has_global_xml_contract(self.contractpath):
-                logging.info("Load globaldefs.xml contract file")
+                chklogger.logger.info("Load globaldefs.xml contract file")
                 globalxmlcontract = UF.get_global_xml_contract(
                     self.contractpath)
                 if globalxmlcontract is not None:
@@ -95,7 +94,7 @@ class CGlobalContract(object):
     def hiddenstructs(self) -> Dict[str, Any]:
         if self._hiddenstructs is None:
             if UF.has_global_contract(self.contractpath):
-                logging.info("Load globaldefs.json contract file")
+                chklogger.logger.info("Load globaldefs.json contract file")
                 globalcontract = UF.get_global_contract(self.contractpath)
                 if "hidden-structs" in globalcontract:
                     self._hiddenstructs = globalcontract["hidden-structs"]
@@ -109,7 +108,7 @@ class CGlobalContract(object):
     def hiddenfields(self) -> Dict[str, Any]:
         if self._hiddenfields is None:
             if UF.has_global_contract(self.contractpath):
-                logging.info("Load globaldefs.json contract file")
+                chklogger.logger.info("Load globaldefs.json contract file")
                 globalcontract = UF.get_global_contract(self.contractpath)
                 if "hidden-fields" in globalcontract:
                     self._hiddenfields = globalcontract["hidden-fields"]

@@ -6,7 +6,7 @@
 #
 # Copyright (c) 2016-2020 Kestrel Technology LLC
 # Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarn Labs LLC
+# Copyright (c) 2023-2024 Aarn Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -29,13 +29,16 @@
 
 import time
 
-from typing import Any, Callable, Dict, List, Sequence, Tuple, TYPE_CHECKING
+from typing import (
+    Any, Callable, cast, Dict, List, Sequence, Set, Tuple, TYPE_CHECKING)
 
 if TYPE_CHECKING:
     from chc.app.CApplication import CApplication
     from chc.app.CFile import CFile
     from chc.app.CFunction import CFunction
     from chc.app.CContext import ProgramContext
+    from chc.invariants.CFunInvDictionary import CFunInvDictionary
+    from chc.invariants.CInvariantFact import CInvariantNRVFact
     from chc.proof.CFunctionPO import CFunctionPO
 
 """Utility functions for reporting proof obligations and their statistics."""
@@ -79,7 +82,7 @@ def classifypo(po: "CFunctionPO", d: Dict[str, int]) -> None:
             d["violated"] += 1
         deps = po.dependencies
         if deps.has_external_dependencies():
-            deptype = po.get_dependencies_type()
+            deptype = po.get_assumptions_type()
             d[deptype] += 1
         elif deps.is_stmt:
             d["stmt"] += 1
@@ -261,6 +264,10 @@ class FunctionDisplay:
         return self._cfunction
 
     @property
+    def cfinvd(self) -> "CFunInvDictionary":
+        return self.cfunction.invdictionary
+
+    @property
     def sourcecodeavailable(self) -> bool:
         return self._sourcecodeavailable
 
@@ -314,10 +321,12 @@ class FunctionDisplay:
                     for k in sorted(keys):
                         invids = po.diagnostic.get_invariant_ids(k)
                         for id in invids:
-                            inv = self.cfunction.invdictionary.get_invariant_fact(
-                                id
-                            ).non_relational_value
-                            lines.append((" " * indent) + str(k) + ": " + str(inv))
+                            inv = self.cfinvd.get_invariant_fact(id)
+                            if inv.is_nrv_fact:
+                                inv = cast("CInvariantNRVFact", inv)
+                                nrv = inv.non_relational_value
+                                lines.append(
+                                    (" " * indent) + str(k) + ": " + str(nrv))
                 else:
                     lines.append((" " * indent) + "---> no diagnostic found")
         return "\n".join(lines)
@@ -328,9 +337,14 @@ class FunctionDisplay:
             pofilter: Callable[["CFunctionPO"], bool] = lambda po: True,
             showinvs: bool = False) -> str:
         lines: List[str] = []
-        contexts = set([])
+        contexts: Set["ProgramContext"] = set([])
         for po in sorted(pos, key=lambda po: po.line):
             if not pofilter(po):
+                if po.line >= self._currentline:
+                    if self.sourcecodeavailable:
+                        for n in range(self._currentline, po.line + 1):
+                            lines.append(self.get_source_line(n))
+                self._currentline = po.line + 1
                 continue
             line = po.line
             indent: int = 18 if po.is_ppo else 24            
@@ -390,11 +404,12 @@ class FunctionDisplay:
                     for k in sorted(keys):
                         invids = po.diagnostic.get_invariant_ids(k)
                         for id in invids:
-                            inv = self.cfunction.invdictionary.get_invariant_fact(id)
-                            inv = self.cfunction.invdictionary.get_invariant_fact(
-                                id
-                            ).non_relational_value
-                            lines.append((" " * indent) + str(k) + ": " + str(inv))
+                            inv = self.cfinvd.get_invariant_fact(id)
+                            if inv.is_nrv_fact:
+                                inv = cast("CInvariantNRVFact", inv)
+                                nrv = inv.non_relational_value
+                                lines.append(
+                                    (" " * indent) + str(k) + ": " + str(nrv))
                 else:
                     lines.append((" " * indent) + "---> no diagnostic found")
                 lines.append(" ")
@@ -451,7 +466,7 @@ def function_code_tostring(
         showpreamble: bool = True) -> str:
     lines: List[str] = []
     ppos = fn.get_ppos()
-    ppos = [x for x in ppos if pofilter(x)]
+    # ppos = [x for x in ppos if pofilter(x)]
     spos = fn.get_spos()
     fnstartlinenr = fn.get_line_number()
     if fnstartlinenr is None:
@@ -796,13 +811,16 @@ def tag_file_function_pos_tostring(
                         for k in keys:
                             invids = po.diagnostic.get_invariant_ids(k)
                             for id in invids:
-                                lines.append(
-                                    (" " * 14)
-                                    + str(k)
-                                    + ": "
-                                    + str(
-                                        invd.get_invariant_fact(
-                                            id).non_relational_value))
+                                inv = invd.get_invariant_fact(id)
+                                if inv.is_nrv_fact:
+                                    inv = cast("CInvariantNRVFact", inv)
+                                    nrv = inv.non_relational_value
+                                    lines.append(
+                                        (" " * 14)
+                                        + str(k)
+                                        + ": "
+                                        + str(nrv))
+
                         lines.append(" ")
 
     return "\n".join(lines)
@@ -921,6 +939,8 @@ def totals_to_presentation_string(
                             + str(sum(r)).rjust(10) + ppoopenpct.rjust(8))
             """
         else:
+            rsum = rpposum  # TBD: check
+            r = rppo # TBD: check
             lines.append(
                 t.ljust(rhlen)
                 + "".join(

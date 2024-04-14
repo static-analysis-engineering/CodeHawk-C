@@ -27,8 +27,6 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
-import logging
-
 import xml.etree.ElementTree as ET
 
 from typing import Dict, List, Optional, TYPE_CHECKING
@@ -51,6 +49,7 @@ from chc.proof.CFunctionPO import po_status
 from chc.proof.CFunctionPO import CProofDiagnostic
 
 import chc.util.fileutil as UF
+from chc.util.loggingutil import chklogger
 
 if TYPE_CHECKING:
     from chc.app.CContext import ProgramContext, CfgContext
@@ -318,9 +317,8 @@ class CFunctionCallsiteSPOs:
         """Update the spo's associated with the call site."""
 
         if not self.has_callee():
-            logging.warning(
-                "Missing callee in " + self.cfile.name + " - " + self.cfun.name
-            )
+            chklogger.logger.warning(
+                "missing callee in %s - %s", self.cfile.name, self.cfun.name)
             return
 
         # retrieve callee information
@@ -330,14 +328,9 @@ class CFunctionCallsiteSPOs:
         calleefun = self.cfile.capp.resolve_vid_function(
             self.cfile.index, self.callee.vid)
         if calleefun is None:
-            logging.warning(
-                "Missing external function in "
-                + self.cfile.name
-                + " - "
-                + self.cfun.name
-                + ": "
-                + str(self.callee)
-            )
+            chklogger.logger.warning(
+                "missing external function in %s - %s: %s",
+                self.cfile.name, self.cfun.name, self.callee)
             return
 
         # retrieve callee's api assumptions and substitute parameters by
@@ -353,18 +346,15 @@ class CFunctionCallsiteSPOs:
                 for (vid, arg) in substitutions:
                     subst[vid] = arg
             else:
-                logging.warning(
-                    "Number of arguments ("
-                    + str(len(self.call_arguments))
-                    + ") is not the same as the number of parameters ("
-                    + str(len(pars))
-                    + ") in call to "
-                    + calleefun.name
-                    + " in function "
-                    + self.cfun.name
-                    + " in file "
-                    + self.cfile.name
-                )
+                chklogger.logger.warning(
+                    "number of arguments (%s) is not the same as the number "
+                    + "of parameters (%s) in call to %s in function %s "
+                    + "in file %s",
+                    str(len(self.call_arguments)),
+                    str(len(pars)),
+                    calleefun.name,
+                    self.cfun.name,
+                    self.cfile.name)
                 return
             if len(api.api_assumptions) > 0:
                 '''
@@ -458,49 +448,35 @@ class CFunctionCallsiteSPOs:
                     spotype = self.cfun.podictionary.get_spo_type(ispotype)
                     self.spos[apiid].append(CFunctionCallsiteSPO(self.cspos, spotype))
                 except CKeyLookupError as e:
-                    logging.warning(
-                        self.cfile.name
-                        + ": "
-                        + self.cfun.name
-                        + " call to "
-                        + calleefun.name
-                        + " ("
-                        + str(calleefun.cfile.name)
-                        + ") request datastructure condition for "
-                        + str(a.predicate)
-                        + " for key "
-                        + str(e.ckey)
-                        + " to handle api assumption"
-                    )
+                    chklogger.logger.warning(
+                        "%s: %s call to %s (%s) request datastructure condition "
+                        + "for %s for key %s to handle assumption",
+                        self.cfile.name,
+                        self.cfun.name,
+                        calleefun.name,
+                        str(calleefun.cfile.name),
+                        str(a.predicate),
+                        str(e.ckey))
                 except LookupError as e:
-                    logging.warning(
-                        self.cfile.name
-                        + ": "
-                        + self.cfun.name
-                        + " call to "
-                        + calleefun.name
-                        + " ("
-                        + str(calleefun.cfile.name)
-                        + ") request datastructure condition for "
-                        + str(a.predicate)
-                        + ": "
-                        + str(e)
-                        + " to handle api assumption"
-                    )
+                    chklogger.logger.warning(
+                        "%s: %s call to %s (%s) request datastruction condition "
+                        + "for %s: %s to handle api assumption",
+                        self.cfile.name,
+                        self.cfun.name,
+                        calleefun.name,
+                        str(calleefun.cfile.name),
+                        str(a.predicate),
+                        str(e))
                 except Exception as e:
-                    logging.warning(
-                        self.cfile.name
-                        + ": "
-                        + self.cfun.name
-                        + " call to "
-                        + calleefun.name
-                        + " ("
-                        + str(calleefun.cfile.name)
-                        + "): unable to create spo for assumption "
-                        + str(a)
-                        + ": "
-                        + str(e)
-                    )
+                    chklogger.logger.warning(
+                        "%s: %s call to %s (%s): unable to create spo for "
+                        + "assumption %s: %s",
+                        self.cfile.name,
+                        self.cfun.name,
+                        calleefun.name,
+                        str(calleefun.cfile.name),
+                        str(a),
+                        str(e))
 
     def collect_post_assumes(self) -> None:
         """Collect postconditions from callee's contract and add as assume."""

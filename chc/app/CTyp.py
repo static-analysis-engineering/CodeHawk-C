@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2020-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -27,8 +27,6 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
-import logging
-
 import xml.etree.ElementTree as ET
 
 from typing import Any, cast, Dict, List, Optional, Tuple, TYPE_CHECKING
@@ -37,6 +35,7 @@ from chc.app.CDictionaryRecord import CDictionaryRecord, cdregistry
 
 import chc.util.fileutil as UF
 import chc.util.IndexedTable as IT
+from chc.util.loggingutil import chklogger
 
 if TYPE_CHECKING:
     from chc.app.CDictionary import CDictionary
@@ -97,14 +96,11 @@ class CTyp(CDictionaryRecord):
             newtypix = self.cd.mk_typ(self.tags, newargs)
             if newtypix != self.index:
                 newtyp = self.cd.get_typ(newtypix)
-                logging.info(
-                    "Stripping attributes "
-                    + self.attributes_string
-                    + " ; changing type from "
-                    + str(self)
-                    + " to "
-                    + str(newtyp)
-                )
+                chklogger.logger.info(
+                    "Stripping attributes %s ; changing type from %s to %s",
+                    self.attributes_string,
+                    str(self),
+                    str(newtyp))
             return newtyp
 
     def get_typ(self, ix: int) -> "CTyp":
@@ -612,9 +608,8 @@ class CTypFun(CTyp):
             newargs[0] = rtype.index
             newtypix = self.cd.mk_typ(self.tags, newargs)
             newtyp = self.cd.get_typ(newtypix)
-            logging.info(
-                "Change function type from " + str(self) + " to " + str(newtyp)
-            )
+            chklogger.logger.info(
+                "Change function type from %s to %s", str(self), str(newtyp))
             return newtyp
         else:
             return self

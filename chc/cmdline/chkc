@@ -5,7 +5,7 @@
 # ------------------------------------------------------------------------------
 # The MIT License (MIT)
 #
-# Copyright (c) 2023  Aarno Labs, LLC
+# Copyright (c) 2023-2024  Aarno Labs, LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -38,10 +38,12 @@ from typing import NoReturn
 
 from chc.app.CHVersion import chcversion
 
+import chc.cmdline.c_file.cfileutil as C
 import chc.cmdline.kendra.kendrautil as K
 import chc.reporting.DictionaryTables as DT
 
 from chc.util.Config import Config
+import chc.util.loggingutil as UL
 
 
 def showversion(args: argparse.Namespace) -> NoReturn:
@@ -134,6 +136,60 @@ def parse() -> argparse.Namespace:
         help="name of table",
         choices = DT.function_table_list())
     kendrashowfunctiontable.set_defaults(func=K.kendra_show_function_table)
+
+    # --------------------------------------------------------------- c-file ---
+    cfilecmd = subparsers.add_parser("c-file")
+    cfileparsers = cfilecmd.add_subparsers(title="show options")
+
+    # --- parse
+    cfileparse = cfileparsers.add_parser("parse")
+    cfileparse.add_argument("filename", help="name of .c file to parse")
+    cfileparse.add_argument(
+        "--save_semantics",
+        action="store_true",
+        help="create gzipped tar file with semantics files")
+    cfileparse.set_defaults(func=C.cfile_parse_file)
+
+    # --- analyze
+    cfileanalyze = cfileparsers.add_parser("analyze")
+    cfileanalyze.add_argument(
+        "path",
+        help="name of directory that holds the semantics directory")
+    cfileanalyze.add_argument(
+        "filename",
+        help="name of filename to be analyzed")
+    cfileanalyze.add_argument(
+        "--loglevel", "-log",
+        choices=UL.LogLevel.options(),
+        default="NONE",
+        help="activate logging with given level (default to stderr)")
+    cfileanalyze.add_argument(
+        "--logfilename",
+        help="name of file to write log messages")
+    cfileanalyze.add_argument(
+        "--logfilemode",
+        choices=["a", "w"],
+        default="a",
+        help="file mode for log file: append (a, default), or write (w)")
+    cfileanalyze.set_defaults(func=C.cfile_analyze_file)
+
+    # --- report
+    cfilereport = cfileparsers.add_parser("report")
+    cfilereport.add_argument(
+        "path",
+        help = "name of directory that holds the semantics directory")
+    cfilereport.add_argument(
+        "filename",
+        help="name of filename to be analyzed")
+    cfilereport.add_argument(
+        "--showcode",
+        action="store_true",
+        help="show proof obligations on code for entire file")
+    cfilereport.add_argument(
+        "--open",
+        action="store_true",
+        help="only show open proof obligations")
+    cfilereport.set_defaults(func=C.cfile_report_file)
 
     args = parser.parse_args()
     return args
