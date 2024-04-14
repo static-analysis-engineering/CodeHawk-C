@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2020-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -28,7 +28,6 @@
 # ------------------------------------------------------------------------------
 
 from typing import Any, Callable, Dict, List, Optional, Tuple, TYPE_CHECKING
-import logging
 import xml.etree.ElementTree as ET
 
 import chc.util.fileutil as UF
@@ -43,6 +42,7 @@ from chc.app.CInitInfo import CInitInfo, COffsetInitInfo
 from chc.app.CVarInfo import CVarInfo
 
 from chc.util.IndexedTable import IndexedTable
+from chc.util.loggingutil import chklogger
 
 if TYPE_CHECKING:
     from chc.app.CApplication import CApplication
@@ -209,9 +209,7 @@ class CGlobalDeclarations(CDeclarations):
     def get_structname(self, ckey):
         if ckey in self.compinfo_names:
             return list(self.compinfo_names[ckey])[0]
-        logging.warning("Compinfo name for " + str(ckey) + " not found")
-        print("Compinfo name for " + str(ckey) + " not found ")
-        print(str(self.compinfo_names))
+        chklogger.logger.warning("Compinfo name for %s not found", str(ckey))
 
     def get_gcompinfo(self, fid, ckey):
         gckey = self.get_gckey(fid, ckey)
@@ -365,14 +363,29 @@ class CGlobalDeclarations(CDeclarations):
         if gckey is not None:
             return gckey
         if ckey in self.conjectured:
-            logging.info(logmsg + "conjectured key: " + str(self.conjectured[ckey]))
+            chklogger.logger.info(
+                "Compinfo %s (fid.ckey: %s.%s) conjectured key: %s",
+                compinfo.get_name(),
+                str(fid),
+                str(ckey),
+                str(self.conjectured[ckey]))
             return self.conjectured[ckey]
         if ckey in self.reserved:
-            logging.info(logmsg + " reserved key: " + str(self.reserved[ckey]))
+            chklogger.logger.info(
+                "Compinfo %s (fid.ckey: %s.%s) reserved key: %s",
+                compinfo.get_name(),
+                str(fid),
+                str(ckey),
+                str(self.reserved[ckey]))
             return self.reserved[ckey]
         if ckey in self.pending:
             pendingkey = self.conjecture_key(fid, compinfo)
-            logging.info(logmsg + "new pending key: " + str(pendingkey))
+            chklogger.logger.info(
+                "Compinfo %s (fid.ckey: %s.%s) new pending key: %s",
+                compinfo.get_name(),
+                str(fid),
+                str(ckey),
+                str(pendingkey))
             return pendingkey
         return self.index_compinfo(fid, compinfo).get_ckey()
 
@@ -406,7 +419,7 @@ class CGlobalDeclarations(CDeclarations):
         ckey = compinfo.get_ckey()
         cname = compinfo.get_name()
         if self.is_hidden_struct(filename, cname):
-            logging.info("Hide struct " + cname + " in file " + filename)
+            chklogger.logger.info("Hide struct %s in file %", cname, filename)
             return self.get_opaque_struct()
         gcompinfo = self.get_gcompinfo(fid, ckey)
         if gcompinfo is not None:
@@ -443,19 +456,14 @@ class CGlobalDeclarations(CDeclarations):
                 self.conjectured.pop(ckey)
                 return gcompinfo
             else:
-                logging.info(
-                    "Conjecture failure for "
+                chklogger.logger.info(
+                    "Conjecture failure for %s (fid:%s, ckey:%s, gckey:%s, "
+                    + "conjectured key: %s",
                     + compinfo.get_name()
-                    + " (fid:"
-                    + str(fid)
-                    + ", ckey:"
-                    + str(ckey)
-                    + ", gckey: "
-                    + str(gckey)
-                    + ", conjectured key: "
-                    + str(conjecturedkey)
-                    + ")"
-                )
+                    + str(fid),
+                    + str(ckey),
+                    + str(gckey),
+                    + str(conjecturedkey))
                 raise ConjectureFailure(ckey, conjecturedkey)
         else:
             self.register_gcompinfo(fid, ckey, gcompinfo)
@@ -556,16 +564,12 @@ class CGlobalDeclarations(CDeclarations):
         if vstorageclass not in self.varinfo_storage_classes[gvid]:
             self.varinfo_storage_classes[gvid] += vstorageclass
         self.vid2gvid[fid][vid] = gvarinfo.vid
-        logging.debug(
-            "Fid: "
-            + str(fid)
-            + ", vid: "
-            + str(vid)
-            + ", gvid: "
-            + str(gvarinfo.vid)
-            + ": "
-            + gvarinfo.vname
-        )
+        chklogger.logger.debug(
+            "Fid: %s, vid:%s, gvid:%s: %s",
+            str(fid),
+            str(vid),
+            str(gvarinfo.vid),
+            gvarinfo.vname)
         return gvarinfo
 
     def index_file_varinfos(self, fid, varinfos):
@@ -589,31 +593,26 @@ class CGlobalDeclarations(CDeclarations):
             candidates = [(itv[0], CVarInfo(self, itv[1])) for itv in itvcandidates]
             if len(candidates) == 1:
                 self.vid2gvid[fid][varinfo.vid] = candidates[0][1].vid
-                logging.info("Resolved prototype for " + varinfo.vname)
+                chklogger.logger.info(
+                    "Resolved prototype for %s", varinfo.vname)
             else:
                 pcandidates = ",".join([c[1].vname for c in candidates])
                 for (_, c) in candidates:
                     if c.vname == varinfo.vname:
                         self.vid2gvid[fid][varinfo.get_vid()] = c.vid
-                        logging.warning(
-                            "Selected prototype "
-                            + c.vname
-                            + " for "
-                            + varinfo.vname
-                            + " from multiple candidates: "
-                            + pcandidates
-                        )
+                        chklogger.logger.warning(
+                            "Selected prototype %s for %s from multiple "
+                            + "candidates: %s",
+                            c.vname,
+                            varinfo.vname,
+                            pcandidates)
                         break
                 else:
-                    msg = (
-                        "Unable to resolve prototype for "
-                        + varinfo.vname
-                        + ": "
-                        + str(len(candidates))
-                        + ": "
-                        + pcandidates
-                    )
-                    logging.warning(msg)
+                    chklogger.logger.warning(
+                        "Unable to resolve prototype for %s: %s: %s",
+                        varinfo.vname,
+                        str(len(candidates)),
+                        pcandidates)
 
     # -------------------- Writing xml ---------------------------------------
 
