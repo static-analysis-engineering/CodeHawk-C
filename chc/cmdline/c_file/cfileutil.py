@@ -27,14 +27,17 @@
 """Command-line interface to the CodeHawk C Analyzer."""
 
 import argparse
+import json
 import os
 import shutil
+import subprocess
 import sys
 
 from typing import List, Optional, NoReturn
 
 from chc.cmdline.AnalysisManager import AnalysisManager
 from chc.cmdline.ParseManager import ParseManager
+import chc.cmdline.jsonresultutil as JU
 
 from chc.app.CApplication import CApplication
 
@@ -69,8 +72,11 @@ def set_logging(
 def cfile_parse_file(args: argparse.Namespace) -> NoReturn:
 
     # arguments
-    filename: str = args.filename
-    savesemantics: bool = args.save_semantics
+    cfilename: str = args.filename
+    opttgtpath: Optional[str] = args.tgtpath
+    loglevel: str = args.loglevel
+    logfilename: Optional[str] = args.logfilename
+    logfilemode: str = args.logfilemode
 
     try:
         UF.check_parser()
@@ -78,37 +84,50 @@ def cfile_parse_file(args: argparse.Namespace) -> NoReturn:
         print(str(e.wrap()))
         exit(1)
 
-    cfilename = os.path.abspath(args.filename)
-    if not os.path.isfile(cfilename):
-        print("*" * 80)
-        print("C source code file " + cfilename + " not found")
-        print("*" * 80)
+    abscfilename = os.path.abspath(cfilename)
+    cpath = os.path.dirname(abscfilename)
+    cfilename = os.path.basename(abscfilename)
+    if not os.path.isfile(abscfilename):
+        print("C source code file %s not found", abscfilename)
         exit(1)
 
-    if not cfilename.endswith(".c"):
-        print("*" * 80)
-        print("C source code file should have extension .c")
-        print("*" * 80)
+    if not abscfilename.endswith(".c"):
+        print_error("C source code file should have extension .c")
         exit(1)
 
-    cpath = os.path.dirname(cfilename)
-    targetpath = cpath
+    set_logging(
+        loglevel,
+        cpath,
+        logfilename=logfilename,
+        mode=logfilemode,
+        msg="cfile parse invoked")
 
-    os.chdir(targetpath)
-    if os.path.isdir("semantics"):
-        print("Removing semantics directory")
-        shutil.rmtree("semantics")
+    if opttgtpath is None:
+        ctgtpath = cpath
+    else:
+        ctgtpath = os.path.abspath(opttgtpath)
+    chklogger.logger.info("Target path: %s", ctgtpath)
 
-    if os.path.isfile("semantics_linux.tar.gz"):
-        print("Removing semantics_linux.tar.gz")
-        os.remove("semantics_linux.tar.gz")
+    sempathname = cfilename + "ch"
+    sempath = os.path.join(ctgtpath, sempathname)
+    tarname = sempathname + ".tar.gz"
+    abstarname = os.path.join(ctgtpath, tarname)
 
-    parsemanager = ParseManager(cpath, targetpath)
+    chklogger.logger.info("Change directory to %s", ctgtpath)
+    os.chdir(ctgtpath)
+    if os.path.isdir(sempath):
+        chklogger.logger.info("Removing semantics directory %s", sempath)
+        shutil.rmtree(sempath)
+
+    if os.path.isfile(abstarname):
+        chklogger.logger.info("Removing tarfile %s", abstarname)
+        os.remove(abstarname)
+
+    parsemanager = ParseManager(cpath, ctgtpath, sempathname)
     parsemanager.initialize_paths()
 
     try:
-        basename = os.path.basename(cfilename)
-        ifilename = parsemanager.preprocess_file_with_gcc(basename)
+        ifilename = parsemanager.preprocess_file_with_gcc(cfilename)
         result = parsemanager.parse_ifile(ifilename)
         if result != 0:
             print("*" * 80)
@@ -118,7 +137,7 @@ def cfile_parse_file(args: argparse.Namespace) -> NoReturn:
             print("*" * 80)
             exit(1)
     except OSError as e:
-        print("Error when parsing file: " + str(e))
+        print_error("Error when parsing file: " + str(e))
         exit(1)
 
     parsemanager.save_semantics()
@@ -129,54 +148,73 @@ def cfile_parse_file(args: argparse.Namespace) -> NoReturn:
 def cfile_analyze_file(args: argparse.Namespace) -> NoReturn:
 
     # arguments
-    cpath = args.path
-    cfilename = args.filename
+    cfilename: str = args.filename
+    opttgtpath: Optional[str] = args.tgtpath
     loglevel: str = args.loglevel
     logfilename: Optional[str] = args.logfilename
     logfilemode: str = args.logfilemode
 
-    try:
-        cpath = UF.get_project_path(cpath)
-        UF.check_cfile(cpath, cfilename)
-        UF.check_semantics(cpath)
-    except UF.CHError as e:
-        print(str(e.wrap()))
-        exit(1)
+    projectpath = os.path.dirname(os.path.abspath(cfilename))
+    targetpath = projectpath if opttgtpath is None else opttgtpath
+    cfilename = os.path.basename(cfilename)
+    projectname = cfilename[:-2]
 
     set_logging(
         loglevel,
-        cpath,
+        targetpath,
         logfilename=logfilename,
         mode=logfilemode,
-        msg="cfile analyze invoked")
+        msg="Command cfile analyze was invoked")
 
-    sempath = os.path.join(cpath, "semantics")
-    contractpath = os.path.join(cpath, "chc_contracts")
+    chklogger.logger.info(
+        "Project path: %s; target path: %s", projectpath, targetpath)
 
-    capp = CApplication(sempath, cfilename, contractpath=contractpath)
-    chcpath = capp.path
+    parsearchive = UF.get_parse_archive(targetpath, projectname)
 
-    try:
-        xfilename = UF.get_cfile_filename(chcpath, cfilename)
-        UF.check_cfile(chcpath, xfilename)
-    except UF.CHError as e:
-        print(str(e.wrap()))
+    if not os.path.isfile(parsearchive):
+        print_error("Please run parser first on c file")
         exit(1)
+
+    cchpath = UF.get_cchpath(targetpath, projectname)
+
+    if os.path.isdir(cchpath):
+        chklogger.logger.info("Old analysis results: %s are removed", cchpath)
+        shutil.rmtree(cchpath)
+
+    if os.path.isfile(parsearchive):
+        chklogger.logger.info("Directory is changed to %s", targetpath)
+        os.chdir(targetpath)
+        tarname = os.path.basename(parsearchive)
+        cmd = ["tar", "xfz", os.path.basename(tarname)]
+        chklogger.logger.info("Semantics is extracted from %s", tarname)
+        result = subprocess.call(cmd, cwd=targetpath, stderr=subprocess.STDOUT)
+        if result != 0:
+            print_error("Error in extracting " + tarname)
+            exit(1)
+        chklogger.logger.info(
+            "Semantics was successfully extracted from %s", tarname)
+
+    contractpath = os.path.join(targetpath, "chc_contracts")
+
+    capp = CApplication(
+        projectpath, projectname, targetpath, contractpath, singlefile=True)
+
+    capp.initialize_single_file(cfilename[:-2])
 
     am = AnalysisManager(capp)
 
-    am.create_file_primary_proofobligations(cfilename)
-    am.reset_tables(cfilename)
+    am.create_file_primary_proofobligations(cfilename[:-2])
+    am.reset_tables(cfilename[:-2])
     capp.collect_post_assumes()
 
-    am.generate_and_check_file(cfilename, "llrvisp")
-    am.reset_tables(cfilename)
+    am.generate_and_check_file(cfilename[:-2], "llrvisp")
+    am.reset_tables(cfilename[:-2])
     capp.collect_post_assumes()
 
     for k in range(5):
         capp.update_spos()
-        am.generate_and_check_file(cfilename, "llrvisp")
-        am.reset_tables(cfilename)
+        am.generate_and_check_file(cfilename[:-2], "llrvisp")
+        am.reset_tables(cfilename[:-2])
 
     chklogger.logger.info("cfile analyze completed")
 
@@ -186,23 +224,47 @@ def cfile_analyze_file(args: argparse.Namespace) -> NoReturn:
 def cfile_report_file(args: argparse.Namespace) -> NoReturn:
 
     # arguments
-    cpath = args.path
-    cfile = args.filename
+    cfilename: str = args.filename
+    opttgtpath: Optional[str] = args.tgtpath
     cshowcode: bool = args.showcode
     copen: bool = args.open
+    jsonoutput: bool = args.json
+    outputfile: Optional[str] = args.output
+    loglevel: str = args.loglevel
+    logfilename: Optional[str] = args.logfilename
+    logfilemode: str = args.logfilemode
 
-    cpath = os.path.abspath(cpath)
+    projectpath = os.path.dirname(os.path.abspath(cfilename))
+    targetpath = projectpath if opttgtpath is None else opttgtpath
+    cfilename = os.path.basename(cfilename)
+    projectname = cfilename[:-2]
 
-    try:
-        UF.check_semantics(cpath)
-    except UF.CHError as e:
-        print(str(e.wrap()))
-        exit(1)
+    set_logging(
+        loglevel,
+        targetpath,
+        logfilename=logfilename,
+        mode=logfilemode,
+        msg="Command cfile report was invoked")
 
-    sempath = os.path.join(args.path, "semantics")
+    cchpath = UF.get_cchpath(targetpath, projectname)
+    contractpath = os.path.join(targetpath, "chc_contracts")
 
-    cfapp = CApplication(sempath, cfile)
-    cfile = cfapp.get_cfile()
+    capp = CApplication(
+        projectpath, projectname, targetpath, contractpath, singlefile=True)
+    capp.initialize_single_file(cfilename[:-2])
+    cfile = capp.get_cfile()
+
+    if jsonoutput:
+        jsonresult = JU.file_proofobligations_to_json_result(cfile)
+        if jsonresult.is_ok:
+            jsonokresult = JU.jsonok("fileproofobligations", jsonresult.content)
+            if outputfile:
+                with open(outputfile + ".json", "w") as fp:
+                    json.dump(jsonokresult, fp, indent=2)
+            else:
+                print(json.dumps(jsonokresult, indent=2))
+        exit(0)
+
 
     if cshowcode:
         if args.open:

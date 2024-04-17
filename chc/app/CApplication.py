@@ -29,7 +29,7 @@
 """Main access point to the analysis of a C application.
 
 C Applications are analyzed by individual compilation unit (cfile called here)
-by the OCaml analyzer in multiple rounds. After each round, the results of those 
+by the OCaml analyzer in multiple rounds. After each round, the results of those
 analyses are integrated by the python interface. This integration includes the
 generation of supporting proof obligations that reach across compilation units,
 and making available return value assumptions, by request. These new proof
@@ -47,7 +47,7 @@ the following.
 - at the file level:
   * <filename>_cfile.xml    global declarations, created by cchcil upon parsing
                             the C source code; never modified
-  * <filename>_cdict.xml    dictionary of types and expressions. Originally 
+  * <filename>_cdict.xml    dictionary of types and expressions. Originally
                             created by cchcil upon parsing the C source code,
                             but updated by cchlib in subsequent rounds
   * <filename>_ctxt.xml     dictionary of contexts used in expressing locations
@@ -77,7 +77,7 @@ the following.
                             python side as new spos are added in each round.
   * _api.xml                external assumptions and guarantees from other functions,
                             global variables, and possibly user-provided contracts.
-  * _vars.xml               variable and expression dictionary containing all 
+  * _vars.xml               variable and expression dictionary containing all
                             variables and expressions used in the invariants
   * _invs.xml               invariant dictionary containing all location invariants
                             (with locations specified by context)
@@ -111,34 +111,56 @@ class CApplication(object):
     """Primary access point for source code and analysis results."""
 
     def __init__(
-        self,
-        path: str,
-        cfilename: Optional[str] = None,
-        srcpath: Optional[str] = None,
-        contractpath: Optional[str] = None,
-        candidate_contractpath: Optional[str] = None,
-        excludefiles: List[str] = [],
-        includefiles: Optional[List[str]] = None,
-    ) -> None:
-        self.singlefile = not (cfilename is None)
-        self.path = UF.get_chc_artifacts_path(path)
-        self.srcpath = os.path.join(path, "sourcefiles") if srcpath is None else srcpath
+            self,
+            projectpath: str,
+            projectname: str,
+            targetpath: str,
+            contractpath: str,
+            singlefile: bool = False) -> None:
+        self._projectpath = projectpath
+        self._projectname = projectname
+        self._targetpath = targetpath
         self._contractpath = contractpath
-        self.globalcontract = None
-        self.excludefiles = excludefiles  # files analyzed: all excluding these
+        self._singlefile = singlefile
+        # path: str,
+        # cfilename: Optional[str] = None,
+        # srcpath: Optional[str] = None,
+        # contractpath: Optional[str] = None,
+        # candidate_contractpath: Optional[str] = None,
+        # excludefiles: List[str] = [],
+        # includefiles: Optional[List[str]] = None,
+        # ) -> None:
+
+        # self.singlefile = not (cfilename is None)
+        # self.path = UF.get_chc_artifacts_path(path)
+        # self.srcpath = os.path.join(path, "sourcefiles") if srcpath is None else srcpath
+        # self.globalcontract = None
+        # self.excludefiles = excludefiles  # files analyzed: all excluding these
         # files analyzed (if not None): these
-        self.includefiles = includefiles
-        if self._contractpath is not None:
-            self.globalcontract = CGlobalContract(self)
-        self.candidate_contractpath = candidate_contractpath
-        self.filenames: Dict[int, str] = {}  # file index -> filename
-        self.files: Dict[str, CFile] = {}  # filename -> CFile
-        self.indexmanager = IndexManager(self.singlefile)
-        self.callgraph: Dict[Any, Any] = {}  # (fid,vid) -> (callsitespos, (tgtfid,tgtvid))
-        self.revcallgraph: Dict[Any, Any] = {}  # (tgtfid,tgtvid) -> ((fid,vid),callsitespos)
+        # self.includefiles = includefiles
+        # if self._contractpath is not None:
+        #    self.globalcontract = CGlobalContract(self)
+        # self.candidate_contractpath = candidate_contractpath
+        self._filenames: Dict[int, str] = {}  # file index -> filename
+        self._files: Dict[str, CFile] = {}  # filename -> CFile
+        self._indexmanager = IndexManager(self._singlefile)
+        self._callgraph: Dict[Any, Any] = {}  # (fid,vid) -> (callsitespos, (tgtfid,tgtvid))
+        self._revcallgraph: Dict[Any, Any] = {}  # (tgtfid,tgtvid) -> ((fid,vid),callsitespos)
         self._dictionary: Optional[CGlobalDictionary] = None
         self._declarations: Optional[CGlobalDeclarations] = None
-        self._initialize(cfilename)
+        # self._initialize(cfilename)
+
+    @property
+    def projectpath(self) -> str:
+        return self._projectpath
+
+    @property
+    def projectname(self) -> str:
+        return self._projectname
+
+    @property
+    def targetpath(self) -> str:
+        return self._targetpath
 
     @property
     def contractpath(self) -> str:
@@ -149,10 +171,26 @@ class CApplication(object):
     def has_contractpath(self) -> bool:
         return self._contractpath is not None
 
+    def singlefile(self) -> bool:
+        return self._singlefile
+
+    @property
+    def files(self) -> Dict[str, CFile]:
+        return self._files
+
+    @property
+    def filenames(self) -> Dict[int, str]:
+        return self._filenames
+
+    @property
+    def indexmanager(self) -> IndexManager:
+        return self._indexmanager
+
     @property
     def dictionary(self) -> CGlobalDictionary:
         if self._dictionary is None:
-            xnode = UF.get_global_dictionary_xnode(self.path)
+            xnode = UF.get_global_dictionary_xnode(
+                self.targetpath, self.projectname)
             self._dictionary = CGlobalDictionary(self, xnode)
         return self._dictionary
 
@@ -229,7 +267,8 @@ class CApplication(object):
         raise Exception("Could not find file named \"" + fname + "\"")
 
     def get_srcfile(self, fname: str) -> CSrcFile:
-        srcfile = os.path.join(self.srcpath, fname)
+        srcpath = UF.get_savedsource_path(self.targetpath, self.projectname)
+        srcfile = os.path.join(srcpath, fname)
         return CSrcFile(self, srcfile)
 
     # return a list of ((fid,vid),callsitespos).
@@ -571,6 +610,20 @@ class CApplication(object):
         for i, f in self.filenames.items():
             self._initialize_file(i, f)
 
+    def initialize_single_file(self, fname: str) -> None:
+        if fname in self.files:
+            return
+
+        cfile = UF.get_cfile_xnode(
+            self.targetpath, self.projectname, None, fname)
+        if cfile is not None:
+            self.filenames[0] = fname
+            self.files[fname] = CFile(self, 0, cfile)
+            self.indexmanager.add_file(self.files[fname])
+            chklogger.logger.info("Single c file was initialized %s", fname)
+        else:
+            chklogger.logger.error("c_file could not be extracted %s", fname)
+
     def _initialize_file(self, index: int, fname: str) -> None:
         if fname in self.files:
             return
@@ -580,6 +633,7 @@ class CApplication(object):
             self.filenames[index] = fname
             self.files[fname] = CFile(self, index, cfile)
             self.indexmanager.add_file(self.files[fname])
+            chklogger.logger.info("initialized cfile %s", fname)
         else:
             tgtxnode = UF.get_targetfiles_xnode(self.path)
             if tgtxnode is None:

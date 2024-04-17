@@ -84,6 +84,22 @@ class CFunctionProofs:
         return self.cfun.cfile
 
     @property
+    def targetpath(self) -> str:
+        return self.cfile.targetpath
+
+    @property
+    def projectname(self) -> str:
+        return self.cfile.projectname
+
+    @property
+    def cfilepath(self) -> Optional[str]:
+        return self.cfile.cfilepath
+
+    @property
+    def cfilename(self) -> str:
+        return self.cfile.cfilename
+
+    @property
     def capp(self) -> "CApplication":
         return self.cfile.capp
 
@@ -293,4 +309,10 @@ class CFunctionProofs:
     '''
 
     def _save_spos(self, cnode: ET.Element) -> None:
-        UF.save_spo_file(self.capp.path, self.cfile.name, self.cfun.name, cnode)
+        UF.save_spo_file(
+            self.targetpath,
+            self.projectname,
+            self.cfilepath,
+            self.cfilename,
+            self.cfun.name,
+            cnode)

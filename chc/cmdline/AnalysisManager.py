@@ -35,8 +35,10 @@ import shutil
 
 from typing import List, Optional, TYPE_CHECKING
 
-import chc.util.fileutil as UF
 from chc.util.Config import Config
+import chc.util.fileutil as UF
+from chc.util.loggingutil import chklogger
+
 
 if TYPE_CHECKING:
     from chc.app.CApplication import CApplication
@@ -69,18 +71,46 @@ class AnalysisManager:
             nofilter (bool): don't remove functions with absolute filename (default True)
         """
 
-        self.capp = capp
-        self.contractpath = capp.contractpath
-        self.config = Config()
-        self.chsummaries = self.config.summaries
-        self.path = self.capp.path
-        self.canalyzer = self.config.canalyzer
-        self.gui = self.config.chc_gui
+        self._capp = capp
+        # self.contractpath = capp.contractpath
+        self._config = Config()
+        # self.chsummaries = self.config.summaries
+        # self.path = self.capp.path
+        # self.canalyzer = self.config.canalyzer
+        # self.gui = self.config.chc_gui
         self.nofilter = nofilter
         self.wordsize = wordsize
         self.thirdpartysummaries = thirdpartysummaries
         self.unreachability = unreachability
         self.verbose = verbose
+
+    @property
+    def capp(self) -> "CApplication":
+        return self._capp
+
+    @property
+    def contractpath(self) -> Optional[str]:
+        return None
+
+    @property
+    def config(self) -> Config:
+        return self._config
+
+    @property
+    def chsummaries(self) -> str:
+        return self.config.summaries
+
+    @property
+    def canalyzer(self) -> str:
+        return self.config.canalyzer
+
+    @property
+    def projectpath(self) -> str:
+        return self.capp.projectpath
+
+    @property
+    def targetpath(self) -> str:
+        return self.capp.targetpath
 
     def reset(self) -> None:
         """Remove all file- and function-level files produced by the analysis."""
@@ -149,13 +179,14 @@ class AnalysisManager:
                 cmd.extend(["-summaries", s])
         if not (self.contractpath is None):
             cmd.extend(["-contractpath", self.contractpath])
+        cmd.extend(["-projectname", self.capp.projectname])
 
         if self.nofilter:
             cmd.append("-nofilter")
         if self.wordsize > 0:
             cmd.extend(["-wordsize", str(self.wordsize)])
-        cmd.append(self.path)
-        cmd.append("-cfile")
+        cmd.append(self.targetpath)
+        cmd.append("-cfilename")
         return cmd
 
     def rungui(self, name: str, outputpath: Optional[str] = None) -> None:
@@ -194,16 +225,22 @@ class AnalysisManager:
             print(args)
             exit(1)
 
-    def create_file_primary_proofobligations(self, cfilename: str) -> None:
-        """Call analyzer to create primary proof obligations for a single application file."""
+    def create_file_primary_proofobligations(
+            self, cfilename: str, cfilepath: Optional[str] = None) -> None:
+        """Call analyzer to create primary proof obligations for a single file."""
 
         try:
             cmd = self._create_file_primary_proofobligations_cmd_partial()
             cmd.append(cfilename)
+            if cfilepath is not None:
+                cmd.extend(["-cfilepath", cfilepath])
             if self.verbose:
-                print("Creating primary proof obligations for " + cfilename)
-                print(str(cmd))
-                result = subprocess.call(cmd, cwd=self.path, stderr=subprocess.STDOUT)
+                chklogger.logger.info(
+                    "Primary proof obligations are created for %s", cfilename)
+                chklogger.logger.info(
+                    "Ocaml analyzer is called with %s", str(cmd))
+                result = subprocess.call(
+                    cmd, cwd=self.targetpath, stderr=subprocess.STDOUT)
                 print("\nResult: " + str(result))
                 # self.capp.get_file(cfilename).predicatedictionary.initialize()
             else:
@@ -258,6 +295,7 @@ class AnalysisManager:
                 cmd.extend(["-summaries", s])
         if not (self.contractpath is None):
             cmd.extend(["-contractpath", self.contractpath])
+        cmd.extend(["-projectname", self.capp.projectname])
         if self.nofilter:
             cmd.append("-nofilter")
         if self.wordsize > 0:
@@ -266,8 +304,8 @@ class AnalysisManager:
             cmd.append("-unreachability")
         if self.verbose:
             cmd.append("-verbose")
-        cmd.append(self.path)
-        cmd.append("-cfile")
+        cmd.append(self.targetpath)
+        cmd.append("-cfilename")
         return cmd
 
     def generate_and_check_file(self, cfilename: str, domains: str) -> None:
@@ -282,7 +320,8 @@ class AnalysisManager:
                     + cfilename
                 )
                 print(cmd)
-                result = subprocess.call(cmd, cwd=self.path, stderr=subprocess.STDOUT)
+                result = subprocess.call(
+                    cmd, cwd=self.targetpath, stderr=subprocess.STDOUT)
                 print("\nResult: " + str(result))
             else:
                 result = subprocess.call(

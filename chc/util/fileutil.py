@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2020-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,7 +26,88 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""File utilities
 
+All intermediate and final results are saved in xml/json files with fixed
+names derived from the names of the c files and c functions. The functions in
+this file parse the xml/json files and return the top functional xml element
+of these files (xml) or the dictionary (json). The filenames themselves can
+be retrieved as well.
+
+File-naming schema:
+
+A file x.c in a project is identified by three components:
+- a project path <pp>, which can be either the directory of the file
+    (in case of a single file) or the location of the Makefile (in
+    case of a multi file project);
+- a project name <pn>, which is the x in the case of a single c file,
+    and is user-specified name otherwise;
+- a file path <fp>, which is the path of the directory in which the
+    file resides relative to the project path. In case of a single
+    c file fp is omitted.
+- the file name <x> (without extension)
+
+The user can specify a different directory to store the analysis artifacts,
+which is designated by <tp> (targetpath).
+
+Given a file x.c with project path pp, project name pn, and file path fp,
+and specified target path tp, the following artifacts are produced in
+multiple stages:
+
+1. A new analysis directory is created: tp/pn.cch with two subdirectories:
+   tp/pn.cch/a and tp/pn.cch/s
+
+2. x.c is preprocessed with the gcc preprocessor, producing the file
+   pp/fp/x.i. Both pp/fp/x.c and pp/fp/x.i are copied to tp/pn.cch/s/fp.
+
+3. x.c is parsed by the CodeHawk/CIL parser, producing the following files
+   tp/pn.cch/a/fp/x/x_cdict.xml
+                   /x_cfile.xml
+                   /functions/<x_fn>/x_fn_cfun.xml  (for every function fn in x)
+
+3a. In case of multiple c files, the files are linked, resolving dependencies
+    between globally visible functions, variables, and data structures,
+    producing the files:
+    tp/pn.cch/a/fp/x/x_gxrefs.xml
+                globaldefinitions.xml
+                target_files.xml
+
+4. When all c files in the project (that is, indicated by the Makefile)
+   have been parsed the directory tp/pn.cch is saved as a gzipped tar file,
+   tp/pn.cch.tar.gz, to enable redoing the analysis without having to
+   reparse, or sharing the same parsing results with others (this is
+   because the preprocessing is performed against the local environment,
+   including header files, availability of other libraries, etc., and
+   thus may be different for different computers).
+
+5. Primary proof obligations are generated for x.c, producing the following
+   files:
+   tp/pn.cch/a/fp/x/x_cgl.xml
+                    x_ctxt.xml
+                    x_ixf.xml
+                    x_prd.xml
+                    functions/<x_fn>/x_fn_api.xml
+                                    /x_fn_pod.xml
+                                    /x_fn_ppo.xml
+                    logfiles/x_primary.chlog
+                             x_primary.errorlog
+                             x_primary.infolog
+
+6. Invariants are generated and proof obligations are checked, producing
+   the following files:
+   tp/pn.cch/a/fp/x/functions/<x_fn>/x_fn_invs.xml
+                                    /x_fn_vars.xml
+                   /logfiles/x_gencheck.chlog
+                             x_gencheck.errorlog
+                             x_gencheck.infolog
+
+7. Supporting proof obligations are generated for dependencies across
+   functions and files, producing
+   tp/pn.cch/a/fp/x/functions/<x_fn>/x_fn_spo.xml
+
+Steps 6 and 7 are repeated until convergence.
+
+"""
 import calendar
 import json
 import os
@@ -40,11 +121,13 @@ from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
 import chc.util.xmlutil as UX
 
 from chc.util.Config import Config
-
-config = Config()
+from chc.util.loggingutil import chklogger
 
 if TYPE_CHECKING:
     from chc.app.CFile import CFile
+
+
+config = Config()
 
 
 class CHError(Exception):
@@ -386,6 +469,7 @@ def get_xnode(
     elif show:
         raise CHCFileNotFoundError(filename)
     else:
+        chklogger.logger.warning("File %s was not found; returning None", filename)
         return None
 
 
@@ -500,7 +584,6 @@ def get_project_path(name: str) -> str:
         else:
             raise CHCDirectoryNotFoundError(name)
 
-
 # Check presence of analysis results ------------------------------------------
 
 
@@ -520,13 +603,47 @@ def check_cfile(path: str, filename: str) -> None:
 
 
 def get_chc_artifacts_path(path: str) -> str:
-    dirname = os.path.join(path, "chcartifacts")
+    dirname = os.path.join(path, "a")
+    if os.path.isdir(dirname):
+        return dirname
+    dirname = os.path.join(path, "chcartifacts")  # legacy name
     if os.path.isdir(dirname):
         return dirname
     dirname = os.path.join(path, "ktadvance")  # legacy name
     if os.path.isdir(dirname):
         return dirname
     raise CHCArtifactsNotFoundError(path)
+
+# -- Global paths -----------------------------------------------------------
+
+def get_cchpath(targetpath: str, projectname: str) -> str:
+    cchname = projectname + ".cch"
+    return os.path.join(targetpath, cchname)
+
+
+def get_analysisresults_path(targetpath: str, projectname: str) -> str:
+    cchpath = get_cchpath(targetpath, projectname)
+    return os.path.join(cchpath, "a")
+
+
+def get_savedsource_path(targetpath: str, projectname: str) -> str:
+    cchpath = get_cchpath(targetpath, projectname)
+    return os.path.join(cchpath, "s")
+
+
+def get_parse_archive(targetpath: str, projectname: str) -> str:
+    """Returns the full path to the parse archive file."""
+
+    archivename = projectname + ".cch.tar.gz"
+    return os.path.join(targetpath, archivename)
+
+
+def get_parse_tarname(projectname: str) -> str:
+    return projectname + ".cch.tar"
+
+
+def get_parse_targzname(projectname: str) -> str:
+    return get_parse_tarname(projectname) + ".gz"
 
 
 def get_targetfiles_filename(path: str) -> str:
@@ -723,35 +840,74 @@ def get_cfilenamebase(cfilename: str) -> str:
     return cfilename
 
 
-def get_cfile_filename(path: str, cfilename: str) -> str:
-    cfilename = get_cfilenamebase(cfilename)
-    return os.path.join(path, cfilename + "_cfile.xml")
+def get_cfile_filepath(
+        targetpath: str,
+        projectname: str,
+        cfilepath: Optional[str],
+        cfilename: str) -> str:
+    resultspath = get_analysisresults_path(targetpath, projectname)
+    if cfilepath is None:
+        return os.path.join(resultspath, cfilename)
+    else:
+        path = os.path.join(resultspath, cfilepath)
+        return os.path.join(path, cfilename)
 
 
-def get_cfile_xnode(path: str, cfilename: str) -> Optional[ET.Element]:
-    filename = get_cfile_filename(path, cfilename)
+def get_cfile_cfile(
+        targetpath: str,
+        projectname: str,
+        cfilepath: Optional[str],
+        cfilename: str) -> str:
+    filepath = get_cfile_filepath(targetpath, projectname, cfilepath, cfilename)
+    return os.path.join(filepath, cfilename + "_cfile.xml")
+
+
+def get_cfile_xnode(
+        targetpath: str,
+        projectname: str,
+        cfilepath: Optional[str],
+        cfilename: str) -> Optional[ET.Element]:
+    filename = get_cfile_cfile(targetpath, projectname, cfilepath, cfilename)
+    chklogger.logger.info("C_file %s is retrieved", filename)
     return get_xnode(filename, "c-file", "C source file")
 
 
-def get_cfile_dictionaryname(path: str, cfilename: str) -> str:
-    cfilename = get_cfilenamebase(cfilename)
-    return os.path.join(path, cfilename + "_cdict.xml")
+def get_cfile_dictionaryname(
+        targetpath: str,
+        projectname: str,
+        cfilepath: Optional[str],
+        cfilename: str) -> str:
+    filepath = get_cfile_filepath(targetpath, projectname, cfilepath, cfilename)
+    return os.path.join(filepath, cfilename + "_cdict.xml")
 
 
-def get_cfile_dictionary_xnode(path: str, cfilename: str) -> Optional[ET.Element]:
-    filename = get_cfile_dictionaryname(path, cfilename)
+def get_cfile_dictionary_xnode(
+        targetpath: str,
+        projectname: str,
+        cfilepath: Optional[str],
+        cfilename: str) -> Optional[ET.Element]:
+    filename = get_cfile_dictionaryname(
+        targetpath, projectname, cfilepath, cfilename)
+    chklogger.logger.info("C_dict %s is retrieved", filename)
     return get_xnode(filename, "cfile", "C dictionary file")
 
 
-def get_cfile_predicate_dictionaryname(path: str, cfilename: str) -> str:
-    cfilename = get_cfilenamebase(cfilename)
-    return os.path.join(path, cfilename + "_prd.xml")
+def get_cfile_predicate_dictionaryname(
+        targetpath: str,
+        projectname: str,
+        cfilepath: str,
+        cfilename: str) -> str:
+    filepath = get_cfile_filepath(targetpath, projectname, cfilepath, cfilename)
+    return os.path.join(filepath, cfilename + "_prd.xml")
 
 
 def get_cfile_predicate_dictionary_xnode(
-    path: str, cfilename: str
-) -> Optional[ET.Element]:
-    filename = get_cfile_predicate_dictionaryname(path, cfilename)
+        targetpath: str,
+        projectname: str,
+        cfilepath: str,
+        cfilename: str) -> Optional[ET.Element]:
+    filename = get_cfile_predicate_dictionaryname(
+        targetpath, projectname, cfilepath, cfilename)
     return get_xnode(
         filename, "po-dictionary", "PO predicate dictionary file", show=False
     )
@@ -774,15 +930,22 @@ def get_cfile_assignment_dictionary_xnode(
     )
 
 
-def get_cfile_interface_dictionaryname(path: str, cfilename: str) -> str:
-    cfilename = get_cfilenamebase(cfilename)
-    return os.path.join(path, cfilename + "_ixf.xml")
+def get_cfile_interface_dictionaryname(
+        targetpath: str,
+        projectname: str,
+        cfilepath: Optional[str],
+        cfilename: str) -> str:
+    filepath = get_cfile_filepath(targetpath, projectname, cfilepath, cfilename)
+    return os.path.join(filepath, cfilename + "_ixf.xml")
 
 
 def get_cfile_interface_dictionary_xnode(
-    path: str, cfilename: str
-) -> Optional[ET.Element]:
-    filename = get_cfile_interface_dictionaryname(path, cfilename)
+        targetpath: str,
+        projectname: str,
+        cfilepath: Optional[str],
+        cfilename: str) -> Optional[ET.Element]:
+    filename = get_cfile_interface_dictionaryname(
+        targetpath, projectname, cfilepath, cfilename)
     return get_xnode(
         filename,
         "interface-dictionary",
@@ -792,22 +955,35 @@ def get_cfile_interface_dictionary_xnode(
 
 
 def save_cfile_interface_dictionary(
-    path: str, cfilename: str, xnode: ET.Element
-) -> None:
-    filename = get_cfile_interface_dictionaryname(path, cfilename)
+        targetpath: str,
+        projectname: str,
+        cfilepath: Optional[str],
+        cfilename: str,
+        xnode: ET.Element) -> None:
+    filename = get_cfile_interface_dictionaryname(
+        targetpath, projectname, cfilepath, cfilename)
     header = UX.get_xml_header(filename, "interfacedictionary")
     header.append(xnode)
     with open(filename, "w") as fp:
         fp.write(UX.doc_to_pretty(ET.ElementTree(header)))
 
 
-def get_cfile_contexttablename(path: str, cfilename: str) -> str:
-    cfilename = get_cfilenamebase(cfilename)
-    return os.path.join(path, cfilename + "_ctxt.xml")
+def get_cfile_contexttablename(
+        targetpath: str,
+        projectname: str,
+        cfilepath: Optional[str],
+        cfilename: str) -> str:
+    filepath = get_cfile_filepath(targetpath, projectname, cfilepath, cfilename)
+    return os.path.join(filepath, cfilename + "_ctxt.xml")
 
 
-def get_cfile_contexttable_xnode(path: str, cfilename: str) -> Optional[ET.Element]:
-    filename = get_cfile_contexttablename(path, cfilename)
+def get_cfile_contexttable_xnode(
+        targetpath: str,
+        projectname: str,
+        cfilepath: Optional[str],
+        cfilename: str) -> Optional[ET.Element]:
+    filename = get_cfile_contexttablename(
+        targetpath, projectname, cfilepath, cfilename)
     return get_xnode(filename, "c-contexts", "C contexts file", show=False)
 
 
@@ -854,21 +1030,72 @@ def get_cfun_basename(path: str, cfilename: str, fname: str) -> str:
     return os.path.join(cfiledir, basename + "_" + fname)
 
 
-def get_cfun_filename(path: str, cfilename: str, fname: str) -> str:
-    return get_cfun_basename(path, cfilename, fname) + "_cfun.xml"
+def get_fn_composite(cfilename: str, fnname: str, ext: str) -> str:
+    return "_".join([cfilename, fnname, ext]) + ".xml"
 
 
-def get_cfun_xnode(path: str, cfilename: str, fname: str) -> Optional[ET.Element]:
-    filename = get_cfun_filename(path, cfilename, fname)
+def get_cfile_fnspath(
+        targetpath: str,
+        projectname: str,
+        cfilepath: Optional[str],
+        cfilename: str) -> str:
+    filepath = get_cfile_filepath(targetpath, projectname, cfilepath, cfilename)
+    return os.path.join(filepath, "functions")
+
+
+def get_cfile_fnpath(
+        targetpath: str,
+        projectname: str,
+        cfilepath: Optional[str],
+        cfilename: str,
+        fnname: str) -> str:
+    fnspath = get_cfile_fnspath(targetpath, projectname, cfilepath, cfilename)
+    return os.path.join(fnspath, fnname)
+
+
+def get_cfun_filename(
+        targetpath: str,
+        projectname: str,
+        cfilepath: Optional[str],
+        cfilename: str,
+        fnname: str) -> str:
+    fnpath = get_cfile_fnpath(
+        targetpath, projectname, cfilepath, cfilename, fnname)
+    filename = get_fn_composite(cfilename, fnname, "cfun")
+    return os.path.join(fnpath, filename)
+
+
+def get_cfun_xnode(
+        targetpath: str,
+        projectname: str,
+        cfilepath: Optional[str],
+        cfilename: str,
+        fnname: str) -> Optional[ET.Element]:
+    filename = get_cfun_filename(
+        targetpath, projectname, cfilepath, cfilename, fnname)
     return get_xnode(filename, "function", "C source function file")
 
 
-def get_api_filename(path: str, cfilename: str, fname: str) -> str:
-    return get_cfun_basename(path, cfilename, fname) + "_api.xml"
+def get_api_filename(
+        targetpath: str,
+        projectname: str,
+        cfilepath: Optional[str],
+        cfilename: str,
+        fnname: str) -> str:
+    fnpath = get_cfile_fnpath(
+        targetpath, projectname, cfilepath, cfilename, fnname)
+    filename = get_fn_composite(cfilename, fnname, "api")
+    return os.path.join(fnpath, filename)
 
 
-def get_api_xnode(path: str, cfilename: str, fname: str) -> Optional[ET.Element]:
-    filename = get_api_filename(path, cfilename, fname)
+def get_api_xnode(
+        targetpath: str,
+        projectname: str,
+        cfilepath: Optional[str],
+        cfilename: str,
+        fnname: str) -> Optional[ET.Element]:
+    filename = get_api_filename(
+        targetpath, projectname, cfilepath, cfilename, fnname)
     return get_xnode(filename, "function", "Function api file", show=False)
 
 
@@ -880,65 +1107,149 @@ def save_api(path: str, cfilename: str, fname: str, xnode: ET.Element) -> None:
         fp.write(UX.doc_to_pretty(ET.ElementTree(header)))
 
 
-def get_vars_filename(path: str, cfilename: str, fname: str) -> str:
-    return get_cfun_basename(path, cfilename, fname) + "_vars.xml"
+def get_vars_filename(
+        targetpath: str,
+        projectname: str,
+        cfilepath: Optional[str],
+        cfilename: str,
+        fnname: str) -> str:
+    fnpath = get_cfile_fnpath(
+        targetpath, projectname, cfilepath, cfilename, fnname)
+    filename = get_fn_composite(cfilename, fnname, "vars")
+    return os.path.join(fnpath, filename)
 
 
-def get_vars_xnode(path: str, cfilename: str, fname: str) -> Optional[ET.Element]:
-    filename = get_vars_filename(path, cfilename, fname)
-    return get_xnode(filename, "function", "Function variable dictionary", show=False)
+def get_vars_xnode(
+        targetpath: str,
+        projectname: str,
+        cfilepath: Optional[str],
+        cfilename: str,
+        fnname: str) -> Optional[ET.Element]:
+    filename = get_vars_filename(
+        targetpath, projectname, cfilepath, cfilename, fnname)
+    return get_xnode(
+        filename, "function", "Function variable dictionary", show=False)
 
 
-def get_invs_filename(path: str, cfilename: str, fname: str) -> str:
-    return get_cfun_basename(path, cfilename, fname) + "_invs.xml"
+def get_invs_filename(
+        targetpath: str,
+        projectname: str,
+        cfilepath: Optional[str],
+        cfilename: str,
+        fnname: str) -> str:
+    fnpath = get_cfile_fnpath(
+        targetpath, projectname, cfilepath, cfilename, fnname)
+    filename = get_fn_composite(cfilename, fnname, "invs")
+    return os.path.join(fnpath, filename)
 
 
-def get_invs_xnode(path: str, cfilename: str, fname: str) -> Optional[ET.Element]:
-    filename = get_invs_filename(path, cfilename, fname)
+def get_invs_xnode(
+        targetpath: str,
+        projectname: str,
+        cfilepath: Optional[str],
+        cfilename: str,
+        fnname: str) -> Optional[ET.Element]:
+    filename = get_invs_filename(
+        targetpath, projectname, cfilepath, cfilename, fnname)
     return get_xnode(filename, "function", "Function invariants", show=False)
 
 
-def get_pod_filename(path: str, cfilename: str, fname: str) -> str:
-    return get_cfun_basename(path, cfilename, fname) + "_pod.xml"
+def get_pod_filename(
+        targetpath: str,
+        projectname: str,
+        cfilepath: Optional[str],
+        cfilename: str,
+        fnname: str) -> str:
+    fnpath = get_cfile_fnpath(
+        targetpath, projectname, cfilepath, cfilename, fnname)
+    filename = get_fn_composite(cfilename, fnname, "pod")
+    return os.path.join(fnpath, filename)
 
 
-def get_pod_xnode(path: str, cfilename: str, fname: str) -> Optional[ET.Element]:
-    filename = get_pod_filename(path, cfilename, fname)
+def get_pod_xnode(
+        targetpath: str,
+        projectname: str,
+        cfilepath: Optional[str],
+        cfilename: str,
+        fnname: str) -> Optional[ET.Element]:
+    filename = get_pod_filename(
+        targetpath, projectname, cfilepath, cfilename, fnname)
     return get_xnode(
         filename, "function", "Function proof obligation types", show=False
     )
 
 
-def get_ppo_filename(path: str, cfilename: str, fname: str) -> str:
-    return get_cfun_basename(path, cfilename, fname) + "_ppo.xml"
+def get_ppo_filename(
+        targetpath: str,
+        projectname: str,
+        cfilepath: Optional[str],
+        cfilename: str,
+        fnname: str) -> str:
+    fnpath = get_cfile_fnpath(
+        targetpath, projectname, cfilepath, cfilename, fnname)
+    filename = get_fn_composite(cfilename, fnname, "ppo")
+    return os.path.join(fnpath, filename)
 
 
-def get_ppo_xnode(path: str, cfilename: str, fname: str) -> Optional[ET.Element]:
-    filename = get_ppo_filename(path, cfilename, fname)
+def get_ppo_xnode(
+        targetpath: str,
+        projectname: str,
+        cfilepath: Optional[str],
+        cfilename: str,
+        fnname: str) -> Optional[ET.Element]:
+    filename = get_ppo_filename(
+        targetpath, projectname, cfilepath, cfilename, fnname)
     return get_xnode(filename, "function", "Primary proof obligations file")
 
 
-def get_spo_filename(path: str, cfilename: str, fname: str) -> str:
-    return get_cfun_basename(path, cfilename, fname) + "_spo.xml"
+def get_spo_filename(
+        targetpath: str,
+        projectname: str,
+        cfilepath: Optional[str],
+        cfilename: str,
+        fnname: str) -> str:
+    fnpath = get_cfile_fnpath(
+        targetpath, projectname, cfilepath, cfilename, fnname)
+    filename =get_fn_composite(cfilename, fnname, "spo")
+    return os.path.join(fnpath, filename)
 
 
-def get_spo_xnode(path: str, cfilename: str, fname: str) -> Optional[ET.Element]:
-    filename = get_spo_filename(path, cfilename, fname)
+def get_spo_xnode(
+        targetpath: str,
+        projectname: str,
+        cfilepath: Optional[str],
+        cfilename: str,
+        fnname: str) -> Optional[ET.Element]:
+    filename = get_spo_filename(
+        targetpath, projectname, cfilepath, cfilename, fnname)
     return get_xnode(
-        filename, "function", "Secondary proof obligations file", show=False
-    )
+        filename, "function", "Secondary proof obligations file", show=False)
 
 
-def save_spo_file(path: str, cfilename: str, fname: str, cnode: ET.Element) -> None:
-    filename = get_spo_filename(path, cfilename, fname)
-    header = UX.get_xml_header(filename, "spos")
+def save_spo_file(
+        targetpath: str,
+        projectname: str,
+        cfilepath: Optional[str],
+        cfilename: str,
+        fnname: str,
+        cnode: ET.Element) -> None:
+    filename = get_spo_filename(
+        targetpath, projectname, cfilepath, cfilename, fnname)
+    header = UX.get_xml_header(cfilename, "spos")
     header.append(cnode)
     with open(filename, "w") as fp:
         fp.write(UX.doc_to_pretty(ET.ElementTree(header)))
 
 
-def save_pod_file(path: str, cfilename: str, fname: str, cnode: ET.Element) -> None:
-    filename = get_pod_filename(path, cfilename, fname)
+def save_pod_file(
+        targetpath: str,
+        projectname: str,
+        cfilepath: Optional[str],
+        cfilename: str,
+        fnname: str,
+        cnode: ET.Element) -> None:
+    filename = get_pod_filename(
+        targetpath, projectname, cfilepath, cfilename, fnname)
     header = UX.get_xml_header(filename, "pod")
     header.append(cnode)
     with open(filename, "w") as fp:

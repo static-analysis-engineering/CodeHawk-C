@@ -31,6 +31,7 @@ import xml.etree.ElementTree as ET
 from typing import Any, Callable, Dict, Iterable, Optional, Tuple, TYPE_CHECKING
 
 import chc.util.fileutil as UF
+from chc.util.loggingutil import chklogger
 import chc.util.xmlutil as UX
 
 from chc.app.CContextDictionary import CContextDictionary
@@ -52,7 +53,6 @@ from chc.app.CContextDictionary import CContextDictionary
 from chc.app.CFileDictionary import CFileDictionary
 from chc.app.CFileDeclarations import CFileDeclarations
 from chc.app.CFileAssignmentDictionary import CFileAssignmentDictionary
-
 
 from chc.proof.CFilePredicateDictionary import CFilePredicateDictionary
 
@@ -87,9 +87,11 @@ class CFunctionNotFoundException(Exception):
 class CFile(object):
     """C File level declarations."""
 
-    def __init__(self, capp: "CApplication", index: int, xnode: ET.Element) -> None:
-        self.index = index
-        self.capp = capp
+    def __init__(
+            self, capp: "CApplication", index: int, xnode: ET.Element
+    ) -> None:
+        self._index = index
+        self._capp = capp
         self.xnode = xnode
         found_name = self.xnode.get("filename")
         if found_name is None:
@@ -104,23 +106,23 @@ class CFile(object):
         self.functions: Dict[int, CFunction] = {}  # vid -> CFunction
         self.functionnames: Dict[str, int] = {}  # functionname -> vid
         self.strings: Dict[int, Tuple[int, str]] = {}  # string-index -> (len,string)
-        self.sourcefile = None  # CSrcFile
-        self.contracts = None
-        self.candidate_contracts = None
-        if self.capp.has_contractpath() and UF.has_contracts(
-            self.capp.contractpath, self.name
-        ):
-            self.contracts = CFileContracts(self, self.capp.contractpath)
-        if not (
-            self.capp.candidate_contractpath is None
-        ) and UF.has_candidate_contracts(self.capp.candidate_contractpath, self.name):
-            self.candidate_contracts = CFileCandidateContracts(
-                self, self.capp.candidate_contractpath
-            )
-        if self.contracts is not None:
-            xnode = ET.Element("interface-dictionary")
-            self.interfacedictionary.write_xml(xnode)
-            UF.save_cfile_interface_dictionary(self.capp.path, self.name, xnode)
+        self._sourcefile = None  # CSrcFile
+        # self.contracts = None
+        # self.candidate_contracts = None
+        # if self.capp.has_contractpath() and UF.has_contracts(
+        #    self.capp.contractpath, self.name
+        # ):
+        #    self.contracts = CFileContracts(self, self.capp.contractpath)
+        # if not (
+        #    self.capp.candidate_contractpath is None
+        # ) and UF.has_candidate_contracts(self.capp.candidate_contractpath, self.name):
+        #    self.candidate_contracts = CFileCandidateContracts(
+        #        self, self.capp.candidate_contractpath
+        #    )
+        # if self.contracts is not None:
+        #    xnode = ET.Element("interface-dictionary")
+        #    self.interfacedictionary.write_xml(xnode)
+        #    UF.save_cfile_interface_dictionary(self.capp.path, self.name, xnode)
         self.gtypes: Dict[Any, Any] = {}  # name -> CGType
         self.gcomptagdefs: Dict[Any, Any] = {}  # key -> CGCompTag
         self.gcomptagdecls: Dict[Any, Any] = {}  # key -> CGCompTag
@@ -128,9 +130,57 @@ class CFile(object):
         self.gvardefs: Dict[Any, Any] = {}  # vid -> CGVarDef
 
     @property
+    def index(self) -> int:
+        return self._index
+
+    @property
+    def capp(self) -> "CApplication":
+        return self._capp
+
+    @property
+    def targetpath(self) -> str:
+        return self.capp.targetpath
+
+    @property
+    def projectname(self) -> str:
+        return self.capp.projectname
+
+    @property
+    def sourcefile(self) -> "CSrcFile":
+        if self._sourcefile is None:
+            self._initialize_source()
+        return self._sourcefile
+
+    @property
+    def xcfilename(self) -> str:
+        """Returns the filename with relative path."""
+
+        name = self.xnode.get("filename")
+        if name is None:
+            raise Exception("xml missing 'filename' attribute")
+        return name
+
+    @property
+    def cfilename(self) -> str:
+        return os.path.basename(self.xcfilename)
+
+    @property
+    def cfilepath(self) -> Optional[str]:
+        path = os.path.dirname(self.xcfilename)
+        if path == "":
+            return None
+        else:
+            return path
+
+    @property
     def dictionary(self) -> CFileDictionary:
         if self._dictionary is None:
-            xnode = UF.get_cfile_dictionary_xnode(self.capp.path, self.name)
+            chklogger.logger.info("CFile dictionary is retrieved")
+            xnode = UF.get_cfile_dictionary_xnode(
+                self.targetpath,
+                self.projectname,
+                self.cfilepath,
+                self.cfilename)
             if xnode is None:
                 raise UF.CHCError("File dictionary file not found")
             xdict = xnode.find("c-dictionary")
@@ -145,9 +195,14 @@ class CFile(object):
     @property
     def contextdictionary(self) -> CContextDictionary:
         if self._contextdictionary is None:
-            xnode = UF.get_cfile_contexttable_xnode(self.capp.path, self.name)
+            xnode = UF.get_cfile_contexttable_xnode(
+                self.targetpath,
+                self.projectname,
+                self.cfilepath,
+                self.cfilename)
             if xnode is None:
                 raise UF.CHCError("Context table file not found")
+            chklogger.logger.info("Context dictionary retrieved")
             self._contextdictionary = CContextDictionary(self, xnode)
         return self._contextdictionary
 
@@ -158,13 +213,21 @@ class CFile(object):
     def declarations(self) -> CFileDeclarations:
         d = self.dictionary
         if self._declarations is None:
-            xnode = UF.get_cfile_dictionary_xnode(self.capp.path, self.name)
+            xnode = UF.get_cfile_dictionary_xnode(
+                self.targetpath,
+                self.projectname,
+                self.cfilepath,
+                self.cfilename)
             if xnode is None:
                 raise UF.CHCError("File dictionary file not found")
             xdecls = xnode.find("c-declarations")
             if xdecls is None:
                 raise UF.CHCError("File declarations node not found")
-            xdefs = UF.get_cfile_xnode(self.capp.path, self.name)
+            xdefs = UF.get_cfile_xnode(
+                self.targetpath,
+                self.projectname,
+                self.cfilepath,
+                self.cfilename)
             if xdefs is None:
                 raise UF.CHCError("File with definitions not found")
             self._declarations = CFileDeclarations(self, xdecls, xdefs)
@@ -176,7 +239,11 @@ class CFile(object):
     @property
     def interfacedictionary(self) -> InterfaceDictionary:
         if self._interfacedictionary is None:
-            xnode = UF.get_cfile_interface_dictionary_xnode(self.capp.path, self.name)
+            xnode = UF.get_cfile_interface_dictionary_xnode(
+                self.targetpath,
+                self.projectname,
+                self.cfilepath,
+                self.cfilename)
             # if xnode is None:
             #    raise UF.CHCError("Interface dictionary file not found")
             self._interfacedictionary = InterfaceDictionary(self, xnode)
@@ -195,7 +262,11 @@ class CFile(object):
     @property
     def predicatedictionary(self) -> CFilePredicateDictionary:
         if self._predicatedictionary is None:
-            xnode = UF.get_cfile_predicate_dictionary_xnode(self.capp.path, self.name)
+            xnode = UF.get_cfile_predicate_dictionary_xnode(
+                self.targetpath,
+                self.projectname,
+                self.cfilepath,
+                self.cfilename)
             self._predicatedictionary = CFilePredicateDictionary(self, xnode)
         return self._predicatedictionary
 
@@ -223,9 +294,10 @@ class CFile(object):
         return not (self.candidate_contracts is None)
 
     def has_function_contract(self, name: str) -> bool:
-        return (not (self.contracts is None)) and (
-            self.contracts.has_function_contract(name)
-        )
+        return False
+        # return (not (self.contracts is None)) and (
+        #    self.contracts.has_function_contract(name)
+        # )
 
     def get_function_contract(self, name):
         if not (self.contracts is None):
@@ -420,32 +492,32 @@ class CFile(object):
         return result
 
     def save_predicate_dictionary(self):
-        path = self.capp.path
         xroot = UX.get_xml_header("po-dictionary", "po-dictionary")
         xnode = ET.Element("po-dictionary")
         xroot.append(xnode)
         self.predicatedictionary.write_xml(xnode)
-        filename = UF.get_cfile_predicate_dictionaryname(path, self.name)
+        filename = UF.get_cfile_predicate_dictionaryname(
+            self.targetpath, self.projectname, self.cfilepath, self.cfilename)
         with open(filename, "w") as fp:
             fp.write(UX.doc_to_pretty(ET.ElementTree(xroot)))
 
     def save_interface_dictionary(self):
-        path = self.capp.path
         xroot = UX.get_xml_header("interface-dictionary", "interface-dictionary")
         xnode = ET.Element("interface-dictionary")
         xroot.append(xnode)
         self.interfacedictionary.write_xml(xnode)
-        filename = UF.get_cfile_interface_dictionaryname(path, self.name)
+        filename = UF.get_cfile_interface_dictionaryname(
+            self.targetpath, self.projectname, self.cfilepath, self.cfilename)
         with open(filename, "w") as fp:
             fp.write(UX.doc_to_pretty(ET.ElementTree(xroot)))
 
     def save_declarations(self):
-        path = self.capp.path
         xroot = UX.get_xml_header("cfile", "cfile")
         xnode = ET.Element("cfile")
         xroot.append(xnode)
         self.declarations.write_xml(xnode)
-        filename = UF.get_cfile_dictionaryname(path, self.name)
+        filename = UF.get_cfile_dictionaryname(
+            self.targetpath, self.projectname, self.cfilepath, self.cfilename)
         with open(filename, "w") as fp:
             fp.write(UX.doc_to_pretty(ET.ElementTree(xroot)))
 
@@ -647,8 +719,15 @@ class CFile(object):
         if vid in self.functions:
             return
         fname = self.declarations.get_gfunction(vid).name
-        xnode = UF.get_cfun_xnode(self.capp.path, self.name, fname)
+        xnode = UF.get_cfun_xnode(
+            self.targetpath,
+            self.projectname,
+            self.cfilepath,
+            self.cfilename,
+            fname)
         if xnode is not None:
+            chklogger.logger.info(
+                "C function %s from file %s retrieved", fname, self.cfilename)
             self.functions[vid] = CFunction(self, xnode, fname)
             self.functionnames[fname] = vid
 
@@ -658,5 +737,5 @@ class CFile(object):
             self._initialize_function(vid)
 
     def _initialize_source(self) -> None:
-        if self.sourcefile is None:
-            self.sourcefile = self.capp.get_srcfile(self.name)
+        if self._sourcefile is None:
+            self._sourcefile = self.capp.get_srcfile(self.name)

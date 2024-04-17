@@ -34,15 +34,21 @@ if TYPE_CHECKING:
     import chc.app.CApplication
 
 
-class CSrcFile(object):
+class CSrcFile:
     """Represents the text file that holds the C source code."""
 
     def __init__(self, capp: "chc.app.CApplication.CApplication", fname: str) -> None:
         self.capp = capp
         self.fname = fname
-        self.lines: Dict[int, str] = {}
+        self._lines: Dict[int, str] = {}
         if not self.fname.endswith(".c"):
             self.fname = fname + ".c"
+
+    @property
+    def lines(self) -> Dict[int, str]:
+        if len(self._lines) == 0:
+            self._initialize()
+        return self._lines
 
     def get_line_count(self) -> int:
         return sum(1 for line in open(self.fname))
@@ -54,14 +60,14 @@ class CSrcFile(object):
         return None
 
     def _initialize(self) -> None:
-        if len(self.lines) > 0:
+        if len(self._lines) > 0:
             return
         if os.path.isfile(self.fname):
             print("Reading file " + self.fname)
             n = 1
             with open(self.fname) as f:
                 for line in f:
-                    self.lines[n] = line
+                    self._lines[n] = line
                     n += 1
         else:
             print("Source file " + self.fname + " not found")
