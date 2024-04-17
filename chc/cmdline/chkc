@@ -143,21 +143,38 @@ def parse() -> argparse.Namespace:
 
     # --- parse
     cfileparse = cfileparsers.add_parser("parse")
-    cfileparse.add_argument("filename", help="name of .c file to parse")
     cfileparse.add_argument(
-        "--save_semantics",
-        action="store_true",
-        help="create gzipped tar file with semantics files")
+        "filename",
+        help="name of file to parse ((<cpath/>)<cfilename>)")
+    cfileparse.add_argument(
+        "--tgtpath",
+        help=("directory in which to store the analysis artifacts "
+              + "(default: <cpath>)"))
+    cfileparse.add_argument(
+        "--loglevel", "-log",
+        choices=UL.LogLevel.options(),
+        default="NONE",
+        help="activate logging with given level (default to stderr)")
+    cfileparse.add_argument(
+        "--logfilename",
+        help="name of file to write log messages")
+    cfileparse.add_argument(
+        "--logfilemode",
+        choices=["a", "w"],
+        default="a",
+        help="file mode for log file: append (a, default), or write (w)")
+
     cfileparse.set_defaults(func=C.cfile_parse_file)
 
     # --- analyze
     cfileanalyze = cfileparsers.add_parser("analyze")
     cfileanalyze.add_argument(
-        "path",
-        help="name of directory that holds the semantics directory")
-    cfileanalyze.add_argument(
         "filename",
-        help="name of filename to be analyzed")
+        help="name of file to analyze ((<cpath/>)<cfilename>)")
+    cfileanalyze.add_argument(
+        "--tgtpath",
+        help="directory in which to store the analysis artifacts "
+        + "(default: <cpath>)")
     cfileanalyze.add_argument(
         "--loglevel", "-log",
         choices=UL.LogLevel.options(),
@@ -176,11 +193,11 @@ def parse() -> argparse.Namespace:
     # --- report
     cfilereport = cfileparsers.add_parser("report")
     cfilereport.add_argument(
-        "path",
+        "filename",
         help = "name of directory that holds the semantics directory")
     cfilereport.add_argument(
-        "filename",
-        help="name of filename to be analyzed")
+        "--tgtpath",
+        help="directory that holds the analysis results")
     cfilereport.add_argument(
         "--showcode",
         action="store_true",
@@ -189,6 +206,27 @@ def parse() -> argparse.Namespace:
         "--open",
         action="store_true",
         help="only show open proof obligations")
+    cfilereport.add_argument(
+        "--json",
+        action="store_true",
+        help="output results in json format")
+    cfilereport.add_argument(
+        "--output", "-o",
+        help="name of outputfile (without extension)")
+    cfilereport.add_argument(
+        "--loglevel", "-log",
+        choices=UL.LogLevel.options(),
+        default="NONE",
+        help="activate logging with given level (default to stderr)")
+    cfilereport.add_argument(
+        "--logfilename",
+        help="name of file to write log messages")
+    cfilereport.add_argument(
+        "--logfilemode",
+        choices=["a", "w"],
+        default="a",
+        help="file mode for log file: append (a, default), or write (w)")
+
     cfilereport.set_defaults(func=C.cfile_report_file)
 
     args = parser.parse_args()
@@ -199,6 +237,3 @@ if __name__ == "__main__":
 
     args = parse()
     args.func(args)
-    
-          
-    

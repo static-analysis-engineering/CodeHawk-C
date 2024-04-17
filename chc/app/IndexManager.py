@@ -50,7 +50,7 @@ TODO:
 class IndexManager:
 
     def __init__(self, issinglefile: bool) -> None:
-        self.issinglefile = issinglefile  # application consists of a single file
+        self._issinglefile = issinglefile  # application consists of a single file
 
         self.vid2gvid: Dict[int, Dict[int, int]] = {}  # fid -> vid -> gvid
         self.gvid2vid: Dict[int, Dict[int, int]] = {}  # gvid -> fid -> vid
@@ -62,6 +62,10 @@ class IndexManager:
 
         # gvid -> fid  (file in which gvid is defined)
         self.gviddefs: Dict[int, int] = {}
+
+    @property
+    def is_single_file(self) -> bool:
+        return self._issinglefile
 
     def get_vid_gvid_subst(self, fid: int) -> Dict[int, int]:
         return self.vid2gvid[fid]
@@ -79,7 +83,7 @@ class IndexManager:
     """
 
     def resolve_vid(self, fid: int, vid: int) -> Optional[Tuple[int, int]]:
-        if self.issinglefile:
+        if self.is_single_file:
             return (fid, vid)
         msg = "indexmgr:resolve-vid(" + str(fid) + "," + str(vid) + "): "
         if fid in self.vid2gvid:
@@ -137,7 +141,7 @@ class IndexManager:
 
     def get_vid_references(self, srcfid: int, srcvid: int) -> List[Tuple[int, int]]:
         result: List[Tuple[int, int]] = []
-        if self.issinglefile:
+        if self.is_single_file:
             return result
         if srcfid in self.vid2gvid:
             if srcvid in self.vid2gvid[srcfid]:
@@ -155,7 +159,7 @@ class IndexManager:
     """
 
     def convert_vid(self, fidsrc: int, vid: int, fidtgt: int) -> Optional[int]:
-        if self.issinglefile:
+        if self.is_single_file:
             return vid
         gvid = self.get_gvid(fidsrc, vid)
         msg = (
@@ -190,7 +194,7 @@ class IndexManager:
     """return the gvid of the vid in the file with index fid."""
 
     def get_gvid(self, fid: int, vid: int) -> Optional[int]:
-        if self.issinglefile:
+        if self.is_single_file:
             return vid
         if fid in self.vid2gvid:
             if vid in self.vid2gvid[fid]:
@@ -200,7 +204,7 @@ class IndexManager:
     """return the vid of the gvid in the file with index fid."""
 
     def get_vid(self, fid: int, gvid: int) -> Optional[int]:
-        if self.issinglefile:
+        if self.is_single_file:
             return gvid
         if gvid in self.gvid2vid:
             if fid in self.gvid2vid[gvid]:
@@ -208,7 +212,7 @@ class IndexManager:
         return None
 
     def get_gckey(self, fid: int, ckey: int) -> Optional[int]:
-        if self.issinglefile:
+        if self.is_single_file:
             return ckey
         if fid in self.ckey2gckey:
             if ckey in self.ckey2gckey[fid]:
@@ -216,7 +220,7 @@ class IndexManager:
         return None
 
     def convert_ckey(self, fidsrc: int, ckey: int, fidtgt: int) -> Optional[int]:
-        if self.issinglefile:
+        if self.is_single_file:
             return ckey
         gckey = self.get_gckey(fidsrc, ckey)
         if gckey is not None:
@@ -253,13 +257,14 @@ class IndexManager:
         self.gvid2vid[gvid][fid] = vid
 
     def add_file(self, cfile: "CFile") -> None:
-        path = cfile.capp.path
-        fname = cfile.name
         fid = cfile.index
-        xxreffile = UF.get_cxreffile_xnode(path, fname)
-        if xxreffile is not None:
-            self._add_xrefs(xxreffile, fid)
-        self._add_globaldefinitions(cfile.declarations, fid)
+        if not self.is_single_file:
+            path = cfile.capp.path
+            fname = cfile.name
+            xxreffile = UF.get_cxreffile_xnode(path, fname)
+            if xxreffile is not None:
+                self._add_xrefs(xxreffile, fid)
+            self._add_globaldefinitions(cfile.declarations, fid)
         self.fidvidmax[fid] = fidvidmax_initial_value
 
     def save_xrefs(self, path: str, fname: str, fid: int) -> None:

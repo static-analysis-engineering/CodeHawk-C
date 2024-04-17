@@ -39,6 +39,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from chc.util.Config import Config
 
+from chc.util.loggingutil import chklogger
 import chc.util.xmlutil as UX
 
 
@@ -52,26 +53,29 @@ class ParseManager(object):
     """
 
     def __init__(
-        self,
-        cpath: str,
-        tgtpath: str,
-        filter: bool = False,
-        posix: bool = False,
-        verbose: bool = True,
-        keepUnused: bool = False,
-        tgtplatform: str= "-m64",
+            self,
+            cpath: str,
+            tgtpath: str,
+            sempathname: str,
+            filter: bool = False,
+            posix: bool = False,
+            verbose: bool = True,
+            keepUnused: bool = False,
+            tgtplatform: str= "-m64",
     ) -> None:
         """Initialize paths to code, results, and parser executable.
 
         Args:
             cpath: absolute path to toplevel C source directory
             tgtpath: absolute path to analysis directory
+            sempathname: local name of semantics directory
 
         Effects:
             creates tgtpath and subdirectories if necessary.
         """
         self._cpath = cpath
         self._tgtpath = tgtpath
+        self._sempathname = sempathname
         self._filter = filter
         self._posix = posix
         self._keepUnused = keepUnused
@@ -85,7 +89,7 @@ class ParseManager(object):
                 + ". Target platform is set to -m64"
             )
             self._tgtplatform = "-m64"
-        self.config = Config()            
+        self.config = Config()
 
     @property
     def cpath(self) -> str:
@@ -94,6 +98,10 @@ class ParseManager(object):
     @property
     def tgtpath(self) -> str:
         return self._tgtpath
+
+    @property
+    def sempathname(self) -> str:
+        return self._sempathname
 
     @property
     def tgtplatform(self) -> str:
@@ -119,30 +127,34 @@ class ParseManager(object):
 
     @property
     def sempath(self) -> str:
-        return os.path.join(self.tgtpath, "semantics")
+        return os.path.join(self._tgtpath, self.sempathname)
 
     @property
     def tgtxpath(self) -> str:
         """Return path to analysis results files."""
 
-        return os.path.join(self.sempath, "chcartifacts")
+        return os.path.join(self.sempath, "a")
 
     @property
     def tgtspath(self) -> str:
         """Return path to .c and .i files"""
 
-        return os.path.join(self.sempath, "sourcefiles")
+        return os.path.join(self.sempath, "s")
 
     def save_semantics(self) -> None:
         """Save the semantics directory as a tar.gz file."""
 
-        os.chdir(self.cpath)
-        tarfilename = "semantics_" + self.config.platform + ".tar"
+        chklogger.logger.info("change directory to %s", self.tgtpath)
+        os.chdir(self.tgtpath)
+        tarfilename = self.sempathname + ".tar"
         if os.path.isfile(tarfilename):
+            chklogger.logger.info("Remove tar file %s", tarfilename)
             os.remove(tarfilename)
         if os.path.isfile(tarfilename + ".gz"):
+            chklogger.logger.info("Remove tar.gz file %s", tarfilename + ".gz")
             os.remove(tarfilename + ".gz")
-        tarcmd = ["tar", "-cf", tarfilename, "semantics"]
+        tarcmd = ["tar", "-cf", tarfilename, self.sempathname]
+        chklogger.logger.debug("tar command: %s", " ".join(tarcmd))
         if self.verbose:
             subprocess.call(tarcmd, cwd=self.cpath, stderr=subprocess.STDOUT)
         else:
@@ -198,10 +210,12 @@ class ParseManager(object):
             cmd = cmd[:1] + macoptions + cmd[1:]
         cmd = cmd[:1] + moreoptions + cmd[1:]
         if self.verbose:
-            print("Preprocess file: " + str(cmd))
+            chklogger.logger.info("Preprocess file: " + str(cmd))
             p = subprocess.call(cmd, cwd=self.cpath, stderr=subprocess.STDOUT)
-            print("Result: " + str(p))
+            if p != 0:
+                chklogger.logger.warning("Result of preprocessing: " + str(p))
         else:
+            chklogger.logger.info("Preprocess file: " + str(cmd))
             subprocess.call(
                 cmd,
                 cwd=self.cpath,
@@ -213,9 +227,12 @@ class ParseManager(object):
             tgtifilename = os.path.join(self.tgtspath, ifilename)
             if not os.path.isdir(os.path.dirname(tgtcfilename)):
                 os.makedirs(os.path.dirname(tgtcfilename))
+            chklogger.logger.info("Change directory to %s", self.cpath)
             os.chdir(self.cpath)
             if cfilename != tgtcfilename:
+                chklogger.logger.info("Copy %s to %s", cfilename, tgtcfilename)
                 shutil.copy(cfilename, tgtcfilename)
+                chklogger.logger.info("Copy %s to %s", ifilename, tgtifilename)
                 shutil.copy(ifilename, tgtifilename)
         return ifilename
 
@@ -404,6 +421,7 @@ class ParseManager(object):
     def parse_ifiles(self, copyfiles: bool = True) -> None:
         """Run the CodeHawk C parser on all .i files in the directory."""
 
+        chklogger.logger.info("Change directory to %s", self.cpath)
         os.chdir(self.cpath)
         targetfiles = TargetFiles()
         for d, dnames, fnames in os.walk(self.cpath):
@@ -455,14 +473,12 @@ class ParseManager(object):
         if self.keepUnused:
             cmd.append("-keepUnused")
         cmd.append(ifilename)
-        if self.verbose:
-            print("Parse file: " + str(cmd))
+        chklogger.logger.info("Parse file: %s", str(cmd))
         if self.verbose:
             p = subprocess.call(cmd, stderr=subprocess.STDOUT)
         else:
             p = subprocess.call(
-                cmd, stdout=open(os.devnull, "w"), stderr=subprocess.STDOUT
-            )
+                cmd, stdout=open(os.devnull, "w"), stderr=subprocess.STDOUT)
         sys.stdout.flush()
         return p
 

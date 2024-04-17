@@ -51,6 +51,7 @@ from chc.proof.CFunctionProofs import CFunctionProofs
 from chc.proof.CFunctionSPOs import CFunctionSPOs
 
 import chc.util.fileutil as UF
+from chc.util.loggingutil import chklogger
 
 if TYPE_CHECKING:
     from chc.api.InterfaceDictionary import InterfaceDictionary
@@ -59,13 +60,13 @@ if TYPE_CHECKING:
     from chc.app.CFileDeclarations import CFileDeclarations
     from chc.app.CTyp import CTyp
     from chc.app.CVarInfo import CVarInfo
-    
+
 
 class CFunction(object):
     """Function implementation."""
 
     def __init__(self, cfile: "CFile", xnode: ET.Element, fname: str) -> None:
-        self.xnode = xnode        
+        self.xnode = xnode
         self._cfile = cfile
         self._name = fname
         self._cfundecls: Optional[CFunDeclarations] = None
@@ -89,6 +90,30 @@ class CFunction(object):
         return self._name
 
     @property
+    def cfile(self) -> "CFile":
+        return self._cfile
+
+    @property
+    def capp(self) -> "CApplication":
+        return self.cfile.capp
+
+    @property
+    def targetpath(self) -> str:
+        return self.cfile.targetpath
+
+    @property
+    def projectname(self) -> str:
+        return self.cfile.projectname
+
+    @property
+    def cfilepath(self) -> str:
+        return self.cfile.cfilepath
+
+    @property
+    def cfilename(self) -> str:
+        return self.cfile.cfilename
+
+    @property
     def formals(self) -> Dict[int, "CVarInfo"]:
         if len(self._formals) == 0:
             for (vid, vinfo) in self.cfundecls.varinfos.items():
@@ -109,16 +134,8 @@ class CFunction(object):
         return self.svar.vtype
 
     @property
-    def cfile(self) -> "CFile":
-        return self._cfile
-
-    @property
     def cfiledecls(self) -> "CFileDeclarations":
         return self.cfile.declarations
-
-    @property
-    def capp(self) -> "CApplication":
-        return self.cfile.capp
 
     @property
     def interfacedictionary(self) -> "InterfaceDictionary":
@@ -128,7 +145,11 @@ class CFunction(object):
     def api(self) -> CFunctionApi:
         if self._api is None:
             axnode = UF.get_api_xnode(
-                self.capp.path, self.cfile.name, self.name)
+                self.targetpath,
+                self.projectname,
+                self.cfilepath,
+                self.cfilename,
+                self.name)
             if axnode is not None:
                 apinode = axnode.find("api")
                 if apinode is not None:
@@ -183,7 +204,11 @@ class CFunction(object):
     def vardictionary(self) -> CFunVarDictionary:
         if self._vard is None:
             vxnode = UF.get_vars_xnode(
-                self.capp.path, self.cfile.name, self.name)
+                self.targetpath,
+                self.projectname,
+                self.cfilepath,
+                self.cfilename,
+                self.name)
             if vxnode is not None:
                 xvard = vxnode.find("var-dictionary")
                 if xvard is not None:
@@ -204,7 +229,11 @@ class CFunction(object):
     def invdictionary(self) -> CFunInvDictionary:
         if self._invd is None:
             ixnode = UF.get_invs_xnode(
-                self.capp.path, self.cfile.name, self.name)
+                self.targetpath,
+                self.projectname,
+                self.cfilepath,
+                self.cfilename,
+                self.name)
             if ixnode is not None:
                 xinvs = ixnode.find("inv-dictionary")
                 if xinvs is not None:
@@ -238,7 +267,11 @@ class CFunction(object):
     def podictionary(self) -> CFunPODictionary:
         if self._podictionary is None:
             pxnode = UF.get_pod_xnode(
-                self.capp.path, self.cfile.name, self.name)
+                self.targetpath,
+                self.projectname,
+                self.cfilepath,
+                self.cfilename,
+                self.name)
             if pxnode is None:
                 raise UF.CHCError(self.xmsg("pod file not found"))
             self._podictionary = CFunPODictionary(self, pxnode)
@@ -248,16 +281,26 @@ class CFunction(object):
     def proofs(self) -> CFunctionProofs:
         if self._proofs is None:
             xpponode = UF.get_ppo_xnode(
-                self.capp.path, self.cfile.name, self.name)
+                self.targetpath,
+                self.projectname,
+                self.cfilepath,
+                self.cfilename,
+                self.name)
             if xpponode is None:
                 raise UF.CHCError(self.xmsg("ppo file is missing"))
+            chklogger.logger.info("Ppo file for %s retrieved", self.name)
             xxpponode = xpponode.find("ppos")
             if xxpponode is None:
                 raise UF.CHCError(self.xmsg("_ppo file has no ppos element"))
             xsponode = UF.get_spo_xnode(
-                self.capp.path, self.cfile.name, self.name)
+                self.targetpath,
+                self.projectname,
+                self.cfilepath,
+                self.cfilename,
+                self.name)
             if xsponode is None:
                 raise UF.CHCError(self.xmsg("spo file is missing"))
+            chklogger.logger.info("Spo file for %s retrieved", self.name)
             xxsponode = xsponode.find("spos")
             if xxsponode is None:
                 raise UF.CHCError(self.xmsg("_spo file has no spos element"))
@@ -430,7 +473,13 @@ class CFunction(object):
         cnode = ET.Element("function")
         cnode.set("name", self.name)
         self.podictionary.write_xml(cnode)
-        UF.save_pod_file(self.cfile.capp.path, self.cfile.name, self.name, cnode)
+        UF.save_pod_file(
+            self.targetpath,
+            self.projectname,
+            self.cfilepath,
+            self.cfilename,
+            self.name,
+            cnode)
 
     def reload_ppos(self) -> None:
         self.proofs.reload_ppos()
