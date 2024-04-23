@@ -25,7 +25,29 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
-"""Command-line interface to the CodeHawk C Analyzer."""
+"""Command-line interface to the CodeHawk C Analyzer.
+
+The CodeHawk C Analyzer is a sound static analysis tool that attempts to prove
+the absence of undefined behavior. It does so by generating a comprehensive set
+of proof obligations that capture all conditions that can lead to undefined
+behavior and attempts to prove that the negation of those conditions is valid,
+that is true for all inputs. The status of these proof obligations can then
+be inspected via various reports.
+
+The CodeHawk-C analyzer calls two executables from the codehawk repository
+that perform the parsing and analysis. To check if these two executables are
+available, you can run:
+
+- chkc info
+
+Analysis commands are provided for two distinct ways of analysis:
+
+- chkc c-file .... analyzes a single source file (that can be parsed by gcc)
+- chkc c-project ...
+             analyzes a project of multiple files that comes with a Makefile
+
+Run the respective option for more information on either one.
+"""
 
 import argparse
 import json
@@ -60,8 +82,46 @@ def showinfo(args: argparse.Namespace) -> NoReturn:
     exit(0)
 
 
+def cfilecommand(args: argparse.Namespace) -> NoReturn:
+    descr =  """
+The chkc c-file set of commands is used to analyze a single file.
+
+The regular sequence of commands is:
+
+> chkc c-file parse <cfilename>.c
+
+This command will call gcc to preprocess the file and produce an .i file.
+Then the CodeHawk/CIL parser is called to convert the preprocessed file into
+OCaml data structures for further analysis. The data structures are stored
+in xml_format in (by default) the directory <cfilename>.cch .
+
+The command
+
+> chkc c-file analyze <cfilename>.c
+
+loads the data structures and generates proof obligations, and then generates
+invariants, using abstract interpretation, to be used to discharge the proof
+obligations. This is repeated (by default) 5 times. The analysis results are
+stored in xml-form in the same directory.
+
+The command
+
+> chkc c-file report <cfilename>.c
+
+produces a (text or json) report of the proof obligations proven and those that
+could not be proven, with some additional information why they could not be
+proven that may be helpful in either fixing the code or providing additional
+assumptions on the code.
+    """
+    print(descr)
+    exit(0)
+
+
 def parse() -> argparse.Namespace:
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description=__doc__,
+        epilog="See for more information ...")
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
         exit(0)
@@ -82,19 +142,33 @@ def parse() -> argparse.Namespace:
 
     # --- kendra show-set
     kendrashowset = kendraparsers.add_parser("show-set")
-    kendrashowset.add_argument("testset", help="name of test directory")
+    kendrashowset.add_argument(
+        "testset", help="name of test directory (e.g., id115Q)")
     kendrashowset.set_defaults(func=K.kendra_show_set)
+
+    # --- kendra clean-set
+    kendracleanset = kendraparsers.add_parser("clean-set")
+    kendracleanset.add_argument(
+        "testset", help="name of test directory (e.g., id115Q)")
+    kendracleanset.set_defaults(func=K.kendra_clean_set)
 
     # --- kendra test-set
     kendratestset = kendraparsers.add_parser("test-set")
-    kendratestset.add_argument("testset", help="name of test directory")
     kendratestset.add_argument(
-        "--logfile", help="name of logfile (default is <testset>_log.txt)")
+        "testset", help="name of test directory (e.g., id115Q)")
     kendratestset.add_argument(
-        "--loglevel",
-        help="logging level",
-        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-        default="WARNING")
+        "--loglevel", "-log",
+        choices=UL.LogLevel.options(),
+        default="WARNING",
+        help="activate logging with given level (default to stderr)")
+    kendratestset.add_argument(
+        "--logfilename",
+        help="name of file to write log messages (default is <testset>_log.txt)")
+    kendratestset.add_argument(
+        "--logfilemode",
+        choices=["a", "w"],
+        default="a",
+        help="file mode for log file: append (a, default), or write (w)")
     kendratestset.add_argument(
         "--verbose", "-v", help="print verbose output", action="store_true")
     kendratestset.set_defaults(func=K.kendra_test_set)
@@ -103,7 +177,25 @@ def parse() -> argparse.Namespace:
     kendratestsets = kendraparsers.add_parser("test-sets")
     kendratestsets.add_argument(
         "--verbose", "-v", help="print_verbose_output", action="store_true")
+    kendratestsets.add_argument(
+        "--loglevel", "-log",
+        choices=UL.LogLevel.options(),
+        default="WARNING",
+        help="activate logging with given level (default to stderr)")
+    kendratestsets.add_argument(
+        "--logfilename",
+        help="name of file to write log messages (default is <testset>_log.txt)")
+    kendratestsets.add_argument(
+        "--logfilemode",
+        choices=["a", "w"],
+        default="a",
+        help="file mode for log file: append (a, default), or write (w)")
+
     kendratestsets.set_defaults(func=K.kendra_test_sets)
+
+    # --- kendra dashboard
+    kendradashboard = kendraparsers.add_parser("dashboard")
+    kendradashboard.set_defaults(func=K.kendra_dashboard)
 
     # --- kendra report-file
     kendrareportfile = kendraparsers.add_parser("report-file")
@@ -139,10 +231,27 @@ def parse() -> argparse.Namespace:
 
     # --------------------------------------------------------------- c-file ---
     cfilecmd = subparsers.add_parser("c-file")
+    cfilecmd.set_defaults(func=cfilecommand)
     cfileparsers = cfilecmd.add_subparsers(title="show options")
 
     # --- parse
-    cfileparse = cfileparsers.add_parser("parse")
+    cfileparse = cfileparsers.add_parser(
+        "parse",
+        usage="""
+        Call with the name of c file to be parsed.
+
+        Example:
+        > chkc c-file parse myfile.c
+
+        The parse results will be saved in the subdirectory myfile.cch.
+
+        To save the parse results in a different directory, say myresults,
+        call with the additional argument --tgtpath:
+
+        > chkc c-file parse myfile --tgtpath myresults
+
+        Note: the directory passed to tgtpath must exist
+        """)
     cfileparse.add_argument(
         "filename",
         help="name of file to parse ((<cpath/>)<cfilename>)")
@@ -175,6 +284,10 @@ def parse() -> argparse.Namespace:
         "--tgtpath",
         help="directory in which to store the analysis artifacts "
         + "(default: <cpath>)")
+    cfileanalyze.add_argument(
+        "--verbose", "-v",
+        action="store_true",
+        help="print intermediate results")
     cfileanalyze.add_argument(
         "--loglevel", "-log",
         choices=UL.LogLevel.options(),

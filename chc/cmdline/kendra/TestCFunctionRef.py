@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2020-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -118,21 +118,3 @@ class TestCFunctionRef:
         if line in self.line_ppos:
             ppopreds = [p for p in self.line_ppos[line] if p.predicate == pred]
         return len(ppopreds) > 1
-
-    '''
-    def _initialize(self):
-        if "ppos" in self.r:
-            for p in self.r["ppos"]:
-                ppo = TestPPORef(self, p)
-                line = ppo.get_line()
-                if line not in self.ppos:
-                    self.ppos[line] = []
-                self.ppos[line].append(ppo)
-            if "spos" in self.r:
-                for s in self.r["spos"]:
-                    spo = TestSPORef(self, s)
-                    line = spo.get_line()
-                    if line not in self.spos:
-                        self.spos[line] = []
-                    self.spos[line].append(spo)
-    '''

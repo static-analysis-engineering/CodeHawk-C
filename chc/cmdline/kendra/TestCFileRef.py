@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2020-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -38,12 +38,12 @@ if TYPE_CHECKING:
 class TestCFileRef:
 
     def __init__(
-            self, testsetref: "TestSetRef", name: str, refd: Dict[str, Any]) -> None:
+            self, testsetref: "TestSetRef", name: str, refd: Dict[str, Any]
+    ) -> None:
         self._testsetref = testsetref
         self._name = name
         self._refd = refd
         self._functions: Dict[str, TestCFunctionRef] = {}
-        # self._initialize()
 
     @property
     def testsetref(self) -> "TestSetRef":
@@ -64,20 +64,9 @@ class TestCFileRef:
                 self._functions[f] = TestCFunctionRef(self, f, fdata)
         return self._functions
 
-    '''
-    def iter(self, f):
-        for fn in self.functions.values():
-            f(fn)
-    '''
-
     @property
     def functionnames(self) -> List[str]:
         return sorted(self.functions.keys())
-
-    '''
-    def get_functions(self):
-        return sorted(self.functions.values(), key=lambda f: f.name)
-    '''
 
     def get_function(self, fname: str) -> Optional[TestCFunctionRef]:
         if fname in self.functions:
@@ -100,9 +89,3 @@ class TestCFileRef:
                 return True
         else:
             return False
-
-    '''
-    def _initialize(self):
-        for f in self.r["functions"]:
-            self.functions[f] = TestCFunctionRef(self, f, self.r["functions"][f])
-    '''
