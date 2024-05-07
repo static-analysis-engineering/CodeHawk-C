@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2023 Henny B. Sipma
+# Copyright (c) 2024      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -29,45 +31,49 @@ import os
 from typing import Dict, TYPE_CHECKING, Optional
 
 import chc.util.fileutil as UF
+from chc.util.loggingutil import chklogger
 
 if TYPE_CHECKING:
-    import chc.app.CApplication
+    from chc.app.CApplication import CApplication
 
 
 class CSrcFile:
     """Represents the text file that holds the C source code."""
 
-    def __init__(self, capp: "chc.app.CApplication.CApplication", fname: str) -> None:
-        self.capp = capp
-        self.fname = fname
-        self._lines: Dict[int, str] = {}
-        if not self.fname.endswith(".c"):
-            self.fname = fname + ".c"
+    def __init__(self, capp: "CApplication", fname: str) -> None:
+        self._capp = capp
+        self._fname = fname
+        self._lines: Optional[Dict[int, str]] = None
+
+    @property
+    def capp(self) -> "CApplication":
+        return self._capp
+
+    @property
+    def fname(self) -> str:
+        """Returns the absolute c filename relative to the project directory."""
+
+        return self._fname
 
     @property
     def lines(self) -> Dict[int, str]:
-        if len(self._lines) == 0:
-            self._initialize()
+        if self._lines is None:
+            self._lines = {}
+            if os.path.isfile(self.fname):
+                n: int = 1
+                with open(self.fname) as fp:
+                    for line in fp:
+                        self._lines[n] = line
+                        n += 1
+            else:
+                chklogger.logger.warning(
+                    "Source file %s not found", self.fname)
         return self._lines
 
     def get_line_count(self) -> int:
-        return sum(1 for line in open(self.fname))
+        return len(self.lines)
 
     def get_line(self, n: int) -> Optional[str]:
-        self._initialize()
-        if n <= len(self.lines):
+        if self.get_line_count() > n:
             return str(n) + "  " + self.lines[n]
         return None
-
-    def _initialize(self) -> None:
-        if len(self._lines) > 0:
-            return
-        if os.path.isfile(self.fname):
-            print("Reading file " + self.fname)
-            n = 1
-            with open(self.fname) as f:
-                for line in f:
-                    self._lines[n] = line
-                    n += 1
-        else:
-            print("Source file " + self.fname + " not found")
