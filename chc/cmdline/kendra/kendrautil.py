@@ -95,7 +95,7 @@ def kendra_show_set(args: argparse.Namespace) -> NoReturn:
     """Prints out the reference information of a kendra test set."""
 
     # arguments
-    ctestset = args.testset
+    ctestset: str = args.testset
     try:
         cpath = UF.get_kendra_testpath(ctestset)
     except UF.CHError as e:
@@ -120,7 +120,7 @@ def kendra_clean_set(args: argparse.Namespace) -> NoReturn:
     """Removes the analysis artifacts of a kendra test set."""
 
     # arguments
-    testname = args.testset
+    testname: str = args.testset
     try:
         projectpath = UF.get_kendra_testpath(testname)
     except UF.CHError as e:
@@ -228,7 +228,7 @@ skips = [139, 151, 163, 363, 391]
 def kendra_test_sets(args: argparse.Namespace) -> NoReturn:
 
     # arguments
-    verbose = args.verbose
+    verbose: bool = args.verbose
 
     for id in range(115, 403, 4):
 
@@ -294,7 +294,9 @@ def kendra_show_file_table(args: argparse.Namespace) -> NoReturn:
     capp.initialize_single_file(cfilename)
     cfile = capp.get_cfile()
 
-    print(str(DT.get_file_table(cfile, tablename)))
+    print("Temporarily disabled")
+
+    # print(str(DT.get_file_table(cfile, tablename)))
 
     exit(0)
 
@@ -323,7 +325,9 @@ def kendra_show_function_table(args: argparse.Namespace) -> NoReturn:
     capp.initialize_single_file(cfilename)
     cfile = capp.get_cfile()
 
-    print(str(DT.get_function_table(cfile, functionname, tablename)))
+    print("Temporarily disabled")
+
+    # print(str(DT.get_function_table(cfile, functionname, tablename)))
 
     exit(0)
 
