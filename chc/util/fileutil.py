@@ -37,14 +37,15 @@ be retrieved as well.
 File-naming schema:
 
 A file x.c in a project is identified by three components:
+
 - a project path <pp>, which can be either the directory of the file
-    (in case of a single file) or the location of the Makefile (in
-    case of a multi file project);
+  (in case of a single file) or the location of the Makefile (in
+  case of a multi file project);
 - a project name <pn>, which is the x in the case of a single c file,
-    and is user-specified name otherwise;
+  and is user-specified name otherwise;
 - a file path <fp>, which is the path of the directory in which the
-    file resides relative to the project path. In case of a single
-    c file fp is omitted.
+  file resides relative to the project path. In case of a single
+  c file fp is omitted.
 - the file name <x> (without extension)
 
 The user can specify a different directory to store the analysis artifacts,
@@ -61,16 +62,19 @@ multiple stages:
    pp/fp/x.i. Both pp/fp/x.c and pp/fp/x.i are copied to tp/pn.cch/s/fp.
 
 3. x.c is parsed by the CodeHawk/CIL parser, producing the following files
-   tp/pn.cch/a/fp/x/x_cdict.xml
-                   /x_cfile.xml
-                   /functions/<x_fn>/x_fn_cfun.xml  (for every function fn in x)
+
+   - tp/pn.cch/a/fp/x/x_cdict.xml
+   - tp/pn.cch/a/fp/x/x_cfile.xml
+   - tp/pn.cch/a/fp/x/functions/<x_fn>/x_fn_cfun.xml
+     (for every function fn in x)
 
 3a. In case of multiple c files, the files are linked, resolving dependencies
     between globally visible functions, variables, and data structures,
     producing the files:
-    tp/pn.cch/a/fp/x/x_gxrefs.xml
-                globaldefinitions.xml
-                target_files.xml
+
+    - tp/pn.cch/a/fp/x/x_gxrefs.xml
+    - tp/pn.cch/a/globaldefinitions.xml
+    - tp/pn.cch/a/target_files.xml
 
 4. When all c files in the project (that is, indicated by the Makefile)
    have been parsed the directory tp/pn.cch is saved as a gzipped tar file,
@@ -82,28 +86,31 @@ multiple stages:
 
 5. Primary proof obligations are generated for x.c, producing the following
    files:
-   tp/pn.cch/a/fp/x/x_cgl.xml
-                    x_ctxt.xml
-                    x_ixf.xml
-                    x_prd.xml
-                    functions/<x_fn>/x_fn_api.xml
-                                    /x_fn_pod.xml
-                                    /x_fn_ppo.xml
-                    logfiles/x_primary.chlog
-                             x_primary.errorlog
-                             x_primary.infolog
+
+   - tp/pn.cch/a/fp/x/x_cgl.xml
+   - tp/pn.cch/a/fp/x/x_ctxt.xml
+   - tp/pn.cch/a/fp/x/x_ixf.xml
+   - tp/pn.cch/a/fp/x/x_prd.xml
+   - tp/pn.cch/a/fp/x/functions/<x_fn>/x_fn_api.xml
+   - tp/pn.cch/a/fp/x/functions/<x_fn>/x_fn_pod.xml
+   - tp/pn.cch/a/fp/x/functions/<x_fn>/x_fn_ppo.xml
+   - tp/pn.cch/a/fp/x/logfiles/x_primary.chlog
+   - tp/pn.cch/a/fp/x/logfiles/x_primary.errorlog
+   - tp/pn.cch/a/fp/x/logfiles/x_primary.infolog
 
 6. Invariants are generated and proof obligations are checked, producing
    the following files:
-   tp/pn.cch/a/fp/x/functions/<x_fn>/x_fn_invs.xml
-                                    /x_fn_vars.xml
-                   /logfiles/x_gencheck.chlog
-                             x_gencheck.errorlog
-                             x_gencheck.infolog
+
+   - tp/pn.cch/a/fp/x/functions/<x_fn>/x_fn_invs.xml
+   - tp/pn.cch/a/fp/x/functions/<x_fn>/x_fn_vars.xml
+   - tp/pn.cch/a/fp/x/logfiles/x_gencheck.chlog
+   - tp/pn.cch/a/fp/x/logfiles/x_gencheck.errorlog
+   - tp/pn.cch/a/fp/x/logfiles/x_gencheck.infolog
 
 7. Supporting proof obligations are generated for dependencies across
    functions and files, producing
-   tp/pn.cch/a/fp/x/functions/<x_fn>/x_fn_spo.xml
+
+   - tp/pn.cch/a/fp/x/functions/<x_fn>/x_fn_spo.xml
 
 Steps 6 and 7 are repeated until convergence.
 
@@ -317,32 +324,6 @@ class CHCJSONParseError(CHCError):
         )
 
 
-class CFunctionNotFoundException(CHCError):
-    def __init__(
-        self, cfile: "CFile", targetname: str, functionnames: List[str]
-    ) -> None:
-        self.cfile = cfile
-        self.targetname = targetname
-        self.functionnames = functionnames
-
-    def __str__(self) -> str:
-        lines = []
-        lines.append("*" * 80)
-        lines.append(
-            (
-                "Function "
-                + self.targetname
-                + " not found in file "
-                + self.cfile.name
-                + "; function names available:"
-            )
-        )
-        lines.append("-" * 80)
-        for n in self.functionnames:
-            lines.append("  " + n)
-        return "\n".join(lines)
-
-
 class CHCSummaryTestNotFound(CHCError):
     def __init__(self, header: str, fname: str, fnames: List[str]) -> None:
         CHCError.__init__(self, "Libc summary test file not found")
@@ -469,7 +450,8 @@ def get_xnode(
     elif show:
         raise CHCFileNotFoundError(filename)
     else:
-        chklogger.logger.warning("File %s was not found; returning None", filename)
+        chklogger.logger.warning(
+            "File %s was not found; returning None", filename)
         return None
 
 
@@ -646,40 +628,44 @@ def get_parse_targzname(projectname: str) -> str:
     return get_parse_tarname(projectname) + ".gz"
 
 
-def get_targetfiles_filename(path: str) -> str:
+def get_targetfiles_filename(targetpath: str, projectname: str) -> str:
+    path = get_analysisresults_path(targetpath, projectname)
     return os.path.join(path, "target_files.xml")
 
 
-def get_functionindex_filename(path: str) -> str:
+def get_functionindex_filename(targetpath: str, projectname: str) -> str:
+    path = get_analysisresults_path(targetpath, projectname)
     return os.path.join(path, "functionindex.json")
 
 
-def save_functionindex(path: str, d: Dict[str, Any]) -> None:
-    filename = get_functionindex_filename(path)
+def save_functionindex(
+        targetpath: str, projectname: str, d: Dict[str, Any]) -> None:
+    filename = get_functionindex_filename(targetpath, projectname)
     with open(filename, "w") as fp:
         json.dump(d, fp)
 
 
-def load_functionindex(path: str) -> Dict[str, Any]:
-    filename = get_functionindex_filename(path)
+def load_functionindex(targetpath: str, projectname: str) -> Dict[str, Any]:
+    filename = get_functionindex_filename(targetpath, projectname)
     if os.path.isfile(filename):
         with open(filename, "r") as fp:
             return json.load(fp)
     return {}
 
 
-def get_callgraph_filename(path: str) -> str:
+def get_callgraph_filename(targetpath: str, projectname: str) -> str:
+    path = get_analysisresults_path(targetpath, projectname)
     return os.path.join(path, "callgraph.json")
 
 
-def save_callgraph(path: str, d: Dict[str, Any]) -> None:
-    filename = get_callgraph_filename(path)
+def save_callgraph(targetpath: str, projectname: str, d: Dict[str, Any]) -> None:
+    filename = get_callgraph_filename(targetpath, projectname)
     with open(filename, "w") as fp:
         json.dump(d, fp)
 
 
-def load_callgraph(path: str) -> Dict[str, Any]:
-    filename = get_callgraph_filename(path)
+def load_callgraph(targetpath: str, projectname: str) -> Dict[str, Any]:
+    filename = get_callgraph_filename(targetpath, projectname)
     if os.path.isfile(filename):
         with open(filename, "r") as fp:
             return json.load(fp)
@@ -704,21 +690,26 @@ def load_preserves_memory_functions(path: str) -> Dict[str, Any]:
     return {}
 
 
-def get_targetfiles_xnode(path: str) -> Optional[ET.Element]:
-    filename = get_targetfiles_filename(path)
-    return get_xnode(filename, "c-files", "File that holds the names of source files")
+def get_targetfiles_xnode(
+        targetpath: str, projectname: str) -> Optional[ET.Element]:
+    filename = get_targetfiles_filename(targetpath, projectname)
+    return get_xnode(
+        filename, "c-files", "File that holds the names of source files")
 
 
-def get_targetfiles_list(path: str) -> List[Tuple[Optional[str], Optional[str]]]:
+def get_targetfiles_list(
+        targetpath: str,
+        projectname: str) -> List[Tuple[Optional[str], Optional[str]]]:
     result: List[Tuple[Optional[str], Optional[str]]] = []
-    node = get_targetfiles_xnode(path)
+    node = get_targetfiles_xnode(targetpath, projectname)
     if node is not None:
         for f in node.findall("c-file"):
             result.append((f.get("id"), f.get("name")))
     return result
 
 
-def get_global_definitions_filename(path: str) -> str:
+def get_global_definitions_filename(targetpath: str, projectname: str) -> str:
+    path = get_analysisresults_path(targetpath, projectname)
     return os.path.join(path, "globaldefinitions.xml")
 
 
@@ -818,14 +809,18 @@ def read_project_summary_results_history(path: str) -> List[Dict[str, Any]]:
     return result
 
 
-def get_global_declarations_xnode(path: str) -> Optional[ET.Element]:
-    filename = get_global_definitions_filename(path)
-    return get_xnode(filename, "globals", "Global type dictionary file", show=False)
+def get_global_declarations_xnode(
+        targetpath: str, projectname: str) -> Optional[ET.Element]:
+    filename = get_global_definitions_filename(targetpath, projectname)
+    return get_xnode(
+        filename, "globals", "Global type dictionary file", show=False)
 
 
-def get_global_dictionary_xnode(path: str) -> Optional[ET.Element]:
-    filename = get_global_definitions_filename(path)
-    gnode = get_xnode(filename, "globals", "Global type declarations file", show=False)
+def get_global_dictionary_xnode(
+        targetpath: str, projectname: str) -> Optional[ET.Element]:
+    filename = get_global_definitions_filename(targetpath, projectname)
+    gnode = get_xnode(
+        filename, "globals", "Global type declarations file", show=False)
     if gnode is not None:
         return gnode.find("dictionary")
     return None
@@ -868,7 +863,6 @@ def get_cfile_xnode(
         cfilepath: Optional[str],
         cfilename: str) -> Optional[ET.Element]:
     filename = get_cfile_cfile(targetpath, projectname, cfilepath, cfilename)
-    chklogger.logger.info("C_file %s is retrieved", filename)
     return get_xnode(filename, "c-file", "C source file")
 
 
@@ -888,14 +882,13 @@ def get_cfile_dictionary_xnode(
         cfilename: str) -> Optional[ET.Element]:
     filename = get_cfile_dictionaryname(
         targetpath, projectname, cfilepath, cfilename)
-    chklogger.logger.info("C_dict %s is retrieved", filename)
     return get_xnode(filename, "cfile", "C dictionary file")
 
 
 def get_cfile_predicate_dictionaryname(
         targetpath: str,
         projectname: str,
-        cfilepath: str,
+        cfilepath: Optional[str],
         cfilename: str) -> str:
     filepath = get_cfile_filepath(targetpath, projectname, cfilepath, cfilename)
     return os.path.join(filepath, cfilename + "_prd.xml")
@@ -904,30 +897,35 @@ def get_cfile_predicate_dictionaryname(
 def get_cfile_predicate_dictionary_xnode(
         targetpath: str,
         projectname: str,
-        cfilepath: str,
+        cfilepath: Optional[str],
         cfilename: str) -> Optional[ET.Element]:
     filename = get_cfile_predicate_dictionaryname(
         targetpath, projectname, cfilepath, cfilename)
     return get_xnode(
-        filename, "po-dictionary", "PO predicate dictionary file", show=False
-    )
+        filename, "po-dictionary", "PO predicate dictionary file", show=False)
 
 
-def get_cfile_assignment_dictionaryname(path: str, cfilename: str) -> str:
-    cfilename = get_cfilenamebase(cfilename)
-    return os.path.join(path, cfilename + "_cgl.xml")
+def get_cfile_assignment_dictionaryname(
+        targetpath: str,
+        projectname: str,
+        cfilepath: Optional[str],
+        cfilename: str) -> str:
+    filepath = get_cfile_filepath(targetpath, projectname, cfilepath, cfilename)
+    return os.path.join(filepath, cfilename + "_cgl.xml")
 
 
 def get_cfile_assignment_dictionary_xnode(
-    path: str, cfilename: str
-) -> Optional[ET.Element]:
-    filename = get_cfile_assignment_dictionaryname(path, cfilename)
+        targetpath: str,
+        projectname: str,
+        cfilepath: Optional[str],
+        cfilename: str) -> Optional[ET.Element]:
+    filename = get_cfile_assignment_dictionaryname(
+        targetpath, projectname, cfilepath, cfilename)
     return get_xnode(
         filename,
         "assignment-dictionary",
         "Global assignments dictionary file",
-        show=False,
-    )
+        show=False)
 
 
 def get_cfile_interface_dictionaryname(
@@ -991,22 +989,44 @@ def get_cfile_directory(path: str, cfilename: str) -> str:
     return os.path.join(path, get_cfilenamebase(cfilename))
 
 
-def get_cfile_logfiles_directory(path: str, cfilename: str) -> str:
-    logpath = os.path.join(path, "logfiles")
-    return os.path.join(logpath, get_cfilenamebase(cfilename))
+def get_cfile_logfiles_directory(
+        targetpath: str,
+        projectname: str,
+        cfilepath: Optional[str],
+        cfilename: str) -> str:
+    filepath = get_cfile_filepath(targetpath, projectname, cfilepath, cfilename)
+    return os.path.join(filepath, "logfiles")
 
 
-def get_cxreffile_filename(path: str, cfilename: str) -> str:
-    if cfilename.endswith(".c"):
-        cfilename = cfilename[:-2]
-    return os.path.join(path, cfilename + "_gxrefs.xml")
+def get_cfile_logfile_name(
+        targetpath: str,
+        projectname: str,
+        cfilepath: Optional[str],
+        cfilename: str,
+        kind: str) -> str:
+    filepath = get_cfile_logfiles_directory(
+        targetpath, projectname, cfilepath, cfilename)
+    return os.path.join(filepath, cfilename + "_" + kind)
 
 
-def get_cxreffile_xnode(path: str, cfilename: str) -> Optional[ET.Element]:
-    filename = get_cxreffile_filename(path, cfilename)
+def get_cxreffile_filename(
+        targetpath: str,
+        projectname: str,
+        cfilepath: Optional[str],
+        cfilename: str) -> str:
+    filepath = get_cfile_filepath(targetpath, projectname, cfilepath, cfilename)
+    return os.path.join(filepath, cfilename + "_gxrefs.xml")
+
+
+def get_cxreffile_xnode(
+        targetpath: str,
+        projectname: str,
+        cfilepath: Optional[str],
+        cfilename: str) -> Optional[ET.Element]:
+    filename = get_cxreffile_filename(
+        targetpath, projectname, cfilepath, cfilename)
     return get_xnode(
-        filename, "global-xrefs", "File with global cross references", show=False
-    )
+        filename, "global-xrefs", "File with global cross references", show=False)
 
 
 def get_global_invs_filename(path: str, cfilename: str, objectname: str) -> str:
@@ -1099,8 +1119,15 @@ def get_api_xnode(
     return get_xnode(filename, "function", "Function api file", show=False)
 
 
-def save_api(path: str, cfilename: str, fname: str, xnode: ET.Element) -> None:
-    filename = get_api_filename(path, cfilename, fname)
+def save_api(
+        targetpath: str,
+        projectname: str,
+        cfilepath: Optional[str],
+        cfilename: str,
+        fnname: str,
+        xnode: ET.Element) -> None:
+    filename = get_api_filename(
+        targetpath, projectname, cfilepath, cfilename, fnname)
     header = UX.get_xml_header(filename, "api")
     header.append(xnode)
     with open(filename, "w") as fp:
@@ -1284,7 +1311,10 @@ def has_candidate_contracts(path: str, cfilename: str) -> bool:
 
 def get_contracts(path: str, cfilename: str) -> Optional[ET.Element]:
     filename = os.path.join(path, cfilename + "_c.xml")
-    return get_xnode(filename, "cfile", "Contract file", show=True)
+    if os.path.isfile(filename):
+        return get_xnode(filename, "cfile", "Contract file", show=True)
+    else:
+        return None
 
 
 def get_candidate_contracts(path: str, cfilename: str) -> Optional[ET.Element]:
@@ -1805,10 +1835,54 @@ def unpack_tar_file(path: str, deletesemantics: bool = False) -> bool:
     return os.path.isdir("semantics")
 
 
+def unpack_cchtar_file(
+        projectpath: str, projectname: str, deletesemantics: bool = False
+) -> bool:
+    cchdir = projectname + ".cch"
+    targzname = cchdir + ".tar.gz"
+    if not os.path.isdir(projectpath):
+        raise CHCDirectoryNotFoundError(projectpath)
+    chklogger.logger.info("Changing directory to %s", projectpath)
+    os.chdir(projectpath)
+
+    if os.path.isdir(cchdir):
+        if not deletesemantics:
+            return True
+        else:
+            chklogger.logger.info(
+                "Removing existing analysis directory %s", cchdir)
+            shutil.rmtree(cchdir)
+
+    if os.path.isfile(targzname):
+        cmd = ["tar", "xfz", targzname]
+        result = subprocess.call(cmd, cwd=projectpath, stderr=subprocess.STDOUT)
+        if result != 0:
+            chklogger.logger.error("Command %s failed", " ".join(cmd))
+            return False
+
+        chklogger.logger.info("Successfully extracted %s", targzname)
+        return True
+
+    else:
+        chklogger.logger.error("Semantics tar file %s not found", targzname)
+        return False
+
+    return os.path.isdir(cchdir)
+
+
 def check_semantics(path: str, deletesemantics: bool = False) -> None:
     if unpack_tar_file(path, deletesemantics=deletesemantics):
         return
     raise CHCSemanticsNotFoundError(path)
+
+
+def check_cch_semantics(
+        projectpath: str, projectname: str, deletesemantics: bool = False
+) -> None:
+    if unpack_cchtar_file(
+            projectpath, projectname, deletesemantics=deletesemantics):
+        return
+    raise CHCSemanticsNotFoundError(projectpath)
 
 
 def xfind_node(p: ET.Element, tag: str, msg: str) -> ET.Element:

@@ -28,7 +28,7 @@
 
 import logging
 from enum import Enum
-from typing import List, Optional, Sequence, Union
+from typing import Optional, Union
 
 
 class LogLevel(str, Enum):
