@@ -61,6 +61,7 @@ from typing import NoReturn
 from chc.app.CHVersion import chcversion
 
 import chc.cmdline.c_file.cfileutil as C
+import chc.cmdline.juliet.julietutil as J
 import chc.cmdline.kendra.kendrautil as K
 import chc.reporting.DictionaryTables as DT
 
@@ -116,6 +117,16 @@ assumptions on the code.
     print(descr)
     exit(0)
 
+
+def julietcommand(args: argparse.Namespace) -> NoReturn:
+    descr = """
+The chkc juliet set of commands is used to analyze the juliet test suite cases
+provided in
+
+https://github.com/static-analysis-engineering/CodeHawk-C-Targets-Juliet
+"""
+    print(descr)
+    exit(0)
 
 def parse() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -229,6 +240,110 @@ def parse() -> argparse.Namespace:
         choices = DT.function_table_list())
     kendrashowfunctiontable.set_defaults(func=K.kendra_show_function_table)
 
+    # --------------------------------------------------------------- juliet ---
+
+    julietcmd = subparsers.add_parser("juliet")
+    julietcmd.set_defaults(func=julietcommand)
+    julietparsers = julietcmd.add_subparsers(title="show options")
+
+    # --- check-config
+    julietconfig = julietparsers.add_parser("check-config")
+    julietconfig.set_defaults(func=J.juliet_check_config)
+
+    # --- list
+    julietlist = julietparsers.add_parser("list")
+    julietlist.add_argument("--cwe", help="only list tests for CWE")
+    julietlist.set_defaults(func=J.juliet_list)
+
+    # --- convert
+    julietconvert = julietparsers.add_parser("convert")
+    julietconvert.add_argument("cwe", help="name of cwe, e.g., CWE121")
+    julietconvert.add_argument(
+        "test", help="name of test case, e.g., CWE129_large")
+    julietconvert.add_argument(
+        "targetpath", help="directory in which to store converted set")
+    julietconvert.set_defaults(func=J.juliet_convert)
+
+    # --- analyze
+    julietanalyze = julietparsers.add_parser("analyze")
+    julietanalyze.add_argument("cwe", help="name of cwe, e.g., CWE121")
+    julietanalyze.add_argument(
+        "test", help="name of test case, e.g., CWE129_large")
+    julietanalyze.add_argument(
+        "--maxprocesses",
+        help="number of files to process in parallel",
+        type=int,
+        default=1)
+    julietanalyze.add_argument(
+        "--analysisrounds",
+        help="number of times to generate supporting proof obligations",
+        type=int,
+        default=5)
+    julietanalyze.add_argument(
+        "--wordsize",
+        help="architecture word size in bits",
+        type=int,
+        default=64)
+    julietanalyze.add_argument(
+        "--contractpath",
+        help="path to save the contracts file",
+        default=None)
+    julietanalyze.add_argument(
+        "--verbose", "-v",
+        action="store_true",
+        help="show output from ocaml analyzer")
+    julietanalyze.add_argument(
+        "--loglevel", "-log",
+        choices=UL.LogLevel.options(),
+        default="WARNING",
+        help="activate logging with given level (default to stderr)")
+    julietanalyze.add_argument(
+        "--logfilename",
+        help="name of file to write log messages (default is <testset>_log.txt)")
+    julietanalyze.add_argument(
+        "--logfilemode",
+        choices=["a", "w"],
+        default="a",
+        help="file mode for log file: append (a, default), or write (w)")
+
+    julietanalyze.set_defaults(func=J.juliet_analyze)
+
+    # --- report
+    julietreport = julietparsers.add_parser("report")
+    julietreport.add_argument("cwe", help="name of cwe, e.g., CWE121")
+    julietreport.add_argument(
+        "test", help="name of test case, e.g., CWE129_large")
+    julietreport.set_defaults(func=J.juliet_report)
+
+    # --- report-file
+    julietreportfile = julietparsers.add_parser("report-file")
+    julietreportfile.add_argument("cwe", help="name of cwe, e.g., CWE121")
+    julietreportfile.add_argument(
+        "test", help="name of test case, e.g., CWE129_large")
+    julietreportfile.add_argument("filename", help="name of c file, e.g., x01.c")
+    julietreportfile.set_defaults(func=J.juliet_report_file)
+
+    # --- score
+    julietscore = julietparsers.add_parser("score")
+    julietscore.add_argument("cwe", help="name of cwe, e.g., CWE121")
+    julietscore.add_argument(
+        "test", help="name of test case, e.g., CWE129_large")
+    julietscore.add_argument(
+        "--loglevel", "-log",
+        choices=UL.LogLevel.options(),
+        default="WARNING",
+        help="activate logging with given level (default to stderr)")
+    julietscore.add_argument(
+        "--logfilename",
+        help="name of file to write log messages (default is <testset>_log.txt)")
+    julietscore.add_argument(
+        "--logfilemode",
+        choices=["a", "w"],
+        default="a",
+        help="file mode for log file: append (a, default), or write (w)")
+
+    julietscore.set_defaults(func=J.juliet_score)
+
     # --------------------------------------------------------------- c-file ---
     cfilecmd = subparsers.add_parser("c-file")
     cfilecmd.set_defaults(func=cfilecommand)
@@ -284,6 +399,11 @@ def parse() -> argparse.Namespace:
         "--tgtpath",
         help="directory in which to store the analysis artifacts "
         + "(default: <cpath>)")
+    cfileanalyze.add_argument(
+        "--wordsize",
+        type=int,
+        default=32,
+        help="architecture wordsize in bits (16, 32, or 64)")
     cfileanalyze.add_argument(
         "--verbose", "-v",
         action="store_true",
