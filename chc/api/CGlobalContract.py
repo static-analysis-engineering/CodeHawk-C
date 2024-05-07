@@ -26,6 +26,23 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Holds assumptions that transcend the file level.
+
+   The global contract is held by two files at the top directory of the contractpath:
+    * globaldefs.json:
+
+      - directions to the linker about hidden data structures and hidden fields
+
+    * globaldefs.xml:
+
+      - assumptions relevant to the CodeHawk analyzer
+      - library function summaries that override the standard library function
+        summaries
+
+    Examples:
+      * abstraction of interfile data structures by hiding fields
+      * abstraction of interfile data structures by complete hiding
+"""
 
 import xml.etree.ElementTree as ET
 
@@ -39,22 +56,6 @@ if TYPE_CHECKING:
 
 
 class CGlobalContract(object):
-    """Holds assumptions that transcend the file level.
-
-    The global contract is held by two files at the top directory of
-    the contractpath:
-    - globaldefs.json:
-      - directions to the linker about hidden data structures and hidden fields
-
-    - globaldefs.xml:
-      - assumptions relevant to the CodeHawk analyzer
-      - library function summaries that override the standard library function
-        summaries
-
-    Examples:
-      - abstraction of interfile data structures by hiding fields
-      - abstraction of interfile data structures by complete hiding
-    """
 
     def __init__(self, capp: "CApplication") -> None:
         self._capp = capp

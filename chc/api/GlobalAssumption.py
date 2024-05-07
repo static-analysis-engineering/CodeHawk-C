@@ -5,7 +5,7 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2020-2022 Henny B. Sipma
 # Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -26,6 +26,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Assumption on a global variable at a particular location."""
 
 from typing import List, TYPE_CHECKING
 
@@ -36,7 +37,20 @@ if TYPE_CHECKING:
     
 
 class GlobalAssumption:
-    
+    """
+    Assumption on the value of a global variable at a particular location.
+
+    Args:
+       capi (CFunctionApi): the function api of the function that requests
+           the assumption
+       id (int): the identification number of the assumption
+       predicate (XPredicate): predicate on global variable representing the
+           assumption
+       ppos (List[int]): id's of the primary proof obligations that require this
+           assumption for discharge
+       spos (List[int]): id's of the supporting proof obligations that require
+           this assumption for discharge
+    """
     def __init__(
             self,
             capi: "CFunctionApi",

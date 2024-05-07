@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2021-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2021-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,6 +26,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Assumption on the function api.
+
+"""
 
 from typing import List, TYPE_CHECKING
 
@@ -36,6 +39,19 @@ if TYPE_CHECKING:
 
 
 class ApiAssumption:
+    """Assumption on the function api.
+
+    Args:
+        capi (CFunctionApi): parent function api
+        id (int): identification number
+        predicate (CPOPredicate): expression of the assumption
+        ppos (List[int]): list of primary proof obligation id's that depend on
+           this assumption
+        spos (List[int]): list of supporting proof obligation id's that depend
+           on this assumption
+        isglobal (bool=False): assumption holds globally
+        isfile (bool=False): assumption holds for the entire c-file
+    """
 
     def __init__(
         self,

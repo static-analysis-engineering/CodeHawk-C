@@ -26,15 +26,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
-"""Object representation of api_parameter_t
-
-cchlib/CCHLibTypes.api_parameter_t =      predicate       properties
-                               -------------------------------------------------
-type api_parameter_t =
-  | ParFormal of int                      is_formal       index: int
-  | ParGlobal of string                   is_global       name: str
-
-"""
+"""Object representation of api_parameter_t"""
 
 from typing import List, TYPE_CHECKING
 
@@ -48,6 +40,13 @@ if TYPE_CHECKING:
 
 
 class ApiParameter(InterfaceDictionaryRecord):
+    """Base class of formal parameter of a function.
+
+    Args:
+        cd (InterfaceDictionary): The parent dictionary to resolve
+            subexpressions
+        ixval (IndexedTableValue): The backing record of the value
+    """
 
     def __init__(
         self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -69,7 +68,7 @@ class ApiParameter(InterfaceDictionaryRecord):
 class APFormal(ApiParameter):
     """Formal parameter of a function.
 
-    args[0]: parameter index (starting at 1)
+    * args[0]: parameter index (starting at 1)
     """
 
     def __init__(
@@ -90,6 +89,7 @@ class APFormal(ApiParameter):
 
 @ifdregistry.register_tag("pg", ApiParameter)
 class APGlobal(ApiParameter):
+    """Global variable used in a function; treated as a formal parameter."""
 
     def __init__(
         self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue) -> None:

@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2023 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2020-2023 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,17 +26,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
-"""Object representation of sumtype s_offset_t
-
-cchlib/CCHLibTypes.s_offset_t =                predicate      properties
-                                               ---------------------------------
-type s_offset_t =
-  | ArgNoOffset                                is_no_offset   
-  | ArgFieldOffset of string * s_offset_t      is_field       field: str
-                                                              offset: SOffset
-  | ArgIndexOffset of numerical_t * s_offset_t is_index       index: str
-                                                              offset: SOffset
-"""
+"""Object representation of sumtype s_offset_t."""
 
 from typing import Dict, List, Optional, TYPE_CHECKING
 import xml.etree.ElementTree as ET

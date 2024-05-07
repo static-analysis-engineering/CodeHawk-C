@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2020-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -29,7 +29,7 @@
 
 import xml.etree.ElementTree as ET
 
-from typing import Callable, Dict, List, Optional, Tuple, TYPE_CHECKING
+from typing import Callable, cast, Dict, List, Optional, Tuple, TYPE_CHECKING
 
 from chc.api.ApiAssumption import ApiAssumption
 from chc.api.ContractAssumption import ContractAssumption
@@ -44,7 +44,7 @@ if TYPE_CHECKING:
     from chc.api.XPredicate import XPredicate
     from chc.app.CApplication import CApplication
     from chc.app.CFile import CFile
-    from chc.app.CTyp import CFunArg
+    from chc.app.CTyp import CFunArg, CTypFun
     from chc.app.CFunction import CFunction
 
 memory_free_functions = ["free", "realloc"]
@@ -187,7 +187,7 @@ class CFunctionApi:
                             self.xmsg(
                                 "ipr attribute missing in global-assumption-requests"))
                     id = int(xid)
-                    p = self.cfile.predicatedictionary.get_predicate(id)
+                    p = self.cfile.interfacedictionary.get_xpredicate(id)
                     ppos = IT.get_attribute_int_list(x, "ppos")
                     spos = IT.get_attribute_int_list(x, "spos")
                     gas = GlobalAssumption(self, id, p, ppos, spos)
@@ -226,7 +226,11 @@ class CFunctionApi:
 
     @property
     def parameters(self) -> List["CFunArg"]:
-        return self.cfun.ftype.funargs.arguments
+        ftype = cast("CTypFun", self.cfun.ftype)
+        if ftype.funargs is not None:
+            return ftype.funargs.arguments
+        else:
+            raise UF.CHCError("Function signature without parameters")
         # return self.cfun.ftype.get_args().get_args()
 
     @property
