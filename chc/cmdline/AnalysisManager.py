@@ -33,7 +33,7 @@ import subprocess
 import os
 import shutil
 
-from typing import List, Optional, TYPE_CHECKING
+from typing import List, Optional, Tuple, TYPE_CHECKING
 
 from chc.util.Config import Config
 import chc.util.fileutil as UF
@@ -55,7 +55,7 @@ class AnalysisManager:
         unreachability: bool = False,
         thirdpartysummaries: List[str] = [],
         nofilter: bool = True,
-        verbose: bool = True,
+        verbose: bool = False,
     ) -> None:
         """Initialize the analyzer location and target file location.
 
@@ -90,7 +90,7 @@ class AnalysisManager:
 
     @property
     def contractpath(self) -> Optional[str]:
-        return None
+        return self.capp.contractpath
 
     @property
     def config(self) -> Config:
@@ -112,6 +112,10 @@ class AnalysisManager:
     def targetpath(self) -> str:
         return self.capp.targetpath
 
+    @property
+    def projectname(self) -> str:
+        return self.capp.projectname
+
     def reset(self) -> None:
         """Remove all file- and function-level files produced by the analysis."""
 
@@ -119,44 +123,48 @@ class AnalysisManager:
             if os.path.isfile(f):
                 os.remove(f)
 
-        def g(fi: "CFile") -> None:
-            cfiledir = UF.get_cfile_directory(self.path, fi.name)
-            if os.path.isdir(cfiledir):
-                for f in os.listdir(cfiledir):
-                    if len(f) > 10 and (
-                        f[-8:-4] in ["_api", "_ppo", "_spo", "_pod"]
-                        or f[-9:-4] in ["_invs", "_vars"]
-                    ):
-                        os.remove(os.path.join(cfiledir, f))
-            remove(UF.get_cfile_predicate_dictionaryname(self.capp.path, fi.name))
-            remove(UF.get_cfile_interface_dictionaryname(self.capp.path, fi.name))
-            remove(UF.get_cfile_assignment_dictionaryname(self.capp.path, fi.name))
-            remove(UF.get_cxreffile_filename(self.capp.path, fi.name))
-            remove(UF.get_cfile_contexttablename(self.capp.path, fi.name))
+        for fi in self.capp.cfiles:
+            for fn in fi.get_functions():
+                fnargs: Tuple[str, str, Optional[str], str, str] = (
+                    fn.targetpath, fn.projectname, fn.cfilepath, fn.cfilename, fn.name)
+                remove(UF.get_api_filename(*fnargs))
+                remove(UF.get_ppo_filename(*fnargs))
+                remove(UF.get_spo_filename(*fnargs))
+                remove(UF.get_pod_filename(*fnargs))
+                remove(UF.get_invs_filename(*fnargs))
+                remove(UF.get_vars_filename(*fnargs))
+            fiargs: Tuple[str, str, Optional[str], str] = (
+                fi.targetpath, fi.projectname, fi.cfilepath, fi.cfilename)
+            remove(UF.get_cfile_contexttablename(*fiargs))
+            remove(UF.get_cfile_predicate_dictionaryname(*fiargs))
+            remove(UF.get_cfile_interface_dictionaryname(*fiargs))
+            remove(UF.get_cfile_assignment_dictionaryname(*fiargs))
+            remove(UF.get_cxreffile_filename(*fiargs))
 
-        self.capp.iter_files(g)
-        remove(UF.get_global_definitions_filename(self.capp.path))
+        remove(UF.get_global_definitions_filename(
+            self.capp.targetpath, self.capp.projectname))
 
     def reset_logfiles(self) -> None:
         """Remove all log files from semantics directory."""
 
-        def g(fi: "CFile") -> None:
-            logfiledir = UF.get_cfile_logfiles_directory(self.path, fi.name)
-            if os.path.isdir(logfiledir):
-                for f in os.listdir(logfiledir):
-                    if (
-                        f.endswith("chlog")
-                        or f.endswith("infolog")
-                        or f.endswith("errorlog")
-                    ):
-                        os.remove(os.path.join(logfiledir, f))
+        def remove(f: str) -> None:
+            if os.path.isfile(f):
+                os.remove(f)
 
-        self.capp.iter_files(g)
+        for fi in self.capp.cfiles:
+            fiargs: Tuple[str, str, Optional[str], str] = (
+                fi.targetpath, fi.projectname, fi.cfilepath, fi.cfilename)
+            for kind in [
+                    "gencheck.chlog", "gencheck.infolog", "gencheck.errorlog",
+                    "primary.chlog", "primary.infolog", "primary.errorlog"]:
+                fkargs = fiargs + (kind, )
+                remove(UF.get_cfile_logfile_name(*fkargs))
 
-    def reset_tables(self, cfilename: str) -> None:
+    def reset_tables(self, cfile: "CFile") -> None:
         """Reload dictionaries from file (to get updated data from analyzer)."""
 
-        cfile = self.capp.get_file(cfilename)
+        cfilename = cfile.name
+        chklogger.logger.debug("Reset tables for %s", cfilename)
         cfile.reinitialize_tables()
         cfile.reload_ppos()
         cfile.reload_spos()
@@ -189,56 +197,22 @@ class AnalysisManager:
         cmd.append("-cfilename")
         return cmd
 
-    def rungui(self, name: str, outputpath: Optional[str] = None) -> None:
-        semdir = os.path.dirname(self.path)
-        analysisdir = os.path.dirname(semdir)
-        if outputpath is None:
-            outputpath = analysisdir
-        if self.gui is None:
-            print("Gui has not been configured.")
-            exit(1)
-        cmd: List[str] = [
-            self.gui,
-            "-summaries",
-            self.chsummaries,
-            "-output",
-            outputpath,
-            "-name",
-            name,
-            "-xpm",
-            self.config.utildir,
-            "-analysisdir",
-            analysisdir,
-            "-contractpath",
-            self.contractpath,
-        ]
-        print(cmd)
-        try:
-            result = subprocess.call(
-                cmd,
-                cwd=self.path,
-                stdout=open(os.devnull, "w"),
-                stderr=subprocess.STDOUT,
-            )
-        except subprocess.CalledProcessError as args:
-            print(args.output)
-            print(args)
-            exit(1)
-
     def create_file_primary_proofobligations(
             self, cfilename: str, cfilepath: Optional[str] = None) -> None:
         """Call analyzer to create primary proof obligations for a single file."""
 
+        chklogger.logger.info(
+            "Create primiary proof obligations for %s", cfilename)
         try:
             cmd = self._create_file_primary_proofobligations_cmd_partial()
             cmd.append(cfilename)
             if cfilepath is not None:
                 cmd.extend(["-cfilepath", cfilepath])
+            chklogger.logger.info(
+                "Primary proof obligations are created for %s", cfilename)
+            chklogger.logger.info(
+                "Ocaml analyzer is called with %s", str(cmd))
             if self.verbose:
-                chklogger.logger.info(
-                    "Primary proof obligations are created for %s", cfilename)
-                chklogger.logger.info(
-                    "Ocaml analyzer is called with %s", str(cmd))
                 result = subprocess.call(
                     cmd, cwd=self.targetpath, stderr=subprocess.STDOUT)
                 print("\nResult: " + str(result))
@@ -246,7 +220,7 @@ class AnalysisManager:
             else:
                 result = subprocess.call(
                     cmd,
-                    cwd=self.path,
+                    cwd=self.targetpath,
                     stdout=open(os.devnull, "w"),
                     stderr=subprocess.STDOUT,
                 )
@@ -267,18 +241,18 @@ class AnalysisManager:
 
         if processes > 1:
 
-            def f(cfile: str) -> None:
+            def f(cfile: "CFile") -> None:
                 cmd = self._create_file_primary_proofobligations_cmd_partial()
-                cmd.append(cfile)
+                cmd.append(cfile.name)
                 self._execute_cmd(cmd)
 
-            self.capp.iter_filenames_parallel(f, processes)
+            self.capp.iter_files_parallel(f, processes)
         else:
 
-            def f(cfile: str) -> None:
-                self.create_file_primary_proofobligations(cfile)
+            def f(cfile: "CFile") -> None:
+                self.create_file_primary_proofobligations(cfile.name)
 
-            self.capp.iter_filenames(f)
+            self.capp.iter_files(f)
 
     def _generate_and_check_file_cmd_partial(self, domains: str) -> List[str]:
         cmd: List[str] = [
@@ -314,19 +288,17 @@ class AnalysisManager:
         try:
             cmd = self._generate_and_check_file_cmd_partial(domains)
             cmd.append(cfilename)
+            chklogger.logger.info(
+                "Calling AI to generate invariants: %s",
+                " ".join(cmd))
             if self.verbose:
-                print(
-                    "Generating invariants and checking proof obligations for "
-                    + cfilename
-                )
-                print(cmd)
                 result = subprocess.call(
                     cmd, cwd=self.targetpath, stderr=subprocess.STDOUT)
                 print("\nResult: " + str(result))
             else:
                 result = subprocess.call(
                     cmd,
-                    cwd=self.path,
+                    cwd=self.targetpath,
                     stdout=open(os.devnull, "w"),
                     stderr=subprocess.STDOUT,
                 )
@@ -343,19 +315,19 @@ class AnalysisManager:
 
         if processes > 1:
 
-            def f(cfile: str) -> None:
+            def f(cfile: "CFile") -> None:
                 cmd = self._generate_and_check_file_cmd_partial(domains)
-                cmd.append(cfile)
+                cmd.append(cfile.name)
                 self._execute_cmd(cmd)
 
-            self.capp.iter_filenames_parallel(f, processes)
+            self.capp.iter_files_parallel(f, processes)
         else:
 
-            def f(cfile: str) -> None:
-                self.generate_and_check_file(cfile, domains)
+            def f(cfile: "CFile") -> None:
+                self.generate_and_check_file(cfile.name, domains)
 
-            self.capp.iter_filenames(f)
-        self.capp.iter_filenames(self.reset_tables)
+            self.capp.iter_files(f)
+        self.capp.iter_files(self.reset_tables)
 
 
 if __name__ == "__main__":

@@ -40,7 +40,7 @@ if TYPE_CHECKING:
     from chc.app.CFile import CFile
     from chc.app.CFunction import CFunction
     from chc.proof.CFunctionPO import CFunctionPO
-    from cch.source.CSrcFile import CSrcFile
+    from chc.source.CSrcFile import CSrcFile
 
 
 def jsondate() -> Tuple[str, str]:
