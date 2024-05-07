@@ -217,10 +217,8 @@ class TestManager:
         self.testresults.set_parsing()
         self.clean()
         self.parsemanager.initialize_paths()
-        chklogger.logger.info("Initialized parsemanager paths")
         for cfile in self.cref_files:
             cfilename_c = cfile.name
-            chklogger.logger.info("Preprocessing %s", cfilename_c)
             ifilename = self.parsemanager.preprocess_file_with_gcc(
                 cfilename_c, copyfiles=True
             )
@@ -251,11 +249,10 @@ class TestManager:
             self,
             cfilename: str,
             cfun: str,
-            ppos: List["CFunctionPPO"],
+            ppos: List["CFunctionPO"],
             refppos: List[TestPPORef]) -> None:
         """Check if all required primary proof obligations are created."""
 
-        chklogger.logger.info("Checking ppos for %s : %s", cfilename, cfun)
         d: Dict[str, List[str]] = {}
         # collect ppos produced
         for ppo in ppos:
@@ -288,9 +285,6 @@ class TestManager:
                     raise FunctionPPOError(
                         cfilename + ":" + cfun + ":" + str(context) + ":" + p
                     )
-        chklogger.logger.info(
-            "Successfully checked %d ppos for %s : %s",
-            len(ppos), cfilename, cfun)
 
     def create_reference_ppos(
             self,
@@ -299,8 +293,6 @@ class TestManager:
             ppos: List["CFunctionPPO"]) -> None:
         """Create reference ppos from actual analysis results."""
 
-        chklogger.logger.info(
-            "Creating reference ppos for %s : %s", cfilename, fname)
         result: List[Dict[str, str]] = []
         for ppo in ppos:
             ctxt = ppo.context
@@ -321,8 +313,6 @@ class TestManager:
             spos: List["CFunctionPO"]) -> None:
         """Create reference spos from actual analysis results."""
 
-        chklogger.logger.info(
-            "Creating reference spos for %s : %s", cfilename, fname)
         result: List[Dict[str, str]] = []
         if len(spos) > 0:
             for spo in spos:
@@ -337,7 +327,6 @@ class TestManager:
     def test_ppos(self) -> None:
         """Create primary proof obligations and check if created as expected."""
 
-        chklogger.logger.info("Testing ppos")
         if not os.path.isfile(self.config.canalyzer):
             raise AnalyzerMissingError(self.config.canalyzer)
         self.testresults.set_ppos()
@@ -358,7 +347,7 @@ class TestManager:
                 capp.initialize_single_file(cfilename)
                 am = AnalysisManager(capp, verbose=self.verbose)
                 am.create_file_primary_proofobligations(cfilename)
-                cfile = capp.get_single_file()
+                cfile = capp.get_cfile()
                 capp.collect_post_assumes()
                 ppos = cfile.get_ppos()
                 for creffun in creffile.functions.values():
@@ -366,7 +355,7 @@ class TestManager:
                     cfun = cfile.get_function_by_name(fname)
                     if self.saveref:
                         if creffun.has_ppos():
-                            chklogger.logger.info(
+                            chklogger.logger.warning(
                                 "Ppos not created for %s (delete first)", fname)
                         else:
                             self.create_reference_ppos(
@@ -405,7 +394,6 @@ class TestManager:
             refspos: List[TestSPORef]) -> None:
         """Check if spos created match reference spos."""
 
-        chklogger.logger.info("Checking spos for %s : %s", cfilename, cfun)
         d: Dict[str, List[str]] = {}
         # collect spos produced
         for spo in spos:
@@ -452,7 +440,6 @@ class TestManager:
     def test_spos(self, delaytest: bool = False) -> None:
         """Run analysis and check if all expected spos are created."""
 
-        chklogger.logger.info("Testing spos")
         try:
             for creffile in self.cref_files:
                 self.testresults.set_spos()
@@ -469,27 +456,24 @@ class TestManager:
                     self.contractpath,
                     singlefile=True)
                 capp.initialize_single_file(cfilename)
-                cappfile = capp.get_single_file()
+                cappfile = capp.get_cfile()
                 capp.update_spos()
-                chklogger.logger.info("Spos were updated")
                 capp.collect_post_assumes()
-                chklogger.logger.info("Post assumes were collected")
                 spos = cappfile.get_spos()
-                chklogger.logger.info("Spos were retrieved: %d", len(spos))
                 if delaytest:
                     continue
-                for cfun in creffile.functions.values():
-                    fname = cfun.name
+                for creffun in creffile.functions.values():
+                    fname = creffun.name
                     if self.saveref:
-                        if cfun.has_spos():
+                        if creffun.has_spos():
                             chklogger.logger.warning(
                                 "Spos not created for %s in %s (delete first)",
                                 fname, cfilename)
                         else:
                             self.create_reference_spos(
-                                cfilename_c, fname, spos[fname])
+                                cfilename_c, fname, cappfile.get_fn_spos(fname))
                     else:
-                        refspos = cfun.spos
+                        refspos = creffun.spos
                         funspos = [spo for spo in spos if spo.cfun.name == fname]
                         if funspos is None and len(refspos) == 0:
                             self.testresults.add_spo_count_success(
@@ -528,12 +512,9 @@ class TestManager:
             self,
             cfilename: str,
             cfun: TestCFunctionRef,
-            funppos: List["CFunctionPPO"],
+            funppos: List["CFunctionPO"],
             refppos: List[TestPPORef]) -> None:
         """Check if ppo analysis results match the expected results."""
-
-        chklogger.logger.info(
-            "Checking ppo proofs for %s : %s", cfilename, cfun.name)
 
         d: Dict[str, Dict[str, str]] = {}
         fname = cfun.name
@@ -581,8 +562,6 @@ class TestManager:
         Skip checking results if delaytest is true.
         """
 
-        chklogger.logger.info("Testing ppo proofs")
-
         if not os.path.isfile(self.config.canalyzer):
             raise AnalyzerMissingError(self.config.canalyzer)
 
@@ -605,7 +584,7 @@ class TestManager:
                 contractpath=self.contractpath
             )
             capp.initialize_single_file(cfilename)
-            cfile = capp.get_single_file()
+            cfile = capp.get_cfile()
             # only generate invariants if required
             if creffile.has_domains():
                 for d in creffile.domains:
@@ -629,8 +608,6 @@ class TestManager:
             refspos: List[TestSPORef]) -> None:
         """Check if spo analysis results match the expected results."""
 
-        chklogger.logger.info(
-            "Checking spo proofs for %s : %s", cfilename, str(cfun))
         d: Dict[str, Dict[str, str]] = {}
         fname = cfun.name
         for spo in funspos:
@@ -673,8 +650,6 @@ class TestManager:
         Skip the checking if delaytest is True.
         """
 
-        chklogger.logger.info("Testing spo proofs")
-
         self.testresults.set_sevs()
         for creffile in self.cref_files:
             creffilename_c = creffile.name
@@ -690,7 +665,7 @@ class TestManager:
                 self.contractpath,
                 singlefile=True)
             capp.initialize_single_file(cfilename)
-            cappfile = capp.get_single_file()
+            cappfile = capp.get_cfile()
             if creffile.has_domains():
                 for d in creffile.domains:
                     am = AnalysisManager(capp, verbose=self.verbose)
