@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2023 Henny B. Sipma
+# Copyright (c) 2024      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -28,6 +30,7 @@
 
 from chc.cmdline.juliet.JulietTestSetRef import JulietTestSetRef
 
+from chc.util.loggingutil import chklogger
 
 violationcategories = ["V", "S", "D", "U", "O"]
 safecontrolcategories = ["S", "D", "X", "U", "O"]
@@ -46,8 +49,8 @@ one of which has to appear in the ppo, or an expression context.
 
 def keymatches(tppo, ppo):
     return (
-        tppo.line == ppo.get_line()
-        and tppo.predicate == ppo.predicatetag
+        tppo.line == ppo.line
+        and tppo.predicate == ppo.predicate_name
         and tppo.matches_exp_ctxt(ppo)
         and tppo.matches_variable_names(ppo)
         and tppo.matches_variable_names_plus(ppo)
@@ -74,16 +77,16 @@ def initialize_testsummary(testset, d):
 def classify_tgt_violation(po, capp):
     if po is None:
         return "U"  # unknown
-    if po.is_open():
+    if po.is_open:
         return "U"  # unknown
-    if po.is_violated():
+    if po.is_violated:
         return "V"  # violation reported
     if po.dependencies is None:
         return "U"  # unknown
     dm = po.dependencies.level
     if dm == "f" or dm == "s":
         return "S"  # found safe
-    if po.is_delegated():
+    if po.is_delegated:
         spos = get_associated_spos(po, capp)
         if len(spos) > 0:
             classifications = [classify_tgt_violation(spo, capp) for spo in spos]
@@ -104,16 +107,16 @@ def classify_tgt_safecontrol_contract_assumption(po, capp):
 def classify_tgt_safecontrol(po, capp):
     if po is None:
         return "U"  # unknown
-    if po.is_open():
+    if po.is_open:
         return "U"  # unknown
-    if po.is_violated():
+    if po.is_violated:
         return "O"  # violation
     if po.dependencies is None:
         return "U"  # unknown
     dm = po.dependencies.level
     if dm == "s" or dm == "f":
         return "S"  # safe
-    if po.is_delegated():
+    if po.is_delegated:
         dependencies_type = po.get_dependencies_type()
         if po.get_dependencies_type() == "contract":
             return classify_tgt_safecontrol_contract_assumption(po, capp)
@@ -213,11 +216,11 @@ def testppo_results_tostring(pairs, capp):
                     evstr = ppo.get_display_prefix() + "  " + ev
                 lines.append(
                     "    "
-                    + str(ppo.get_line()).rjust(3)
+                    + str(ppo.line).rjust(3)
                     + "  "
-                    + str(ppo.id).rjust(3)
+                    + str(ppo.po_index).rjust(3)
                     + ": "
-                    + ppo.predicatetag.ljust(25)
+                    + ppo.predicate_name.ljust(25)
                     + evstr
                 )
                 if (ev is not None) and ppo.is_delegated():
@@ -265,6 +268,7 @@ def get_julietppos(testset):
     ppos = {}
 
     def g(filename, fileref):
+        filename = filename[:-2]
         if filename not in ppos:
             ppos[filename] = []
 
@@ -289,6 +293,7 @@ Organized as a dictionary: filename -> functionname -> (testppo,ppo) list
 def get_ppo_pairs(julietppos, capp):
     pairs = {}
     for filename in julietppos:
+        chklogger.logger.info("Get ppo pairs for %s", filename)
         if filename not in pairs:
             pairs[filename] = {}
         julietfileppos = julietppos[filename]
@@ -297,6 +302,8 @@ def get_ppo_pairs(julietppos, capp):
         fileppos = cfile.get_ppos()
         for ppo in fileppos:
             fname = ppo.cfun.name
+            chklogger.logger.info(
+                "Get ppo pairs for function %s in file %s", fname, filename)
             if fname not in pairs[filename]:
                 pairs[filename][fname] = []
             for jppo in julietfileppos:
