@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2020-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -35,6 +35,7 @@ if TYPE_CHECKING:
     from chc.app.CFunction import CFunction
 
 class FieldAssignment:
+
     def __init__(self, cfun: "CFunction", xnode: ET.Element) -> None:
         self._cfun = cfun
         self._xnode = xnode

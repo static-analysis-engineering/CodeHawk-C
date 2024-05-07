@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2020-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,6 +26,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Dictionary of all non-local symbolic values."""
 
 from typing import (
     Any, cast, Callable, Dict, List, Mapping, Tuple, Optional, TYPE_CHECKING)
@@ -57,6 +58,9 @@ import chc.api.XPredicate as XP
 
 if TYPE_CHECKING:
     from chc.app.CFile import CFile
+    from chc.app.CFileDeclarations import CFileDeclarations
+    from chc.app.CFileDictionary import CFileDictionary
+
 
 macroconstants = {
     "MININT8": "-128",
@@ -75,12 +79,16 @@ macroconstants = {
 
 
 class InterfaceDictionary(object):
-    """Function interface constructs."""
+    """Function interface constructs.
+
+    Args:
+        cfile (CFile): c-file that owns the dictionary
+        xnode (Optional[ET.Element]): xml element that holds the entries
+            in the dictionary
+    """
 
     def __init__(self, cfile: "CFile", xnode: Optional[ET.Element]):
-        self.cfile = cfile
-        self.declarations = self.cfile.declarations
-        self.dictionary = self.declarations.dictionary
+        self._cfile = cfile
         self.api_parameter_table = IndexedTable("api-parameter-table")
         self.s_offset_table = IndexedTable("s-offset-table")
         self.s_term_table = IndexedTable("s-term-table")
@@ -105,6 +113,18 @@ class InterfaceDictionary(object):
             "xpred": self.get_xpredicate_map}
         self._initialize(xnode)
 
+    @property
+    def cfile(self) -> "CFile":
+        return self._cfile
+
+    @property
+    def declarations(self) -> "CFileDeclarations":
+        return self.cfile.declarations
+
+    @property
+    def dictionary(self) -> "CFileDictionary":
+        return self.cfile.dictionary
+
     # ----------------- Retrieve items from dictionary tables ----------------
 
     def get_api_parameter(self, ix: int) -> ApiParameter:
@@ -124,6 +144,12 @@ class InterfaceDictionary(object):
     def get_s_term(self, ix: int) -> STerm:
         return ifdregistry.mk_instance(
             self, self.s_term_table.retrieve(ix), STerm)
+
+    def get_opt_s_term(self, ix: int) -> Optional[STerm]:
+        if ix == -1:
+            return None
+        else:
+            return self.get_s_term(ix)
 
     def get_s_term_map(self) -> Dict[int, IndexedTableValue]:
         return self.s_term_table.objectmap(self.get_s_term)
@@ -649,7 +675,7 @@ class InterfaceDictionary(object):
             return "\n".join(lines)
         else:
             raise UF.CHCError(
-                "Name: " + name +  " does not correspond to a table")    
+                "Name: " + name +  " does not correspond to a table")
 
     def write_xml(self, node: ET.Element) -> None:
         def f(n: ET.Element, r: Any) -> None:

@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2020-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,69 +26,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
-"""Object representation of sum type xpredicate_t.
-
-Predicate used in representation of external conditions
-
-cchlib/CCHLibTypes.xpredicate_t =    predicate                properties
-                                     --------------------------------------------
-  | XAllocationBase of s_term_t      is_allocation_base       term: STerm
-  | XControlledResource              is_controlled_resource   term: STerm
-      of string * s_term_t                                    resource: str
-  | XBlockWrite                      is_block_write           term: STerm
-      of s_term_t * s_term_t                                  length: STerm
-  | XBuffer of s_term_t * s_term_t   is_buffer                buffer: STerm
-                                                              length: STerm
-  | XConfined of s_term_t            is_confined              term: STerm
-  | XConstTerm of s_term_t           is_const_term            term: STerm
-  | XFormattedInput of s_term_t      is_formatted_input       term: STerm
-  | XFalse                           is_false                 -
-  | XFreed of s_term_t               is_freed                 term: STerm
-  | XFunctional                      is_functional            -
-  | XInitialized of s_term_t         is_initialized           term: STerm
-  | XInitializedRange                is_initialize_range      buffer: STerm
-      of s_term_t * s_term_t                                  length: STerm
-  | XInputFormatString of s_term_t   is_input_formatstring    term: STerm
-  | XInvalidated of s_term_t         is_invalidated           term: STerm
-  | XNewMemory of s_term_t           is_new_memory            term: STerm
-  | XStackAddress of s_term_t        is_stack_address         term: STerm
-  | XHeapAddress of s_term_t         is_heap_address          term: STerm
-  | XGlobalAddress of s_term_t       is_global_address        term: STerm
-  | XNoOverlap                       is_no_overlap            term1: STerm
-      of s_term_t * s_term_t                                  term2: STerm
-  | XNotNull of s_term_t             is_not_null              term: STerm
-  | XNull of s_term_t                is_null                  term: STerm
-  | XNotZero of s_term_t             is_not_zero              term: STerm
-  | XNonNegative of s_term_t         is_non_negative          term: STerm
-  | XNullTerminated of s_term_t      is_null_terminated       term: STerm
-  | XOutputFormatString of s_term_t  is_output_formatstring   term: STerm
-  | XPreservesAllMemory              is_preserves_all_memory  term: STerm
-  | XPreservesAllMemoryX             is_preserves_all_memory_x terms: STerm list
-      of s_term_t list
-  | XPreservesMemory of s_term_t     is_preserves_memory      term: STerm
-  | XPreservesValue of s_term_t      is_preserves_value       term: STerm
-  | XPreservesNullTermination        is_preserves_null_termination   term: STerm
-  | XPreservesValidity of s_term_t   is_preserves_validity    term: STerm
-  | XRelationalExpr of               is_relational_expr       op: str
-      binop * s_term_t * s_term_t                             term1: STerm
-                                                              term2: STerm
-  | XRepositioned of s_term_t        is_repositioned          term: STerm
-  | XRevBuffer of                    is_rev_buffer            buffer: STerm
-      s_term_t * s_term_t                                     length: STerm
-  | XTainted of                      is_tainted               term: STerm 
-      s_term_t                                                lower_bound: STerm
-      * s_term_t option                                       upper_bound: STerm
-      * s_term_t option
-  | XUniquePointer of s_term_t       is_unique_pointer        term: STerm
-  | XValidMem of s_term_t            is_valid_mem             term: STerm
-
-(* policy-related predicates *)
-  | XPolicyPre of s_term_t * string * string list  (* the term has to be in one of the given states *)
-  | XPolicyValue of s_term_t * string * string option
-  (* the term is a newly created policy value and optionally makes a first transition *)
-  | XPolicyTransition of s_term_t * string * string (* the term transitions according to a named transition
-
-"""
+"""Object representation of sum type xpredicate_t."""
 
 from typing import cast, List, Optional, TYPE_CHECKING
 import xml.etree.ElementTree as ET
@@ -113,6 +51,7 @@ def get_printop(s: str) -> str:
 
 
 class XPredicate(InterfaceDictionaryRecord):
+    """Base class of external predicate."""
 
     def __init__(
             self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
@@ -292,7 +231,7 @@ class XPredicate(InterfaceDictionaryRecord):
 class XAllocationBase(XPredicate):
     """Term points to start of allocated region that can be freed.
 
-    args[0]: index of term in interface dictionary
+    * args[0]: index of term in interface dictionary
     """
     def __init__(
             self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
@@ -315,8 +254,8 @@ class XAllocationBase(XPredicate):
 class XBlockWrite(XPredicate):
     """Unstructured write of bytes to pointed address with given length.
 
-    args[0]: index of address term in interface dictionary
-    args[1]: index of length term in interface dictionary
+    * args[0]: index of address term in interface dictionary
+    * args[1]: index of length term in interface dictionary
     """
 
     def __init__(
@@ -342,10 +281,10 @@ class XBlockWrite(XPredicate):
 
 @ifdregistry.register_tag("b", XPredicate)
 class XBuffer(XPredicate):
-    """Denotes a pointer to a buffer with at least a given number of bytes.
+    """Term points to a buffer with at least a given number of bytes.
 
-    args[0]: index of pointer to buffer in interface dictionary
-    args[1]: index of size term in interface dictionary
+    * args[0]: index of pointer to buffer in interface dictionary
+    * args[1]: index of size term in interface dictionary
     """
 
     def __init__(
@@ -404,8 +343,8 @@ class XRevBuffer(XPredicate):
 class XControlledResource(XPredicate):
     """Term is not / must not be tainted.
 
-    tags[1]: name of resource
-    args[0]: index of term in interface dictionary
+    * tags[1]: name of resource
+    * args[0]: index of term in interface dictionary
     """
 
     def __init__(
@@ -508,9 +447,9 @@ class XFalse(XPredicate):
 
 @ifdregistry.register_tag("fi", XPredicate)
 class XFormattedInput(XPredicate):
-    """Argument that provides the format string.
+    """Term is a format string.
 
-    args[0]: index of term in interface dictionary
+    * args[0]: index of term in interface dictionary
     """
 
     def __init__(
@@ -527,14 +466,14 @@ class XFormattedInput(XPredicate):
         return True
 
     def __str__(self) -> str:
-        return "formatte-input(" + str(self.term) + ")"
+        return "formatted-input(" + str(self.term) + ")"
 
 
 @ifdregistry.register_tag("fr", XPredicate)
 class XFreed(XPredicate):
     """Term pointed to is freed.
 
-    args[0]: index of term in interface dictionary.
+    * args[0]: index of term in interface dictionary.
     """
     def __init__(
             self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
@@ -605,8 +544,8 @@ class XInitialized(XPredicate):
 class XInitializedRange(XPredicate):
     """Term pointed to is initialized for the given length (in bytes).
 
-    args[0]: index of buffer pointed-to term in interface dictionary
-    args[1]: index of length term in interface dictionary
+    * args[0]: index of buffer pointed-to term in interface dictionary
+    * args[1]: index of length term in interface dictionary
     """
 
     def __init__(
@@ -636,7 +575,7 @@ class XInitializedRange(XPredicate):
 class XInputFormatString(XPredicate):
     """Term points to scanf format string.
 
-    args[0]: index of format-string term in interface dictionary.
+    * args[0]: index of format-string term in interface dictionary.
     """
 
     def __init__(
@@ -660,7 +599,7 @@ class XInputFormatString(XPredicate):
 class XInvalidated(XPredicate):
     """Term pointed to may not be valid any more.
 
-    args[0]: index of pointed-to term in interface dictionary
+    * args[0]: index of pointed-to term in interface dictionary
     """
 
     def __init__(
@@ -686,7 +625,7 @@ class XNewMemory(XPredicate):
 
     Specifically, memory that is newly allocated since the start of the function.
 
-    args[0]: index of term pointing to new memory in interface dictionary
+    * args[0]: index of term pointing to new memory in interface dictionary
     """
 
     def __init__(
@@ -710,7 +649,7 @@ class XNewMemory(XPredicate):
 class XGlobalAddress(XPredicate):
     """Term points to global memory.
 
-    args[0]: index of term in interface dictionary
+    * args[0]: index of term in interface dictionary
     """
 
     def __init__(
@@ -734,7 +673,7 @@ class XGlobalAddress(XPredicate):
 class XHeapAddress(XPredicate):
     """Term points to heap memory.
 
-    args[0]: index of term in interface dictionary
+    * args[0]: index of term in interface dictionary
     """
 
     def __init__(
@@ -811,7 +750,7 @@ class XNoOverlap(XPredicate):
 class XNotNull(XPredicate):
     """Term is not null.
 
-    args[0]: index of term in interface dictionary
+    * args[0]: index of term in interface dictionary
     """
 
     def __init__(
@@ -842,7 +781,7 @@ class XNotNull(XPredicate):
 class XNonNegative(XPredicate):
     """Term is non-negative.
 
-    args[0]: index of term in interface dictionary
+    * args[0]: index of term in interface dictionary
     """
 
     def __init__(
@@ -873,7 +812,7 @@ class XNonNegative(XPredicate):
 class XNotZero(XPredicate):
     """Term is not zero.
 
-    args[0]: index of term in interface dictionary
+    * args[0]: index of term in interface dictionary
     """
 
     def __init__(
@@ -928,7 +867,7 @@ class XNull(XPredicate):
 class XNullTerminated(XPredicate):
     """Term is null-terminated.
 
-    args[0]: index of interface dictionary
+    * args[0]: index of interface dictionary
     """
 
     def __init__(
@@ -952,7 +891,7 @@ class XNullTerminated(XPredicate):
 class XOutputFormatString(XPredicate):
     """Term points to printf-style format string.
 
-    args[0]: index of term in interface dictionary
+    * args[0]: index of term in interface dictionary
     """
 
     def __init__(
@@ -993,7 +932,7 @@ class XPreservesAllMemory(XPredicate):
 class XPreservesAllMemoryX(XPredicate):
     """Function does not free any external memory except for given terms.
 
-    args[0..]: indices of terms in interface dictionary
+    * args[0..]: indices of terms in interface dictionary
     """
 
     def __init__(
@@ -1021,7 +960,7 @@ class XPreservesAllMemoryX(XPredicate):
 class XPreservesMemory(XPredicate):
     """Function does not free pointed-to memory.
 
-    args[0]: index of term in interface dictionary
+    * args[0]: index of term in interface dictionary
     """
 
     def __init__(
@@ -1045,7 +984,7 @@ class XPreservesMemory(XPredicate):
 class XPreservesNullTermination(XPredicate):
     """Function does not strip null-terminating byte from string pointed-to
 
-    args[0]: index of term in interface dictionary
+    * args[0]: index of term in interface dictionary
     """
 
     def __init__(
@@ -1069,7 +1008,7 @@ class XPreservesNullTermination(XPredicate):
 class XPreservesValidity(XPredicate):
     """Validity of pointed-to resources is maintained.
 
-    args[0]: index of term in interface dictionary
+    * args[0]: index of term in interface dictionary
     """
 
     def __init__(
@@ -1093,7 +1032,7 @@ class XPreservesValidity(XPredicate):
 class XPreservesValue(XPredicate):
     """Function does not modify the value of the term.
 
-    args[0]: index of term in interface dictionary
+    * args[0]: index of term in interface dictionary
     """
 
     def __init__(
@@ -1117,9 +1056,9 @@ class XPreservesValue(XPredicate):
 class XRelationalExpr(XPredicate):
     """Relational expression of terms.
 
-    tags[1]: operator
-    args[0]: index of first term in interface dictionary
-    args[1]: index of second term in interface dictionary
+    * tags[1]: operator
+    * args[0]: index of first term in interface dictionary
+    * args[1]: index of second term in interface dictionary
     """
 
     def __init__(
@@ -1176,7 +1115,7 @@ class XRelationalExpr(XPredicate):
 class XRepositioned(XPredicate):
     """Term pointed to may be freed and reassigned.
 
-    args[0]: index of term in interface dictionary
+    * args[0]: index of term in interface dictionary
     """
 
     def __init__(
@@ -1200,9 +1139,9 @@ class XRepositioned(XPredicate):
 class XTainted(XPredicate):
     """Value of term is externally controlled with optional upper/lower bound.
 
-    args[0]: index of term in interface dictionary
-    args[1]: index of lower bound in interface dictionary (optional)
-    args[2]: index of upper bound in interface dictionary (optional)
+    * args[0]: index of term in interface dictionary
+    * args[1]: index of lower bound in interface dictionary (optional)
+    * args[2]: index of upper bound in interface dictionary (optional)
     """
 
     def __init__(
@@ -1242,7 +1181,7 @@ class XTainted(XPredicate):
 class XUniquePointer(XPredicate):
     """Term is the only pointer pointing at resource.
 
-    args[0]: index of term in interface dictionary
+    * args[0]: index of term in interface dictionary
     """
 
     def __init__(
@@ -1266,7 +1205,7 @@ class XUniquePointer(XPredicate):
 class XValidMem(XPredicate):
     """Pointed-to memory has not been freed (at time of delivery).
 
-    args[0]: index of term in interface dictionary
+    * args[0]: index of term in interface dictionary
     """
 
     def __init__(

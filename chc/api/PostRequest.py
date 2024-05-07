@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2020-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,6 +26,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Request for a particular postcondition predicate on a function."""
 
 from typing import List, TYPE_CHECKING
 
@@ -42,8 +43,8 @@ if TYPE_CHECKING:
 class PostRequest(InterfaceDictionaryRecord):
     """Request for a particular postcondition predicate on a function.
 
-    args[0]: function vid
-    args[1]: index of predicate in interface dictionary
+    * args[0]: function vid
+    * args[1]: index of predicate in interface dictionary
     """
 
     def __init__(
@@ -52,7 +53,7 @@ class PostRequest(InterfaceDictionaryRecord):
 
     @property
     def callee(self) -> "CVarInfo":
-        return self.ifd.cfile.declarations.get_global_varinfo(int(self.args[0]))
+        return self.ifd.cfile.get_global_varinfo(self.args[0])
 
     @property
     def postcondition(self) -> "XPredicate":

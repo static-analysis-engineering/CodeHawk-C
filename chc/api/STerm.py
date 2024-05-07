@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2023 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2020-2023 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,32 +26,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
-"""Object representation of sum type s_term
-
-cchlib/CCHLibTypes.s_term =             predicates                properties
-                                        ----------------------------------------
-  | ArgValue                            is_arg_value              parameter: ApiParameter
-      of api_parameter_t * s_offset_t                             offset: SOffset
-  | LocalVariable of string             is_local_var              name: str
-  | ReturnValue                         is_return_value           -
-  | NamedConstant of string             is_named_constant         name: str
-  | NumConstant of numerical_t          is_num_constant           constantvalue: int
-  | IndexSize of s_term_t               is_index_size             term: STerm
-  | ByteSize of s_term_t                is_byte_size              term: STerm
-  | ArgAddressedValue                   is_arg_addressed_value    term: STerm
-      of s_term_t * s_offset_t                                    offset: SOffset
-  | ArgNullTerminatorPos of s_term_t    is_arg_null_terminator_pos   term: STerm
-  | ArgSizeOfType of s_term_t           is_arg_size_of_type       term: STerm
-  | ArithmeticExpr                      is_arithmetic_expr        op: str
-      of binop * s_term_t * s_term_t                              term1: STerm
-                                                                  term2: STerm
-  | FormattedOutputSize of s_term_t     is_formatted_output_size  term: STerm
-  | Region of s_term_t                  is_region
-  | RuntimeValue                        is_runtime_value
-  | ChoiceValue of                      is_choice_value
-     s_term_t option * s_term_t option
-
-"""
+"""Object representation of sum type s_term (term in an external predicate)."""
 from typing import Dict, List, Optional, TYPE_CHECKING
 import xml.etree.ElementTree as ET
 
@@ -172,8 +147,8 @@ class STerm(InterfaceDictionaryRecord):
 class STArgValue(STerm):
     """Argument value passed to a function.
 
-    args[0]: index of api parameter in interface dictionary
-    args[1]: index of s_term offset in interface dictionary
+    * args[0]: index of api parameter in interface dictionary
+    * args[1]: index of s_term offset in interface dictionary
     """
 
     def __init__(
@@ -201,10 +176,10 @@ class STArgValue(STerm):
 
 
 @ifdregistry.register_tag("lv", STerm)
-class SLocalVariable(STerm):
+class STLocalVariable(STerm):
     """Local variable used in external predicate.
 
-    tags[1]: name
+    * tags[1]: name
 """
 
     def __init__(
@@ -244,7 +219,10 @@ class STReturnValue(STerm):
 
 @ifdregistry.register_tag("nc", STerm)
 class STNamedConstant(STerm):
-    """Named constant with unspecified value."""
+    """Named constant with unspecified value.
+
+    * tags[1]: name
+    """
 
     def __init__(
         self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -304,7 +282,7 @@ class STIndexSize(STerm):
 
     For example, an index-size of 1 corresponds to 4 bytes in an int-array.
 
-    args[0]: index of term in interface dictionary
+    * args[0]: index of term in interface dictionary
     """
 
     def __init__(
@@ -334,7 +312,7 @@ class STIndexSize(STerm):
 class STByteSize(STerm):
     """Size term expressed in bytes.
 
-    args[0]: index of term in interface dictionary
+    * args[0]: index of term in interface dictionary
     """
 
     def __init__(
@@ -387,10 +365,10 @@ class STFieldOffset(STerm):
 
 @ifdregistry.register_tag("aa", STerm)
 class STArgAddressedValue(STerm):
-    """
+    """The value addressed by an argument.
 
-    args[0]: index of term in interface dictionary
-    args[1]: index of term offset in interface dictionary
+    * args[0]: index of term in interface dictionary
+    * args[1]: index of term offset in interface dictionary
     """
 
     def __init__(
@@ -430,9 +408,9 @@ class STArgAddressedValue(STerm):
 
 @ifdregistry.register_tag("at", STerm)
 class STArgNullTerminatorPos(STerm):
-    """Denotes the position of the null-terminator in a string term.
+    """The position of the null-terminator in a string term.
 
-    args[0]: index of term in interface dictionary
+    * args[0]: index of term in interface dictionary
     """
 
     def __init__(
@@ -462,7 +440,7 @@ class STArgNullTerminatorPos(STerm):
 class STArgSizeOfType(STerm):
     """Size of argument type, in bytes.
 
-    args[0]: index of term in interface dictionary
+    * args[0]: index of term in interface dictionary
     """
 
     def __init__(
@@ -492,9 +470,9 @@ class STArgSizeOfType(STerm):
 class STArithmeticExpr(STerm):
     """Binary arithmetic expression on terms.
 
-    tags[1]: binary operator
-    args[0]: index of first term in interface dictionary
-    args[1]: index of second term in interface dictionary
+    * tags[1]: binary operator
+    * args[0]: index of first term in interface dictionary
+    * args[1]: index of second term in interface dictionary
     """
 
     def __init__(
@@ -550,9 +528,9 @@ class STArithmeticExpr(STerm):
 
 @ifdregistry.register_tag("fs", STerm)
 class STFormattedOutputSize(STerm):
-    """Denotes the size of a string formed via a format string.
+    """The size of a string formed via a format string.
 
-    args[0]: index of term in interface dictionary
+    * args[0]: index of term in interface dictionary
     """
 
     def __init__(
@@ -580,9 +558,9 @@ class STFormattedOutputSize(STerm):
 
 @ifdregistry.register_tag("rg", STerm)
 class STRegion(STerm):
-    """Denotes a memory region.
+    """A memory region.
 
-    args[0]: index of term in interface dictionary
+    * args[0]: index of term in interface dictionary
     """
 
     def __init__(
@@ -610,7 +588,7 @@ class STRegion(STerm):
 
 @ifdregistry.register_tag("rt", STerm)
 class STRuntimeValue(STerm):
-    """Denotes a value that is determined at runtime."""
+    """A value that is determined at runtime."""
 
     def __init__(
         self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -625,3 +603,33 @@ class STRuntimeValue(STerm):
 
     def __str__(self) -> str:
         return "runtime-value"
+
+
+@ifdregistry.register_tag("cv", STerm)
+class STChoiceValue(STerm):
+    """Any value between an optional lowerbound and upperbound.
+
+    * args[0]: index of optional lower bound in interface dictionary
+    * args[1]: index of optional upper bound in interface dictionary
+    """
+
+    def __init__(
+        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue) -> None:
+        STerm.__init__(self, ifd, ixval)
+
+    @property
+    def termlb(self) -> Optional[STerm]:
+        return self.ifd.get_opt_s_term(self.args[0])
+
+    @property
+    def termub(self) -> Optional[STerm]:
+        return self.ifd.get_opt_s_term(self.args[1])
+
+    @property
+    def is_choice_value(self) -> bool:
+        return True
+
+    def __str__(self) -> str:
+        lb = str(self.termlb) if self.termlb is not None else ".."
+        ub = str(self.termub) if self.termub is not None else ".."
+        return f"[{lb} ; {ub}]"

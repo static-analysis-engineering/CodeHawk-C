@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2020-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,12 +26,14 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""User-provided contracts for variables and functions in a c-file."""
 
 import xml.etree.ElementTree as ET
 
 from typing import Callable, Dict, List, Optional, TYPE_CHECKING
 
 import chc.util.fileutil as UF
+from chc.util.loggingutil import chklogger
 
 from chc.api.CFunctionContract import CFunctionContract
 
@@ -64,10 +66,10 @@ class CFileContracts:
     def __init__(self, cfile: "CFile", contractpath: str) -> None:
         self._cfile = cfile
         self._contractpath = contractpath
-        self.xnode = UF.get_contracts(self._contractpath, self._cfile.name)
+        # self.xnode = UF.get_contracts(self._contractpath, self._cfile.name)
         self._functions: Dict[str, CFunctionContract] = {}
         self._globalvariables: Dict[str, CFileContractGlobalVar] = {}
-        self._initialize(self.xnode)
+        self._initialize()
 
     @property
     def cfile(self) -> "CFile":
@@ -92,6 +94,8 @@ class CFileContracts:
             raise UF.CHCError("No function contract found for " + name)
 
     def has_function_contract(self, name: str) -> bool:
+        """Returns true if this contract contains a function contract for name."""
+
         return name in self.functions
 
     def has_assertions(self) -> bool:
@@ -152,7 +156,8 @@ class CFileContracts:
             lines.append("-" * 80)
         return "\n".join(lines)
 
-    def _initialize(self, xnode: Optional[ET.Element]) -> None:
+    def _initialize(self) -> None:
+        xnode = UF.get_contracts(self.contractpath, self.cfile.name)
         if xnode is None:
             return
         gvnode = xnode.find("global-variables")
@@ -161,7 +166,7 @@ class CFileContracts:
                 name = gnode.get("name")
                 if name is None:
                     raise UF.CHCError("No name specified for global variable")
-                gvinfo = self.cfile.declarations.get_global_varinfo_by_name(name)
+                gvinfo = self.cfile.get_global_varinfo_by_name(name)
                 gconst = "const" in gnode.attrib and gnode.get("const") == "yes"
                 gval = gnode.get("value")
                 gvalue = int(gval) if gval else None
@@ -172,4 +177,5 @@ class CFileContracts:
         if ffnode is not None:
             for fnode in ffnode.findall("function"):
                 fn = CFunctionContract(self, fnode)
+                chklogger.logger.info("Function contract found for %s", fn.name)
                 self._functions[fn.name] = fn

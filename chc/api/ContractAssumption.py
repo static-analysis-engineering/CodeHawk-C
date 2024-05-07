@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2020-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,6 +26,18 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Assumption on the return value of a function represented by a predicate.
+
+Assumptions about return values of functions are never 'imposed' like those on
+function arguments by the receiving function. The reason is that different
+functions may have different expectations about the postcondition of a function,
+or the transfer relation of the function.
+
+Necessary postconditions may be suggested with the open proof obligation as a
+hint towards conditions that can then be imposed deliberately via a contract
+assumption.
+
+"""
 
 from typing import Any, List, TYPE_CHECKING
 
@@ -36,6 +48,21 @@ if TYPE_CHECKING:
 
 
 class ContractAssumption:
+    """Post condition assumption or assumption on global variable.
+
+    Args:
+        capi (CFunctionApi): the function api of the function that
+           requests the assumption
+        id (int): identification number of the assumption
+        callee (int): (local) id of the function for which the
+           postcondition is requested (-1 for a request on a global
+           variable)
+        xpredicate (XPredicate): predicate representing the assumption
+        ppos (List[int]): id's of the primary proof obligations that
+           require this assumption for discharge
+        spos (List[int]): id's of the supporting proof obligations that
+           require this assumption for discharge
+    """
 
     def __init__(
         self,
@@ -83,9 +110,7 @@ class ContractAssumption:
         strspos = ""
         calleename = "global"
         if self.callee >= 0:
-            calleename = self.capi.cfile.declarations.get_global_varinfo(
-                self.callee
-            ).vname
+            calleename = self.capi.cfile.get_global_varinfo(self.callee).vname
         if len(self.ppos) > 0:
             strppos = (
                 "\n      --Dependent ppo's: ["

@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2020-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,12 +26,14 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""User-provided function contract with assumptions and guarantees."""
 
 import xml.etree.ElementTree as ET
 
 from typing import Dict, List, Optional, TYPE_CHECKING
 
 import chc.util.fileutil as UF
+from chc.util.loggingutil import chklogger
 
 if TYPE_CHECKING:
     from chc.api.CFileContracts import CFileContracts
@@ -44,7 +46,6 @@ if TYPE_CHECKING:
 
 
 class CFunctionContract(object):
-    """Representsa user-provided function contract."""
 
     def __init__(
             self,
@@ -56,6 +57,7 @@ class CFunctionContract(object):
         self._postconditions: Optional[Dict[int, "XPredicate"]] = None
         self._preconditions: Optional[Dict[int, "XPredicate"]] = None
         self._sideeffects: Optional[Dict[int, "XPredicate"]] = None
+        self._postrequests: Dict[int, "XPredicate"] = {}
         # self._initialize(self.xnode)
 
     @property
@@ -106,6 +108,10 @@ class CFunctionContract(object):
         return len(self.preconditions) > 0
 
     @property
+    def postrequests(self) -> Dict[int, "XPredicate"]:
+        return self._postrequests
+
+    @property
     def signature(self) -> Dict[str, int]:
         if self._signature is None:
             xsig = self._xnode.find("parameters")
@@ -128,16 +134,17 @@ class CFunctionContract(object):
 
     @property
     def postconditions(self) -> Dict[int, "XPredicate"]:
+        chklogger.logger.info("Retrieve postconditions for %s", self.name)
         if self._postconditions is None:
+            self._postconditions = {}
             xpost = self._xnode.find("postconditions")
             if xpost is not None:
-                self._postconditions = {}
                 for xpc in xpost.findall("post"):
                     ipc = self.ifd.parse_mathml_xpredicate(xpc, self.signature)
                     pc = self.ifd.get_xpredicate(ipc)
                     self._postconditions[ipc] = pc
                 return self._postconditions
-        self._postconditions = {}
+        # self._postconditions = None
         return self._postconditions
 
     @property
@@ -167,6 +174,13 @@ class CFunctionContract(object):
                 return self._sideeffects
         self._sideeffects = {}
         return self._sideeffects
+
+    def add_postrequest(self, req: "XPredicate") -> None:
+        """Add post request from caller's function api"""
+
+        if req.index in self.postconditions:
+            return
+        self.postrequests[req.index] = req
 
     '''
     def _initialize_signature(self, ppnode: ET.Element):
