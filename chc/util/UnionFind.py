@@ -1,4 +1,4 @@
-"""UnionFind.py
+"""Union-find data structure
 
 Union-find data structure. Based on Josiah Carlson's code,
 http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/215912
