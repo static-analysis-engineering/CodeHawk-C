@@ -24,7 +24,27 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
-"""Command-line interface to the CodeHawk C Analyzer."""
+"""Command-line interface to the CodeHawk C Analyzer.
+
+Naming conventions:
+
+- pcfilename_c    full-path name of cfile analyzed
+- cfilename       base name of cfile analyzed (without extension)
+- cfilename_c     idem, with .c extension
+- projectpath     full-path of directory in which cfilename_c resides
+- targetpath      full-path of directory in which results are saved
+- projectname     name under which results are saved
+
+Unless specified otherwise the following defaults are used:
+
+- targetpath : set equal to projectpath
+- projectname: set to cfilename
+
+The results are stored in the directory
+
+  targetpath/projectname.cch
+
+"""
 
 import argparse
 import json
@@ -72,7 +92,7 @@ def set_logging(
 def cfile_parse_file(args: argparse.Namespace) -> NoReturn:
 
     # arguments
-    cfilename: str = args.filename
+    pcfilename: str = os.path.abspath(args.filename)
     opttgtpath: Optional[str] = args.tgtpath
     loglevel: str = args.loglevel
     logfilename: Optional[str] = args.logfilename
@@ -84,54 +104,43 @@ def cfile_parse_file(args: argparse.Namespace) -> NoReturn:
         print(str(e.wrap()))
         exit(1)
 
-    abscfilename = os.path.abspath(cfilename)
-    cpath = os.path.dirname(abscfilename)
-    cfilename = os.path.basename(abscfilename)
-    if not os.path.isfile(abscfilename):
-        print("C source code file %s not found", abscfilename)
+    if not os.path.isfile(os.path.abspath(pcfilename)):
+        print_error("C source code file " + pcfilename + " not found")
         exit(1)
 
-    if not abscfilename.endswith(".c"):
+    if not pcfilename.endswith(".c"):
         print_error("C source code file should have extension .c")
+        exit(1)
+
+    projectpath = os.path.dirname(pcfilename)
+    targetpath = projectpath if opttgtpath is None else opttgtpath
+    cfilename_c = os.path.basename(pcfilename)
+    cfilename = cfilename_c[:-2]
+    projectname = cfilename
+
+    if not os.path.isdir(targetpath):
+        print_error("Target directory: " + targetpath + " does not exist")
         exit(1)
 
     set_logging(
         loglevel,
-        cpath,
+        targetpath,
         logfilename=logfilename,
         mode=logfilemode,
         msg="cfile parse invoked")
 
-    if opttgtpath is None:
-        ctgtpath = cpath
-    else:
-        ctgtpath = os.path.abspath(opttgtpath)
-    chklogger.logger.info("Target path: %s", ctgtpath)
+    chklogger.logger.info("Target path: %s", targetpath)
 
-    sempathname = cfilename + "ch"
-    sempath = os.path.join(ctgtpath, sempathname)
-    tarname = sempathname + ".tar.gz"
-    abstarname = os.path.join(ctgtpath, tarname)
-
-    chklogger.logger.info("Change directory to %s", ctgtpath)
-    os.chdir(ctgtpath)
-    if os.path.isdir(sempath):
-        chklogger.logger.info("Removing semantics directory %s", sempath)
-        shutil.rmtree(sempath)
-
-    if os.path.isfile(abstarname):
-        chklogger.logger.info("Removing tarfile %s", abstarname)
-        os.remove(abstarname)
-
-    parsemanager = ParseManager(cpath, ctgtpath, sempathname)
+    parsemanager = ParseManager(projectpath, projectname, targetpath)
+    parsemanager.remove_semantics()
     parsemanager.initialize_paths()
 
     try:
-        ifilename = parsemanager.preprocess_file_with_gcc(cfilename)
-        result = parsemanager.parse_ifile(ifilename)
+        cfilename_i = parsemanager.preprocess_file_with_gcc(cfilename_c)
+        result = parsemanager.parse_ifile(cfilename_i)
         if result != 0:
             print("*" * 80)
-            print("Error in parsing " + cfilename)
+            print("Error in parsing " + cfilename_c)
             if Config().platform == "macOS":
                 print("  (Problem may be related to standard header files on macOS)")
             print("*" * 80)
@@ -142,22 +151,28 @@ def cfile_parse_file(args: argparse.Namespace) -> NoReturn:
 
     parsemanager.save_semantics()
 
+    chklogger.logger.info("cfile parse completed")
+
     exit(0)
 
 
 def cfile_analyze_file(args: argparse.Namespace) -> NoReturn:
 
     # arguments
-    cfilename: str = args.filename
+    xcfilename: str = args.filename
     opttgtpath: Optional[str] = args.tgtpath
+    wordsize: int = args.wordsize
+    verbose: bool = args.verbose
     loglevel: str = args.loglevel
     logfilename: Optional[str] = args.logfilename
     logfilemode: str = args.logfilemode
 
-    projectpath = os.path.dirname(os.path.abspath(cfilename))
+    projectpath = os.path.dirname(os.path.abspath(xcfilename))
     targetpath = projectpath if opttgtpath is None else opttgtpath
-    cfilename = os.path.basename(cfilename)
-    projectname = cfilename[:-2]
+    targetpath = os.path.abspath(targetpath)
+    cfilename_ext = os.path.basename(xcfilename)
+    cfilename = cfilename_ext[:-2]
+    projectname = cfilename
 
     set_logging(
         loglevel,
@@ -199,22 +214,23 @@ def cfile_analyze_file(args: argparse.Namespace) -> NoReturn:
     capp = CApplication(
         projectpath, projectname, targetpath, contractpath, singlefile=True)
 
-    capp.initialize_single_file(cfilename[:-2])
+    capp.initialize_single_file(cfilename)
+    cfile = capp.get_cfile()
 
-    am = AnalysisManager(capp)
+    am = AnalysisManager(capp, verbose=verbose, wordsize=wordsize)
 
-    am.create_file_primary_proofobligations(cfilename[:-2])
-    am.reset_tables(cfilename[:-2])
+    am.create_file_primary_proofobligations(cfilename)
+    am.reset_tables(cfile)
     capp.collect_post_assumes()
 
-    am.generate_and_check_file(cfilename[:-2], "llrvisp")
-    am.reset_tables(cfilename[:-2])
+    am.generate_and_check_file(cfilename, "llrvisp")
+    am.reset_tables(cfile)
     capp.collect_post_assumes()
 
     for k in range(5):
         capp.update_spos()
-        am.generate_and_check_file(cfilename[:-2], "llrvisp")
-        am.reset_tables(cfilename[:-2])
+        am.generate_and_check_file(cfilename, "llrvisp")
+        am.reset_tables(cfile)
 
     chklogger.logger.info("cfile analyze completed")
 
@@ -224,7 +240,7 @@ def cfile_analyze_file(args: argparse.Namespace) -> NoReturn:
 def cfile_report_file(args: argparse.Namespace) -> NoReturn:
 
     # arguments
-    cfilename: str = args.filename
+    xcfilename: str = args.filename
     opttgtpath: Optional[str] = args.tgtpath
     cshowcode: bool = args.showcode
     copen: bool = args.open
@@ -234,10 +250,12 @@ def cfile_report_file(args: argparse.Namespace) -> NoReturn:
     logfilename: Optional[str] = args.logfilename
     logfilemode: str = args.logfilemode
 
-    projectpath = os.path.dirname(os.path.abspath(cfilename))
+    projectpath = os.path.dirname(os.path.abspath(xcfilename))
     targetpath = projectpath if opttgtpath is None else opttgtpath
-    cfilename = os.path.basename(cfilename)
-    projectname = cfilename[:-2]
+    targetpath = os.path.abspath(targetpath)
+    cfilename_c = os.path.basename(xcfilename)
+    cfilename = cfilename_c[:-2]
+    projectname = cfilename
 
     set_logging(
         loglevel,
@@ -251,7 +269,7 @@ def cfile_report_file(args: argparse.Namespace) -> NoReturn:
 
     capp = CApplication(
         projectpath, projectname, targetpath, contractpath, singlefile=True)
-    capp.initialize_single_file(cfilename[:-2])
+    capp.initialize_single_file(cfilename)
     cfile = capp.get_cfile()
 
     if jsonoutput:
