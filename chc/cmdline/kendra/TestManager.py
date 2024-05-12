@@ -290,7 +290,7 @@ class TestManager:
             self,
             cfilename: str,
             fname: str,
-            ppos: List["CFunctionPPO"]) -> None:
+            ppos: List["CFunctionPO"]) -> None:
         """Create reference ppos from actual analysis results."""
 
         result: List[Dict[str, str]] = []

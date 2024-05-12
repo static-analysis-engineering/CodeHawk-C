@@ -427,7 +427,7 @@ def parse() -> argparse.Namespace:
     cfilereport = cfileparsers.add_parser("report")
     cfilereport.add_argument(
         "filename",
-        help = "name of directory that holds the semantics directory")
+        help="name of file to analyze ((<cpath/>)<cfilename>)")
     cfilereport.add_argument(
         "--tgtpath",
         help="directory that holds the analysis results")
@@ -435,6 +435,10 @@ def parse() -> argparse.Namespace:
         "--showcode",
         action="store_true",
         help="show proof obligations on code for entire file")
+    cfilereport.add_argument(
+        "--functions",
+        nargs="*",
+        help="restrict output to function names listed (defualt: all)")
     cfilereport.add_argument(
         "--open",
         action="store_true",
@@ -461,6 +465,66 @@ def parse() -> argparse.Namespace:
         help="file mode for log file: append (a, default), or write (w)")
 
     cfilereport.set_defaults(func=C.cfile_report_file)
+
+    # --- investigate
+    cfileinvestigate = cfileparsers.add_parser("investigate")
+    cfileinvestigate.add_argument(
+        "filename",
+        help="name of file to analyze ((<cpath/>)<cfilename>)")
+    cfileinvestigate.add_argument(
+        "--tgtpath",
+        help="directory that holds the analysis results")
+    cfileinvestigate.add_argument(
+        "--predicates",
+        nargs="*",
+        help="names of predicates of interest, e.g., not-null (default: all")
+    cfileinvestigate.add_argument(
+        "--referrals",
+        action="store_true",
+        help="show diagnostics with a domain referral")
+    cfileinvestigate.add_argument(
+        "--loglevel", "-log",
+        choices=UL.LogLevel.options(),
+        default="NONE",
+        help="activate logging with given level (default to stderr)")
+    cfileinvestigate.add_argument(
+        "--logfilename",
+        help="name of file to write log messages")
+    cfileinvestigate.add_argument(
+        "--logfilemode",
+        choices=["a", "w"],
+        default="a",
+        help="file mode for log file: append (a, default), or write (w)")
+    cfileinvestigate.set_defaults(func=C.cfile_investigate_file)
+
+    # --- test libc summary
+    cfiletestlibc = cfileparsers.add_parser("test-libc-summary")
+    cfiletestlibc.add_argument(
+        "header", help="name of header file, e.g., time")
+    cfiletestlibc.add_argument(
+        "function", help="name of function, e.g., localtime")
+    cfiletestlibc.add_argument(
+        "--showcode",
+        action="store_true",
+        help="show proof obligations and results on code")
+    cfiletestlibc.add_argument(
+        "--open",
+        action="store_true",
+        help="only show open proof obligations on code")
+    cfiletestlibc.add_argument(
+        "--loglevel", "-log",
+        choices=UL.LogLevel.options(),
+        default="NONE",
+        help="activate logging with given level (default to stderr)")
+    cfiletestlibc.add_argument(
+        "--logfilename",
+        help="name of file to write log messages")
+    cfiletestlibc.add_argument(
+        "--logfilemode",
+        choices=["a", "w"],
+        default="a",
+        help="file mode for log file: append (a, default), or write (w)")
+    cfiletestlibc.set_defaults(func=C.cfile_testlibc_summary)
 
     args = parser.parse_args()
     return args
