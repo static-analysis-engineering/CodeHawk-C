@@ -61,6 +61,7 @@ from typing import NoReturn
 from chc.app.CHVersion import chcversion
 
 import chc.cmdline.c_file.cfileutil as C
+import chc.cmdline.c_file.cfiletableutil as CT
 import chc.cmdline.juliet.julietutil as J
 import chc.cmdline.kendra.kendrautil as K
 import chc.reporting.DictionaryTables as DT
@@ -114,6 +115,26 @@ could not be proven, with some additional information why they could not be
 proven that may be helpful in either fixing the code or providing additional
 assumptions on the code.
     """
+    print(descr)
+    exit(0)
+
+
+def cfile_filetable_command(args: argparse.Namespace) -> NoReturn:
+    descr = """
+The chkc c-file file-table set of commands is used to inspect a table of
+indexed values created by the analyzer for each file to communicate results
+back and forth between the ocaml and python components of the analyzer.
+"""
+    print(descr)
+    exit(0)
+
+
+def cfile_functiontable_command(args: argparse.Namespace) -> NoReturn:
+    descr = """
+The chkc c-file function-table set of commands is used to inspect a table of
+indexed values created by the analyzer for each function to communicate results
+back and forth between the ocaml and python components of the analyzer.
+"""
     print(descr)
     exit(0)
 
@@ -470,7 +491,7 @@ def parse() -> argparse.Namespace:
     cfileinvestigate = cfileparsers.add_parser("investigate")
     cfileinvestigate.add_argument(
         "filename",
-        help="name of file to analyze ((<cpath/>)<cfilename>)")
+        help="name of file analyzed ((<cpath/>)<cfilename>)")
     cfileinvestigate.add_argument(
         "--tgtpath",
         help="directory that holds the analysis results")
@@ -525,6 +546,293 @@ def parse() -> argparse.Namespace:
         default="a",
         help="file mode for log file: append (a, default), or write (w)")
     cfiletestlibc.set_defaults(func=C.cfile_testlibc_summary)
+
+    # --- show globals
+    cfileshowglobals = cfileparsers.add_parser("show-globals")
+    cfileshowglobals.add_argument(
+        "filename",
+        help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfileshowglobals.add_argument(
+        "--tgtpath",
+        help="name of directory that holds the analysis results")
+    cfileshowglobals.set_defaults(func=C.cfile_showglobals)
+
+    # --- file-table
+    cfilefiletablescmd = cfileparsers.add_parser("file-table")
+    cfilefiletablescmd.set_defaults(func= cfile_filetable_command)
+    cfiletablesparsers = cfilefiletablescmd.add_subparsers(title="show options")
+
+    # --- file-table: attrparam
+    cfile_attrparamtable = cfiletablesparsers.add_parser("attrparam")
+    cfile_attrparamtable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_attrparamtable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_attrparamtable.set_defaults(func=CT.cfile_attrparam_table)
+
+    # --- file-table: attribute
+    cfile_attributetable = cfiletablesparsers.add_parser("attribute")
+    cfile_attributetable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_attributetable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_attributetable.set_defaults(func=CT.cfile_attribute_table)
+
+    # --- file-table: attributes
+    cfile_attributestable = cfiletablesparsers.add_parser("attributes")
+    cfile_attributestable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_attributestable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_attributestable.set_defaults(func=CT.cfile_attributes_table)
+
+    # --- file-table: constant
+    cfile_constanttable = cfiletablesparsers.add_parser("constant")
+    cfile_constanttable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_constanttable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_constanttable.set_defaults(func=CT.cfile_constant_table)
+
+    # --- file-table: exp
+    cfile_exptable = cfiletablesparsers.add_parser("exp")
+    cfile_exptable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_exptable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_exptable.set_defaults(func=CT.cfile_exp_table)
+
+    # --- file-table: funarg
+    cfile_funargtable = cfiletablesparsers.add_parser("funarg")
+    cfile_funargtable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_funargtable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_funargtable.set_defaults(func=CT.cfile_funarg_table)
+
+    # --- file-table: funargs
+    cfile_funargstable = cfiletablesparsers.add_parser("funargs")
+    cfile_funargstable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_funargstable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_funargstable.set_defaults(func=CT.cfile_funargs_table)
+
+    # --- file-table: lhost
+    cfile_lhosttable = cfiletablesparsers.add_parser("lhost")
+    cfile_lhosttable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_lhosttable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_lhosttable.set_defaults(func=CT.cfile_lhost_table)
+
+    # --- file-table: lval
+    cfile_lvaltable = cfiletablesparsers.add_parser("lval")
+    cfile_lvaltable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_lvaltable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_lvaltable.set_defaults(func=CT.cfile_lval_table)
+
+    # --- file-table: offset
+    cfile_offsettable = cfiletablesparsers.add_parser("offset")
+    cfile_offsettable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_offsettable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_offsettable.set_defaults(func=CT.cfile_offset_table)
+
+    # --- file-table: typ
+    cfile_typtable = cfiletablesparsers.add_parser("typ")
+    cfile_typtable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_typtable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_typtable.set_defaults(func=CT.cfile_typ_table)
+
+    # --- file-table: typsig
+    cfile_typsigtable = cfiletablesparsers.add_parser("typsig")
+    cfile_typsigtable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_typsigtable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_typsigtable.set_defaults(func=CT.cfile_typsig_table)
+
+    # --- file-table: typsiglist
+    cfile_typsiglisttable = cfiletablesparsers.add_parser("typsig-list")
+    cfile_typsiglisttable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_typsiglisttable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_typsiglisttable.set_defaults(func=CT.cfile_typsiglist_table)
+
+    # --- file table: compinfo
+    cfile_compinfotable = cfiletablesparsers.add_parser("compinfo")
+    cfile_compinfotable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_compinfotable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_compinfotable.set_defaults(func=CT.cfile_compinfo_table)
+
+    # --- file table: enuminfo
+    cfile_enuminfotable = cfiletablesparsers.add_parser("enuminfo")
+    cfile_enuminfotable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_enuminfotable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_enuminfotable.set_defaults(func=CT.cfile_enuminfo_table)
+
+    # --- file table: enumitem
+    cfile_enumitemtable = cfiletablesparsers.add_parser("enumitem")
+    cfile_enumitemtable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_enumitemtable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_enumitemtable.set_defaults(func=CT.cfile_enumitem_table)
+
+    # --- file table: fieldinfo
+    cfile_fieldinfotable = cfiletablesparsers.add_parser("fieldinfo")
+    cfile_fieldinfotable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_fieldinfotable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_fieldinfotable.set_defaults(func=CT.cfile_fieldinfo_table)
+
+    # --- file table: initinfo
+    cfile_initinfotable = cfiletablesparsers.add_parser("initinfo")
+    cfile_initinfotable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_initinfotable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_initinfotable.set_defaults(func=CT.cfile_initinfo_table)
+
+    # --- file table: location
+    cfile_locationtable = cfiletablesparsers.add_parser("location")
+    cfile_locationtable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_locationtable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_locationtable.set_defaults(func=CT.cfile_location_table)
+
+    # --- file table: offsetinfo
+    cfile_offsetinfotable = cfiletablesparsers.add_parser("offsetinfo")
+    cfile_offsetinfotable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_offsetinfotable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_offsetinfotable.set_defaults(func=CT.cfile_offsetinfo_table)
+
+    # --- file table: typeinfo
+    cfile_typeinfotable = cfiletablesparsers.add_parser("typeinfo")
+    cfile_typeinfotable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_typeinfotable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_typeinfotable.set_defaults(func=CT.cfile_typeinfo_table)
+
+    # --- file table: varinfo
+    cfile_varinfotable = cfiletablesparsers.add_parser("varinfo")
+    cfile_varinfotable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_varinfotable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_varinfotable.set_defaults(func=CT.cfile_varinfo_table)
+
+    # --- file table: program-context
+    cfile_pcontexttable = cfiletablesparsers.add_parser("program-context")
+    cfile_pcontexttable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_pcontexttable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_pcontexttable.set_defaults(func=CT.cfile_pcontext_table)
+
+    # --- file table: exp-context
+    cfile_expcontexttable = cfiletablesparsers.add_parser("exp-context")
+    cfile_expcontexttable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_expcontexttable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_expcontexttable.set_defaults(func=CT.cfile_expcontext_table)
+
+    # --- file table: cfg-context
+    cfile_cfgcontexttable = cfiletablesparsers.add_parser("cfg-context")
+    cfile_cfgcontexttable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_cfgcontexttable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_cfgcontexttable.set_defaults(func=CT.cfile_cfgcontext_table)
+
+    # --- file table: api-param
+    cfile_apiparamtable = cfiletablesparsers.add_parser("api-param")
+    cfile_apiparamtable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_apiparamtable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_apiparamtable.set_defaults(func=CT.cfile_apiparam_table)
+
+    # --- file table: post-assume
+    cfile_postassumetable = cfiletablesparsers.add_parser("post-assume")
+    cfile_postassumetable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_postassumetable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_postassumetable.set_defaults(func=CT.cfile_postassume_table)
+
+    # --- file table: post-request
+    cfile_postrequesttable = cfiletablesparsers.add_parser("post-request")
+    cfile_postrequesttable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_postrequesttable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_postrequesttable.set_defaults(func=CT.cfile_postrequest_table)
+
+    # --- file table: sterm
+    cfile_stermtable = cfiletablesparsers.add_parser("s-term")
+    cfile_stermtable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_stermtable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_stermtable.set_defaults(func=CT.cfile_sterm_table)
+
+    # --- file table: soffset
+    cfile_soffsettable = cfiletablesparsers.add_parser("s-offset")
+    cfile_soffsettable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_soffsettable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_soffsettable.set_defaults(func=CT.cfile_soffset_table)
+
+    # --- file table: xpredicate
+    cfile_xpredtable = cfiletablesparsers.add_parser("xpredicate")
+    cfile_xpredtable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_xpredtable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_xpredtable.set_defaults(func=CT.cfile_xpred_table)
+
+    # --- file table: po-predicate
+    cfile_predicatetable = cfiletablesparsers.add_parser("po-predicate")
+    cfile_predicatetable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_predicatetable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_predicatetable.set_defaults(func=CT.cfile_predicate_table)
+
+    # --- function-table
+    cfilefntablescmd = cfileparsers.add_parser("function-table")
+    cfilefntablescmd.set_defaults(func=cfile_functiontable_command)
+    cfilefntablesparsers = cfilefntablescmd.add_subparsers(title="show options")
+
+    # --- function table: numerical
+    cfile_numericaltable = cfilefntablesparsers.add_parser("numerical")
+    cfile_numericaltable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_numericaltable.add_argument(
+        "function", help="name of function of interest")
+    cfile_numericaltable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_numericaltable.set_defaults(func=CT.cfile_numerical_table)
+
 
     args = parser.parse_args()
     return args

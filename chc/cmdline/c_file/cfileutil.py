@@ -546,3 +546,69 @@ def cfile_testlibc_summary(args: argparse.Namespace) -> NoReturn:
     # TODO: add investigation output
 
     exit(0)
+
+
+def cfile_showglobals(args: argparse.Namespace) -> NoReturn:
+    """Shows the global definitions and declarations in a c-file."""
+
+    # arguments
+    xcfilename: str = args.filename
+    opttgtpath: Optional[str] = args.tgtpath
+
+    projectpath = os.path.dirname(os.path.abspath(xcfilename))
+    targetpath = projectpath if opttgtpath is None else opttgtpath
+    cfilename_c = os.path.basename(xcfilename)
+    cfilename = cfilename_c[:-2]
+    projectname = cfilename
+
+    cchpath = UF.get_cchpath(targetpath, projectname)
+    contractpath = os.path.join(targetpath, "chc_contracts")
+
+    capp = CApplication(
+        projectpath, projectname, targetpath, contractpath, singlefile=True)
+    capp.initialize_single_file(cfilename)
+    cfile = capp.get_cfile()
+
+    lines: List[str] = []
+
+    def header(s: str) -> str:
+        return ("\n" + ("-" * 80) + "\n" + s + "\n" + ("-" * 80))
+
+    if len(cfile.gcomptagdefs) > 0:
+        lines.append(header("Global struct definitions"))
+        for gcdef in cfile.gcomptagdefs.values():
+            lines.append(str(gcdef))
+            lines.append(str(gcdef.compinfo))
+
+    if len(cfile.gcomptagdecls) > 0:
+        lines.append(header("Global struct declarations"))
+        for gcdecl in cfile.gcomptagdecls.values():
+            lines.append(str(gcdecl))
+
+    if len(cfile.genumtagdefs) > 0:
+        lines.append(header("Global enum definitions"))
+        for gedef in cfile.genumtagdefs.values():
+            lines.append(str(gedef))
+
+    if len(cfile.genumtagdecls) > 0:
+        lines.append(header("Global enum declarations"))
+        for gedecl in cfile.genumtagdecls.values():
+            lines.append(str(gedecl))
+
+    if len(cfile.gvardefs) > 0:
+        lines.append(header("Global variable definitions"))
+        for gvdef in cfile.gvardefs.values():
+            lines.append(str(gvdef))
+
+    if len(cfile.gfunctions) > 0:
+        lines.append(header("Function declarations"))
+        for gfun in cfile.gfunctions.values():
+            lines.append(str(gfun))
+
+    if len(cfile.gtypes) > 0:
+        lines.append(header("Global type declarations"))
+        for gtype in cfile.gtypes.values():
+            lines.append(str(gtype))
+
+    print("\n".join(lines))
+    exit(0)
