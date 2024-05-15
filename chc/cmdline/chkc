@@ -124,6 +124,41 @@ def cfile_filetable_command(args: argparse.Namespace) -> NoReturn:
 The chkc c-file file-table set of commands is used to inspect a table of
 indexed values created by the analyzer for each file to communicate results
 back and forth between the ocaml and python components of the analyzer.
+
+File tables available:
+
+- api-param      : function api parameters
+- attrparam      : attribute parameters
+- attribute      : attributes of variables and types
+- attributes     : attribute lists
+- cfg-context    : structural representations of locations relative to cfg
+- compinfo       : struct/union data structures
+- constant       : constants used throughout the c-file
+- enuminfo       : enumeration data types
+- enumitem       : enumeration data type items
+- exp            : C expressions
+- exp-context    : structural representations of expression locations
+- fieldinfo      : struct/union field information
+- funarg         : function arguments
+- funargs        : function arguments lists
+- initinfo       : global variable initializers
+- lhost          : base left-hand-side values
+- location       : program locations
+- lval           : left-hand-side values
+- offset         : memory offsets
+- offsetinto     : offsets in global initializers
+- po-predicate   : proof-obligation predicates
+- post-assume    : assumptions on post conditions
+- post-request   : requests for post conditions
+- program-context: structural representations of program locations
+- s-offset       : offsets in external expressions
+- s-term         : terms in external expressions
+- typeinfo       : type definitions
+- typsig         : attribute type signatures
+- typsiglist     : attribute type signatures lists
+- varinfo        : global/local variable information
+- xpredicate     : external predicates
+
 """
     print(descr)
     exit(0)
@@ -134,6 +169,26 @@ def cfile_functiontable_command(args: argparse.Namespace) -> NoReturn:
 The chkc c-file function-table set of commands is used to inspect a table of
 indexed values created by the analyzer for each function to communicate results
 back and forth between the ocaml and python components of the analyzer.
+
+Function tables available:
+
+- assumption-type        : expressions used as assumptions
+- constant-value-variable: C analysis variables that are constant in a function
+- invariant-fact         : invariant expressions
+- memory-base            : C analysis memory base values
+- memory-reference       : C analysis memory reference values
+- non-relational-value   : single-variable invariant values
+- numerical              : CHIF numerical values
+- ppo-type               : primary proof obligations
+- spo-type               : supporting proof obligations
+- symbol                 : CHIF symbols
+- variable               : CHIF variables
+- variable-denotation    : C analysis variables
+- varinfo                : global/local C variables used within a function
+- xconstant              : xpr constants
+- xpr                    : xpr expressions
+- xpr-list               : lists of xpr expressions
+- xpr-list-list          : lists of lists of xpr expressions
 """
     print(descr)
     exit(0)
@@ -833,6 +888,175 @@ def parse() -> argparse.Namespace:
         "--tgtpath", help="directory that holds the analysis results")
     cfile_numericaltable.set_defaults(func=CT.cfile_numerical_table)
 
+    # --- function table: symbol
+    cfile_symboltable = cfilefntablesparsers.add_parser("symbol")
+    cfile_symboltable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_symboltable.add_argument(
+        "function", help="name of function of interest")
+    cfile_symboltable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_symboltable.set_defaults(func=CT.cfile_symbol_table)
+
+    # --- function table: variable
+    cfile_variabletable = cfilefntablesparsers.add_parser("variable")
+    cfile_variabletable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_variabletable.add_argument(
+        "function", help="name of function of interest")
+    cfile_variabletable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_variabletable.set_defaults(func=CT.cfile_variable_table)
+
+    # --- function table: xcst
+    cfile_xcsttable = cfilefntablesparsers.add_parser("xconstant")
+    cfile_xcsttable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_xcsttable.add_argument(
+        "function", help="name of function of interest")
+    cfile_xcsttable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_xcsttable.set_defaults(func=CT.cfile_xcst_table)
+
+    # --- function table: xpr
+    cfile_xprtable = cfilefntablesparsers.add_parser("xpr")
+    cfile_xprtable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_xprtable.add_argument(
+        "function", help="name of function of interest")
+    cfile_xprtable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_xprtable.set_defaults(func=CT.cfile_xpr_table)
+
+    # --- function table: xpr-list
+    cfile_xprlisttable = cfilefntablesparsers.add_parser("xpr-list")
+    cfile_xprlisttable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_xprlisttable.add_argument(
+        "function", help="name of function of interest")
+    cfile_xprlisttable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_xprlisttable.set_defaults(func=CT.cfile_xprlist_table)
+
+    # --- function table: xpr-list-list
+    cfile_xprlistlisttable = cfilefntablesparsers.add_parser("xpr-list-list")
+    cfile_xprlistlisttable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_xprlistlisttable.add_argument(
+        "function", help="name of function of interest")
+    cfile_xprlistlisttable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_xprlistlisttable.set_defaults(func=CT.cfile_xprlistlist_table)
+
+    # --- function table: membase
+    cfile_membasetable = cfilefntablesparsers.add_parser("memory-base")
+    cfile_membasetable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_membasetable.add_argument(
+        "function", help="name of function of interest")
+    cfile_membasetable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_membasetable.set_defaults(func=CT.cfile_membase_table)
+
+    # --- function table: membase
+    cfile_membasetable = cfilefntablesparsers.add_parser("memory-base")
+    cfile_membasetable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_membasetable.add_argument(
+        "function", help="name of function of interest")
+    cfile_membasetable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_membasetable.set_defaults(func=CT.cfile_membase_table)
+
+    # --- function table: memref
+    cfile_memreftable = cfilefntablesparsers.add_parser("memory-reference")
+    cfile_memreftable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_memreftable.add_argument(
+        "function", help="name of function of interest")
+    cfile_memreftable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_memreftable.set_defaults(func=CT.cfile_memref_table)
+
+    # --- function table: constant-value-variable
+    cfile_cvvtable = cfilefntablesparsers.add_parser("constant-value-variable")
+    cfile_cvvtable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_cvvtable.add_argument(
+        "function", help="name of function of interest")
+    cfile_cvvtable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_cvvtable.set_defaults(func=CT.cfile_cvv_table)
+
+    # --- function table: variable-denotation
+    cfile_cvdtable = cfilefntablesparsers.add_parser("variable-denotation")
+    cfile_cvdtable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_cvdtable.add_argument(
+        "function", help="name of function of interest")
+    cfile_cvdtable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_cvdtable.set_defaults(func=CT.cfile_cvd_table)
+
+    # --- function table: varinfo
+    cfile_fnvarinfotable = cfilefntablesparsers.add_parser("varinfo")
+    cfile_fnvarinfotable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_fnvarinfotable.add_argument(
+        "function", help="name of function of interest")
+    cfile_fnvarinfotable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_fnvarinfotable.set_defaults(func=CT.cfile_fnvarinfo_table)
+
+    # --- function table: ppo-type
+    cfile_ppotypetable = cfilefntablesparsers.add_parser("ppo-type")
+    cfile_ppotypetable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_ppotypetable.add_argument(
+        "function", help="name of function of interest")
+    cfile_ppotypetable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_ppotypetable.set_defaults(func=CT.cfile_ppotype_table)
+
+    # --- function table: spo-type
+    cfile_spotypetable = cfilefntablesparsers.add_parser("spo-type")
+    cfile_spotypetable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_spotypetable.add_argument(
+        "function", help="name of function of interest")
+    cfile_spotypetable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_spotypetable.set_defaults(func=CT.cfile_spotype_table)
+
+    # --- function table: assumption
+    cfile_assumptiontable = cfilefntablesparsers.add_parser("assumption")
+    cfile_assumptiontable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_assumptiontable.add_argument(
+        "function", help="name of function of interest")
+    cfile_assumptiontable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_assumptiontable.set_defaults(func=CT.cfile_assumption_table)
+
+    # --- function table: non-relational-value
+    cfile_nrvtable = cfilefntablesparsers.add_parser("non-relational-value")
+    cfile_nrvtable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_nrvtable.add_argument(
+        "function", help="name of function of interest")
+    cfile_nrvtable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_nrvtable.set_defaults(func=CT.cfile_nrv_table)
+
+    # --- function table: invariant-fact
+    cfile_invfacttable = cfilefntablesparsers.add_parser("invariant-fact")
+    cfile_invfacttable.add_argument(
+        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfile_invfacttable.add_argument(
+        "function", help="name of function of interest")
+    cfile_invfacttable.add_argument(
+        "--tgtpath", help="directory that holds the analysis results")
+    cfile_invfacttable.set_defaults(func=CT.cfile_invfact_table)
 
     args = parser.parse_args()
     return args

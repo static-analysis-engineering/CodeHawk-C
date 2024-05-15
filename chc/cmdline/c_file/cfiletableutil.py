@@ -128,6 +128,8 @@ def get_cfun_access(
         exit(1)
 
 
+# Tables from CDictionary
+
 def cfile_attrparam_table(args: argparse.Namespace) -> NoReturn:
     """Shows a list of indexed attribute parameters in a c-file."""
 
@@ -145,7 +147,6 @@ def cfile_attribute_table(args: argparse.Namespace) -> NoReturn:
 
     exit(0)
 
-# Tables from CDictionary
 
 def cfile_attributes_table(args: argparse.Namespace) -> NoReturn:
     """Shows a list of indexed attribute lists in a c-file."""
@@ -428,9 +429,159 @@ def cfile_predicate_table(args: argparse.Namespace) -> NoReturn:
 # Function tables in CFunXprDictionary
 
 def cfile_numerical_table(args: argparse.Namespace) -> NoReturn:
-    """Shows a list of indexed numerical terms in a function."""
+    """Shows a list of indexed CHIF numerical terms in a function."""
 
     cfun = get_cfun_access(args, "function-table", "numerical")
     print(cfun.vardictionary.xd.objectmap_to_string("numerical"))
+
+    exit(0)
+
+
+def cfile_symbol_table(args: argparse.Namespace) -> NoReturn:
+    """Shows a list of indexed CHIF symbols in a function."""
+
+    cfun = get_cfun_access(args, "function-table", "symbol")
+    print(cfun.vardictionary.xd.objectmap_to_string("symbol"))
+
+    exit(0)
+
+
+def cfile_variable_table(args: argparse.Namespace) -> NoReturn:
+    """Shows a list of indexed CHIF variables in a function."""
+
+    cfun = get_cfun_access(args, "function-table", "variable")
+    print(cfun.vardictionary.xd.objectmap_to_string("variable"))
+
+    exit(0)
+
+
+def cfile_xcst_table(args: argparse.Namespace) -> NoReturn:
+    """Shows a list of indexed xconstants in a function."""
+
+    cfun = get_cfun_access(args, "function-table", "xconstant")
+    print(cfun.vardictionary.xd.objectmap_to_string("xcst"))
+
+    exit(0)
+
+
+def cfile_xpr_table(args: argparse.Namespace) -> NoReturn:
+    """Shows a list of indexed xexpression in a function."""
+
+    cfun = get_cfun_access(args, "function-table", "xpr")
+    print(cfun.vardictionary.xd.objectmap_to_string("xpr"))
+
+    exit(0)
+
+
+def cfile_xprlist_table(args: argparse.Namespace) -> NoReturn:
+    """Shows a list of indexed xexpression lists in a function."""
+
+    cfun = get_cfun_access(args, "function-table", "xpr-list")
+    print(cfun.vardictionary.xd.objectmap_to_string("xprlist"))
+
+    exit(0)
+
+
+def cfile_xprlistlist_table(args: argparse.Namespace) -> NoReturn:
+    """Shows a list of indexed lists of xexpression lists in a function."""
+
+    cfun = get_cfun_access(args, "function-table", "xpr-list-list")
+    print(cfun.vardictionary.xd.objectmap_to_string("xprlistlist"))
+
+    exit(0)
+
+
+# Function tables in CFunVarDictionary
+
+def cfile_membase_table(args: argparse.Namespace) -> NoReturn:
+    """Shows a list of indexed memory bases in a function."""
+
+    cfun = get_cfun_access(args, "function-table", "memory-base")
+    print(cfun.vardictionary.objectmap_to_string("membase"))
+
+    exit(0)
+
+
+def cfile_memref_table(args: argparse.Namespace) -> NoReturn:
+    """Shows a list of indexed memory references in a function."""
+
+    cfun = get_cfun_access(args, "function-table", "memory-reference")
+    print(cfun.vardictionary.objectmap_to_string("memref"))
+
+    exit(0)
+
+
+def cfile_cvv_table(args: argparse.Namespace) -> NoReturn:
+    """Shows a list of indexed constant-value variables in a function."""
+
+    cfun = get_cfun_access(args, "function-table", "constant-value-variable")
+    print(cfun.vardictionary.objectmap_to_string("cvv"))
+
+    exit(0)
+
+
+def cfile_cvd_table(args: argparse.Namespace) -> NoReturn:
+    """Shows a list of indexed variable-denotations in a function."""
+
+    cfun = get_cfun_access(args, "function-table", "variable-denotation")
+    print(cfun.vardictionary.objectmap_to_string("cvd"))
+
+    exit(0)
+
+
+def cfile_fnvarinfo_table(args: argparse.Namespace) -> NoReturn:
+    """Shows a list of local function varinfos."""
+
+    cfun = get_cfun_access(args, "function-table", "varinfo")
+    print(cfun.cfundecls.objectmap_to_string("local-varinfo"))
+
+    exit(0)
+
+
+# Function tables in CFunPODictionary
+
+def cfile_ppotype_table(args: argparse.Namespace) -> NoReturn:
+    """Shows a list of primary proof obligations for a function."""
+
+    cfun = get_cfun_access(args, "function-table", "ppo-type")
+    print(cfun.podictionary.objectmap_to_string("ppo"))
+
+    exit(0)
+
+
+def cfile_spotype_table(args: argparse.Namespace) -> NoReturn:
+    """Shows a list of supporting proof obligations for a function."""
+
+    cfun = get_cfun_access(args, "function-table", "spo-type")
+    print(cfun.podictionary.objectmap_to_string("spo"))
+
+    exit(0)
+
+
+def cfile_assumption_table(args: argparse.Namespace) -> NoReturn:
+    """Shows a list of supporting proof obligations for a function."""
+
+    cfun = get_cfun_access(args, "function-table", "assumption")
+    print(cfun.podictionary.objectmap_to_string("assumption"))
+
+    exit(0)
+
+
+# Tables in CFunInvDictionary
+
+def cfile_nrv_table(args: argparse.Namespace) -> NoReturn:
+    """Shows a list of supporting proof obligations for a function."""
+
+    cfun = get_cfun_access(args, "function-table", "non-relational-value")
+    print(cfun.invdictionary.objectmap_to_string("nrv"))
+
+    exit(0)
+
+
+def cfile_invfact_table(args: argparse.Namespace) -> NoReturn:
+    """Shows a list of supporting proof obligations for a function."""
+
+    cfun = get_cfun_access(args, "function-table", "invariant-fact")
+    print(cfun.invdictionary.objectmap_to_string("invfact"))
 
     exit(0)
