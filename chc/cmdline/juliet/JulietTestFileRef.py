@@ -26,52 +26,79 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Juliet scoring reference for a juliet test set file."""
+
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from chc.cmdline.juliet.JulietTestRef import JulietTestRef
+    from chc.proof.CFunctionPO import CFunctionPO
 
 
 class JulietTestFileRef:
-    def __init__(self, testref, d):
-        self.testref = testref
-        self.d = d
-        self.violations = {}  # line-no -> JulietViolation
-        self.safecontrols = {}  # line-no -> JulietSafeControl
-        self.delegated = {}
-        self.spo_safecontrols = {}
-        self._initialize()
 
-    def get_test(self):
-        return self.testref.get_test()
+    def __init__(
+            self,
+            testref: "JulietTestRef",
+            test: str,
+            d: Dict[str, Any]) -> None:
+        self._testref = testref
+        self._test: str
+        self._d = d
+        self._violations: Optional[Dict[int, List[JulietViolation]]] = None
+        self._safecontrols: Optional[Dict[int, List[JulietSafeControl]]] = None
 
-    def expand(self, m):
-        return self.testref.expand(m)
+    @property
+    def testref(self) -> "JulietTestRef":
+        return self._testref
 
-    def get_violations(self):
-        return sorted(self.violations.items())
+    @property
+    def test(self) -> str:
+        return self._test
 
-    def get_safe_controls(self):
-        return sorted(self.safecontrols.items())
+    @property
+    def violations(self) -> Dict[int, List[JulietViolation]]:
+        if self._violations is None:
+            self._violations = {}
+            for line in self._d["violations"]:
+                self._violations[int(line)] = []
+                for v in self._d["violations"][line]:
+                    ppovs = self.expand(v)
+                    for ppov in ppovs:
+                        self._violations[int(line)].append(
+                            JulietViolation(self, self.test, int(line), ppov))
+        return self._violations
 
-    """f: (line,julietppo) -> unit. """
+    @property
+    def safe_controls(self) -> Dict[int, List[JulietSafeControl]]:
+        if self._safecontrols is None:
+            self._safecontrols = {}
+            for line in self._d["safe-controls"]:
+                self._safecontrols[int(line)] = []
+                for s in self._d["safe-controls"][line]:
+                    ppovs = self.expand(s)
+                    for ppov in ppovs:
+                        self._safecontrols[int(line)].append(
+                            JulietSafeControl(self, self.test, int(line), ppov))
+        return self._safecontrols
 
-    def iter(self, f):
-        self.iter_violations(f)
-        self.iter_safe_controls(f)
+    def expand(self, m: str) -> List[Dict[str, Any]]:
+        return self.testref.expand_macro(m)
 
-    """f: (line,julietppo) -> unit. """
+    def get_violations(self) -> List[JulietViolation]:
+        result: List[JulietViolation] = []
+        for (line, v) in sorted(self.violations.items()):
+            result.extend(v)
+        return result
 
-    def iter_violations(self, f):
-        for (l, vs) in self.get_violations():
-            for v in vs:
-                f(l, v)
+    def get_safe_controls(self) -> List[JulietSafeControl]:
+        result: List[JulietSafeControl] = []
+        for (line, s) in sorted(self.safe_controls.items()):
+            result.extend(s)
+        return result
 
-    """f: (line,julietppo) -> unit. """
-
-    def iter_safe_controls(self, f):
-        for (l, ss) in self.get_safe_controls():
-            for s in ss:
-                f(l, s)
-
-    def __str__(self):
-        lines = []
+    def __str__(self) -> str:
+        lines: List[str] = []
         lines.append("  violations:")
         for line in self.violations:
             lines.append("    line " + str(line))
@@ -79,141 +106,161 @@ class JulietTestFileRef:
                 lines.append("      " + str(v))
         lines.append("")
         lines.append("  safe-controls:")
-        for line in self.safecontrols:
+        for line in self.safe_controls:
             lines.append("    line " + str(line))
-            for s in self.safecontrols[line]:
+            for s in self.safe_controls[line]:
                 lines.append("      " + str(s))
         return "\n".join(lines)
 
-    def _initialize(self):
-        for line in self.d["violations"]:
-            self.violations[int(line)] = []
-            for v in self.d["violations"][line]:
-                ppovs = self.expand(v)
-                for ppov in ppovs:
-                    self.violations[int(line)].append(
-                        JulietViolation(self, int(line), ppov)
-                    )
-        for line in self.d["safe-controls"]:
-            self.safecontrols[int(line)] = []
-            for s in self.d["safe-controls"][line]:
-                pposs = self.expand(s)
-                for ppos in pposs:
-                    self.safecontrols[int(line)].append(
-                        JulietSafeControl(self, int(line), ppos)
-                    )
 
+class JulietPpo:
+    """Primary proof obligation."""
 
-class JulietPpo(object):
-    def __init__(self, testfileref, line, d):
-        self.testfileref = testfileref
-        self.line = line
-        self.predicate = d["P"]
-        self.predarg = None
-        self.expctxt = None
-        self.cfgctxt = None
-        self.variablename = None
-        self.variablenameplus = None
-        self.variablederef = None
-        self.targettype = None
-        self.referencetype = None
-        if "A" in d:
-            self.predarg = d["A"]
-        if "E" in d:
-            self.expctxt = d["E"]
-        if "C" in d:
-            self.cfgctxt = d["C"]
-        if "V" in d:
-            self.variablename = d["V"]
-        if "VP" in d:
-            self.variablenameplus = d["VP"]
-        if "D" in d:
-            self.variablederef = d["D"]
-        if "T" in d:
-            self.targettype = d["T"]
-        if "R" in d:
-            self.referencetype = d["R"]
+    def __init__(
+            self,
+            testfileref: JulietTestFileRef,
+            test: str,
+            line: int,
+            d: Dict[str, Any]) -> None:
+        self._testfileref = testfileref
+        self._test = test
+        self._line = line
+        self._d = d
 
-    def get_test(self):
-        return self.testfileref.get_test()
+    @property
+    def testfileref(self) -> JulietTestFileRef:
+        return self._testfileref
 
-    def has_pred_arg(self):
-        return not (self.predarg is None)
+    @property
+    def test(self) -> str:
+        return self._test
 
-    def has_exp_ctxt(self):
-        return not (self.expctxt is None)
+    @property
+    def line(self) -> int:
+        return self._line
 
-    def has_cfg_ctxt(self):
-        return not (self.cfgctxt is None)
+    @property
+    def predicate(self) -> str:
+        return self._d["P"]
 
-    def has_variable_names(self):
-        return not (self.variablename is None)
+    def has_pred_arg(self) -> bool:
+        return "A" in self._d
 
-    def has_variable_names_plus(self):
-        return not (self.variablenameplus is None)
+    @property
+    def predarg(self) -> List[str]:
+        return self._d.get("A", [])
 
-    def has_variable_deref(self):
-        return not (self.variablederef is None)
+    def has_exp_ctxt(self) -> bool:
+        return "E" in self._d
 
-    def has_target_type(self):
-        return not (self.targettype is None)
+    @property
+    def expctxt(self) -> str:
+        return self._d["E"]
 
-    def has_reference_type(self):
-        return not (self.referencetype is None)
+    def has_cfg_ctxt(self) -> bool:
+        return "C" in self._d
 
-    def matches_pred_arg(self, ppo):
+    def has_variable_names(self) -> bool:
+        return "V" in self._d
+
+    @property
+    def variable_names(self) -> List[str]:
+        return self._d.get("V", [])
+
+    def has_variable_names_plus(self) -> bool:
+        return "VP" in self._d
+
+    @property
+    def variable_names_plus(self) -> List[str]:
+        return self._d.get("VP", [])
+
+    def has_variable_deref(self) -> bool:
+        return "D" in self._d
+
+    @property
+    def variable_derefs(self) -> List[str]:
+        return self._d.get("D", [])
+
+    def has_target_type(self) -> bool:
+        return "T" in self._d
+
+    @property
+    def targettype(self) -> str:
+        return self._d["T"]
+
+    def has_reference_type(self) -> bool:
+        return "R" in self._d
+
+    @property
+    def reference_type(self) -> str:
+        return self._d["R"]
+
+    def matches_pred_arg(self, ppo: "CFunctionPO") -> bool:
         return (not self.has_pred_arg()) or any(
             [ppo.has_argument_name(vname) for vname in self.predarg]
         )
 
-    def matches_exp_ctxt(self, ppo):
+    def matches_exp_ctxt(self, ppo: "CFunctionPO") -> bool:
         return (not self.has_exp_ctxt()) or str(
-            ppo.context.get_exp_context()
+            ppo.context.exp_context
         ) == self.expctxt
 
-    def matches_variable_names(self, ppo):
+    def matches_variable_names(self, ppo: "CFunctionPO") -> bool:
         return (not self.has_variable_names()) or any(
-            [ppo.has_variable_name(vname) for vname in self.variablename]
+            [ppo.has_variable_name(vname) for vname in self.variable_names]
         )
 
-    def matches_variable_names_plus(self, ppo):
+    def matches_variable_names_plus(self, ppo: "CFunctionPO") -> bool:
         return (not self.has_variable_names_plus()) or any(
-            [ppo.has_variable_name_op(vname, "+") for vname in self.variablenameplus]
+            [ppo.has_variable_name_op(vname, "+")
+             for vname in self.variable_names_plus]
         )
 
-    def matches_variable_deref(self, ppo):
+    def matches_variable_deref(self, ppo: "CFunctionPO") -> bool:
         return (not self.has_variable_deref()) or any(
-            [ppo.has_variable_name_deref(vname) for vname in self.variablederef]
+            [ppo.has_variable_name_deref(vname)
+             for vname in self.variable_derefs]
         )
 
-    def matches_target_type(self, ppo):
-        return (not self.has_target_type()) or str(
-            ppo.predicate.get_tgt_kind()
+    def matches_target_type(self, ppo: "CFunctionPO") -> bool:
+        return (not self.has_target_type()) or str(ppo.predicate.tgtkind
         ) == self.targettype
 
-    def matches_reference_type(self, ppo):
+    def matches_reference_type(self, ppo: "CFunctionPO") -> bool:
         return (not self.has_reference_type()) or (
-            self.referencetype == "mem" and ppo.predicate.has_ref_type()
+            self.reference_type == "mem" and ppo.predicate.has_ref_type()
         )
 
-    def __str__(self):
+    def __str__(self) -> str:
         ctxt = ""
         if self.has_exp_ctxt():
-            ctxt = " (" + self.get_exp_ctxt() + ")"
+            ctxt = " (" + self.expctxt + ")"
         return str(self.line) + "  " + self.predicate + ctxt
 
 
 class JulietViolation(JulietPpo):
-    def __init__(self, testfileref, line, d):
-        JulietPpo.__init__(self, testfileref, line, d)
 
-    def is_violation(self):
+    def __init__(
+            self,
+            testfileref: JulietTestFileRef,
+            test: str,
+            line: int,
+            d: Dict[str, Any]) -> None:
+        JulietPpo.__init__(self, testfileref, test, line, d)
+
+    def is_violation(self) -> bool:
         return True
 
 
 class JulietSafeControl(JulietPpo):
-    def __init__(self, testfileref, line, d):
-        JulietPpo.__init__(self, testfileref, line, d)
 
-    def is_violation(self):
+    def __init__(
+            self,
+            testfileref: JulietTestFileRef,
+            test: str,
+            line: int,
+            d: Dict[str, Any]) -> None:
+        JulietPpo.__init__(self, testfileref, test, line, d)
+
+    def is_violation(self) -> bool:
         return False

@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2023 Henny B. Sipma
+# Copyright (c) 2024      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,59 +27,63 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
+
+from chc.cmdline.juliet.JulietTestFileRef import JulietSafeControl
 from chc.cmdline.juliet.JulietTestFileRef import JulietTestFileRef
+from chc.cmdline.juliet.JulietTestFileRef import JulietViolation
+
+
+if TYPE_CHECKING:
+    from chc.cmdline.juliet.JulietTestSetRef import JulietTestSetRef
 
 
 class JulietTestRef:
-    def __init__(self, testsetref, test, d):
-        self.testsetref = testsetref
-        self.test = test
-        self.d = d
-        self.cfiles = {}  # filename -> JulietTestFileRef
-        self._initialize()
+    def __init__(
+            self,
+            testsetref: "JulietTestSetRef",
+            test: str,
+            d: Dict[str, Any]) -> None:
+        self._testsetref = testsetref
+        self._test = test
+        self._d = d
+        self._cfiles: Optional[Dict[str, JulietTestFileRef]] = None  # filename
 
-    def get_test(self):
-        return self.test
+    @property
+    def testsetref(self) -> "JulietTestSetRef":
+        return self._testsetref
 
-    def expand(self, m):
-        return self.testsetref.expand(m)
+    @property
+    def test(self) -> str:
+        return self._test
 
-    def get_cfiles(self):
-        return self.cfiles.items()
+    @property
+    def cfiles(self) -> Dict[str, JulietTestFileRef]:
+        if self._cfiles is None:
+            self._cfiles = {}
+            for f in self._d["cfiles"]:
+                self._cfiles[f] = JulietTestFileRef(
+                    self, self.test, self._d["cfiles"][f])
+        return self._cfiles
 
-    def get_violations(self):
-        result = []
+    def expand_macro(self, m: str) -> List[Dict[str, Any]]:
+        return self.testsetref.expand_macro(m)
 
-        def f(name, ctestfile):
-            violations = ctestfile.get_violations()
-            result.extend(sum([v[1] for v in violations], []))
-
-        self.iter(f)
+    def get_violations(self) -> List[JulietViolation]:
+        result: List[JulietViolation] = []
+        for f in self.cfiles.values():
+            result.extend(f.get_violations())
         return result
 
-    def get_safe_controls(self):
-        result = []
-
-        def f(name, ctestfile):
-            safecontrols = ctestfile.get_safe_controls()
-            result.extend(sum([v[1] for v in safecontrols], []))
-
-        self.iter(f)
+    def get_safe_controls(self) -> List[JulietSafeControl]:
+        result: List[JulietSafeControl] = []
+        for f in self.cfiles.values():
+            result.extend(f.get_safe_controls())
         return result
 
-    """f: (filename,juliettestfile) -> unit. """
-
-    def iter(self, f):
-        for (filename, cfile) in self.get_cfiles():
-            f(filename, cfile)
-
-    def __str__(self):
-        lines = []
+    def __str__(self) -> str:
+        lines: List[str] = []
         for f in self.cfiles:
             lines.append(f)
             lines.append(str(self.cfiles[f]))
         return "\n".join(lines)
-
-    def _initialize(self):
-        for f in self.d["cfiles"]:
-            self.cfiles[f] = JulietTestFileRef(self, self.d["cfiles"][f])
