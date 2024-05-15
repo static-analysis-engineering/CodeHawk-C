@@ -28,9 +28,16 @@
 # ------------------------------------------------------------------------------
 """Utility functions for printing a score report for a Juliet Test."""
 
+from typing import TYPE_CHECKING
+
 from chc.cmdline.juliet.JulietTestSetRef import JulietTestSetRef
 
 from chc.util.loggingutil import chklogger
+
+if TYPE_CHECKING:
+    from chc.cmdline.juliet.JulietTestFileRef import JulietPpo
+    from chc.proof.CFunctionPO import CFunctionPO
+
 
 violationcategories = ["V", "S", "D", "U", "O"]
 safecontrolcategories = ["S", "D", "X", "U", "O"]
@@ -47,7 +54,7 @@ one of which has to appear in the ppo, or an expression context.
 """
 
 
-def keymatches(tppo, ppo):
+def keymatches(tppo: "JulietPpo", ppo: "CFunctionPO") -> bool:
     return (
         tppo.line == ppo.line
         and tppo.predicate == ppo.predicate_name
