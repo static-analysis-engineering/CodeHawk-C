@@ -525,6 +525,20 @@ def parse() -> argparse.Namespace:
 
     julietscore.set_defaults(func=J.juliet_score)
 
+    # --- score-sets
+    julietscoresets = julietparsers.add_parser("score-sets")
+    julietscoresets.add_argument(
+        "--maxprocesses",
+        type=int,
+        default=1,
+        help="maximum number of processors to use")
+    julietscoresets.add_argument(
+        "--cwes",
+        nargs="*",
+        default=[],
+        help="only score the tests with the given cwe's (default is all)")
+    julietscoresets.set_defaults(func=J.juliet_score_sets)
+
     # --- investigate
     julietinvestigate = julietparsers.add_parser("investigate")
     julietinvestigate.add_argument("cwe", help="name of cwe, e.g., CWE121")

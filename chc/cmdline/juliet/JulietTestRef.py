@@ -26,6 +26,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Access to the reference results for a Juliet Test ."""
 
 from typing import Any, Callable, Dict, List, Optional, TYPE_CHECKING
 
@@ -39,6 +40,7 @@ if TYPE_CHECKING:
 
 
 class JulietTestRef:
+
     def __init__(
             self,
             testsetref: "JulietTestSetRef",
