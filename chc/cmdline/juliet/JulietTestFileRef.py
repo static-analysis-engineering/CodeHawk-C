@@ -28,7 +28,8 @@
 # ------------------------------------------------------------------------------
 """Juliet scoring reference for a juliet test set file."""
 
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from typing import Any, Callable, Dict, List, Optional, TYPE_CHECKING
+
 
 if TYPE_CHECKING:
     from chc.cmdline.juliet.JulietTestRef import JulietTestRef
@@ -41,9 +42,9 @@ class JulietTestFileRef:
             self,
             testref: "JulietTestRef",
             test: str,
-            d: Dict[str, Any]) -> None:
+            d: Dict[str, Dict[str, List[str]]]) -> None:
         self._testref = testref
-        self._test: str
+        self._test = test
         self._d = d
         self._violations: Optional[Dict[int, List[JulietViolation]]] = None
         self._safecontrols: Optional[Dict[int, List[JulietSafeControl]]] = None
@@ -57,7 +58,7 @@ class JulietTestFileRef:
         return self._test
 
     @property
-    def violations(self) -> Dict[int, List[JulietViolation]]:
+    def violations(self) -> Dict[int, List["JulietViolation"]]:
         if self._violations is None:
             self._violations = {}
             for line in self._d["violations"]:
@@ -70,7 +71,7 @@ class JulietTestFileRef:
         return self._violations
 
     @property
-    def safe_controls(self) -> Dict[int, List[JulietSafeControl]]:
+    def safe_controls(self) -> Dict[int, List["JulietSafeControl"]]:
         if self._safecontrols is None:
             self._safecontrols = {}
             for line in self._d["safe-controls"]:
@@ -85,17 +86,33 @@ class JulietTestFileRef:
     def expand(self, m: str) -> List[Dict[str, Any]]:
         return self.testref.expand_macro(m)
 
-    def get_violations(self) -> List[JulietViolation]:
+    def get_violations(self) -> List["JulietViolation"]:
         result: List[JulietViolation] = []
         for (line, v) in sorted(self.violations.items()):
             result.extend(v)
         return result
 
-    def get_safe_controls(self) -> List[JulietSafeControl]:
+    def iter_violations(
+            self, f: Callable[[int, "JulietPpo"], None]) -> None:
+        for (line, ppos) in self.violations.items():
+            for ppo in ppos:
+                f(line, ppo)
+
+    def get_safe_controls(self) -> List["JulietSafeControl"]:
         result: List[JulietSafeControl] = []
         for (line, s) in sorted(self.safe_controls.items()):
             result.extend(s)
         return result
+
+    def iter_safe_controls(
+            self, f: Callable[[int, "JulietPpo"], None]) -> None:
+        for (line, ppos) in self.safe_controls.items():
+            for ppo in ppos:
+                f(line, ppo)
+
+    def iter(self, f: Callable[[int, "JulietPpo"], None]) -> None:
+        self.iter_violations(f)
+        self.iter_safe_controls(f)
 
     def __str__(self) -> str:
         lines: List[str] = []
@@ -138,6 +155,14 @@ class JulietPpo:
     @property
     def line(self) -> int:
         return self._line
+
+    @property
+    def is_violation(self) -> bool:
+        return False
+
+    @property
+    def is_safe_control(self) -> bool:
+        return False
 
     @property
     def predicate(self) -> str:
@@ -248,6 +273,7 @@ class JulietViolation(JulietPpo):
             d: Dict[str, Any]) -> None:
         JulietPpo.__init__(self, testfileref, test, line, d)
 
+    @property
     def is_violation(self) -> bool:
         return True
 
@@ -262,5 +288,6 @@ class JulietSafeControl(JulietPpo):
             d: Dict[str, Any]) -> None:
         JulietPpo.__init__(self, testfileref, test, line, d)
 
+    @property
     def is_violation(self) -> bool:
         return False

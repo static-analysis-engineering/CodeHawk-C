@@ -200,6 +200,84 @@ The chkc juliet set of commands is used to analyze the juliet test suite cases
 provided in
 
 https://github.com/static-analysis-engineering/CodeHawk-C-Targets-Juliet
+
+All commands in the juliet collection of commands assume that a pointer to
+the location of these (pre-parsed) tests is configured in util/Config.py
+or in util/ConfigLocal.py. To check wheter this is the case, run
+
+> chkc juliet check_config
+
+It should show the analyzer configuration and the location of the juliet test
+case index file.
+
+
+The command
+
+> chkc juliet list
+
+lists the individual test cases provided with the date/time the analyzer was
+last run on this test, and the date/time when the results were compared with
+the accompanying scoring key.
+
+
+The command
+
+> chkc juliet analyze <cwe> <test>   (e.g., CWE121 char_type_overrun_memcpy)
+
+runs the analysis on a juliet test. An individual juliet test typically
+consists of 18-60 files. Analysis of all of these files can be run in parallel
+with the optional commandline option
+
+--maxprocesses <n>
+
+where <n> is the number of processors to be applied.
+
+A summary of the results is saved in the file summaryresults.json for later
+reference. Detailed results are saved in the .cch/a directory, as usual.
+
+
+The command
+
+> chkc juliet analyze-sets
+
+can be used to automatically run all (or a subset) of the juliet tests
+provided. In this case parallelism is applied to the sets, rather than to
+the individual files within a set.
+
+The commands below can be run only on tests that have already been analyzed.
+
+The command
+
+> chkc juliet report <cwe> <test>
+
+outputs a summary of the proof obligation analysis statistics for the given
+test.
+
+
+The command
+
+> chkc juliet report-file <cwe> <test> <filename>   (e.g., x01.c)
+
+outputs the original source code annotated with the proof obligations and
+their analysis results for each line of code for the given source file, as well
+as the proof obligation analysis statistics for that source file.
+
+
+The command
+
+> chkc juliet score <cwe> <test>
+
+compares the analysis results the given test with the expected analysis,
+as provided by the scorekey.json file that comes with each test.
+
+
+The command
+
+> chkc juliet investigate <cwe> <test>
+
+outputs the list of open/violated/delegated proof obligations, together with
+their dependencies and diagnostics for the given test.
+
 """
     print(descr)
     exit(0)
@@ -384,6 +462,20 @@ def parse() -> argparse.Namespace:
 
     julietanalyze.set_defaults(func=J.juliet_analyze)
 
+    # --- analyze-sets
+    julietanalyzesets = julietparsers.add_parser("analyze-sets")
+    julietanalyzesets.add_argument(
+        "--maxprocesses",
+        help="maximum number of processors to use",
+        type=int,
+        default=1)
+    julietanalyzesets.add_argument(
+        "--cwes",
+        nargs="*",
+        help="restrict analysis to these cwe's (default is all)",
+        default=[])
+    julietanalyzesets.set_defaults(func=J.juliet_analyze_sets)
+
     # --- report
     julietreport = julietparsers.add_parser("report")
     julietreport.add_argument("cwe", help="name of cwe, e.g., CWE121")
@@ -396,7 +488,20 @@ def parse() -> argparse.Namespace:
     julietreportfile.add_argument("cwe", help="name of cwe, e.g., CWE121")
     julietreportfile.add_argument(
         "test", help="name of test case, e.g., CWE129_large")
-    julietreportfile.add_argument("filename", help="name of c file, e.g., x01.c")
+    julietreportfile.add_argument(
+        "filename", help="name of c file, e.g., x01.c")
+    julietreportfile.add_argument(
+        "--showcode",
+        action="store_true",
+        help="show the proof obligations on the code")
+    julietreportfile.add_argument(
+        "--open",
+        action="store_true",
+        help="show only open proof obligations on the code")
+    julietreportfile.add_argument(
+        "--showinvariants",
+        action="store_true",
+        help="show invariants for open proof obligations")
     julietreportfile.set_defaults(func=J.juliet_report_file)
 
     # --- score
@@ -419,6 +524,47 @@ def parse() -> argparse.Namespace:
         help="file mode for log file: append (a, default), or write (w)")
 
     julietscore.set_defaults(func=J.juliet_score)
+
+    # --- investigate
+    julietinvestigate = julietparsers.add_parser("investigate")
+    julietinvestigate.add_argument("cwe", help="name of cwe, e.g., CWE121")
+    julietinvestigate.add_argument(
+        "test", help="name of test case, e.g., CWE129_large")
+    julietinvestigate.add_argument(
+        "--xdelegated",
+        help="exclude delegated proof obligations",
+        action="store_true")
+    julietinvestigate.add_argument(
+        "--xviolated",
+        help="exclude violated proof obligations",
+        action="store_true")
+    julietinvestigate.add_argument(
+        "--predicates",
+        nargs="*",
+        help="predicates of interest (default: all)",
+        default=[])
+    julietinvestigate.set_defaults(func=J.juliet_investigate)
+
+    # --- report-requests
+    julietreprequests = julietparsers.add_parser("report-requests")
+    julietreprequests.add_argument("cwe", help="name of cwe, e.g., CWE121")
+    julietreprequests.add_argument(
+        "test", help="name of test case, e.g., CWE129_large")
+    julietreprequests.set_defaults(func=J.juliet_report_requests)
+
+    # --- dashboard
+    julietdashboard = julietparsers.add_parser("dashboard")
+    julietdashboard.add_argument(
+        "--cwe", help="only report results on the given cwe")
+    julietdashboard.add_argument(
+        "--variant", help="only report results on the given variant")
+    julietdashboard.set_defaults(func=J.juliet_dashboard)
+
+    # --- project-dashboard
+    julietpdashboard = julietparsers.add_parser("project-dashboard")
+    julietpdashboard.add_argument(
+        "--cwe", help="only report results on the given cwe")
+    julietpdashboard.set_defaults(func=J.juliet_project_dashboard)
 
     # --------------------------------------------------------------- c-file ---
     cfilecmd = subparsers.add_parser("c-file")

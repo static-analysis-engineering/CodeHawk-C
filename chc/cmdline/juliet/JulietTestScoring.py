@@ -28,33 +28,46 @@
 # ------------------------------------------------------------------------------
 """Utility functions for printing a score report for a Juliet Test."""
 
-from typing import TYPE_CHECKING
+from typing import Any, cast, Dict, List, Optional, Tuple, TYPE_CHECKING
 
 from chc.cmdline.juliet.JulietTestSetRef import JulietTestSetRef
 
 from chc.util.loggingutil import chklogger
 
 if TYPE_CHECKING:
-    from chc.cmdline.juliet.JulietTestFileRef import JulietPpo
+    from chc.app.CApplication import CApplication
+    from chc.cmdline.juliet.JulietTestFileRef import JulietTestFileRef, JulietPpo
+    from chc.cmdline.juliet.JulietTestRef import JulietTestRef
+    from chc.cmdline.juliet.JulietTestSetRef import JulietTestSetRef
+    from chc.proof.AssumptionType import (
+        ApiAssumptionType, GlobalApiAssumptionType)
+    from chc.proof.CFunctionCallsiteSPO import CFunctionCallsiteSPO
     from chc.proof.CFunctionPO import CFunctionPO
 
 
 violationcategories = ["V", "S", "D", "U", "O"]
 safecontrolcategories = ["S", "D", "X", "U", "O"]
 
-violations = "vs"
-safecontrols = "sc"
 
-"""Return true if a ppo matches a ppo listed in the test set reference.
+def scoreheader(name: str, width: int) -> str:
+    header1 = (
+        name.ljust(width + 10) + "violations                 safe-controls")
+    header2 = (
+        (" " * (width + 3))
+        + " V    S    D    U    O         S    D    X    U    O")
+    return header1 + "\n" + header2
 
-A ppo listed in a test set reference is always characterized by the ppo
-predicate, and may additionally be characterized (if multiple ppo's with
-the same predicate appear on the same line) by a set of variable names,
-one of which has to appear in the ppo, or an expression context.
-"""
 
 
 def keymatches(tppo: "JulietPpo", ppo: "CFunctionPO") -> bool:
+    """Return true if a ppo matches a ppo listed in the test set reference.
+
+    A ppo listed in a test set reference is always characterized by the ppo
+    predicate, and may additionally be characterized (if multiple ppo's with
+    the same predicate appear on the same line) by a set of variable names,
+    one of which has to appear in the ppo, or an expression context.
+    """
+
     return (
         tppo.line == ppo.line
         and tppo.predicate == ppo.predicate_name
@@ -68,28 +81,14 @@ def keymatches(tppo: "JulietPpo", ppo: "CFunctionPO") -> bool:
     )
 
 
-def initialize_testsummary(testset, d):
-    def f(tindex, test):
-        d[tindex] = {}
-        d[tindex][violations] = {}
-        for c in violationcategories:
-            d[tindex][violations][c] = 0
-        d[tindex][safecontrols] = {}
-        for c in safecontrolcategories:
-            d[tindex][safecontrols][c] = 0
-
-    testset.iter(f)
-
-
-def classify_tgt_violation(po, capp):
+def classify_tgt_violation(
+        po: Optional["CFunctionPO"], capp: "CApplication") -> str:
     if po is None:
         return "U"  # unknown
     if po.is_open:
         return "U"  # unknown
     if po.is_violated:
         return "V"  # violation reported
-    if po.dependencies is None:
-        return "U"  # unknown
     dm = po.dependencies.level
     if dm == "f" or dm == "s":
         return "S"  # found safe
@@ -107,29 +106,30 @@ def classify_tgt_violation(po, capp):
     return "O"  # other
 
 
-def classify_tgt_safecontrol_contract_assumption(po, capp):
+def classify_tgt_safecontrol_contract_assumption(
+        po: Optional["CFunctionPO"], capp: "CApplication") -> str:
     return "S"
 
 
-def classify_tgt_safecontrol(po, capp):
+def classify_tgt_safecontrol(
+        po: Optional["CFunctionPO"], capp: "CApplication") -> str:
     if po is None:
         return "U"  # unknown
     if po.is_open:
         return "U"  # unknown
     if po.is_violated:
         return "O"  # violation
-    if po.dependencies is None:
-        return "U"  # unknown
     dm = po.dependencies.level
     if dm == "s" or dm == "f":
         return "S"  # safe
     if po.is_delegated:
-        dependencies_type = po.get_dependencies_type()
-        if po.get_dependencies_type() == "contract":
+        dependencies_type = po.get_assumptions_type()
+        if po.get_assumptions_type() == "contract":
             return classify_tgt_safecontrol_contract_assumption(po, capp)
         spos = get_associated_spos(po, capp)
         if len(spos) > 0:
-            classifications = [classify_tgt_safecontrol(spo, capp) for spo in spos]
+            classifications = [
+                classify_tgt_safecontrol(spo, capp) for spo in spos]
             if all([x == "S" for x in classifications]):
                 return "S"  # safe
             if "O" in classifications:
@@ -137,59 +137,51 @@ def classify_tgt_safecontrol(po, capp):
             return "D"  # deferred
         else:
             return "O"
-    if po.is_deadcode():
+    if po.is_deadcode:
         return "X"  # dead code
     return "O"  # other
 
 
-def fill_testsummary(pairs, d, capp):
-    for filename in pairs:
-        for fn in pairs[filename]:
-            for (jppo, ppo) in pairs[filename][fn]:
-                tindex = jppo.get_test()
-                tsummary = d[tindex]
-                if jppo.is_violation():
-                    classification = classify_tgt_violation(ppo, capp)
-                    tsummary[violations][classification] += 1
-                else:
-                    classification = classify_tgt_safecontrol(ppo, capp)
-                    tsummary[safecontrols][classification] += 1
-
-
-def get_associated_spos(ppo, capp):
-    result = []
+def get_associated_spos(
+        ppo: "CFunctionPO", capp: "CApplication") -> List["CFunctionPO"]:
+    result: List["CFunctionPO"] = []
     if ppo.has_dependencies():
         cfun = ppo.cfun
         cfile = ppo.cfile
-        callsites = capp.get_callsites(cfile.index, cfun.svar.get_vid())
-        assumptions = ppo.dependencies.ids
-        assumptions = [cfun.podictionary.get_assumption_type(i) for i in assumptions]
+        callsites = capp.get_callsites(cfile.index, cfun.svar.vid)
+        assumption_ids = ppo.dependencies.ids
         assumptions = [
-            a.get_predid()
-            for a in assumptions
-            if a.is_api_assumption() or a.is_global_api_assumption()
-        ]
+            cfun.podictionary.get_assumption_type(i) for i in assumption_ids]
+        assumption_predids: List[int] = []
+        for a in assumptions:
+            if a.is_api_assumption:
+                a = cast("ApiAssumptionType", a)
+                assumption_predids.append(a.predicate.index)
+            elif a.is_global_api_assumption:
+                a = cast("GlobalApiAssumptionType", a)
+                assumption_predids.append(a.predicate.index)
         if len(callsites) > 0:
             for ((fid, vid), cs) in callsites:
 
-                def f(spo):
-                    if spo.apiid in assumptions:
+                def f(spo: "CFunctionPO") -> None:
+                    spo = cast("CFunctionCallsiteSPO", spo)
+                    if spo.apiid in assumption_predids:
                         result.append(spo)
 
                 cs.iter(f)
     return result
 
 
-def testppo_calls_tostring(ppo, capp):
-    lines = []
+def testppo_calls_tostring(ppo: "CFunctionPO", capp: "CApplication") -> str:
+    lines: List[str] = []
     cfun = ppo.cfun
     cfile = ppo.cfile
-    callsites = capp.get_callsites(cfile.index, cfun.svar.get_vid())
+    callsites = capp.get_callsites(cfile.index, cfun.svar.vid)
     if len(callsites) > 0:
         lines.append("    calls:")
         for ((fid, vid), cs) in callsites:
 
-            def f(spo):
+            def f(spo: "CFunctionPO") -> None:
                 sev = spo.explanation
                 if sev is None:
                     sevtxt = "?"
@@ -197,9 +189,9 @@ def testppo_calls_tostring(ppo, capp):
                     sevtxt = spo.get_display_prefix() + "  " + sev
                 lines.append(
                     "     C:"
-                    + str(spo.get_line()).rjust(3)
+                    + str(spo.line).rjust(3)
                     + "  "
-                    + spo.predicatetag.ljust(25)
+                    + spo.predicate_name.ljust(25)
                     + sevtxt
                 )
 
@@ -207,8 +199,10 @@ def testppo_calls_tostring(ppo, capp):
     return "\n".join(lines)
 
 
-def testppo_results_tostring(pairs, capp):
-    lines = []
+def testppo_results_tostring(
+        pairs: Dict[str, Dict[str, List[Tuple["JulietPpo", "CFunctionPO"]]]],
+        capp: "CApplication") -> str:
+    lines: List[str] = []
     for filename in sorted(pairs):
         lines.append("\n" + filename)
         for fn in sorted(pairs[filename]):
@@ -230,110 +224,128 @@ def testppo_results_tostring(pairs, capp):
                     + ppo.predicate_name.ljust(25)
                     + evstr
                 )
-                if (ev is not None) and ppo.is_delegated():
+                if (ev is not None) and ppo.is_delegated:
                     lines.append(testppo_calls_tostring(ppo, capp))
     return "\n".join(lines)
 
 
-def testsummary_tostring(d, totals):
-    lines = []
-    lines.append("\nSummary\n")
-    lines.append("test              violations                    safe-controls")
-    lines.append("         V    S    D    U    O                S    D    X    U    O")
-    lines.append("-" * 80)
-    for tindex in sorted(d):
-        if tindex == "total":
-            continue
-        sv = d[tindex][violations]
-        ss = d[tindex][safecontrols]
-        lines.append(
-            tindex.ljust(5)
-            + "".join([str(sv[c]).rjust(5) for c in violationcategories])
-            + "       |    "
-            + "".join([str(ss[c]).rjust(5) for c in safecontrolcategories])
-        )
-    lines.append("-" * 80)
-    totals = d["total"]
-    lines.append(
-        "total"
-        + "".join([str(totals[violations][c]).rjust(5) for c in violationcategories])
-        + "       |    "
-        + "".join(
-            [str(totals[safecontrols][c]).rjust(5) for c in safecontrolcategories]
-        )
-    )
-    return "\n".join(lines)
+def get_julietppos(testset: "JulietTestSetRef") -> Dict[str, List["JulietPpo"]]:
+    """Returns the reference ppos indexed by filename.
 
+    Note: the reference ppos are function agnostic
+    """
 
-"""Return the ppos from the testsetref in a dictionary indexed by filename.
+    ppos: Dict[str, List["JulietPpo"]] = {}
 
-Note: the reference ppos are function agnostic.
-"""
-
-
-def get_julietppos(testset):
-    ppos = {}
-
-    def g(filename, fileref):
+    def g(filename: str, fileref: "JulietTestFileRef") -> None:
         filename = filename[:-2]
         if filename not in ppos:
             ppos[filename] = []
 
-        def h(line, jppo):
+        def h(line: int, jppo: "JulietPpo") -> None:
             ppos[filename].append(jppo)
 
         fileref.iter(h)
 
-    def f(tindex, test):
+    def f(tindex: str, test: "JulietTestRef") -> None:
         test.iter(g)
 
     testset.iter(f)
     return ppos
 
 
-"""Return pairs of the reference ppo with the actual ppo for all reference ppos.
+def get_ppo_pairs(
+        julietppos: Dict[str, List["JulietPpo"]],
+        capp: "CApplication"
+) -> Dict[str, Dict[str, List[Tuple["JulietPpo", "CFunctionPO"]]]]:
+    """Returns a pairing of reference ppos with actual ppos by function."""
 
-Organized as a dictionary: filename -> functionname -> (testppo,ppo) list
-"""
-
-
-def get_ppo_pairs(julietppos, capp):
-    pairs = {}
+    pairs: Dict[str, Dict[str, List[Tuple["JulietPpo", "CFunctionPO"]]]] = {}
     for filename in julietppos:
         chklogger.logger.info("Get ppo pairs for %s", filename)
-        if filename not in pairs:
-            pairs[filename] = {}
+        pairs.setdefault(filename, {})
         julietfileppos = julietppos[filename]
         cfile = capp.get_file(filename)
 
         fileppos = cfile.get_ppos()
         for ppo in fileppos:
-            fname = ppo.cfun.name
+            fnname = ppo.cfun.name
             chklogger.logger.info(
-                "Get ppo pairs for function %s in file %s", fname, filename)
-            if fname not in pairs[filename]:
-                pairs[filename][fname] = []
+                "Get ppo pairs for function %s in file %s", fnname, filename)
+            pairs[filename].setdefault(fnname, [])
             for jppo in julietfileppos:
                 if keymatches(jppo, ppo):
-                    pairs[filename][fname].append((jppo, ppo))
+                    pairs[filename][fnname].append((jppo, ppo))
     return pairs
 
 
-"""Return a dictionary with the counts of the different categories over all files.
+def initialize_testsummary(
+        testset: "JulietTestSetRef",
+        d: Dict[str, Dict[str, Dict[str, int]]]) -> None:
 
-violation/safe-controls -> category -> total count over all files.
-"""
+    def f(tindex: str, test: "JulietTestRef") -> None:
+        d[tindex] = {}
+        d[tindex]["vs"] = {}
+        for c in violationcategories:
+            d[tindex]["vs"][c] = 0
+        d[tindex]["sc"] = {}
+        for c in safecontrolcategories:
+            d[tindex]["sc"][c] = 0
+
+    testset.iter(f)
 
 
-def get_testsummarytotals(d):
-    if "total" in d:
-        return d["total"]
-    totals = {}
-    totals[violations] = {}
-    totals[safecontrols] = {}
+def fill_testsummary(
+        pairs: Dict[str, Dict[str, List[Tuple["JulietPpo", "CFunctionPO"]]]],
+        d: Dict[str, Dict[str, Dict[str, int]]],
+        capp: "CApplication") -> None:
+    for filename in pairs:
+        for fn in pairs[filename]:
+            for (jppo, ppo) in pairs[filename][fn]:
+                tindex = jppo.test
+                tsummary = d[tindex]
+                if jppo.is_violation:
+                    classification = classify_tgt_violation(ppo, capp)
+                    tsummary["vs"][classification] += 1
+                else:
+                    classification = classify_tgt_safecontrol(ppo, capp)
+                    tsummary["sc"][classification] += 1
+
+
+def get_testsummary_totals(d: Dict[str, Any]) -> Dict[str, Dict[str, int]]:
+    """Returns the totals per category summed over all tests in the testset."""
+    totals: Dict[str, Dict[str, int]] = {}
+    totals["vs"] = {}
+    totals["sc"] = {}
     for c in violationcategories:
-        totals[violations][c] = sum([d[x][violations][c] for x in d])
+        totals["vs"][c] = sum([d[x]["vs"][c] for x in d])
     for c in safecontrolcategories:
-        totals[safecontrols][c] = sum([d[x][safecontrols][c] for x in d])
-    d["total"] = totals
-    return d
+        totals["sc"][c] = sum([d[x]["sc"][c] for x in d])
+    return totals
+
+
+def testsummary_tostring(d: Dict[str, Dict[str, Dict[str, int]]]) -> str:
+
+    def dataline(cats: List[str], d: Dict[str, int]) -> str:
+        return ("".join([str(d[c]).rjust(5) for c in cats]))
+
+    lines: List[str] = []
+    lines.append("\nSummary\n")
+    lines.append(scoreheader("test", 5))
+    lines.append("-" * 80)
+    for tindex in sorted(d):
+        sv = d[tindex]["vs"]
+        ss = d[tindex]["sc"]
+        lines.append(
+            tindex.ljust(5)
+            + dataline(violationcategories, sv)
+            + "  |  "
+            + dataline(safecontrolcategories, ss))
+    lines.append("-" * 80)
+    totals = get_testsummary_totals(d)
+    lines.append(
+        "total"
+        + dataline(violationcategories, totals["vs"])
+        + "  |  "
+        + dataline(safecontrolcategories, totals["sc"]))
+    return "\n".join(lines)
