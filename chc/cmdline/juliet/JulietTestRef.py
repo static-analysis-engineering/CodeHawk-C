@@ -27,7 +27,7 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from typing import Any, Callable, Dict, List, Optional, TYPE_CHECKING
 
 from chc.cmdline.juliet.JulietTestFileRef import JulietSafeControl
 from chc.cmdline.juliet.JulietTestFileRef import JulietTestFileRef
@@ -65,6 +65,10 @@ class JulietTestRef:
                 self._cfiles[f] = JulietTestFileRef(
                     self, self.test, self._d["cfiles"][f])
         return self._cfiles
+
+    def iter(self, f: Callable[[str, JulietTestFileRef], None]) -> None:
+        for (filename, fileref) in self.cfiles.items():
+            f(filename, fileref)
 
     def expand_macro(self, m: str) -> List[Dict[str, Any]]:
         return self.testsetref.expand_macro(m)

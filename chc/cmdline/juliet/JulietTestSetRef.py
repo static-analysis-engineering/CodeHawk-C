@@ -27,7 +27,7 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
-from typing import Any, cast, Dict, List, Optional, TYPE_CHECKING
+from typing import Any, Callable, cast, Dict, List, Optional, TYPE_CHECKING
 
 from chc.cmdline.juliet.JulietTestFileRef import JulietSafeControl
 from chc.cmdline.juliet.JulietTestFileRef import JulietViolation
@@ -104,50 +104,21 @@ class JulietTestSetRef(object):
     def expand_macro(self, m: str) -> List[Dict[str, Any]]:
         return self.macros.expand_macro(m)
 
-    '''
-        if m.startswith("PPO"):
-            if m in self.macros:
-                return self.macros[m]
-            else:
-                return m
-        if m.startswith("PS"):
-            if m in self.macros:
-                lst = self.macros[m]
-                return [self.expand(x) for x in lst]
-            else:
-                return m
-        return m
-    '''
-
     @property
     def predicates(self) -> List[str]:
         return self.macros.predicates
-
-    '''
-    def get_predicates(self):
-        result = []
-        for p in self.macros:
-            if p.startswith("PPO"):
-                result.append(self.macros[p]["P"])
-        return result
-    '''
 
     @property
     def tests(self) -> Dict[str, JulietTestRef]:
         if self._tests is None:
             self._tests = {}
             for test in self._d["tests"]:
-                self._tests[test] = JulietTestRef(self, test, self._d[test])
+                self._tests[test] = JulietTestRef(
+                    self, test, self._d["tests"][test])
         return self._tests
-
-    '''
-    def get_tests(self):
-        return self.tests.items()
-    '''
 
     def get_predicate_violations(self) -> Dict[str, int]:
         result: Dict[str, int] = {}
-        # violations = self.get_violations()
         for v in self.get_violations():
             p = v.predicate
             result.setdefault(p, 0)
@@ -156,7 +127,6 @@ class JulietTestSetRef(object):
 
     def get_predicate_safe_controls(self) -> Dict[str, int]:
         result: Dict[str, int] = {}
-        # safecontrols = self.get_safe_controls()
         for s in self.get_safe_controls():
             p = s.predicate
             result.setdefault(p, 0)
@@ -168,13 +138,6 @@ class JulietTestSetRef(object):
         for testref in self.tests.values():
             result.extend(testref.get_violations())
         return result
-    '''
-        def f(i, test):
-            result.extend(test.get_violations())
-
-        self.iter(f)
-        return result
-    '''
 
     def get_safe_controls(self) -> List[JulietSafeControl]:
         result: List[JulietSafeControl] = []
@@ -182,19 +145,9 @@ class JulietTestSetRef(object):
             result.extend(testref.get_safe_controls())
         return result
 
-    '''
-        def f(i, test):
-            result.extend(test.get_safe_controls())
-
-        self.iter(f)
-        return result
-    '''
-
-    '''
-    def iter(self, f):
-        for (t, test) in self.get_tests():
+    def iter(self, f: Callable[[str, JulietTestRef], None]) -> None:
+        for (t, test) in self.tests.items():
             f(t, test)
-    '''
 
     def __str__(self) -> str:
         lines: List[str] = []
@@ -202,11 +155,3 @@ class JulietTestSetRef(object):
             lines.append("\nTest " + test)
             lines.append(str(self.tests[test]))
         return "\n".join(lines)
-
-    '''
-    def _initialize(self):
-        for m in self.d["macros"]:
-            self.macros[m] = self.d["macros"][m]
-        for test in self.d["tests"]:
-            self.tests[test] = JulietTestRef(self, test, self.d["tests"][test])
-    '''
