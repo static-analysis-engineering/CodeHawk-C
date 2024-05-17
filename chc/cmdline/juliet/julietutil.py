@@ -24,7 +24,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
-"""Implementation of juliet commands in the command-line interpreter."""
+"""Implementation of juliet commands in the CLI."""
 
 import argparse
 import json
@@ -38,7 +38,7 @@ from contextlib import contextmanager
 from multiprocessing import Pool
 
 from typing import (
-    Any, Callable, Dict, List, NoReturn, Optional, Tuple, TYPE_CHECKING)
+    Any, Callable, cast, Dict, List, NoReturn, Optional, Tuple, TYPE_CHECKING)
 
 from chc.app.CApplication import CApplication
 
@@ -382,7 +382,7 @@ def juliet_analyze(args: argparse.Namespace) -> NoReturn:
         am.generate_and_check_app("llrvisp", processes=jmaxproc)
         capp.reinitialize_tables()
 
-    def filefilter(filename):
+    def filefilter(filename: str) -> bool:
         return not (filename in ["io", "main_linux", "std_thread"])
 
     contractviolations = capp.get_contract_condition_violations()
@@ -403,7 +403,7 @@ def juliet_analyze(args: argparse.Namespace) -> NoReturn:
     exit(0)
 
 
-def analyze_test(testdata):
+def analyze_test(testdata: Tuple[str, str, int]) -> int:
     """CLI command to run a juliet test case.
 
     Note: this function needs to be global for multiprocessing to work.
@@ -427,7 +427,7 @@ def juliet_analyze_sets(args: argparse.Namespace) -> NoReturn:
     pool = Pool(jmaxproc)
     testcases = []
 
-    def excluded(cwe):
+    def excluded(cwe: str) -> bool:
         if len(jcwes) == 0:
             return False
         else:
@@ -612,6 +612,61 @@ def juliet_score(args: argparse.Namespace) -> NoReturn:
     testsummary["total"] = JTS.get_testsummary_totals(testsummary)
 
     UF.save_juliet_test_summary(jcwe, jtest, testsummary)
+
+    exit(0)
+
+
+def score_test(testdata: Tuple[str, str, int]) -> int:
+    """CLI command to score a juliet test case.
+
+    Note: this function needs to be global for multiprocessing to work.
+    """
+
+    (cwe, testcase, index) = testdata
+    cmd = ["chkc", "juliet", "score", cwe, testcase]
+    result = subprocess.call(cmd, stderr=subprocess.STDOUT)
+    return result
+
+
+def juliet_score_sets(args: argparse.Namespace) -> NoReturn:
+    """Scores all or a subset of the registered juliet tests."""
+
+    # arguments
+    jmaxproc: int = args.maxprocesses
+    jcwes: List[str] = args.cwes
+
+    maxptxt = "" if jmaxproc == 1 else f" (with {jmaxproc} processors)"
+
+    pool = Pool(jmaxproc)
+    testcases = []
+
+    def excluded(cwe: str) -> bool:
+        if len(jcwes) == 0:
+            return False
+        else:
+            return cwe not in jcwes
+
+    with timing("score-sets" + maxptxt):
+        count: int = 0
+        juliettests = UF.get_juliet_testcases()
+        for cwe in sorted(juliettests):
+            if excluded(cwe):
+                continue
+            print(f"Scoring testcases for cwe {cwe}")
+            for subdir in sorted(juliettests[cwe]):
+                for t in juliettests[cwe][subdir]:
+                    testcases.append((cwe, t, count))
+
+        results = pool.map(score_test, testcases)
+
+    print("\n" + ("=" * 80))
+    if len(results) == results.count(0):
+        print("All Juliet tests cases were scored successfully.")
+    else:
+        for x in range(len(results)):
+            if results[x] != 0:
+                print(f"Error in testcase {testcases[x][0]}")
+    print("=" * 80)
 
     exit(0)
 
@@ -978,8 +1033,10 @@ def juliet_project_dashboard(args: argparse.Namespace) -> NoReturn:
             spo_project_totals[pname] = {}
 
             if "stats" in results:
-                projectstats[pname] = results["stats"]
-                analysistimes[pname] = results["timestamp"]
+                # use casts to handle union type in loaded dictionary
+                projectstats[pname] = cast(
+                    Tuple[int, int, int], results["stats"])
+                analysistimes[pname] = cast(int, results["timestamp"])
             else:
                 projectstats[pname] = (0, 0, 0)
 
