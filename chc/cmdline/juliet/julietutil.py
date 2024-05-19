@@ -38,7 +38,16 @@ from contextlib import contextmanager
 from multiprocessing import Pool
 
 from typing import (
-    Any, Callable, cast, Dict, List, NoReturn, Optional, Tuple, TYPE_CHECKING)
+    Any,
+    Callable,
+    cast,
+    Dict,
+    Generator,
+    List,
+    NoReturn,
+    Optional,
+    Tuple,
+    TYPE_CHECKING)
 
 from chc.app.CApplication import CApplication
 
@@ -84,7 +93,7 @@ def set_logging(
 
 
 @contextmanager
-def timing(activity):
+def timing(activity: str) -> Generator:
     t0 = time.time()
     yield
     print(

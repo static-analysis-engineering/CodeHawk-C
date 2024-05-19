@@ -62,6 +62,7 @@ from chc.app.CHVersion import chcversion
 
 import chc.cmdline.c_file.cfileutil as C
 import chc.cmdline.c_file.cfiletableutil as CT
+import chc.cmdline.c_project.cprojectutil as P
 import chc.cmdline.juliet.julietutil as J
 import chc.cmdline.kendra.kendrautil as K
 import chc.reporting.DictionaryTables as DT
@@ -190,6 +191,32 @@ Function tables available:
 - xpr-list               : lists of xpr expressions
 - xpr-list-list          : lists of lists of xpr expressions
 """
+    print(descr)
+    exit(0)
+
+
+def cprojectcommand(args: argparse.Namespace) -> NoReturn:
+    descr = """
+The chkc c-project set of commands is used to analyze a c project, which is
+assumed to come with a Makefile.
+
+The regular sequence of commands is:
+
+> chkc c-project parse <path>
+
+This command expects to find a compile_commands.json file in <path> that
+can be rerun to build the project. (Some projects create this file as part
+of the regular build process, alternatively it can be created by utilities
+like 'bear'). The directory is expected to be in a state where the commands
+in compile_commands.json can be rerun.
+
+The compile_commands.json file is modified to emit preprocessed source files
+(.i files). These .i files are parsed by the CodeHawk parser (powered by
+goblint CIL) to produce ocaml data structures for all data and function
+declarations and definitions in all source files. These artifacts are saved
+in a gzipped tar archive for further analysis.
+
+    """
     print(descr)
     exit(0)
 
@@ -1217,6 +1244,132 @@ def parse() -> argparse.Namespace:
     cfile_invfacttable.add_argument(
         "--tgtpath", help="directory that holds the analysis results")
     cfile_invfacttable.set_defaults(func=CT.cfile_invfact_table)
+
+    # ------------------------------------------------------------ c-project ---
+    cprojectcmd = subparsers.add_parser("c-project")
+    cprojectcmd.set_defaults(func=cprojectcommand)
+    cprojectparsers = cprojectcmd.add_subparsers(title="show options")
+
+    # --- parse
+    cprojectparse = cprojectparsers.add_parser(
+        "parse",
+        usage="""
+        Call with the top directory of the project and the project name
+
+        Example:
+        chkc c-project parse myprojectdir myprojectname
+
+        The parse results will be saved in the subdirectory myprojectname.cch
+
+        To save the parse results in a different directory, say myresults,
+        call with additional argument --tgtpath:
+
+        chkc c-project parse myprojectdir myprojectname --tgtpath myresults
+
+        Note: the directory passed to tgtpath must exist.
+        """)
+    cprojectparse.add_argument(
+        "path", help="top directory of c-project (with compile_commands.json)")
+    cprojectparse.add_argument(
+        "projectname", help="name of the project")
+    cprojectparse.add_argument(
+        "--tgtpath", help="directory to save the results")
+    cprojectparse.add_argument(
+        "--loglevel", "-log",
+        choices=UL.LogLevel.options(),
+        default="NONE",
+        help="activate logging with given level (default to stderr)")
+    cprojectparse.add_argument(
+        "--logfilename",
+        help="name of file to write log messages")
+    cprojectparse.add_argument(
+        "--logfilemode",
+        choices=["a", "w"],
+        default="a",
+        help="file mode for log file: append (a, default), or write (w)")
+
+    cprojectparse.set_defaults(func=P.cproject_parse_project)
+
+    # --- analyze
+    cprojectanalyze = cprojectparsers.add_parser("analyze")
+    cprojectanalyze.add_argument(
+        "tgtpath", help="directory that contains the analysis results")
+    cprojectanalyze.add_argument(
+        "projectname", help="name of the project")
+    cprojectanalyze.add_argument(
+        "--loglevel", "-log",
+        choices=UL.LogLevel.options(),
+        default="NONE",
+        help="activate logging with given level (default to stderr)")
+    cprojectanalyze.add_argument(
+        "--logfilename",
+        help="name of file to write log messages")
+    cprojectanalyze.add_argument(
+        "--logfilemode",
+        choices=["a", "w"],
+        default="a",
+        help="file mode for log file: append (a, default), or write (w)")
+    cprojectanalyze.set_defaults(func=P.cproject_analyze_project)
+
+    # --- report
+    cprojectreport = cprojectparsers.add_parser("report")
+    cprojectreport.add_argument(
+        "tgtpath", help="directory that contains the analysis results")
+    cprojectreport.add_argument(
+        "projectname", help="name of the project")
+    cprojectreport.set_defaults(func=P.cproject_report)
+
+    # --- report-file
+    cprojectreportfile = cprojectparsers.add_parser("report-file")
+    cprojectreportfile.add_argument(
+        "tgtpath", help="directory that contains the analysis results")
+    cprojectreportfile.add_argument(
+        "projectname", help="name of the project")
+    cprojectreportfile.add_argument(
+        "filename", help="filename with relative path wrt the project")
+    cprojectreportfile.add_argument(
+        "--showcode",
+        action="store_true",
+        help="show proof obligations on code for entire file")
+    cprojectreportfile.add_argument(
+        "--open",
+        action="store_true",
+        help="only show open proof obligations (or violations)")
+    cprojectreportfile.set_defaults(func=P.cproject_report_file)
+
+    # --- count-statements
+    cprojectcountstmts = cprojectparsers.add_parser("count-statements")
+    cprojectcountstmts.add_argument(
+        "tgtpath", help="directory that contains the analysis results")
+    cprojectcountstmts.add_argument(
+        "projectname", help="name of the project")
+    cprojectcountstmts.add_argument(
+        "--verbose", "-v",
+        action="store_true",
+        help="show values for individual functions")
+    cprojectcountstmts.set_defaults(func=P.cproject_count_stmts)
+
+    # --- make-callgraph
+    cprojectcallgraph = cprojectparsers.add_parser("make-callgraph")
+    cprojectcallgraph.add_argument(
+        "tgtpath", help="directory that contains the analysis results")
+    cprojectcallgraph.add_argument(
+        "projectname", help="name of the project")
+    cprojectcallgraph.add_argument(
+        "--save", help="name of file (without extension) to save the results")
+    cprojectcallgraph.set_defaults(func=P.cproject_make_callgraph)
+
+    # --- missing-summaries
+    cprojectmissingsummaries = cprojectparsers.add_parser("missing-summaries")
+    cprojectmissingsummaries.add_argument(
+        "tgtpath", help="directory that contains the analysis results")
+    cprojectmissingsummaries.add_argument(
+        "projectname", help="name of the project")
+    cprojectmissingsummaries.add_argument(
+        "--all",
+        action="store_true",
+        help="show for all files (including application files)")
+    cprojectmissingsummaries.set_defaults(func=P.cproject_missing_summaries)
 
     args = parser.parse_args()
     return args
