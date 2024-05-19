@@ -202,21 +202,19 @@ class AnalysisManager:
         """Call analyzer to create primary proof obligations for a single file."""
 
         chklogger.logger.info(
-            "Create primiary proof obligations for %s", cfilename)
+            "Create primiary proof obligations for file %s with path %s",
+            cfilename, ("none" if cfilepath is None else cfilepath))
         try:
             cmd = self._create_file_primary_proofobligations_cmd_partial()
             cmd.append(cfilename)
             if cfilepath is not None:
                 cmd.extend(["-cfilepath", cfilepath])
             chklogger.logger.info(
-                "Primary proof obligations are created for %s", cfilename)
-            chklogger.logger.info(
                 "Ocaml analyzer is called with %s", str(cmd))
             if self.verbose:
                 result = subprocess.call(
                     cmd, cwd=self.targetpath, stderr=subprocess.STDOUT)
                 print("\nResult: " + str(result))
-                # self.capp.get_file(cfilename).predicatedictionary.initialize()
             else:
                 result = subprocess.call(
                     cmd,
@@ -227,7 +225,10 @@ class AnalysisManager:
             if result != 0:
                 print("Error in creating primary proof obligations")
                 exit(1)
-            cfile = self.capp.get_file(cfilename)
+            pcfilename = (
+                cfilename if cfilepath is None
+                else os.path.join(cfilepath, cfilename))
+            cfile = self.capp.get_file(pcfilename)
             cfile.reinitialize_tables()
             cfile.reload_ppos()
             cfile.reload_spos()
@@ -237,24 +238,28 @@ class AnalysisManager:
             exit(1)
 
     def create_app_primary_proofobligations(self, processes: int = 1) -> None:
-        """Call analyzer to create primary proof obligations for all application files."""
+        """Call analyzer to create ppo's for all application files."""
 
         if processes > 1:
 
             def f(cfile: "CFile") -> None:
                 cmd = self._create_file_primary_proofobligations_cmd_partial()
-                cmd.append(cfile.name)
+                if cfile.cfilepath is not None:
+                    cmd.extend(["-filepath", cfile.cfilepath])
+                cmd.append(cfile.cfilename)
                 self._execute_cmd(cmd)
 
             self.capp.iter_files_parallel(f, processes)
         else:
 
             def f(cfile: "CFile") -> None:
-                self.create_file_primary_proofobligations(cfile.name)
+                self.create_file_primary_proofobligations(
+                    cfile.cfilename, cfile.cfilepath)
 
             self.capp.iter_files(f)
 
-    def _generate_and_check_file_cmd_partial(self, domains: str) -> List[str]:
+    def _generate_and_check_file_cmd_partial(
+            self, cfilepath: Optional[str], domains: str) -> List[str]:
         cmd: List[str] = [
             self.canalyzer,
             "-summaries",
@@ -279,14 +284,20 @@ class AnalysisManager:
         if self.verbose:
             cmd.append("-verbose")
         cmd.append(self.targetpath)
+        if cfilepath is not None:
+            cmd.extend(["-cfilepath", cfilepath])
         cmd.append("-cfilename")
         return cmd
 
-    def generate_and_check_file(self, cfilename: str, domains: str) -> None:
+    def generate_and_check_file(
+            self,
+            cfilename: str,
+            cfilepath: Optional[str],
+            domains: str) -> None:
         """Generate invariants and check proof obligations for a single file."""
 
         try:
-            cmd = self._generate_and_check_file_cmd_partial(domains)
+            cmd = self._generate_and_check_file_cmd_partial(cfilepath, domains)
             cmd.append(cfilename)
             chklogger.logger.info(
                 "Calling AI to generate invariants: %s",
@@ -303,7 +314,8 @@ class AnalysisManager:
                     stderr=subprocess.STDOUT,
                 )
             if result != 0:
-                print("Error in generating invariants or checking proof obligations")
+                chklogger.logger.error(
+                    "Error in generating invariants for %s", cfilename)
                 exit(1)
         except subprocess.CalledProcessError as args:
             print(args.output)
@@ -316,15 +328,17 @@ class AnalysisManager:
         if processes > 1:
 
             def f(cfile: "CFile") -> None:
-                cmd = self._generate_and_check_file_cmd_partial(domains)
-                cmd.append(cfile.name)
+                cmd = self._generate_and_check_file_cmd_partial(
+                    cfile.cfilepath, domains)
+                cmd.append(cfile.cfilename)
                 self._execute_cmd(cmd)
 
             self.capp.iter_files_parallel(f, processes)
         else:
 
             def f(cfile: "CFile") -> None:
-                self.generate_and_check_file(cfile.name, domains)
+                self.generate_and_check_file(
+                    cfile.cfilename, cfile.cfilepath, domains)
 
             self.capp.iter_files(f)
         self.capp.iter_files(self.reset_tables)

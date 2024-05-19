@@ -589,7 +589,7 @@ class TestManager:
             if creffile.has_domains():
                 for d in creffile.domains:
                     am = AnalysisManager(capp, verbose=self.verbose)
-                    am.generate_and_check_file(cfilename, d)
+                    am.generate_and_check_file(cfilename, None, d)
             cfile.reinitialize_tables()
             ppos = cfile.get_ppos()
             if delaytest:
@@ -669,7 +669,7 @@ class TestManager:
             if creffile.has_domains():
                 for d in creffile.domains:
                     am = AnalysisManager(capp, verbose=self.verbose)
-                    am.generate_and_check_file(cfilename, d)
+                    am.generate_and_check_file(cfilename, None, d)
             cappfile.reinitialize_tables()
             spos = cappfile.get_spos()
             if delaytest:

@@ -24,7 +24,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
-"""Command-line interface to the CodeHawk C Analyzer.
+"""Implementation of commands for processing single files in the CLI.
 
 The functions in this module support the commands available in the single-file
 mode of the CodeHawk-C analyzer.
@@ -145,7 +145,7 @@ def cfile_parse_file(args: argparse.Namespace) -> NoReturn:
         targetpath,
         logfilename=logfilename,
         mode=logfilemode,
-        msg="cfile parse invoked")
+        msg="c-file parse invoked")
 
     chklogger.logger.info("Target path: %s", targetpath)
 
@@ -257,13 +257,13 @@ def cfile_analyze_file(args: argparse.Namespace) -> NoReturn:
     am.reset_tables(cfile)
     capp.collect_post_assumes()
 
-    am.generate_and_check_file(cfilename, "llrvisp")
+    am.generate_and_check_file(cfilename, None, "llrvisp")
     am.reset_tables(cfile)
     capp.collect_post_assumes()
 
     for k in range(5):
         capp.update_spos()
-        am.generate_and_check_file(cfilename, "llrvisp")
+        am.generate_and_check_file(cfilename, None, "llrvisp")
         am.reset_tables(cfile)
 
     chklogger.logger.info("cfile analyze completed")
@@ -517,13 +517,13 @@ def cfile_testlibc_summary(args: argparse.Namespace) -> NoReturn:
     am.reset_tables(cfile)
     capp.collect_post_assumes()
 
-    am.generate_and_check_file(cfilename, "llrvisp")
+    am.generate_and_check_file(cfilename, None, "llrvisp")
     am.reset_tables(cfile)
     capp.collect_post_assumes()
 
     for k in range(5):
         capp.update_spos()
-        am.generate_and_check_file(cfilename, "llrvisp")
+        am.generate_and_check_file(cfilename, None, "llrvisp")
         am.reset_tables(cfile)
 
     chklogger.logger.info("cfile analyze completed")
