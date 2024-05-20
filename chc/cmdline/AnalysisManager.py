@@ -244,10 +244,17 @@ class AnalysisManager:
 
             def f(cfile: "CFile") -> None:
                 cmd = self._create_file_primary_proofobligations_cmd_partial()
-                if cfile.cfilepath is not None:
-                    cmd.extend(["-filepath", cfile.cfilepath])
                 cmd.append(cfile.cfilename)
+                if cfile.cfilepath is not None:
+                    cmd.extend(["-cfilepath", cfile.cfilepath])
                 self._execute_cmd(cmd)
+                pcfilename = (
+                    cfile.cfilename if cfile.cfilepath is None
+                    else os.path.join(cfile.cfilepath, cfile.cfilename))
+                cfile = self.capp.get_file(pcfilename)
+                cfile.reinitialize_tables()
+                cfile.reload_ppos()
+                cfile.reload_spos()
 
             self.capp.iter_files_parallel(f, processes)
         else:

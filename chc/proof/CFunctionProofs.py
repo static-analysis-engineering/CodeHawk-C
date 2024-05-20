@@ -145,9 +145,6 @@ class CFunctionProofs:
     def spo_violations(self) -> List[CFunctionPO]:
         return [spo for spo in self.spolist if spo.is_violated]
 
-    def add_returnsite_postcondition(self, postcondition):
-        self.spos.add_returnsite_postcondition(postcondition)
-
     def update_spos(self) -> None:
         self.spos.update()
 

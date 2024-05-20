@@ -166,6 +166,7 @@ def cproject_analyze_project(args: argparse.Namespace) -> NoReturn:
     # arguments
     tgtpath: str = args.tgtpath
     projectname: str = args.projectname
+    maxprocesses: int = args.maxprocesses
     loglevel: str = args.loglevel
     logfilename: Optional[str] = args.logfilename
     logfilemode: str = args.logfilemode
@@ -212,7 +213,7 @@ def cproject_analyze_project(args: argparse.Namespace) -> NoReturn:
     with timing("analysis"):
 
         try:
-            am.create_app_primary_proofobligations()
+            am.create_app_primary_proofobligations(processes=maxprocesses)
             capp.reinitialize_tables()
             capp.collect_post_assumes()
         except UF.CHError as e:
@@ -220,13 +221,13 @@ def cproject_analyze_project(args: argparse.Namespace) -> NoReturn:
             exit(1)
 
         for i in range(1):
-            am.generate_and_check_app("llrvisp")
+            am.generate_and_check_app("llrvisp", processes=maxprocesses)
             capp.reinitialize_tables()
             capp.update_spos()
 
         for i in range(5):
             capp.update_spos()
-            am.generate_and_check_app("llrvisp")
+            am.generate_and_check_app("llrvisp", processes=maxprocesses)
             capp.reinitialize_tables()
 
     timestamp = os.stat(UF.get_cchpath(targetpath, projectname)).st_ctime
@@ -234,8 +235,8 @@ def cproject_analyze_project(args: argparse.Namespace) -> NoReturn:
     result = RP.project_proofobligation_stats_to_dict(capp)
     result["timestamp"] = timestamp
     result["project"] = projectpath
-    UF.save_project_summary_results(targetpath, result)
-    UF.save_project_summary_results_as_xml(targetpath, result)
+    UF.save_project_summary_results(targetpath, projectname, result)
+    UF.save_project_summary_results_as_xml(targetpath, projectname, result)
 
     exit(0)
 
@@ -250,7 +251,7 @@ def cproject_report(args: argparse.Namespace) -> NoReturn:
     targetpath = os.path.abspath(tgtpath)
     projectpath = targetpath
 
-    result = UF.read_project_summary_results(targetpath)
+    result = UF.read_project_summary_results(targetpath, projectname)
     if result is not None:
         print(RP.project_proofobligation_stats_dict_to_string(result))
         exit(0)
@@ -268,10 +269,10 @@ def cproject_report(args: argparse.Namespace) -> NoReturn:
     fresult = RP.project_proofobligation_stats_to_dict(capp)
     fresult["timestamp"] = timestamp
     fresult["project"] = projectpath
-    UF.save_project_summary_results(targetpath, fresult)
-    UF.save_project_summary_results_as_xml(targetpath, fresult)
+    UF.save_project_summary_results(targetpath, projectname, fresult)
+    UF.save_project_summary_results_as_xml(targetpath, projectname, fresult)
 
-    result = UF.read_project_summary_results(targetpath)
+    result = UF.read_project_summary_results(targetpath, projectname)
     if result is not None:
         print(RP.project_proofobligation_stats_dict_to_string(result))
     else:

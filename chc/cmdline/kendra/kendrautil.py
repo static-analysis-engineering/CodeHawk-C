@@ -41,7 +41,6 @@ from chc.cmdline.kendra.TestManager import AnalyzerMissingError
 from chc.cmdline.kendra.TestSetRef import TestSetRef
 from chc.cmdline.ParseManager import ParseManager
 
-import chc.reporting.DictionaryTables as DT
 import chc.reporting.ProofObligations as RP
 
 import chc.util.fileutil as UF

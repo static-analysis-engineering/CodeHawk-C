@@ -404,7 +404,7 @@ def juliet_analyze(args: argparse.Namespace) -> NoReturn:
             capp, filefilter=filefilter)
         result["timestamp"] = timestamp
         result["path"] = capp.projectpath
-        UF.save_project_summary_results(capp.targetpath, result)
+        UF.save_project_summary_results(capp.targetpath, "juliet", result)
     except Exception as e:
         print(str(e))
         exit(1)
@@ -488,7 +488,7 @@ def juliet_report(args: argparse.Namespace) -> NoReturn:
     excludefiles = ["io.c", "main_linux.c", "std_thread.c"]
     targetpath = projectpath
 
-    summary = UF.read_project_summary_results(targetpath)
+    summary = UF.read_project_summary_results(targetpath, "juliet")
     if summary is not None:
         print(RP.project_proofobligation_stats_dict_to_string(summary))
         exit(0)
@@ -1026,7 +1026,7 @@ def juliet_project_dashboard(args: argparse.Namespace) -> NoReturn:
         for test in testcases[cwe]:
             pname = f"{cwe}:{test}"
             path = UF.get_juliet_testpath(cwe, test)
-            results = UF.read_project_summary_results(path)
+            results = UF.read_project_summary_results(path, "juliet")
             if results is None:
                 nosummary.append(pname)
                 continue

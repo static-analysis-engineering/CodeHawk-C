@@ -123,7 +123,7 @@ import shutil
 import time
 import xml.etree.ElementTree as ET
 
-from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
+from typing import Any, cast, Dict, List, Optional, Tuple, TYPE_CHECKING
 
 import chc.util.xmlutil as UX
 
@@ -608,6 +608,11 @@ def get_analysisresults_path(targetpath: str, projectname: str) -> str:
     return os.path.join(cchpath, "a")
 
 
+def has_analysisresults_path(targetpath: str, projectname: str) -> bool:
+    path = get_analysisresults_path(targetpath, projectname)
+    return os.path.isdir(path)
+
+
 def get_savedsource_path(targetpath: str, projectname: str) -> str:
     cchpath = get_cchpath(targetpath, projectname)
     return os.path.join(cchpath, "s")
@@ -713,9 +718,10 @@ def get_global_definitions_filename(targetpath: str, projectname: str) -> str:
     return os.path.join(path, "globaldefinitions.xml")
 
 
-def archive_project_summary_results(path: str) -> None:
+def archive_project_summary_results(path: str, projectname: str) -> None:
     if os.path.isdir(path):
-        filename = os.path.join(path, "summaryresults.json")
+        projectsummary = projectname + "_summaryresults"
+        filename = os.path.join(path, projectsummary + ".json")
         if os.path.isfile(filename):
             with open(filename) as fp:
                 d = json.load(fp)
@@ -723,20 +729,24 @@ def archive_project_summary_results(path: str) -> None:
                     dtime = d["timestamp"]
                 else:
                     dtime = 0
-                newfilename = "summaryresults_" + str(dtime) + ".json"
+                newfilename = projectsummary + "_" + str(dtime) + ".json"
                 newfilename = os.path.join(path, newfilename)
                 with open(newfilename, "w") as fp:
                     json.dump(d, fp)
 
 
-def save_project_summary_results(path: str, d: Dict[str, Any]) -> None:
-    archive_project_summary_results(path)
-    with open(os.path.join(path, "summaryresults.json"), "w") as fp:
+def save_project_summary_results(
+        path: str, projectname: str, d: Dict[str, Any]) -> None:
+    archive_project_summary_results(path, projectname)
+    projectsummary = projectname + "_summaryresults"
+    with open(os.path.join(path, projectsummary + ".json"), "w") as fp:
         json.dump(d, fp)
 
 
-def save_project_summary_results_as_xml(path: str, d: Dict[str, Any]) -> None:
-    xml_file = os.path.join(path, "summaryresults.xml")
+def save_project_summary_results_as_xml(
+        path: str, projectname: str, d: Dict[str, Any]) -> None:
+    projectsummary = projectname + "_summaryresults"
+    xml_file = os.path.join(path, projectsummary + ".xml")
     tags = d["tagresults"]
     ppos = tags["ppos"]
     spos = tags["spos"]
@@ -784,13 +794,17 @@ def save_project_summary_results_as_xml(path: str, d: Dict[str, Any]) -> None:
     tree.write(xml_file)
 
 
-def read_project_summary_results(path: str) -> Optional[Dict[str, Any]]:
+def read_project_summary_results(
+        path: str,
+        projectname: str
+) -> Optional[Dict[str, Dict[str, Dict[str, Dict[str, int]]]]]:
     if os.path.isdir(path):
-        filename = os.path.join(path, "summaryresults.json")
+        projectsummary = projectname + "_summaryresults"
+        filename = os.path.join(path, projectsummary + ".json")
         if os.path.isfile(filename):
             with open(filename) as fp:
                 d = json.load(fp)
-                return d
+                return cast(Dict[str, Dict[str, Dict[str, Dict[str, int]]]], d)
         else:
             print("Warning: " + filename + " not found: summarize results first")
     else:
@@ -798,11 +812,13 @@ def read_project_summary_results(path: str) -> Optional[Dict[str, Any]]:
     return None
 
 
-def read_project_summary_results_history(path: str) -> List[Dict[str, Any]]:
+def read_project_summary_results_history(
+        path: str, projectname: str) -> List[Dict[str, Any]]:
     result: List[Dict[str, Any]] = []
     if os.path.isdir(path):
         for fname in os.listdir(path):
-            if fname.startswith("summaryresults") and fname.endswith("json"):
+            projectsummary = projectname + "_summaryresults"
+            if fname.startswith(projectsummary) and fname.endswith("json"):
                 fname = os.path.join(path, fname)
                 with open(fname) as fp:
                     result.append(json.load(fp))
@@ -864,6 +880,23 @@ def get_cfile_xnode(
         cfilename: str) -> Optional[ET.Element]:
     filename = get_cfile_cfile(targetpath, projectname, cfilepath, cfilename)
     return get_xnode(filename, "c-file", "C source file")
+
+
+def check_cfile_results(
+        targetpath: str,
+        projectname: str,
+        cfilepath: Optional[str],
+        cfilename: str) -> Optional[str]:
+    filename = get_cfile_cfile(targetpath, projectname, cfilepath, cfilename)
+    if os.path.isfile(filename):
+        try:
+            get_xnode(filename, "c-file", "C source file")
+        except CHCXmlParseError as e:
+            return str(e)
+        return None
+    else:
+        return (
+            f"Results file {filename} not found found for c-file {cfilename}")
 
 
 def get_cfile_dictionaryname(
@@ -1096,6 +1129,28 @@ def get_cfun_xnode(
     return get_xnode(filename, "function", "C source function file")
 
 
+def check_cfun_results(
+        targetpath: str,
+        projectname: str,
+        cfilepath: Optional[str],
+        cfilename: str,
+        fnname: str) -> Optional[str]:
+    r = check_cfile_results(targetpath, projectname, cfilepath, cfilename)
+    if r is not None:
+        return r
+
+    filename = get_cfun_filename(
+        targetpath, projectname, cfilepath, cfilename, fnname)
+    if os.path.isfile(filename):
+        try:
+            get_xnode(filename, "function", "C source function file")
+        except CHCXmlParseError as e:
+            return str(e)
+        return None
+    else:
+        return (f"Results file {filename} not found for function {fnname}")
+
+
 def get_api_filename(
         targetpath: str,
         projectname: str,
@@ -1266,6 +1321,7 @@ def save_spo_file(
     header.append(cnode)
     with open(filename, "w") as fp:
         fp.write(UX.doc_to_pretty(ET.ElementTree(header)))
+    chklogger.logger.info("Saved spo file: %s", filename)
 
 
 def save_pod_file(
@@ -1281,6 +1337,7 @@ def save_pod_file(
     header.append(cnode)
     with open(filename, "w") as fp:
         fp.write(UX.doc_to_pretty(ET.ElementTree(header)))
+    chklogger.logger.info("Saved pod file: %s", filename)
 
 
 # --------------------------------------------------------------- source code --
@@ -1509,7 +1566,7 @@ def get_libc_summary_test(header: str, functionname: str) -> Tuple[str, str]:
                 header, functionname, summaries["files"].keys()
             )
     else:
-        raise CHCSummaryHeaderNotFound(header, testfiles["headers"].keys())
+        raise CHCSummaryHeaderNotFound(header, list(testfiles.keys()))
 
 
 # ------------------------------------------------------------ juliet tests ----
@@ -1537,7 +1594,7 @@ def get_juliet_target_file() -> Dict[str, Any]:
         raise CHCFileNotFoundError(filename)
 
 
-def get_juliet_testcases() -> Dict[str, Any]:
+def get_juliet_testcases() -> Dict[str, Dict[str, List[str]]]:
     juliettargetfile = get_juliet_target_file()
     if "testcases" in juliettargetfile:
         return juliettargetfile["testcases"]
@@ -1553,9 +1610,9 @@ def get_juliet_variant_descriptions() -> Dict[str, Any]:
         raise CHCJulietTargetFileCorruptedError("variants")
 
 
-def get_flattened_juliet_testcases() -> Dict[str, Any]:
+def get_flattened_juliet_testcases() -> Dict[str, List[str]]:
     testcases = get_juliet_testcases()
-    result: Dict[str, Any] = {}
+    result: Dict[str, List[str]] = {}
     for cwe in testcases:
         result[cwe] = []
         for t in testcases[cwe]:
@@ -1635,15 +1692,12 @@ def get_juliet_result_times(cwe: str, test: str) -> Tuple[str, str]:
     t1 = 0.0
     t2 = 0.0
     path = get_juliet_testpath(cwe, test)
-    sempath = os.path.join(path, "semantics")
-    if os.path.isdir(sempath):
-        chcpath = os.path.join(sempath, "chcartifacts")
-        if os.path.isdir(chcpath):
-            t1 = os.path.getmtime(chcpath)
-        else:
-            ktapath = os.path.join(sempath, "ktadvance")
-            if os.path.isdir(ktapath):
-                t1 = os.path.getmtime(ktapath)
+    projectname = cwe + "_" + test
+    cchpath = get_cchpath(path, projectname)
+    if os.path.isdir(cchpath):
+        analysispath = os.path.join(cchpath, "a")
+        if os.path.isdir(analysispath):
+            t1 = os.path.getmtime(analysispath)
     resultsfile = os.path.join(path, "jsummaryresults.json")
     if os.path.isfile(resultsfile):
         t2 = os.path.getmtime(resultsfile)
@@ -1806,6 +1860,7 @@ def unpack_tar_file(path: str, deletesemantics: bool = False) -> bool:
     mactargzfile = "semantics_mac.tar.gz"
     if not os.path.isdir(path):
         raise CHCDirectoryNotFoundError(path)
+    cwd = os.getcwd()
     os.chdir(path)
 
     if os.path.isfile(linuxtargzfile):
@@ -1813,8 +1868,10 @@ def unpack_tar_file(path: str, deletesemantics: bool = False) -> bool:
     elif os.path.isfile(mactargzfile):
         targzfile = mactargzfile
     elif os.path.isdir("semantics") and not deletesemantics:
+        os.chdir(cwd)
         return True
     else:
+        os.chdir(cwd)
         return False
 
     if os.path.isdir("semantics"):
@@ -1822,6 +1879,7 @@ def unpack_tar_file(path: str, deletesemantics: bool = False) -> bool:
             print("Removing existing semantics directory")
             shutil.rmtree("semantics")
         else:
+            os.chdir(cwd)
             return True
 
     if os.path.isfile(targzfile):
@@ -1829,10 +1887,13 @@ def unpack_tar_file(path: str, deletesemantics: bool = False) -> bool:
         result = subprocess.call(cmd, cwd=path, stderr=subprocess.STDOUT)
         if result != 0:
             print("Error in " + " ".join(cmd))
+            os.chdir(cwd)
             return False
         # else:
         # print('Successfully extracted ' + targzfile)
-    return os.path.isdir("semantics")
+    result = os.path.isdir("semantics")
+    os.chdir(cwd)
+    return result
 
 
 def unpack_cchtar_file(
