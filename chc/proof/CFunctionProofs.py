@@ -5,7 +5,7 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2020-2022 Henny B. Sipma
 # Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -26,11 +26,13 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Main access point for a function's primary and supporting proof obligations."""
 
 import xml.etree.ElementTree as ET
 
-from typing import List, Optional, TYPE_CHECKING
+from typing import Callable, List, Optional, TYPE_CHECKING
 
+from chc.proof.CFunctionCallsiteSPOs import CFunctionCallsiteSPOs
 from chc.proof.CFunctionPO import CFunctionPO
 from chc.proof.CFunctionPPO import CFunctionPPO
 from chc.proof.CFunctionPPOs import CFunctionPPOs
@@ -53,6 +55,7 @@ class CFunctionProofs:
     object.
 
     - CFunctionProofs
+
       - ppos: CFunctionPPOs
       - id -> CFunctionPPO
 
@@ -71,7 +74,6 @@ class CFunctionProofs:
         self._cfun = cfun
         self.xpponode = xpponode
         self.xsponode = xsponode
-        # self.cfile.predicatedictionary.initialize()
         self._ppos: Optional[CFunctionPPOs] = None
         self._spos: Optional[CFunctionSPOs] = None
 
@@ -110,20 +112,20 @@ class CFunctionProofs:
         return self._ppos
 
     @property
-    def ppolist(self) -> List[CFunctionPPO]:
+    def ppolist(self) -> List[CFunctionPO]:
         return list(self.ppos.ppos.values())
 
     @property
-    def open_ppos(self) -> List[CFunctionPPO]:
-        return [ppo for ppo in self.ppolist if not ppo.is_closed]
+    def open_ppos(self) -> List[CFunctionPO]:
+        return [ppo for ppo in self.ppos.ppos.values() if ppo.is_open]
 
     @property
-    def ppo_violations(self) -> List[CFunctionPPO]:
-        return [ppo for ppo in self.ppolist if ppo.is_violated]
+    def ppos_violated(self) -> List[CFunctionPO]:
+        return [ppo for ppo in self.ppos.ppos.values() if ppo.is_violated]
 
     @property
-    def delegated_ppos(self) -> List[CFunctionPPO]:
-        return [ppo for ppo in self.ppolist if ppo.is_delegated]
+    def ppos_delegated(self) -> List[CFunctionPO]:
+        return [ppo for ppo in self.ppos.ppos.values() if ppo.is_delegated]
 
     @property
     def spos(self) -> CFunctionSPOs:
@@ -140,19 +142,16 @@ class CFunctionProofs:
         return [spo for spo in self.spolist if not spo.is_closed]
 
     @property
-    def spo_violations(self) -> List[CFunctionPPO]:
+    def spo_violations(self) -> List[CFunctionPO]:
         return [spo for spo in self.spolist if spo.is_violated]
 
     def add_returnsite_postcondition(self, postcondition):
-        # self._get_spos()
         self.spos.add_returnsite_postcondition(postcondition)
 
     def update_spos(self) -> None:
-        # self._get_spos()
         self.spos.update()
 
     def distribute_post_guarantees(self) -> None:
-        # self._get_spos()
         self.spos.distribute_post_guarantees()
 
     def collect_post_assumes(self) -> None:
@@ -182,48 +181,28 @@ class CFunctionProofs:
         self._save_spos(cnode)
 
     def get_ppo(self, id: int) -> CFunctionPPO:
-        # self._get_ppos()
         return self.ppos.get_ppo(id)
 
     def get_spo(self, id: int) -> CFunctionPO:
-        # self._get_spos()
         return self.spos.get_spo(id)
 
-    '''
-    def iter_ppos(self, f):
-        # self._get_ppos()
+    def iter_ppos(self, f: Callable[[CFunctionPPO], None]) -> None:
         self.ppos.iter(f)
 
-    def iter_spos(self, f):
-        # self._get_spos()
+    def iter_spos(self, f: Callable[[CFunctionPO], None]) -> None:
         self.spos.iter(f)
 
-    def iter_callsites(self, f):
-        # self._get_spos()
+    def iter_callsites(self, f: Callable[[CFunctionCallsiteSPOs], None]) -> None:
         self.spos.iter_callsites(f)
-    '''
 
     def reload_ppos(self) -> None:
         self.reset_ppos()
-        # self._get_ppos(force=True)
 
     def reload_spos(self) -> None:
         self.reset_spos()
-        # self._get_spos(force=True)
 
-    '''
-    def get_ppos(self) -> List[CFunctionPPO]:
-        result: List[CFunctionPPO] = []
-
-        def f(ppo):
-            result.append(ppo)
-
-        self.iter_ppos(f)
-        return result
-
-    def get_spos(self):
-        # self._get_spos()
-        result = []
+    def get_spos(self) -> List[CFunctionPO]:
+        result: List[CFunctionPO] = []
 
         def f(spo):
             result.append(spo)
@@ -231,17 +210,7 @@ class CFunctionProofs:
         self.iter_spos(f)
         return result
 
-    def get_open_ppos(self):
-        result = []
-
-        def f(ppo):
-            if not ppo.is_closed():
-                result.append(ppo)
-
-        self.iter_ppos(f)
-        return result
-
-    def get_open_spos(self):
+    def get_open_spos(self) -> List[CFunctionPO]:
         result = []
 
         def f(spo):
@@ -251,17 +220,7 @@ class CFunctionProofs:
         self.iter_spos(f)
         return result
 
-    def get_violations(self):
-        result = []
-
-        def f(ppo):
-            if ppo.is_violated():
-                result.append(ppo)
-
-        self.iter_ppos(f)
-        return result
-
-    def get_spo_violations(self):
+    def get_spo_violations(self) -> List[CFunctionPO]:
         result = []
 
         def f(spo):
@@ -270,29 +229,6 @@ class CFunctionProofs:
 
         self.iter_spos(f)
         return result
-
-    def get_delegated(self):
-        result = []
-
-        def f(ppo):
-            if ppo.is_delegated():
-                result.append(ppo)
-
-        self.iter_ppos(f)
-        return result
-
-    def _get_ppos(self, force=False):
-        if self.ppos is None or force:
-            xnode = UF.get_ppo_xnode(self.capp.path, self.cfile.name, self.cfun.name)
-            if xnode is not None:
-                self.ppos = CFunctionPPOs(self, xnode)
-            else:
-                print(
-                    "Unable to load ppos for "
-                    + self.cfun.name
-                    + " in file "
-                    + self.cfile.name
-                )
 
     def _get_spos(self, force=False):
         if self.spos is None or force:
@@ -306,7 +242,6 @@ class CFunctionProofs:
                     + " in file "
                     + self.cfile.name
                 )
-    '''
 
     def _save_spos(self, cnode: ET.Element) -> None:
         UF.save_spo_file(

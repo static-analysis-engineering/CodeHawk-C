@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarn Labs LLC
+# Copyright (c) 2020-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,6 +26,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Proof obligation predicate."""
 
 from typing import cast, Dict, List, TYPE_CHECKING
 
@@ -316,6 +317,9 @@ class CPOPredicate(CFilePredicateRecord):
     def has_ref_type(self) -> bool:
         return False
 
+    def tgtkind(self) -> str:
+        raise Exception(f"tgtkind not defined for {self}")
+
     def __str__(self) -> str:
         return "po-predicate " + self.tags[0]
 
@@ -361,7 +365,7 @@ class CPONotNull(CPOPredicate):
 class CPOGlobalAddress(CPOPredicate):
     """global-address(exp): exp is a global address
 
-    args[0]: index of exp in cdictionary
+    - args[0]: index of exp in cdictionary
     """
 
     def __init__(
@@ -397,7 +401,7 @@ class CPOGlobalAddress(CPOPredicate):
 class CPOHeapAddress(CPOPredicate):
     """heap-address(exp): exp is a heap address
 
-    args[0]: index of exp in cdictionary
+    - args[0]: index of exp in cdictionary
     """
 
     def __init__(
@@ -432,10 +436,10 @@ class CPOHeapAddress(CPOPredicate):
 
 @pdregistry.register_tag("dr", CPOPredicate)
 class CPODistinctRegion(CPOPredicate):
-    """distinct-region(exp, i): Memory referenced by i is disinct from memory pointed to by exp.
+    """Memory referenced by i is disinct from memory pointed to by exp.
 
-    args[0]: index of exp in cdictionary
-    args[1]: memref index
+    - args[0]: index of exp in cdictionary
+    - args[1]: memref index
     """
 
     def __init__(
@@ -475,7 +479,7 @@ class CPODistinctRegion(CPOPredicate):
 class CPONull(CPOPredicate):
     """null(exp): the expression is NULL
 
-    args[0]: exp
+    - args[0]: exp
     """
 
     def __init__(
@@ -502,7 +506,7 @@ class CPONull(CPOPredicate):
 class CPOValidMem(CPOPredicate):
     """valid-mem(exp): exp points to valid memory (not freed).
 
-    args[0]: index of exp in cdictionary
+    - args[0]: index of exp in cdictionary
     """
 
     def __init__(
@@ -539,8 +543,8 @@ class CPOControlledResource(CPOPredicate):
     """controlled-resource(name, exp): controlled resource, with [name] is not
     tainted.
 
-    tags[1]: name of resource
-    args[0]: index of exp in cdictionary
+    - tags[1]: name of resource
+    - args[0]: index of exp in cdictionary
     """
 
     def __init__(
@@ -581,8 +585,8 @@ class CPOControlledResource(CPOPredicate):
 class CPOStackAddressEscape(CPOPredicate):
     """Pointer is not assigned to lval with longer lifetime and is not returned.
 
-    args[0]: index of lval in cdictionary or -1 if None
-    args[1]: index exp in cdictionary
+    - args[0]: index of lval in cdictionary or -1 if None
+    - args[1]: index exp in cdictionary
     """
 
     def __init__(
@@ -619,7 +623,7 @@ class CPOStackAddressEscape(CPOPredicate):
 class CPOInScope(CPOPredicate):
     """in-scope(exp): memory pointed to by exp is in scope.
 
-    args[0]: index of exp in cdictionary
+    - args[0]: index of exp in cdictionary
     """
 
     def __init__(
@@ -646,7 +650,7 @@ class CPOInScope(CPOPredicate):
 class CPOAllocationBase(CPOPredicate):
     """allocation-base(exp): exp is the start address of a dynamically allocated region.
 
-    args[0]: index of exp in cdictionary
+    - args[0]: index of exp in cdictionary
     """
 
     def __init__(
@@ -673,7 +677,7 @@ class CPOAllocationBase(CPOPredicate):
 class CPONewMemory(CPOPredicate):
     """new-memory(exp): the memory pointed to was allocated fresh (not aliased).
 
-    args[0]: index of exp in cdictionary
+    - args[0]: index of exp in cdictionary
     """
 
     def __init__(
@@ -700,8 +704,8 @@ class CPONewMemory(CPOPredicate):
 class CPOBuffer(CPOPredicate):
     """buffer(exp, size): exp points to a buffer of at least size bytes.
 
-    args[0]: index of exp in cdictionary
-    args[1]: index of size in cdictionary
+    - args[0]: index of exp in cdictionary
+    - args[1]: index of size in cdictionary
     """
 
     def __init__(
@@ -733,8 +737,8 @@ class CPORevBuffer(CPOPredicate):
     """rev-buffer(exp, size) exp points into a buffer with at least size bytes
     preceding.
 
-    args[0]: index of exp in cdictionary
-    args[1]: index of presize expression in cdictionary
+    - args[0]: index of exp in cdictionary
+    - args[1]: index of presize expression in cdictionary
     """
 
     def __init__(
@@ -765,8 +769,8 @@ class CPORevBuffer(CPOPredicate):
 class CPOTypeAtOffset(CPOPredicate):
     """type-at-offset(typ, exp): exp has the given type.
 
-    args[0]: index of typ in cdictionary
-    args[1]: index of exp in cdictionary
+    - args[0]: index of typ in cdictionary
+    - args[1]: index of exp in cdictionary
     """
 
     def __init__(
@@ -797,8 +801,8 @@ class CPOTypeAtOffset(CPOPredicate):
 class CPOLowerBound(CPOPredicate):
     """lower-bound(typ, exp): the value of pointer exp is greater than or equal to zero.
 
-    args[0]: index of typ in cdictionary
-    args[1]: index of exp in cdictionary
+    - args[0]: index of typ in cdictionary
+    - args[1]: index of exp in cdictionary
     """
 
     def __init__(
@@ -830,8 +834,8 @@ class CPOUpperBound(CPOPredicate):
     """upper-bound(typ, exp): the value of pointer exp is less than or equal to the
     maximum address allowed by typ.
 
-    args[0]: index of typ in cdictionary
-    args[1]: index of exp in cdictionary
+    - args[0]: index of typ in cdictionary
+    - args[1]: index of exp in cdictionary
     """
 
     def __init__(
@@ -863,7 +867,7 @@ class CPOIndexLowerBound(CPOPredicate):
     """index-lower-bound(exp): the value of index expression exp is greater than or
     equal to zero.
 
-    args[0]: index of exp in cdictionary
+    - args[0]: index of exp in cdictionary
     """
 
     def __init__(
@@ -891,8 +895,8 @@ class CPOIndexUpperBound(CPOPredicate):
     """index-upper-bound(exp): the value of index expression exp is less than the
     size of the array.
 
-    args[0]: index of exp in cdictionary
-    args[1]: index of array size expression in cdictionary
+    - args[0]: index of exp in cdictionary
+    - args[1]: index of array size expression in cdictionary
     """
 
     def __init__(
@@ -929,7 +933,7 @@ class CPOIndexUpperBound(CPOPredicate):
 class CPOInitialized(CPOPredicate):
     """initialized(lval): location lval has been initialized.
 
-    args[0]: index of lval in cdictionary
+    - args[0]: index of lval in cdictionary
     """
 
     def __init__(
@@ -963,8 +967,8 @@ class CPOInitializedRange(CPOPredicate):
     """initialized-range(exp, size): the memory range starting at the address
     pointed to by exp is initialized for at least size bytes.
 
-    args[0]: index of exp in cdictionary
-    args[1]: index of size in cdictionary
+    - args[0]: index of exp in cdictionary
+    - args[1]: index of size in cdictionary
     """
 
     def __init__(
@@ -1000,9 +1004,9 @@ class CPOInitializedRange(CPOPredicate):
 class CPOCast(CPOPredicate):
     """cast(srctyp, tgttyp, exp): cast of exp from srctyp to tgttyp is safe.
 
-    args[0]: index of srctyp in cdictionary
-    args[1]: index of tgttyp in cdictionary
-    args[2]: index of exp in cdictionary
+    - args[0]: index of srctyp in cdictionary
+    - args[1]: index of tgttyp in cdictionary
+    - args[2]: index of exp in cdictionary
     """
 
     def __init__(
@@ -1047,9 +1051,9 @@ class CPOFormatCast(CPOPredicate):
     Note: this predicate is used specifically in the context of the cast of an
     argument passed for a given format argument specifier.
 
-    args[0]: index of srctyp in cdictionary
-    args[1]: index of tgttyp in tgtdictionary
-    args[2]: index of exp in cdictionary
+    - args[0]: index of srctyp in cdictionary
+    - args[1]: index of tgttyp in tgtdictionary
+    - args[2]: index of exp in cdictionary
     """
 
     def __init__(
@@ -1093,9 +1097,9 @@ class CPOPointerCast(CPOPredicate):
 
     Note: this predicate is used specifically for casting of pointers to other pointers
 
-    args[0]: index of srctyp in cdictionary
-    args[1]: index of tgttyp in tgtdictionary
-    args[2]: index of exp in cdictionary
+    - args[0]: index of srctyp in cdictionary
+    - args[1]: index of tgttyp in tgtdictionary
+    - args[2]: index of exp in cdictionary
     """
 
     def __init__(
@@ -1147,10 +1151,10 @@ class CPOSignedToUnsignedCastLB(CPOPredicate):
     """signed-to-unsigned-cast-lb(srckind, tgtkind, exp): integer cast of exp from
     signed srckind to unsigned tgtkind is safe wrt its lowerbound
 
-    tags[1]: srckind
-    tags[2]: tgtkind
+    - tags[1]: srckind
+    - tags[2]: tgtkind
 
-    args[0]: index of exp in cdictionary
+    - args[0]: index of exp in cdictionary
     """
 
     def __init__(
@@ -1194,10 +1198,10 @@ class CPOSignedToUnsignedCastUB(CPOPredicate):
     """signed-to-unsigned-cast-ub(srckind, tgtkind, exp): integer cast from
     signed srckind to unsigned ikind is safe wrt its upperbound
 
-    tags[1]: srckind
-    tags[2]: tgtkind
+    - tags[1]: srckind
+    - tags[2]: tgtkind
 
-    args[0]: index of exp in cdictionary
+    - args[0]: index of exp in cdictionary
     """
 
     def __init__(
@@ -1241,10 +1245,10 @@ class CPOUnsignedToSignedCast(CPOPredicate):
     """unsigned-to-signed cast(srckind, tgtkind, exp): integer cast from srckind
     to tgtkind is safe.
 
-    tags[1]: srckind
-    tags[2]: tgtkind
+    - tags[1]: srckind
+    - tags[2]: tgtkind
 
-    args[0]: index of exp in cdictionary
+    - args[0]: index of exp in cdictionary
     """
 
     def __init__(
@@ -1288,10 +1292,10 @@ class CPOUnsignedToUnsignedCast(CPOPredicate):
     """unsigned-to-unsigned-cast(srckind, tgtkind, exp): integer cast from
     unsigned srckind to unsigned tgtkind is safe.
 
-    tags[1]: srckind
-    tags[2]: tgtkind
+    - tags[1]: srckind
+    - tags[2]: tgtkind
 
-    args[0]: index of exp in cdictionary
+    - args[0]: index of exp in cdictionary
     """
 
     def __init__(
@@ -1335,10 +1339,10 @@ class CPOSignedToSignedCastLB(CPOPredicate):
     """signed-to-signed-cast-lb(srckind, tgtkind, exp): integer cast from
     signed srckind to signed tgtkind is safe wrt its lowerbound.
 
-    tags[1]: srckind
-    tags[2]: tgtkind
+    - tags[1]: srckind
+    - tags[2]: tgtkind
 
-    args[0]: index of exp in cdictionary
+    - args[0]: index of exp in cdictionary
     """
 
     def __init__(
@@ -1382,10 +1386,10 @@ class CPOSignedToSignedCastUB(CPOPredicate):
     """signed-to-signed-cast-ub(srckind, tgtkind, exp): integer cast from
     signed srckind to tgtkind is safe wrt to its upperbound.
 
-    tags[1]: srckind
-    tags[2]: tgtkind
+    - tags[1]: srckind
+    - tags[2]: tgtkind
 
-    args[0]: index of exp in cdictionary
+    - args[0]: index of exp in cdictionary
     """
 
     def __init__(
@@ -1428,7 +1432,7 @@ class CPOSignedToSignedCastUB(CPOPredicate):
 class CPONotZero(CPOPredicate):
     """not-zero(exp): exp is not zero
 
-    args[0]: index of exp in cdictionary
+    - args[0]: index of exp in cdictionary
     """
 
     def __init__(
@@ -1455,7 +1459,7 @@ class CPONotZero(CPOPredicate):
 class CPONonNegative(CPOPredicate):
     """non-negative(exp): exp is nonnegative (>= 0)
 
-    args[0]: index of exp in cdictionary
+    - args[0]: index of exp in cdictionary
     """
 
     def __init__(
@@ -1482,7 +1486,7 @@ class CPONonNegative(CPOPredicate):
 class CPONullTerminated(CPOPredicate):
     """null-terminated(exp): the string pointed to by exp is null-terminated
 
-    args[0]: index of exp in cdictionary
+    - args[0]: index of exp in cdictionary
     """
 
     def __init__(
@@ -1510,11 +1514,11 @@ class CPOIntUnderflow(CPOPredicate):
     """int-underflow(exp1, exp2, binop): the result of the binary operation
     exp1 binop exp2 does not result in an integer underflow
 
-    tags[1]: binop
-    tags[2]: ikind
+    - tags[1]: binop
+    - tags[2]: ikind
 
-    args[0]: index of exp1 in cdictionary
-    args[1]: index of exp2 in cdictionary
+    - args[0]: index of exp1 in cdictionary
+    - args[1]: index of exp2 in cdictionary
     """
 
     def __init__(
@@ -1563,11 +1567,11 @@ class CPOIntOverflow(CPOPredicate):
     """int-overflow(exp1, exp2, binop): the result of the binary operation
     exp1 binop exp2 does not result in an integer overflow
 
-    tags[1]: binop
-    tags[2]: ikind
+    - tags[1]: binop
+    - tags[2]: ikind
 
-    args[0]: index of exp1 in cdictionary
-    args[1]: index of exp2 in cdictionary
+    - args[0]: index of exp1 in cdictionary
+    - args[1]: index of exp2 in cdictionary
     """
 
     def __init__(
@@ -1619,11 +1623,11 @@ class CPOUIntUnderflow(CPOPredicate):
     Note: this property is kept separate, because it does not lead to undefined
     behavior and can be enabled/disabled as desired.
 
-    tags[1]: binop
-    tags[2]: ikind
+    - tags[1]: binop
+    - tags[2]: ikind
 
-    args[0]: index of exp1 in cdictionary
-    args[1]: index of exp2 in cdictionary
+    - args[0]: index of exp1 in cdictionary
+    - args[1]: index of exp2 in cdictionary
     """
 
     def __init__(
@@ -1675,11 +1679,11 @@ class CPOUIntOverflow(CPOPredicate):
     Note: this property is kept separate, because it does not lead to undefined
     behavior and can be enabled/disabled as desired.
 
-    tags[1]: binop
-    tags[2]: ikind
+    - tags[1]: binop
+    - tags[2]: ikind
 
-    args[0]: index of exp1 in cdictionary
-    args[1]: index of exp2 in cdictionary
+    - args[0]: index of exp1 in cdictionary
+    - args[1]: index of exp2 in cdictionary
     """
 
     def __init__(
@@ -1728,9 +1732,9 @@ class CPOWidthOverflow(CPOPredicate):
     """width-overflow(exp, ikind): the value of the expression fits in an integer
     of ikind.
 
-    tags[1]: ikind
+    - tags[1]: ikind
 
-    args[0]: exp
+    - args[0]: exp
     """
 
     def __init__(
@@ -1762,11 +1766,11 @@ class CPOPtrLowerBound(CPOPredicate):
     """ptr-lower-bound(exp1, exp2, op, typ): the pointer arithmetic operation
     exp1 op exp2 with resulttype typ does not violate its lower bound.
 
-    tags[1]: binop
+    - tags[1]: binop
 
-    args[0]: typ
-    args[1]: exp1
-    args[2]: exp2
+    - args[0]: typ
+    - args[1]: exp1
+    - args[2]: exp2
     """
 
     def __init__(
@@ -1815,11 +1819,11 @@ class CPOPtrUpperBound(CPOPredicate):
     """ptr-upper-bound(exp1, exp2, op, typ): the pointer arithmetic operation
     exp1 op exp2 with resulttype typ does not violate its upper bound.
 
-    tags[1]: binop
+    - tags[1]: binop
 
-    args[0]: typ
-    args[1]: exp1
-    args[2]: exp2
+    - args[0]: typ
+    - args[1]: exp1
+    - args[2]: exp2
     """
 
     def __init__(
@@ -1868,11 +1872,11 @@ class CPOPtrUpperBoundDeref(CPOPredicate):
     """ptr-upper-bound-deref(exp1, exp2, op, typ): the pointer arithmetic operation
     exp1 op exp2 with resulttype typ does not violate its upper bound.
 
-    tags[1]: binop
+    - tags[1]: binop
 
-    args[0]: typ
-    args[1]: exp1
-    args[2]: exp2
+    - args[0]: typ
+    - args[1]: exp1
+    - args[2]: exp2
     """
 
     def __init__(
@@ -1921,8 +1925,8 @@ class CPOCommonBase(CPOPredicate):
     """common-base(exp1, exp2): pointer expressions exp1 and exp2 point into the
     same object.
 
-    args[0]: index of exp1 in cdictionary
-    args[1]: index of exp2 in cdictionary
+    - args[0]: index of exp1 in cdictionary
+    - args[1]: index of exp2 in cdictionary
     """
 
     def __init__(
@@ -1954,8 +1958,8 @@ class CPOCommonBaseType(CPOPredicate):
     """common-base-type(exp1, exp2): pointer expressions exp1 and exp2 point into
     objects with the same type.
 
-    args[0]: index of exp1 in cdictionary
-    args[1]: index of exp2 in cdictionary
+    - args[0]: index of exp1 in cdictionary
+    - args[1]: index of exp2 in cdictionary
     """
 
     def __init__(
@@ -1990,7 +1994,7 @@ class CPOFormatString(CPOPredicate):
     expect a format string argument are not invoked with a user-constructed
     string. This property does not directly lead to undefined behavior.
 
-    args[0]: index exp in cdictionary
+    - args[0]: index exp in cdictionary
     """
 
     def __init__(
@@ -2018,13 +2022,13 @@ class CPOVarArgs(CPOPredicate):
     """var-args(fmt, n, args): the number or arguments provided matches the
     number of arguments requested by the format string.
 
-    args[0]: index of fmt (pointer to format string) in cdictionary
-    args[1]: expected number of arguments
-    args[2]: args:
-    args:
-       0: int (expected number of arguments)
-       1: index of fmt in cdictionary
-       2..: indices of args in cdictionary
+    - args[0]: index of fmt (pointer to format string) in cdictionary
+    - args[1]: expected number of arguments
+    - args[2]: args:
+
+      - 0: int (expected number of arguments)
+      - 1: index of fmt in cdictionary
+      - 2..: indices of args in cdictionary
     """
 
     def __init__(
@@ -2059,8 +2063,8 @@ class CPONoOverlap(CPOPredicate):
     """no-overlap(exp1, exp2): the objects pointed to by exp1 and exp2 do not
     overlap.
 
-    args[0]: index of exp1 in cdictionary
-    args[1]: index of exp2 in cdictionary
+    - args[0]: index of exp1 in cdictionary
+    - args[1]: index of exp2 in cdictionary
     """
 
     def __init__(
@@ -2096,7 +2100,7 @@ class CPOValueConstraint(CPOPredicate):
     the origin of the proof obligation (and possibly add additional context
     information)
 
-    args[0]: index of exp in cdictionary
+    - args[0]: index of exp in cdictionary
     """
 
     def __init__(
@@ -2141,7 +2145,7 @@ class CPOPreservedAllMemory(CPOPredicate):
 class CPOPreservedValue(CPOPredicate):
     """preserves-value(exp): true of a function that preserves the value of exp.
 
-    args[0]: index of exp in cdictionary
+    - args[0]: index of exp in cdictionary
     """
 
     def __init__(

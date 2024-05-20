@@ -5,7 +5,7 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2020-2022 Henny B. Sipma
 # Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -26,17 +26,19 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Primary proof obligation."""
 
 from typing import Optional, TYPE_CHECKING
 
 from chc.app.CLocation import CLocation
 
-from chc.proof.CFunctionPO import (
-    CFunctionPO, CProofDependencies, CProofDiagnostic)
+from chc.proof.CFunctionPO import CFunctionPO
 
 if TYPE_CHECKING:
-    from chc.proof.CFunctionPOs import CFunctionPOs
+    from chc.proof.CFunctionProofs import CFunctionProofs
     from chc.proof.CFunPODictionaryRecord import CFunPOType
+    from chc.proof.CProofDependencies import CProofDependencies
+    from chc.proof.CProofDiagnostic import CProofDiagnostic
 
 
 class CFunctionPPO(CFunctionPO):
@@ -44,13 +46,13 @@ class CFunctionPPO(CFunctionPO):
 
     def __init__(
             self,
-            cpos: "CFunctionPOs",
+            cproofs: "CFunctionProofs",
             ppotype: "CFunPOType",
             status: str = "open",
-            deps: Optional[CProofDependencies] = None,
+            deps: Optional["CProofDependencies"] = None,
             expl: Optional[str] = None,
-            diag: Optional[CProofDiagnostic] = None) -> None:
-        CFunctionPO.__init__(self, cpos, ppotype, status, deps, expl, diag)
+            diag: Optional["CProofDiagnostic"] = None) -> None:
+        CFunctionPO.__init__(self, cproofs, ppotype, status, deps, expl, diag)
 
     def is_ppo(self) -> bool:
         return True

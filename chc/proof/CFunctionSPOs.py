@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2020-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,43 +26,59 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Container for all supporting proof obligations in a function."""
 
 import xml.etree.ElementTree as ET
 
-from typing import Dict, List, Optional, TYPE_CHECKING
+from typing import Callable, Dict, List, Optional, TYPE_CHECKING
 
-from chc.proof.CFunctionPO import get_dependencies, get_diagnostic
-
+from chc.proof.CFunctionCallsiteSPO import CFunctionCallsiteSPO
 from chc.proof.CFunctionCallsiteSPOs import CFunctionCallsiteSPOs
 from chc.proof.CFunctionReturnsiteSPOs import CFunctionReturnsiteSPOs
 from chc.proof.CFunctionLocalSPO import CFunctionLocalSPO
 
 from chc.proof.CFunctionPO import CFunctionPO
-from chc.proof.CFunctionPOs import CFunctionPOs
-
-from chc.proof.CFunctionPO import CProofDependencies
 from chc.proof.CFunctionPO import po_status
-from chc.proof.CFunctionPO import CProofDiagnostic
+from chc.proof.CProofDependencies import CProofDependencies
+from chc.proof.CProofDiagnostic import CProofDiagnostic
+
+from chc.util.loggingutil import chklogger
 
 if TYPE_CHECKING:
+    from chc.app.CFunction import CFunction
     from chc.proof.CFunctionProofs import CFunctionProofs
+    from chc.proof.CFunPODictionary import CFunPODictionary
 
 
-class CFunctionSPOs(CFunctionPOs):
+class CFunctionSPOs:
     """Represents the set of supporting proof obligations for a function.
 
     xnode received is the content of the <"spos"> element.
     """
 
     def __init__(self, cproofs: "CFunctionProofs", xnode: ET.Element) -> None:
-        CFunctionPOs.__init__(self, cproofs)
         self.xnode = xnode
-        # self.cproofs = cproofs
+        self._cproofs = cproofs
         self.spocounter = 0
         self._localspos: Optional[Dict[int, CFunctionLocalSPO]] = None
-        self._callsitespos: Optional[Dict[str, CFunctionCallsiteSPOs]] = None  # cfg-contextstring -> CFunctionCallsiteSPOs
-        self._returnsitespos: Optional[Dict[str, CFunctionReturnsiteSPOs]] = None  # cfg-contextstring -> CFunctionReturnsiteSPOs
-        # self._initialize()
+
+        # cfg-contextstring -> CFunctionCallsiteSPOs
+        self._callsitespos: Optional[Dict[str, CFunctionCallsiteSPOs]] = None
+
+        # cfg-contextstring -> CFunctionReturnsiteSPOs
+        self._returnsitespos: Optional[Dict[str, CFunctionReturnsiteSPOs]] = None
+
+    @property
+    def cproofs(self) -> "CFunctionProofs":
+        return self._cproofs
+
+    @property
+    def cfun(self) -> "CFunction":
+        return self.cproofs.cfun
+
+    @property
+    def podictionary(self) -> "CFunPODictionary":
+        return self.cfun.podictionary
 
     @property
     def spos(self) -> List[CFunctionPO]:
@@ -71,11 +87,11 @@ class CFunctionSPOs(CFunctionPOs):
         for cspos in self.callsite_spos.values():
             for spos in cspos.spos.values():
                 result.extend(spos)
-        # result.extend(list(self.callsite_spos.values()))
+
         for rspos in self.returnsite_spos.values():
             for sposr in rspos.spos.values():
                 result.extend(sposr)
-        # result.extend(list(self.returnsite_spos.values()))
+
         return result
 
     @property
@@ -84,18 +100,17 @@ class CFunctionSPOs(CFunctionPOs):
             self._localspos = {}
             xlspos = self.xnode.find("localspos")
             if xlspos is not None:
-                for po in xlspos.findall("po"):
-                    spotype = self.podictionary.read_xml_spo_type(po)
-                    xexpl = po.find("e")
+                for xpo in xlspos.findall("po"):
+                    spotype = self.podictionary.read_xml_spo_type(xpo)
+                    xexpl = xpo.find("e")
                     expl = None if xexpl is None else xexpl.get("txt")
-                    deps = get_dependencies(self, po)
-                    xd = po.find("d")
-                    diag = None if xd is None else get_diagnostic(xd)
-                    status = po_status[po.get("s", "o")]
+                    deps = CProofDependencies(self.cproofs, xpo)
+                    diagnostic = CProofDiagnostic(xpo.find("d"))
+                    status = po_status[xpo.get("s", "o")]
                     self._localspos[spotype.po_index] = CFunctionLocalSPO(
-                        self, spotype, status, deps, expl, diag)
+                        self.cproofs, spotype, status, deps, expl, diagnostic)
         return self._localspos
-        
+
     @property
     def callsite_spos(self) -> Dict[str, CFunctionCallsiteSPOs]:
         if self._callsitespos is None:
@@ -105,13 +120,13 @@ class CFunctionSPOs(CFunctionPOs):
                 xdcss = xcss.find("direct-calls")
                 if xdcss is not None:
                     for cs in xdcss.findall("dc"):
-                        cspo = CFunctionCallsiteSPOs(self, cs)
+                        cspo = CFunctionCallsiteSPOs(self.cproofs, cs)
                         cfgctxt = str(cspo.cfgcontext)
                         self._callsitespos[cfgctxt] = cspo
                 xicss = xcss.find("indirect-calls")
                 if xicss is not None:
                     for cs in xicss.findall("ic"):
-                        cspo = CFunctionCallsiteSPOs(self, cs)
+                        cspo = CFunctionCallsiteSPOs(self.cproofs, cs)
                         cfgcontext = str(cspo.cfgcontext)
                         self._callsitespos[cfgcontext] = cspo
         return self._callsitespos
@@ -123,28 +138,24 @@ class CFunctionSPOs(CFunctionPOs):
             xrss = self.xnode.find("returnsites")
             if xrss is not None:
                 for rs in xrss.findall("rs"):
-                    rsspos = CFunctionReturnsiteSPOs(self, rs)
+                    rsspos = CFunctionReturnsiteSPOs(self.cproofs, rs)
                     cfgctxt = str(rsspos.cfgcontext)
                     self._returnsitespos[cfgctxt] = rsspos
         return self._returnsitespos
-
-    def add_returnsite_postcondition(self, postcondition):
-        for r in self.returnsite_spos.values():
-            r.add_postcondition(postcondition)
 
     def update(self) -> None:
         for cs in self.callsite_spos.values():
             cs.update()
 
-    def collect_post_assumes(self):
-        """for all call sites collect postconditions from callee's contracts 
+    def collect_post_assumes(self) -> None:
+        """for all call sites collect postconditions from callee's contracts
         and add as assume."""
 
         for cs in self.callsite_spos.values():
             cs.collect_post_assumes()
 
-    def distribute_post_guarantees(self):
-        for cs in self.callsitespos.values():
+    def distribute_post_guarantees(self) -> None:
+        for cs in self.callsite_spos.values():
             cs.distribute_post_guarantees()
 
     def get_spo(self, id: int) -> CFunctionPO:
@@ -166,19 +177,17 @@ class CFunctionSPOs(CFunctionPOs):
             )
             exit(1)
 
-    '''
-    def iter_callsites(self, f):
-        for cs in sorted(self.callsitespos.values(), key=lambda p: (p.get_line())):
+    def iter_callsites(self, f: Callable[[CFunctionCallsiteSPOs], None]) -> None:
+        for cs in sorted(self.callsite_spos.values(), key=lambda p: (p.line)):
             f(cs)
 
-    def iter(self, f):
-        for localspo in self.localspos.values():
+    def iter(self, f: Callable[[CFunctionPO], None]) -> None:
+        for localspo in self.local_spos.values():
             f(localspo)
-        for cs in sorted(self.callsitespos.values(), key=lambda p: (p.get_line())):
+        for cs in sorted(self.callsite_spos.values(), key=lambda p: (p.line)):
             cs.iter(f)
-        for cs in self.returnsitespos.values():
-            cs.iter(f)
-    '''
+        for rs in self.returnsite_spos.values():
+            rs.iter(f)
 
     def write_xml(self, cnode: ET.Element) -> None:
         snode = ET.Element("spos")
@@ -209,39 +218,3 @@ class CFunctionSPOs(CFunctionPOs):
         snode.append(rrnode)
         cssnode.extend([dcnode, idcnode])
         cnode.extend([snode])
-
-    '''
-    def _initialize(self):
-        spos = self.xnode.find("spos")
-
-        localspos = spos.find("localspos")
-        if localspos is not None:
-            for po in localspos.findall("po"):
-                spotype = self.cfun.podictionary.read_xml_spo_type(po)
-                expl = None if po.find("e") is None else po.find("e")
-                deps = PO.get_dependencies(self, po)
-                diag = PO.get_diagnostic(po.find("d"))
-                status = po_status[po.get("s", "o")]
-                self.localspos[spotype.id] = CFunctionLocalSPO(
-                    self, spotype, status, deps, expl, diag
-                )
-
-        css = spos.find("callsites").find("direct-calls")
-        if css is not None:
-            for cs in css.findall("dc"):
-                cspo = CFunctionCallsiteSPOs(self, cs)
-                cfgctxt = cspo.get_cfg_context_string()
-                self.callsitespos[cfgctxt] = cspo
-        icss = spos.find("callsites").find("indirect-calls")
-        if icss is not None:
-            for cs in icss.findall("ic"):
-                cspo = CFunctionCallsiteSPOs(self, cs)
-                cfgctxt = cspo.get_cfg_context_string()
-                self.callsitespos[cfgctxt] = cspo
-        rss = spos.find("returnsites")
-        if rss is not None:
-            for rs in rss.findall("rs"):
-                rsspos = CFunctionReturnsiteSPOs(self, rs)
-                cfgctxt = rsspos.get_cfg_context_string()
-                self.returnsitespos[cfgctxt] = rsspos
-        '''

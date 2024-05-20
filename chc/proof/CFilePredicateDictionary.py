@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2020-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,9 +26,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Dictionary for proof obligation predicates."""
+
 import xml.etree.ElementTree as ET
 
-from typing import Any, cast, Dict, List, Optional, TYPE_CHECKING
+from typing import (
+    Any, Callable, cast, Dict, List, Mapping, Optional, TYPE_CHECKING)
 
 import chc.util.fileutil as UF
 from chc.util.IndexedTable import IndexedTable, IndexedTableValue
@@ -37,6 +40,7 @@ from chc.proof.CFilePredicateRecord import pdregistry
 import chc.proof.CPOPredicate as PO
 
 if TYPE_CHECKING:
+    from chc.app.CExp import CExp
     from chc.app.CFile import CFile
     from chc.app.CFileDictionary import CFileDictionary
 
@@ -48,6 +52,9 @@ class CFilePredicateDictionary(object):
         self._cfile = cfile
         self.po_predicate_table = IndexedTable("po-predicate-table")
         self.tables = [self.po_predicate_table]
+        self._objmaps: Dict[
+            str, Callable[[], Mapping[int, IndexedTableValue]]] = {
+                "predicate": self.get_predicate_map}
         self.initialize(xnode)
 
     @property
@@ -109,7 +116,7 @@ class CFilePredicateDictionary(object):
     def index_predicate(
             self,
             p: PO.CPOPredicate,
-            subst: Dict[Any, Any]={}) -> int:
+            subst: Dict[int, "CExp"]={}) -> int:
 
         def f(index: int, tags: List[str], args: List[int]) -> PO.CPOPredicate:
             itv = IndexedTableValue(index, tags, args)
@@ -118,49 +125,25 @@ class CFilePredicateDictionary(object):
         if p.is_not_null:
             p = cast(PO.CPONotNull, p)
             args = [self.dictionary.index_exp(p.exp, subst=subst)]
-            '''
-            def f(index, key):
-                return PO.CPONotNull(self, index, p.tags, args)
-
-            return self.po_predicate_table.add(get_key(p.tags, args), f)
-            '''
 
         elif p.is_null:
             p = cast(PO.CPONull, p)
             args = [self.dictionary.index_exp(p.exp, subst=subst)]
-            '''
-            def f(index, key):
-                return PO.CPONull(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(get_key(p.tags, args), f)
-            '''
         elif p.is_valid_mem:
             p = cast(PO.CPOValidMem, p)
             args = [self.dictionary.index_exp(p.exp, subst=subst)]
-            '''
-            def f(index, key):
-                return PO.CPOValidMem(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(get_key(p.tags, args), f)
-            '''
         elif p.is_in_scope:
             p = cast(PO.CPOInScope, p)
             args = [self.dictionary.index_exp(p.exp, subst=subst)]
+
             '''
-            def f(index, key):
-                return PO.CPOInScope(self, index, p.tags, args)
-
-            return self.po_predicate_table.add(get_key(p.tags, args), f)
-
         elif p.is_can_leave_scope:
             p = cast(PO.CPOCanLeaveScope, p)
             args = [self.dictionary.index_exp(p.exp, subst=subst)]
-
-            def f(index, key):
-                return PO.CPOCanLeaveScope(self, index, p.tags, args)
-
-            return self.po_predicate_table.add(get_key(p.tags, args), f)
             '''
+
         elif p.is_stack_address_escape:
             p = cast(PO.CPOStackAddressEscape, p)
             if p.has_lval():
@@ -170,99 +153,54 @@ class CFilePredicateDictionary(object):
                 ]
             else:
                 args = [-1, self.dictionary.index_exp(p.exp, subst=subst)]
-            '''
-            def f(index, key):
-                return PO.CPOStackAddressEscape(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(get_key(p.tags, args), f)
-            '''
         elif p.is_allocation_base:
             p = cast(PO.CPOAllocationBase, p)
             args = [self.dictionary.index_exp(p.exp, subst=subst)]
-            '''
-            def f(index, key):
-                return PO.CPOAllocationBase(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(get_key(p.tags, args), f)
-            '''
         elif p.is_type_at_offset:
             p = cast(PO.CPOTypeAtOffset, p)
             args = [
                 self.dictionary.index_typ(p.typ),
                 self.dictionary.index_exp(p.exp, subst=subst),
             ]
-            '''
-            def f(index, key):
-                return PO.CPOTypeAtOffset(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(get_key(p.tags, args), f)
-            '''
         elif p.is_lower_bound:
             p = cast(PO.CPOLowerBound, p)
             args = [
                 self.dictionary.index_typ(p.typ),
                 self.dictionary.index_exp(p.exp, subst=subst),
             ]
-            '''
-            def f(index, key):
-                return PO.CPOLowerBound(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(get_key(p.tags, args), f)
-            '''
         elif p.is_upper_bound:
             p = cast(PO.CPOUpperBound, p)
             args = [
                 self.dictionary.index_typ(p.typ),
                 self.dictionary.index_exp(p.exp, subst=subst),
             ]
-            '''
-            def f(index, key):
-                return PO.CPOUpperBound(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(get_key(p.tags, args), f)
-            '''
         elif p.is_index_lower_bound:
             p = cast(PO.CPOIndexLowerBound, p)
             args = [self.dictionary.index_exp(p.exp, subst=subst)]
-            '''
-            def f(index, key):
-                return PO.CPOIndexLowerBound(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(get_key(p.tags, args), f)
-            '''
         elif p.is_index_upper_bound:
             p = cast(PO.CPOIndexUpperBound, p)
             args = [
                 self.dictionary.index_exp(p.exp, subst=subst),
                 self.dictionary.index_exp(p.bound, subst=subst),
             ]
-            '''
-            def f(index, key):
-                return PO.CPOIndexUpperBound(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(get_key(p.tags, args), f)
-            '''
         elif p.is_initialized:
             p = cast(PO.CPOInitialized, p)
             args = [self.dictionary.index_lval(p.lval, subst=subst)]
-            '''
-            def f(index, key):
-                return PO.CPOInitialized(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(get_key(p.tags, args), f)
-            '''
         elif p.is_initialized_range:
             p = cast(PO.CPOInitializedRange, p)
             args = [
                 self.dictionary.index_exp(p.exp, subst=subst),
                 self.dictionary.index_exp(p.size, subst=subst),
             ]
-            '''
-            def f(index, key):
-                return PO.CPOInitializedRange(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(get_key(p.tags, args), f)
-            '''
         elif p.is_cast:
             p = cast(PO.CPOCast, p)
             args = [
@@ -270,12 +208,7 @@ class CFilePredicateDictionary(object):
                 self.dictionary.index_typ(p.tgttyp),
                 self.dictionary.index_exp(p.exp, subst=subst),
             ]
-            '''
-            def f(index, key):
-                return PO.CPOCast(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(get_key(p.tags, args), f)
-            '''
         elif p.is_pointer_cast:
             p = cast(PO.CPOPointerCast, p)
             args = [
@@ -283,138 +216,68 @@ class CFilePredicateDictionary(object):
                 self.dictionary.index_typ(p.tgttyp),
                 self.dictionary.index_exp(p.exp, subst=subst),
             ]
-            '''
-            def f(index, key):
-                return PO.CPOPointerCast(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(get_key(p.tags, args), f)
-            '''
         elif p.is_signed_to_signed_cast_lb:
             p = cast(PO.CPOSignedToSignedCastLB, p)
             args = [self.dictionary.index_exp(p.exp, subst=subst)]
-            '''
-            def f(index, key):
-                return PO.CPOSignedToSignedCastLB(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(get_key(p.tags, args), f)
-            '''
         elif p.is_signed_to_signed_cast_ub:
             p = cast(PO.CPOSignedToSignedCastUB, p)
             args = [self.dictionary.index_exp(p.exp, subst=subst)]
-            '''
-            def f(index, key):
-                return PO.CPOSignedToSignedCastUB(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(get_key(p.tags, args), f)
-            '''
         elif p.is_signed_to_unsigned_cast_lb:
             p = cast(PO.CPOSignedToUnsignedCastLB, p)
             args = [self.dictionary.index_exp(p.exp, subst=subst)]
-            '''
-            def f(index, key):
-                return PO.CPOSignedToUnsignedCastLB(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(get_key(p.tags, args), f)
-            '''
         elif p.is_signed_to_unsigned_cast_ub:
             p = cast(PO.CPOSignedToUnsignedCastUB, p)
             args = [self.dictionary.index_exp(p.exp, subst=subst)]
-            '''
-            def f(index, key):
-                return PO.CPOSignedToUnsignedCastUB(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(get_key(p.tags, args), f)
-            '''
         elif p.is_unsigned_to_signed_cast:
             p = cast(PO.CPOUnsignedToSignedCast, p)
             args = [self.dictionary.index_exp(p.exp, subst=subst)]
-            '''
-            def f(index, key):
-                return PO.CPOUnsignedToSignedCast(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(get_key(p.tags, args), f)
-            '''
         elif p.is_unsigned_to_unsigned_cast:
             p = cast(PO.CPOUnsignedToSignedCast, p)
             args = [self.dictionary.index_exp(p.exp, subst=subst)]
-            '''
-            def f(index, key):
-                return PO.CPOUnsignedToUnsignedCast(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(get_key(p.tags, args), f)
-            '''
         elif p.is_not_zero:
             p = cast(PO.CPONotZero, p)
             args = [self.dictionary.index_exp(p.exp, subst=subst)]
-            '''
-            def f(index, key):
-                return PO.CPONotZero(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(get_key(p.tags, args), f)
-            '''
         elif p.is_non_negative:
             p = cast(PO.CPONonNegative, p)
             args = [self.dictionary.index_exp(p.exp, subst=subst)]
-            '''
-            def f(index, key):
-                return PO.CPONonNegative(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(get_key(p.tags, args), f)
-            '''
         elif p.is_no_overlap:
             p = cast(PO.CPONoOverlap, p)
             args = [
                 self.dictionary.index_exp(p.exp1, subst=subst),
                 self.dictionary.index_exp(p.exp2, subst=subst),
             ]
-            '''
-            def f(index, key):
-                return PO.CPONoOverlap(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(get_key(p.tags, args), f)
-            '''
         elif p.is_null_terminated:
             p = cast(PO.CPONullTerminated, p)
             args = [self.dictionary.index_exp(p.exp, subst=subst)]
-            '''
-            def f(index, key):
-                return PO.CPONullTerminated(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(get_key(p.tags, args), f)
-            '''
         elif p.is_int_underflow:
             p = cast(PO.CPOIntUnderflow, p)
             args = [
                 self.dictionary.index_exp(p.exp1, subst=subst),
                 self.dictionary.index_exp(p.exp2, subst=subst),
             ]
-            '''
-            def f(index, key):
-                return PO.CPOIntUnderflow(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(get_key(p.tags, args), f)
-            '''
         elif p.is_int_overflow:
             p = cast(PO.CPOIntOverflow, p)
             args = [
                 self.dictionary.index_exp(p.exp1, subst=subst),
                 self.dictionary.index_exp(p.exp2, subst=subst),
             ]
-            '''
-            def f(index, key):
-                return PO.CPOIntOverflow(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(get_key(p.tags, args), f)
-            '''
         elif p.is_width_overflow:
             p = cast(PO.CPOWidthOverflow, p)
             args = [self.dictionary.index_exp(p.exp, subst=subst)]
-            '''
-            def f(index, key):
-                return PO.CPOWidthOverflow(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(get_key(p.tags, args), f)
-            '''
         elif p.is_ptr_lower_bound:
             p = cast(PO.CPOPtrLowerBound, p)
             args = [
@@ -422,12 +285,7 @@ class CFilePredicateDictionary(object):
                 self.dictionary.index_exp(p.exp1, subst=subst),
                 self.dictionary.index_exp(p.exp2, subst=subst),
             ]
-            '''
-            def f(index, key):
-                return PO.CPOPtrLowerBound(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(get_key(p.tags, args), f)
-            '''
         elif p.is_ptr_upper_bound:
             p = cast(PO.CPOPtrUpperBound, p)
             args = [
@@ -435,12 +293,7 @@ class CFilePredicateDictionary(object):
                 self.dictionary.index_exp(p.exp1, subst=subst),
                 self.dictionary.index_exp(p.exp2, subst=subst),
             ]
-            '''
-            def f(index, key):
-                return PO.CPOPtrUpperBound(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(get_key(p.tags, args), f)
-            '''
         elif p.is_ptr_upper_bound_deref:
             p = cast(PO.CPOPtrUpperBoundDeref, p)
             args = [
@@ -448,63 +301,36 @@ class CFilePredicateDictionary(object):
                 self.dictionary.index_exp(p.exp1, subst=subst),
                 self.dictionary.index_exp(p.exp2, subst=subst),
             ]
-            '''
-            def f(index, key):
-                return PO.CPOPtrUpperBoundDeref(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(get_key(p.tags, args), f)
-            '''
         elif p.is_value_constraint:
             p = cast(PO.CPOValueConstraint, p)
             args = [self.dictionary.index_exp(p.exp, subst=subst)]
-            '''
-            def f(index, key):
-                return PO.CPOValueConstraint(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(get_key(p.tags, args), f)
-            '''
         elif p.is_common_base:
             p = cast(PO.CPOCommonBase, p)
             args = [
                 self.dictionary.index_exp(p.exp1, subst=subst),
                 self.dictionary.index_exp(p.exp2, subst=subst),
             ]
-            '''
-            def f(index, key):
-                return PO.CPOCommonBase(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(get_key(p.tags, args), f)
-            '''
         elif p.is_buffer:
             p = cast(PO.CPOBuffer, p)
             args = [
                 self.dictionary.index_exp(p.exp, subst=subst),
                 self.dictionary.index_exp(p.size, subst=subst),
             ]
-            '''
-            def f(index, key):
-                return PO.CPOBuffer(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(get_key(p.tags, args), f)
-            '''
         elif p.is_rev_buffer:
             p = cast(PO.CPORevBuffer, p)
             args = [
                 self.dictionary.index_exp(p.exp, subst=subst),
                 self.dictionary.index_exp(p.size, subst=subst),
             ]
-            '''
-            def f(index, key):
-                return PO.CPORevBuffer(self, index, p.tags, args)
 
-            return self.po_predicate_table.add(get_key(p.tags, args), f)
-            '''
         else:
             raise UF.CHCError("**** Predicate without indexing: " + str(p))
 
         return self.po_predicate_table.add_tags_args(p.tags, args, f)
-        # print("***** Predicate without indexing: " + str(p))
-        # exit(1)
 
     def read_xml_predicate(self, xnode: ET.Element, tag: str = "ipr") -> PO.CPOPredicate:
         xipr = xnode.get(tag)
@@ -533,17 +359,22 @@ class CFilePredicateDictionary(object):
                 raise UF.CHCError("Error reading table " + t.name)
 
     # ----------------------------- printing -----------------------------------
-    
+
     def objectmap_to_string(self, name: str) -> str:
         if name == "predicate":
             objmap = self.get_predicate_map()
             lines: List[str] = []
-            for (ix, obj) in objmap.items():
-                lines.append(str(ix).rjust(3) + "  " + str(obj))
+            if len(objmap) == 0:
+                lines.append("\nTable for {name} is empty\n")
+            else:
+                lines.append("index  value")
+                lines.append("-" * 80)
+                for (ix, obj) in objmap.items():
+                    lines.append(str(ix).rjust(3) + "    " + str(obj))
             return "\n".join(lines)
         else:
             raise UF.CHCError(
-                "Name: " + name +  " does not correspond to a table")            
+                "Name: " + name +  " does not correspond to a table")
 
     def __str__(self) -> str:
         lines: List[str] = []
@@ -552,21 +383,10 @@ class CFilePredicateDictionary(object):
         return "\n".join(lines)
 
     def write_xml(self, node: ET.Element) -> None:
-        def f(n: ET.Element, r: PO.CPOPredicate) -> None:
+        def f(n: ET.Element, r: Any) -> None:
             r.write_xml(n)
 
         for t in self.tables:
             tnode = ET.Element(t.name)
             t.write_xml(tnode, f)
             node.append(tnode)
-
-    '''
-    def _read_xml_po_predicate_table(self, txnode: ET.Element) -> CPOPredicate:
-        def get_value(node):
-            rep = get_rep(node)
-            tag = rep[1][0]
-            args = (self,) + rep
-            return po_predicate_constructors[tag](args)
-
-        self.po_predicate_table.read_xml(txnode, "n", get_value)
-    '''

@@ -5,7 +5,7 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2020-2022 Henny B. Sipma
 # Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -26,10 +26,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Super class of all (primary and supporting) proof obligations."""
 
 import xml.etree.ElementTree as ET
 
-from typing import Dict, List, Optional, TYPE_CHECKING
+from typing import cast, Dict, List, Optional, TYPE_CHECKING
 
 from chc.proof.CFunPODictionaryRecord import CFunPOType
 from chc.proof.PPOType import PPOType
@@ -42,9 +43,12 @@ if TYPE_CHECKING:
     from chc.app.CLocation import CLocation
     from chc.app.CContext import (CfgContext, ProgramContext)
     from chc.proof.AssumptionType import AssumptionType
-    from chc.proof.CFunctionPOs import CFunctionPOs
+    from chc.proof.CFunctionProofs import CFunctionProofs
     from chc.proof.CFunPODictionary import CFunPODictionary
     from chc.proof.CPOPredicate import CPOPredicate
+    from chc.proof.CProofDependencies import CProofDependencies
+    from chc.proof.CProofDiagnostic import CProofDiagnostic
+    from chc.proof.SPOType import SPOType
 
 
 po_status = {
@@ -59,232 +63,20 @@ po_status = {
 po_status_indicators = {v: k for (k, v) in po_status.items()}
 
 
-class CProofDiagnostic:
-
-    def __init__(
-            self,
-            invsmap: Dict[int, List[int]],
-            msgs: List[str],
-            amsgs: Dict[int, List[str]], # argument-specific messages
-            kmsgs: Dict[str, List[str]]  # keyword messages
-    ) -> None:
-        self._invsmap = invsmap  # arg -> int list
-        self._amsgs = amsgs
-        self._kmsgs = kmsgs
-        self._msgs = msgs
-
-    @property
-    def invsmap(self) -> Dict[int, List[int]]:
-        return self._invsmap
-
-    @property
-    def msgs(self) -> List[str]:
-        return self._msgs
-
-    @property
-    def argument_msgs(self) -> Dict[int, List[str]]:
-        return self._amsgs
-
-    @property
-    def keyword_msgs(self) -> Dict[str, List[str]]:
-        return self._kmsgs
-
-    @property
-    def argument_indices(self) -> List[int]:
-        return list(self.invsmap.keys())
-
-    def get_invariant_ids(self, index: int) -> List[int]:
-        if index in self.invsmap:
-            return self.invsmap[index]
-        else:
-            return []
-
-    def write_xml(self, dnode: ET.Element) -> None:
-        inode = ET.Element("invs")  # invariants
-        mmnode = ET.Element("msgs")  # general messages
-        aanode = ET.Element("amsgs")  # messages about individual arguments
-        kknode = ET.Element("kmsgs")  # keyword messages
-        for arg in self.invsmap:
-            anode = ET.Element("arg")
-            anode.set("a", str(arg))
-            anode.set("i", ",".join([str(i) for i in self.invsmap[arg]]))
-            inode.append(anode)
-        for arg in self.argument_msgs:
-            anode = ET.Element("arg")
-            anode.set("a", str(arg))
-            for t in self.argument_msgs[arg]:
-                tnode = ET.Element("msg")
-                tnode.set("t", t)
-                anode.append(tnode)
-            aanode.append(anode)
-        for key in self.keyword_msgs:
-            knode = ET.Element("key")
-            knode.set("k", str(key))
-            for t in self.keyword_msgs[key]:
-                tnode = ET.Element("msg")
-                tnode.set("t", t)
-                knode.append(tnode)
-            kknode.append(knode)
-        for t in self.msgs:
-            mnode = ET.Element("msg")
-            mnode.set("t", t)
-            mmnode.append(mnode)
-        dnode.extend([inode, mmnode, aanode, kknode])
-
-    def __str__(self) -> str:
-        if len(self.msgs) == 0:
-            return "no diagnostic messages"
-        return "\n".join(self.msgs)
-
-
-def get_diagnostic(xnode: ET.Element) -> CProofDiagnostic:
-    pinvs: Dict[int, List[int]] = {}
-    amsgs: Dict[int, List[str]] = {}
-    kmsgs: Dict[str, List[str]] = {}
-    pmsgs: List[str] = []
-    xdnode = xnode.find("d")
-    if xdnode is not None:
-        # collect invariants
-        inode = xdnode.find("invs")
-        if inode is not None:
-            for n in inode.findall("arg"):
-                xargindex = n.get("a")
-                xarginvs = n.get("i")
-                if xargindex is not None and xarginvs is not None:
-                    pinvs[int(xargindex)] = [int(x) for x in xarginvs.split(",")]
-
-        # collect messages
-        mnode = xdnode.find("msgs")
-        if mnode is not None:
-            pmsgs = [x.get("t", "") for x in mnode.findall("msg")]
-
-        # collect arg-messages
-        anode = xdnode.find("amsgs")
-        if anode is not None:
-            for n in anode.findall("arg"):
-                xargindex = n.get("a")
-                if xargindex is not None:
-                    msgs = [x.get("t", "") for x in n.findall("msg")]
-                    amsgs[int(xargindex)] = msgs
-
-        # collect key-messages
-        knode = xdnode.find("kmsgs")
-        if knode is not None:
-            for n in knode.findall("key"):
-                xkey = n.get("k")
-                msgs = [x.get("t", "") for x in n.findall("msg")]
-                if xkey is not None:
-                    kmsgs[xkey] = msgs
-
-    return CProofDiagnostic(pinvs, pmsgs, amsgs, kmsgs)
-
-
-class CProofDependencies:
-    """Extent of dependency of a closed proof obligation.
-
-    levels:
-       's': dependent on statement itself only
-       'f': dependent on function context
-       'r': reduced to local spo in function context
-       'a': dependent on other functions in the application
-       'x': dead code
-
-    ids: list of api assumption id's on which the proof is dependent
-
-    invs: list of invariants indices used to establish dependencies or
-             validity
-    """
-
-    def __init__(
-            self,
-            cpos: "CFunctionPOs",
-            level: str,
-            ids: List[int] = [],
-            invs: List[int] = []) -> None:
-        self._cpos = cpos
-        self._level = level
-        self._ids = ids
-        self._invs = invs
-
-    @property
-    def cfunctionpos(self) -> "CFunctionPOs":
-        return self._cpos
-
-    @property
-    def level(self) -> str:
-        return self._level
-
-    @property
-    def ids(self) -> List[int]:
-        return self._ids
-
-    @property
-    def invs(self) -> List[int]:
-        return self._invs
-
-    @property
-    def is_stmt(self) -> bool:
-        return self.level == "s"
-
-    @property
-    def is_local(self) -> bool:
-        return self.level == "s" or self.level == "f" or self.level == "r"
-
-    def has_external_dependencies(self) -> bool:
-        return self.level == "a"
-
-    @property
-    def is_deadcode(self) -> bool:
-        return self.level == "x"
-
-    def write_xml(self, cnode: ET.Element) -> None:
-        cnode.set("deps", self.level)
-        if len(self.ids) > 0:
-            cnode.set("ids", ",".join([str(i) for i in self.ids]))
-        if len(self.invs) > 0:
-            cnode.set("invs", ",".join([str(i) for i in self.invs]))
-
-    def __str__(self) -> str:
-        return self.level
-
-
-def get_dependencies(
-        owner: "CFunctionPOs", xnode: ET.Element) -> CProofDependencies:
-    level = xnode.get("deps", "s")
-    xids = xnode.get("ids", "")
-    if len(xids) > 0:
-        ids: List[int] = [int(x) for x in xids.split(",")]
-    else:
-        ids = []
-    xinvs = xnode.get("invs", "")
-    if len(xinvs) > 0:
-        invs: List[int] = [int(x) for x in xinvs.split(",")]
-    else:
-        invs = []
-    return CProofDependencies(owner, level, ids, invs)
-
-
-class CFunctionPO(object):
+class CFunctionPO:
     """Super class of primary and supporting proof obligations."""
 
     def __init__(
             self,
-            cpos: "CFunctionPOs",
+            cproofs: "CFunctionProofs",
             potype: CFunPOType,
             status: str = "open",
-            deps: Optional[CProofDependencies] = None,
+            deps: Optional["CProofDependencies"] = None,
             expl: Optional[str] = None,
-            diag: Optional[CProofDiagnostic] = None) -> None:
-        self._cpos = cpos
+            diag: Optional["CProofDiagnostic"] = None) -> None:
+        self._cproofs = cproofs
         self._potype = potype
-        # self.id = self.potype.index
-        # self.pod = self.potype.pod
-        # self.context = self.potype.get_context()
-        # self.cfg_context_string = self.context.get_cfg_context_string()
-        # self.predicate = self.potype.get_predicate()
-        # self.predicatetag = self.predicate.get_tag()
         self._status = status
-        # self.location = self.potype.get_location()
         self._dependencies = deps
         self._explanation = expl
         self._diagnostic = diag
@@ -294,12 +86,12 @@ class CFunctionPO(object):
         return self.predicate.predicate_name
 
     @property
-    def cpos(self) -> "CFunctionPOs":
-        return self._cpos
+    def cproofs(self) -> "CFunctionProofs":
+        return self._cproofs
 
     @property
     def cfun(self) -> "CFunction":
-        return self.cpos.cfun
+        return self.cproofs.cfun
 
     @property
     def cfile(self) -> "CFile":
@@ -380,7 +172,7 @@ class CFunctionPO(object):
         return False
 
     @property
-    def dependencies(self) ->CProofDependencies:
+    def dependencies(self) -> "CProofDependencies":
         if self._dependencies is not None:
             return self._dependencies
         else:
@@ -397,7 +189,7 @@ class CFunctionPO(object):
         return self._explanation is not None
 
     @property
-    def diagnostic(self) -> CProofDiagnostic:
+    def diagnostic(self) -> "CProofDiagnostic":
         if self._diagnostic is not None:
             return self._diagnostic
         else:
@@ -439,15 +231,15 @@ class CFunctionPO(object):
             return False
 
     def has_variable_name(self, vname: str) -> bool:
-        vid = self.cfun.get_variable_vid(vname)
-        if vid is not None:
+        if self.cfun.has_variable_vid(vname):
+            vid = self.cfun.get_variable_vid(vname)
             return self.has_variable(vid)
         else:
             return False
 
     def has_variable_name_op(self, vname: str, op: str) -> bool:
-        vid = self.cfun.get_variable_vid(vname)
-        if vid is not None:
+        if self.cfun.has_variable_vid(vname):
+            vid = self.cfun.get_variable_vid(vname)
             return self.has_variable_op(vid, op)
         else:
             return False
@@ -565,7 +357,7 @@ class CFunctionPO(object):
         return "<A>"
 
     def write_xml(self, cnode: ET.Element) -> None:
-        self.pod.write_xml_spo_type(cnode, self.potype)
+        self.pod.write_xml_spo_type(cnode, cast("SPOType", self.potype))
         cnode.set("s", po_status_indicators[self.status])
         cnode.set("id", str(self.po_index))
         if self.has_dependencies():

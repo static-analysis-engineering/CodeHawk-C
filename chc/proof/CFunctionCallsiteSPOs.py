@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2020-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,10 +26,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Supporting proof obligations related to a single call site."""
 
 import xml.etree.ElementTree as ET
 
-from typing import Dict, List, Optional, TYPE_CHECKING
+from typing import Callable, Dict, List, Optional, TYPE_CHECKING
 
 import chc.util.xmlutil as UX
 
@@ -37,16 +38,12 @@ import chc.proof.CFunctionPO as PO
 
 from chc.app.CLocation import CLocation
 from chc.app.CFileDictionary import CKeyLookupError
+from chc.app.IndexManager import FileVarReference
 
 from chc.proof.CFunctionCallsiteSPO import CFunctionCallsiteSPO
-from chc.proof.CFunctionPO import (
-    CProofDependencies,
-    CProofDiagnostic,
-    po_status,
-    get_diagnostic,
-    get_dependencies)
 from chc.proof.CFunctionPO import po_status
-from chc.proof.CFunctionPO import CProofDiagnostic
+from chc.proof.CProofDependencies import CProofDependencies
+from chc.proof.CProofDiagnostic import CProofDiagnostic
 
 import chc.util.fileutil as UF
 from chc.util.loggingutil import chklogger
@@ -59,22 +56,23 @@ if TYPE_CHECKING:
     from chc.app.CFunction import CFunction
     from chc.app.CVarInfo import CVarInfo
     from chc.proof.CFunctionSPOs import CFunctionSPOs
+    from chc.proof.CFunctionProofs import CFunctionProofs
     from chc.proof.CFunPODictionary import CFunPODictionary
 
 
 class CallsiteTarget:
 
-    def __init__(self, cspos: "CFunctionSPOs", xnode: ET.Element) -> None:
+    def __init__(self, cproofs: "CFunctionProofs", xnode: ET.Element) -> None:
         self.xnode = xnode
-        self._cspos = cspos
+        self._cproofs = cproofs
 
     @property
-    def cspos(self) -> "CFunctionSPOs":
-        return self._cspos
+    def cproofs(self) -> "CFunctionProofs":
+        return self._cproofs
 
     @property
     def cfile(self) -> "CFile":
-        return self.cspos.cfile
+        return self.cproofs.cfile
 
     def has_callee(self) -> bool:
         return "ivinfo" in self.xnode.attrib
@@ -111,28 +109,22 @@ class CallsiteTarget:
                 raise UF.CHCError("Inconsistent icallees element")
         else:
             raise UF.CHCError("Call target does not have resolved callees")
-        
+
 
 
 class CFunctionCallsiteSPOs:
     """Represents the supporting proof obligations associated with a call site."""
 
-    def __init__(self, cspos: "CFunctionSPOs", xnode: ET.Element) -> None:
-        self._cspos = cspos
+    def __init__(self, cproofs: "CFunctionProofs", xnode: ET.Element) -> None:
+        self._cproofs = cproofs
         self.xnode = xnode
-        self._calltarget = CallsiteTarget(self._cspos, self.xnode)
+        self._calltarget: Optional[CallsiteTarget] = None
         self._iargs: Optional[List[int]] = None
         self._callargs: Optional[List["CExp"]] = None
         self._spos: Optional[Dict[int, List[CFunctionCallsiteSPO]]] = None
         self._postassumes: Optional[List[int]] = None
         self._icallees: Optional[List[int]] = None
         self._callees: Optional[List["CVarInfo"]] = None
-        # self.cfile = self.cspos.cfile
-        # self.context = self.cfile.contexttable.read_xml_context(xnode)
-        # self.header = xnode.get("header", "")
-        # self.cfun = self.cspos.cfun
-        # self.location = self.cfile.declarations.read_xml_location(xnode)
-        # direct call
         '''
         if "ivinfo" in xnode.attrib:
             self.callee = self.cfile.declarations.read_xml_varinfo(xnode)
@@ -172,6 +164,8 @@ class CFunctionCallsiteSPOs:
 
     @property
     def calltarget(self) -> CallsiteTarget:
+        if self._calltarget is None:
+            self._calltarget = CallsiteTarget(self.cproofs, self.xnode)
         return self._calltarget
 
     @property
@@ -194,20 +188,20 @@ class CFunctionCallsiteSPOs:
         return self._callargs
 
     @property
-    def cspos(self) -> "CFunctionSPOs":
-        return self._cspos
+    def cproofs(self) -> "CFunctionProofs":
+        return self._cproofs
 
     @property
     def cfile(self) -> "CFile":
-        return self.cspos.cfile
+        return self.cproofs.cfile
 
     @property
     def cfun(self) -> "CFunction":
-        return self.cspos.cfun
+        return self.cproofs.cfun
 
     @property
     def podictionary(self) -> "CFunPODictionary":
-        return self.cspos.podictionary
+        return self.cfun.podictionary
 
     @property
     def header(self) -> str:
@@ -223,7 +217,7 @@ class CFunctionCallsiteSPOs:
 
     @property
     def contextdictionary(self) -> "CContextDictionary":
-        return self.cspos.contextdictionary
+        return self.cfile.contextdictionary
 
     @property
     def spos(self) -> Dict[int, List[CFunctionCallsiteSPO]]:
@@ -237,18 +231,19 @@ class CFunctionCallsiteSPOs:
                         self._spos[int(xapid)] = []
                         for xpo in p.findall("po"):
                             spotype = self.podictionary.read_xml_spo_type(xpo)
-                            deps = get_dependencies(self.cspos, xpo)
+                            deps = CProofDependencies(self.cproofs, xpo)
                             status = po_status[xpo.get("s", "o")]
                             xexpl = xpo.find("e")
                             expl = None if xexpl is None else xexpl.get("txt")
-                            dnode = xpo.find("d")
-                            if dnode is not None:
-                                diag: Optional[CProofDiagnostic] = get_diagnostic(dnode)
-                            else:
-                                diag = None
+                            diagnostic = CProofDiagnostic(xpo.find("d"))
                             self._spos[int(xapid)].append(
                                 CFunctionCallsiteSPO(
-                                    self.cspos, spotype, status, deps, expl, diag))
+                                    self.cproofs,
+                                    spotype,
+                                    status,
+                                    deps,
+                                    expl,
+                                    diagnostic))
         return self._spos
 
     @property
@@ -325,12 +320,12 @@ class CFunctionCallsiteSPOs:
         if self.header.startswith("lib:"):
             return
 
-        calleefun = self.cfile.capp.resolve_vid_function(
-            self.cfile.index, self.callee.vid)
+        filevar = FileVarReference(self.cfile.index, self.callee.vid)
+        calleefun = self.cfile.capp.resolve_vid_function(filevar)
         if calleefun is None:
             chklogger.logger.warning(
                 "missing external function in %s - %s: %s",
-                self.cfile.name, self.cfun.name, self.callee)
+                self.cfile.name, self.cfun.name, self.callee.vname)
             return
 
         # retrieve callee's api assumptions and substitute parameters by
@@ -442,11 +437,12 @@ class CFunctionCallsiteSPOs:
                     self.spos[apiid] = []
                     ictxt = self.contextdictionary.index_context(self.context)
                     iloc = self.cfile.declarations.index_location(self.location)
-                    ispotype = self.cfun.podictionary.index_spo_type(
+                    ispotype = self.podictionary.index_spo_type(
                         ["cs"], [iloc, ictxt, pid, apiid]
                     )
                     spotype = self.cfun.podictionary.get_spo_type(ispotype)
-                    self.spos[apiid].append(CFunctionCallsiteSPO(self.cspos, spotype))
+                    self.spos[apiid].append(
+                        CFunctionCallsiteSPO(self.cproofs, spotype))
                 except CKeyLookupError as e:
                     chklogger.logger.warning(
                         "%s: %s call to %s (%s) request datastructure condition "
@@ -478,35 +474,47 @@ class CFunctionCallsiteSPOs:
                         str(a),
                         str(e))
 
+    def distribute_post_guarantees(self) -> None:
+        # TBD
+        pass
+
     def collect_post_assumes(self) -> None:
         """Collect postconditions from callee's contract and add as assume."""
+
         if self.header.startswith("lib:"):
             return
         if not self.has_callee():
             return
         # retrieve callee information
-        calleefun = self.cfile.capp.resolve_vid_function(
-            self.cfile.index, self.callee.vid)
+        filevar = FileVarReference(self.cfile.index, self.callee.vid)
+        calleefun = self.cfile.capp.resolve_vid_function(filevar)
         if calleefun is None:
             return
 
+        chklogger.logger.info(
+            "Collect call-site post assumes from %s", calleefun.cfile.name)
         # retrieve postconditions from the contract of the callee
         if calleefun.cfile.has_function_contract(calleefun.name):
             fcontract = calleefun.cfile.get_function_contract(calleefun.name)
-            for p in fcontract.postconditions.values():
-                iipc = self.cfile.interfacedictionary.index_xpredicate(p)
-                if iipc not in self.postassumes:
-                    self.postassumes.append(iipc)
-
+            if fcontract is not None:
+                chklogger.logger.info(
+                    "Collect call-site post assumes from contract for %s",
+                    calleefun.name)
+                for p in fcontract.postconditions.values():
+                    iipc = self.cfile.interfacedictionary.index_xpredicate(p)
+                    chklogger.logger.info("Found contract postcondition: %s", str(p))
+                    if iipc not in self.postassumes:
+                        self.postassumes.append(iipc)
+        else:
+            chklogger.logger.info("No function contract found for %s",
+                                  calleefun.name)
     def get_context_string(self):
         return self.context.context_strings()
 
-    '''
-    def iter(self, f):
+    def iter(self, f: Callable[[CFunctionCallsiteSPO], None]) -> None:
         for id in self.spos:
             for spo in self.spos[id]:
                 f(spo)
-    '''
 
     def get_spo(self, id: int) -> CFunctionCallsiteSPO:
         for apiid in self.spos:

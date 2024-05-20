@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2020-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,38 +26,60 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""The collection of all primary proof obligations in a function."""
 
 import xml.etree.ElementTree as ET
 
-from typing import Dict, List, Optional, TYPE_CHECKING
-
-from chc.proof.CFunctionPO import get_dependencies, get_diagnostic
+from typing import Callable, Dict, List, Optional, TYPE_CHECKING
 
 from chc.proof.CFunctionPPO import CFunctionPPO
-from chc.proof.CFunctionPOs import CFunctionPOs
-from chc.proof.CFunctionPO import CProofDependencies
-from chc.proof.CFunctionPO import CProofDiagnostic
+from chc.proof.CProofDependencies import CProofDependencies
+from chc.proof.CProofDiagnostic import CProofDiagnostic
 
 import chc.util.fileutil as UF
 
 if TYPE_CHECKING:
+    from chc.app.CContextDictionary import CContextDictionary
+    from chc.app.CFile import CFile
+    from chc.app.CFunction import CFunction
     from chc.proof.CFunctionProofs import CFunctionProofs
+    from chc.proof.CFunPODictionary import CFunPODictionary
 
 
 po_status = {"g": "safe", "o": "open", "r": "violation", "x": "dead-code"}
 
 
-class CFunctionPPOs(CFunctionPOs):
+class CFunctionPPOs:
     """Represents the set of primary proof obligations for a function.
 
     xnode received is the content of the <"ppos"> element
     """
 
     def __init__(self, cproofs: "CFunctionProofs", xnode: ET.Element) -> None:
-        CFunctionPOs.__init__(self, cproofs)
         self.xnode = xnode
+        self._cproofs = cproofs
         self._ppos: Optional[Dict[int, CFunctionPPO]] = None  # ppoid -> CFunctionPPO
         # self._initialize()
+
+    @property
+    def cproofs(self) -> "CFunctionProofs":
+        return self._cproofs
+
+    @property
+    def cfun(self) -> "CFunction":
+        return self.cproofs.cfun
+
+    @property
+    def cfile(self) -> "CFile":
+        return self.cfun.cfile
+
+    @property
+    def contextdictionary(self) -> "CContextDictionary":
+        return self.cfile.contextdictionary
+
+    @property
+    def podictionary(self) -> "CFunPODictionary":
+        return self.cfun.podictionary
 
     @property
     def ppos(self) -> Dict[int, CFunctionPPO]:
@@ -67,8 +89,8 @@ class CFunctionPPOs(CFunctionPOs):
                 ppotype = self.podictionary.read_xml_ppo_type(xp)
                 id = ppotype.index
                 status = po_status[xp.get("s", "o")]
-                deps = get_dependencies(self, xp)
-                diagnostic = get_diagnostic(xp)
+                deps = CProofDependencies(self.cproofs, xp)
+                diagnostic = CProofDiagnostic(xp.find("d"))
 
                 # get explanation
                 enode = xp.find("e")
@@ -78,7 +100,7 @@ class CFunctionPPOs(CFunctionPOs):
                     expl = None
 
                 self._ppos[id] = CFunctionPPO(
-                    self, ppotype, status, deps, expl, diagnostic)
+                    self.cproofs, ppotype, status, deps, expl, diagnostic)
         return self._ppos
 
     def get_ppo(self, id: int) -> CFunctionPPO:
@@ -87,14 +109,12 @@ class CFunctionPPOs(CFunctionPOs):
         else:
             raise UF.CHCError("Ppo with id " + str(id) + " not found")
 
-    '''
-    def iter(self, f):
+    def iter(self, f: Callable[[CFunctionPPO], None]) -> None:
         for ppo in sorted(
             self.ppos,
-            key=lambda p: (self.ppos[p].location.get_line(), int(self.ppos[p].id)),
+            key=lambda p: (self.ppos[p].location.line, int(self.ppos[p].po_index)),
         ):
             f(self.ppos[ppo])
-    '''
 
     def __str__(self) -> str:
         lines: List[str] = []
