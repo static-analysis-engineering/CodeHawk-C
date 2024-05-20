@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2020-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,32 +26,32 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Support proof obligation for a local assumption made."""
 
 import xml.etree.ElementTree as ET
 
 from typing import Optional, TYPE_CHECKING
 
-from chc.proof.CFunctionPO import (
-    CFunctionPO, CProofDependencies, CProofDiagnostic)
+from chc.proof.CFunctionPO import CFunctionPO
 
 if TYPE_CHECKING:
-    from chc.proof.CFunctionSPOs import CFunctionSPOs
+    from chc.proof.CFunctionProofs import CFunctionProofs
     from chc.proof.CFunPODictionaryRecord import CFunPOType
+    from chc.proof.CProofDependencies import CProofDependencies
+    from chc.proof.CProofDiagnostic import CProofDiagnostic
 
 
 class CFunctionLocalSPO(CFunctionPO):
-    """Represents a supporting proof obligation associated with a call site."""
 
     def __init__(
             self,
-            csspos: "CFunctionSPOs",
+            cproofs: "CFunctionProofs",
             potype: "CFunPOType",
             status: str = "open",
-            deps: Optional[CProofDependencies] = None,
+            deps: Optional["CProofDependencies"] = None,
             expl: Optional[str] = None,
-            diag: Optional[CProofDiagnostic] = None) -> None:
-        CFunctionPO.__init__(self, csspos, potype, status, deps, expl, diag)
-        self.csspos = csspos  # CFunctionSPOs
+            diag: Optional["CProofDiagnostic"] = None) -> None:
+        CFunctionPO.__init__(self, cproofs, potype, status, deps, expl, diag)
 
     def is_spo(self) -> bool:
         return True

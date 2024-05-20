@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2020-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -73,7 +73,8 @@ class CFunPODictionary(object):
             self.assumption_type_table,
             self.ppo_type_table,
             self.spo_type_table]
-        self._objmaps: Dict[str, Callable[[], Mapping[int, IndexedTableValue]]] = {
+        self._objmaps: Dict[
+            str, Callable[[], Mapping[int, IndexedTableValue]]] = {
             "assumption": self.get_assumption_type_map,
             "ppo": self.get_ppo_type_map,
             "spo": self.get_spo_type_map}
@@ -205,10 +206,12 @@ class CFunPODictionary(object):
             objmap = self._objmaps[name]()
             lines: List[str] = []
             if len(objmap) == 0:
-                lines.append("Table is empty")
+                lines.append(f"\nTable for {name} is empty\n")
             else:
+                lines.append("index  value")
+                lines.append("-" * 80)
                 for (ix, obj) in objmap.items():
-                    lines.append(str(ix).rjust(3) + "  " + str(obj))
+                    lines.append(str(ix).rjust(3) + "    " + str(obj))
             return "\n".join(lines)
         else:
             raise UF.CHCError(

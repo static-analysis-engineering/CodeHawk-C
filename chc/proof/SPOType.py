@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2021-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2021-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,7 +26,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
-"""Supporting proof obligation types generated to provide evidence for assumptions.
+"""Supporting proof obligation as generated to provide evidence for assumptions.
 """
 
 from typing import TYPE_CHECKING
@@ -64,6 +64,10 @@ class SPOType(CFunPOType):
     def is_returnsite_spo(self) -> bool:
         return False
 
+    @property
+    def external_id(self) -> int:
+        raise UF.CHCError("SPO does not have an external id")
+
     def __str__(self) -> str:
         return "spo-type:" + self.tags[0]
 
@@ -72,9 +76,9 @@ class SPOType(CFunPOType):
 class LocalSPOType(SPOType):
     """Proof obligation that supports an assumption within a function.
 
-    args[0]: index of location in cdeclarations
-    args[1]: index of context in contexts
-    args[2]: index of predicate in predicate dictionary
+    * args[0]: index of location in cdeclarations
+    * args[1]: index of context in contexts
+    * args[2]: index of predicate in predicate dictionary
     """
 
     def __init__(self, pod: "CFunPODictionary", ixval: IndexedTableValue
@@ -112,10 +116,10 @@ class LocalSPOType(SPOType):
 class CallsiteSPOType(SPOType):
     """Proof obligation that supports an assumption on a function call argument.
 
-    args[0]: index of location in cdeclarations
-    args[1]: index of context in contexts
-    args[2]: index of predicate in predicate dictionary
-    args[3]: api-id
+    * args[0]: index of location in cdeclarations
+    * args[1]: index of context in contexts
+    * args[2]: index of predicate in predicate dictionary
+    * args[3]: api-id
     """
 
     def __init__(self, pod: "CFunPODictionary", ixval: IndexedTableValue
@@ -157,10 +161,10 @@ class CallsiteSPOType(SPOType):
 class ReturnsiteSPOType(SPOType):
     """Proof obligation that supports an assumption on a return value.
 
-    args[0]: index of location in cdeclarations
-    args[1]: index of context in contexts
-    args[2]: index of predicate in predicate dictionary
-    args[3]: index of xpredicate in interface dictionary
+    * args[0]: index of location in cdeclarations
+    * args[1]: index of context in contexts
+    * args[2]: index of predicate in predicate dictionary
+    * args[3]: index of xpredicate in interface dictionary
     """
 
     def __init__(self, pod: "CFunPODictionary", ixval: IndexedTableValue

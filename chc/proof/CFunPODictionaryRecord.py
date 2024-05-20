@@ -4,7 +4,7 @@
 # ------------------------------------------------------------------------------
 # The MIT License (MIT)
 #
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2023-2024  Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,6 +24,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Base class for objects in the function-level proof obligation dictionary."""
 
 from typing import Callable, cast, Dict, List, Tuple, Type, TypeVar, TYPE_CHECKING
 
@@ -102,6 +103,10 @@ class CFunPOType(CFunPODictionaryRecord):
     @property
     def predicate(self) -> "CPOPredicate":
         return self.pd.get_predicate(self.args[2])
+
+    @property
+    def external_id(self) -> int:
+        raise UF.CHCError("POType does not have an external id")
 
     @property
     def po_index(self) -> int:

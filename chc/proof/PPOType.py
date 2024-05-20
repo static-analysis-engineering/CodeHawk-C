@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2021-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2021-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,9 +26,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
-"""Primary proof obligation types generated on the program source text for 
-constructs that may lead to undefined behavior (UB).
-"""
+"""Primary proof obligation as generated."""
 
 from typing import TYPE_CHECKING
 
@@ -67,11 +65,11 @@ class PPOType(CFunPOType):
 
 @podregistry.register_tag("p", PPOType)
 class ProgramPPOType(PPOType):
-    """Primary proof obligation generated for program constructs that may lead to UB.
+    """Primary proof obligation generated for constructs that may lead to UB.
 
-    args[0]: index of location in cdeclarations
-    args[1]: index of context in contexts
-    args[2]: index of predicate in predicate dictionary
+    * args[0]: index of location in cdeclarations
+    * args[1]: index of context in contexts
+    * args[2]: index of predicate in predicate dictionary
     """
 
     def __init__(self, pod: "CFunPODictionary", ixval: IndexedTableValue
@@ -109,11 +107,11 @@ class ProgramPPOType(PPOType):
 class LibPPOType(PPOType):
     """Primary proof obligation generated for library calls that may lead to UB.
 
-    tags[1]: name of library function called
-    args[0]: index of location in cdeclarations
-    args[1]: index of context in contexts
-    args[2]: index of predicate in predicate dictionary
-    args[3]: index of xpredicate in interface dictionary
+    * tags[1]: name of library function called
+    * args[0]: index of location in cdeclarations
+    * args[1]: index of context in contexts
+    * args[2]: index of predicate in predicate dictionary
+    * args[3]: index of xpredicate in interface dictionary
     """
 
     def __init__(self, pod: "CFunPODictionary", ixval: IndexedTableValue

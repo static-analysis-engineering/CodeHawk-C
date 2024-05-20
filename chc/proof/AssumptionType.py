@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2021-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2021-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,6 +26,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""External assumption on a function."""
 
 from typing import TYPE_CHECKING
 
@@ -80,7 +81,7 @@ class LocalAssumptionType(AssumptionType):
     obligations. An example is assuming that a call to a function preserves all
     memory (e.g., does not free any memory).
 
-    args[0]: index of predicate in predicate dictionary
+    * args[0]: index of predicate in predicate dictionary
     """
 
     def __init__(self, pod: "CFunPODictionary", ixval: IndexedTableValue
@@ -108,7 +109,7 @@ class ApiAssumptionType(AssumptionType):
 
     The index of the predicate is also used as the api-id for the assumption.
 
-    args[0]: index of predicate in predicate dictionary
+    * args[0]: index of predicate in predicate dictionary
     """
 
     def __init__(self, pod: "CFunPODictionary", ixval: IndexedTableValue
@@ -141,7 +142,7 @@ class GlobalApiAssumptionType(AssumptionType):
     value locally (assuming no concurrency, or a form of ownership of the global
     variable throughout function execution.
 
-    args[0]: index of predicate in predicate dictionary
+    * args[0]: index of predicate in predicate dictionary
     """
 
     def __init__(self, pod: "CFunPODictionary", ixval: IndexedTableValue
@@ -168,8 +169,8 @@ class PostconditionType(AssumptionType):
     these types of assumption are usually introduced by means of an externally
     provided contract.
 
-    args[0]: vid of the callee (local file vid)
-    args[1]: index of xpredicate in interface dictionary
+    * args[0]: vid of the callee (local file vid)
+    * args[1]: index of xpredicate in interface dictionary
     """
 
     def __init__(self, pod: "CFunPODictionary", ixval: IndexedTableValue
@@ -200,7 +201,7 @@ class PostconditionType(AssumptionType):
 class GlobalAssumptionType(AssumptionType):
     """Assumption that is asserted globally that is supported globally.
 
-    args[0]: index of xpredicate in interfacedictionary
+    * args[0]: index of xpredicate in interfacedictionary
     """
 
     def __init__(self, pod: "CFunPODictionary", ixval: IndexedTableValue
