@@ -5,6 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
+# Copyright (c) 2020-2023 Henny B. Sipma
+# Copyright (c) 2024      Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -29,15 +31,26 @@ import itertools
 
 import xml.etree.ElementTree as ET
 
+from typing import Dict, List, Tuple, TYPE_CHECKING
 
-from chc.linker.CompCompatibility import CompCompatibility
+
+
 from chc.app.CCompInfo import CCompInfo
-
-from chc.util.UnionFind import UnionFind
+from chc.app.IndexManager import FileKeyReference, FileVarReference
 from chc.app.CGlobalDictionary import CGlobalDictionary
 
+from chc.linker.CompCompatibility import CompCompatibility
+
 import chc.util.fileutil as UF
+from chc.util.loggingutil import chklogger
+from chc.util.UnionFind import UnionFind
 import chc.util.xmlutil as UX
+
+if TYPE_CHECKING:
+    from chc.app.CApplication import CApplication
+    from chc.app.CFile import CFile
+    from chc.app.CGlobalDeclarations import CGlobalDeclarations
+    from chc.app.IndexManager import IndexManager
 
 """
 Starting point: a list of (fileindex,compinfo key) pairs that identify the
@@ -54,46 +67,78 @@ Goal: produce equivalence classes of (fileindex,compinfo key) pairs that
 """
 
 
-class CLinker(object):
-    def __init__(self, capp):
-        self.capp = capp  # CApplication
-        self.declarations = self.capp.declarations
+class CLinker:
+    def __init__(self, capp: "CApplication") -> None:
+        self._capp = capp
+        self._compinfos: List["CCompInfo"] = []
+        self._compinfoxrefs: Dict[Tuple[int, int], int] = {}
+        self._varinfoxrefs: Dict[Tuple[int, int], int] = {}
 
-    def get_file_compinfo_xrefs(self, fileindex):
-        result = {}
+    @property
+    def capp(self) -> "CApplication":
+        return self._capp
+
+    @property
+    def indexmanager(self) -> "IndexManager":
+        return self.capp.indexmanager
+
+    @property
+    def declarations(self) -> "CGlobalDeclarations":
+        return self.capp.declarations
+
+    @property
+    def compinfos(self) -> List["CCompInfo"]:
+        return self._compinfos
+
+    @property
+    def compinfoxrefs(self) -> Dict[Tuple[int, int], int]:
+        return self._compinfoxrefs
+
+    @property
+    def varinfoxrefs(self) -> Dict[Tuple[int, int], int]:
+        return self._varinfoxrefs
+
+    def get_file_compinfo_xrefs(self, fileindex: int) -> Dict[int, int]:
+        result: Dict[int, int] = {}
         for (fidx, ckey) in self.compinfoxrefs:
             if fidx == fileindex:
                 result[ckey] = self.compinfoxrefs[(fidx, ckey)]
         return result
 
-    def get_file_varinfo_xrefs(self, fileindex):
-        result = {}
+    def get_file_varinfo_xrefs(self, fileindex: int) -> Dict[int, int]:
+        result: Dict[int, int] = {}
         for (fidx, vid) in self.varinfoxrefs:
             if fidx == fileindex:
                 result[vid] = self.varinfoxrefs[(fidx, vid)]
         return result
 
+    """
     def get_global_compinfos(self):
         return self.compinfoinstances
 
     def get_shared_instances(self):
         return self.sharedinstances
+    """
 
-    def link_compinfos(self):
-        def f(cfile):
-            print("Linking " + cfile.name)
-            compinfos = cfile.declarations.get_compinfos()
+    def link_compinfos(self) -> None:
+
+        chklogger.logger.info("Link compinfos")
+
+        # index and connect the compinfos from the individual files
+        for cfile in self.capp.cfiles:
+            compinfos = cfile.get_compinfos()
             self.declarations.index_file_compinfos(cfile.index, compinfos)
 
-        self.capp.iter_files(f)
+        # register the relationships found with the index manager
         ckey2gckey = self.declarations.ckey2gckey
         for fid in ckey2gckey:
             for ckey in ckey2gckey[fid]:
                 gckey = ckey2gckey[fid][ckey]
-                self.capp.indexmanager.add_ckey2gckey(fid, ckey, gckey)
+                filekey = FileKeyReference(fid, ckey)
+                self.capp.indexmanager.add_ckey2gckey(filekey, gckey)
 
     """
-    def linkcompinfos(self):
+    def linkcompinfos(self) -> None:
         self._checkcompinfopairs()
 
         print('Found ' + str(len(self.possiblycompatiblestructs)) +
@@ -144,10 +189,11 @@ class CLinker(object):
             else:
                 filename = self.capp.getfilebyindex(id[0]).getfilename()
                 self.sharedinstances[gckey].append((filename,c))
+
     """
 
-    def link_varinfos(self):
-        def f(cfile):
+    def link_varinfos(self) -> None:
+        def f(cfile: "CFile") -> None:
             varinfos = cfile.declarations.get_global_varinfos()
             self.declarations.index_file_varinfos(cfile.index, varinfos)
 
@@ -157,39 +203,22 @@ class CLinker(object):
         for fid in vid2gvid:
             for vid in vid2gvid[fid]:
                 gvid = vid2gvid[fid][vid]
-                self.capp.indexmanager.add_vid2gvid(fid, vid, gvid)
+                filevar = FileVarReference(fid, vid)
+                self.indexmanager.add_vid2gvid(filevar, gvid)
 
-    """
-    def linkvarinfos(self):
-        globalvarinfos = {}
-        for vinfo in self.varinfos:
-            name = vinfo.getname()
-            if vinfo.getstorage() == 'static':
-                fileindex = vinfo.getfile().getindex()
-                name = name + '__file__' + str(fileindex) + '__'
-            if not name in globalvarinfos: globalvarinfos[name] = []
-            globalvarinfos[name].append(vinfo)
-
-        gvid = 1
-        for name in sorted(globalvarinfos):
-            for vinfo in globalvarinfos[name]:
-                id = vinfo.getid()
-                self.varinfoxrefs[id] = gvid
-                self.capp.indexmanager.addvid2gvid(id[0],id[1],gvid)
-            gvid += 1
-    """
-
-    def save_global_compinfos(self):
-        path = self.capp.path
+    def save_global_compinfos(self) -> None:
+        path = self.capp.targetpath
         xroot = UX.get_xml_header("globals", "globals")
         xnode = ET.Element("globals")
         xroot.append(xnode)
         self.declarations.write_xml(xnode)
-        filename = UF.get_global_definitions_filename(path)
+        filename = UF.get_global_definitions_filename(path, self.capp.projectname)
+        chklogger.logger.info("Saving global compinfos to %s", filename)
         with open(filename, "w") as fp:
             fp.write(UX.doc_to_pretty(ET.ElementTree(xroot)))
 
-    def _checkcompinfopairs(self):
+    """
+    def _checkcompinfopairs(self) -> None:
         self.possiblycompatiblestructs = []
         compinfos = sorted(self.compinfos, key=lambda c: c.getid())
         print(
@@ -209,3 +238,4 @@ class CLinker(object):
                     self.possiblycompatiblestructs.append(pair)
                 else:
                     self.notcompatiblestructs.add(pair)
+    """
