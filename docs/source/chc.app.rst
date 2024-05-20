@@ -1,0 +1,90 @@
+chc.app package
+===============
+
+.. automodule:: chc.app
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+.. autosummary::
+   chc.app.AssignDictionaryRecord
+   chc.app.CApplication
+   chc.app.CAttributes
+   chc.app.CCompInfo
+   chc.app.CConst
+   chc.app.CContext
+   chc.app.CContextDictionary
+   chc.app.CDeclarations
+   chc.app.CDictionary
+   chc.app.CDictionaryRecord
+   chc.app.CEnumInfo
+   chc.app.CEnumItem
+   chc.app.CExp
+   chc.app.CFieldInfo
+   chc.app.CFile
+   chc.app.CFileAssignment
+   chc.app.CFileAssignmentDictionary
+   chc.app.CFileDeclarations
+   chc.app.CFileDictionary
+   chc.app.CFileGlobals
+   chc.app.CFunDeclarations
+   chc.app.CFunction
+   chc.app.CGXrefs
+   chc.app.CGlobalDeclarations
+   chc.app.CGlobalDictionary
+   chc.app.CHVersion
+   chc.app.CInitInfo
+   chc.app.CInstr
+   chc.app.CLHost
+   chc.app.CLocation
+   chc.app.CLval
+   chc.app.COffset
+   chc.app.CStmt
+   chc.app.CTyp
+   chc.app.CTypeInfo
+   chc.app.CTypsig
+   chc.app.CVarInfo
+   chc.app.IndexManager
+
+Submodules
+----------
+
+.. toctree::
+   chc.app.AssignDictionaryRecord
+   chc.app.CApplication
+   chc.app.CAttributes
+   chc.app.CCompInfo
+   chc.app.CConst
+   chc.app.CContext
+   chc.app.CContextDictionary
+   chc.app.CDeclarations
+   chc.app.CDictionary
+   chc.app.CDictionaryRecord
+   chc.app.CEnumInfo
+   chc.app.CEnumItem
+   chc.app.CExp
+   chc.app.CFieldInfo
+   chc.app.CFile
+   chc.app.CFileAssignment
+   chc.app.CFileAssignmentDictionary
+   chc.app.CFileDeclarations
+   chc.app.CFileDictionary
+   chc.app.CFileGlobals
+   chc.app.CFunDeclarations
+   chc.app.CFunction
+   chc.app.CGXrefs
+   chc.app.CGlobalDeclarations
+   chc.app.CGlobalDictionary
+   chc.app.CHVersion
+   chc.app.CInitInfo
+   chc.app.CInstr
+   chc.app.CLHost
+   chc.app.CLocation
+   chc.app.CLval
+   chc.app.COffset
+   chc.app.CStmt
+   chc.app.CTyp
+   chc.app.CTypeInfo
+   chc.app.CTypsig
+   chc.app.CVarInfo
+   chc.app.IndexManager

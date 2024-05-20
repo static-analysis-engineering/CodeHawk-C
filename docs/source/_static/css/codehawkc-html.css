@@ -1,0 +1,73 @@
+body {
+    font-family: "Helvetica Neue", sans-serif;
+}
+
+#sumtype {
+    font-family: Arial, Helvetic, sans-serif;
+    border-collapse: collapse;
+    width: 100%;
+}
+
+#sumtype tr:nth-child(even){background-color: #f2f2f2;}
+
+#sumtype tr:hover {background-color: #ddd;}
+
+#sumtype th {
+    padding-top: 12px;
+    padding-bottom: 12px;
+    text-align: left;
+    background-color: #FF9900;
+    color: black;
+}
+
+#sumtype caption {
+    font-style: italic;
+    padding-top: 8px;
+    padding-bottom: 12px;
+}
+
+.tooltip {
+  position: relative;
+  display: inline-block;
+  border-bottom: 1px dotted black;
+}
+
+.tooltip .tooltiptext {
+  visibility: hidden;
+  background-color: #2e86c1;
+  width: max-content;
+  max-width: 500px;
+  color: #fff;
+  text-align: center;
+  border-radius: 6px;
+  padding: 5px 5px;
+
+  /* Position the tooltip */
+  position: absolute;
+  z-index: 1;
+}
+
+.tooltip:hover .tooltiptext {
+  visibility: visible;
+}
+
+
+
+table {
+    margin-left: 20px;
+    margin-right: 20px;
+    border: thin solid black;
+    caption-side: bottom;
+}
+
+td, th {
+    border: thin dotted gray;
+    padding: 10px;
+    vertical-align: middle;
+}
+
+td:description {
+    vertical-align: center;
+}
+
+    
