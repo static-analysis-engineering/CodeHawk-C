@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2020-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,6 +26,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Type and layout of a struct or union field."""
 
 from typing import cast, List, Optional, TYPE_CHECKING
 
@@ -44,13 +45,13 @@ if TYPE_CHECKING:
 class CFieldInfo(CDeclarationsRecord):
     """Definition of a struct field.
 
-    tags[0] fname
+    * tags[0] fname
 
-    args[0]: fcomp.ckey  (-1 for global structs)
-    args[1]: ftype
-    args[2]: fbitfield
-    args[3]: fattr       (-1 for global structs)
-    args[4]: floc        (-1 for global structs)
+    * args[0]: fcomp.ckey  (-1 for global structs)
+    * args[1]: ftype
+    * args[2]: fbitfield
+    * args[3]: fattr       (-1 for global structs)
+    * args[4]: floc        (-1 for global structs)
     """
 
     def __init__(

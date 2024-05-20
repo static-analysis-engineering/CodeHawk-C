@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2020-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,6 +26,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Enum item declaration data."""
 
 from typing import cast, List, TYPE_CHECKING
 
@@ -42,9 +43,9 @@ if TYPE_CHECKING:
 class CEnumItem(CDeclarationsRecord):
     """Enum Item.
 
-    tags[0]: name of the item
-    args[0]: index of expression associated with the item in cdictionary
-    args[1]: index of definition location in the declarations
+    * tags[0]: name of the item
+    * args[0]: index of expression associated with the item in cdictionary
+    * args[1]: index of definition location in the declarations
     """
     def __init__(self, decls: "CFileDeclarations", ixval: IT.IndexedTableValue):
         CDeclarationsRecord.__init__(self, decls, ixval)

@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2021-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2021-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,6 +26,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Structural context description to locate a program entity.
+
+
+"""
 
 from typing import List, TYPE_CHECKING
 
@@ -54,9 +58,9 @@ class CContextDictionaryRecord(IndexedTableValue):
 class CContextNode(CContextDictionaryRecord):
     """Node in an expression or control-flow-graph context.
 
-    tags[0]: name of the node
-    tags[1..]: additional info on the node, e.g. field name in struct expression
-    args[0]: stmt.id for statements, instr sequence number for instructions
+    - tags[0]: name of the node
+    - tags[1..]: additional info on the node, e.g. field name in struct expression
+    - args[0]: stmt.id for statements, instr sequence number for instructions
     """
 
     def __init__(self, cxd: "CContextDictionary", ixval: IndexedTableValue
@@ -87,8 +91,8 @@ class CContextNode(CContextDictionaryRecord):
 class CfgContext(CContextDictionaryRecord):
     """Control-flow-graph context expressed by a list of context nodes.
 
-    args[0..]: indices of context nodes in the context dictionary, inner context
-    last
+    - args[0..]: indices of context nodes in the context dictionary, inner
+      context last
     """
 
     def __init__(self, cxd: "CContextDictionary", ixval: IndexedTableValue
@@ -110,8 +114,8 @@ class CfgContext(CContextDictionaryRecord):
 class ExpContext(CContextDictionaryRecord):
     """Expression nesting context expressed by a list of context nodes.
 
-    args[0..]: indices of context nodes in the context dictionary, inner context
-    last
+    - args[0..]: indices of context nodes in the context dictionary, inner
+      context last
     """
 
     def __init__(self, cxd: "CContextDictionary", ixval: IndexedTableValue
@@ -147,4 +151,3 @@ class ProgramContext(CContextDictionaryRecord):
 
     def __str__(self) -> str:
         return "(" + str(self.cfg_context) + "," + str(self.exp_context) + ")"
-

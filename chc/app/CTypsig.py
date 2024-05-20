@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2020-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,6 +26,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Type signature used in attributes."""
 
 from typing import cast, Any, List, Tuple, Optional, TYPE_CHECKING
 
@@ -61,9 +62,9 @@ class CTypsig(CDictionaryRecord):
 class CTypsigArray(CTypsig):
     """Array type signature.
 
-    tags[1]: length of array (optional)
-    args[0]: index of type signature of array base in cdictionary
-    args[1]: index of attributes in cdictionary
+    - tags[1]: length of array (optional)
+    - args[0]: index of type signature of array base in cdictionary
+    - args[1]: index of attributes in cdictionary
     """
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
         CTypsig.__init__(self, cd, ixval)
@@ -88,7 +89,7 @@ class CTypsigArray(CTypsig):
 class CTypsigPtr(CTypsig):
     """Pointer type signature.
 
-    args[0]: index of target type signature in cdictionary
+    - args[0]: index of target type signature in cdictionary
     """
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
         CTypsig.__init__(self, cd, ixval)
@@ -105,7 +106,7 @@ class CTypsigPtr(CTypsig):
 class CTypsigComp(CTypsig):
     """Struct type signature.
 
-    tags[1]: name of struct
+    - tags[1]: name of struct
     """
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
         CTypsig.__init__(self, cd, ixval)
@@ -122,8 +123,8 @@ class CTypsigComp(CTypsig):
 class CTypsigFun(CTypsig):
     """Function type signature.
 
-    args[0]: index of return value type signature in cdictionary
-    args[1]: index of list of argument type signatures in cdictionary
+    - args[0]: index of return value type signature in cdictionary
+    - args[1]: index of list of argument type signatures in cdictionary
     """
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
         CTypsig.__init__(self, cd, ixval)
@@ -149,7 +150,7 @@ class CTypsigFun(CTypsig):
 class CTypsigEnum(CTypsig):
     """Enum type signature.
 
-    tags[1]: enum name
+    - tags[1]: enum name
     """
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
         CTypsig.__init__(self, cd, ixval)
@@ -166,7 +167,7 @@ class CTypsigEnum(CTypsig):
 class CTypsigBase(CTypsig):
     """Base type signature.
 
-    args[1]: index of type of base type signature in cdictionary.
+    - args[1]: index of type of base type signature in cdictionary.
     """
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
         CTypsig.__init__(self, cd, ixval)

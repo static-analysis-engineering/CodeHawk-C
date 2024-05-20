@@ -26,6 +26,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Global variable and struct definition relationships between files."""
+
+from dataclasses import dataclass
 
 import xml.etree.ElementTree as ET
 
@@ -45,6 +48,48 @@ fidvidmax_initial_value = 1000000
 TODO:
   - save gxrefs file if new vid's were added to a file
 """
+
+@dataclass
+class FileVarReference:
+    fid: int   # file index
+    vid: int   # variable index in file with fid
+
+    @property
+    def tuple(self) -> Tuple[int, int]:
+        return (self.fid, self.vid)
+
+    def __str__(self) -> str:
+        return f"(vid: {self.vid}, fid: {self.fid})"
+
+
+@dataclass
+class FileKeyReference:
+    fid: int    # file index
+    ckey: int   # struct key in file with fid
+
+    def __str__(self) -> str:
+        return f"(ckey: {self.ckey}, fid: {self.fid})"
+
+
+@dataclass
+class VarReference:
+    fid: Optional[int]
+    vid: int
+
+    @property
+    def is_global(self) -> bool:
+        return self.fid is None
+
+
+@dataclass
+class CKeyReference:
+    fid: Optional[int]
+    ckey: int
+
+    @property
+    def is_global(self) -> bool:
+        return self.fid is None
+
 
 
 class IndexManager:
@@ -78,26 +123,34 @@ class IndexManager:
                     result[gvid] = self.gvid2vid[gvid][fid]
         return result
 
-    """return the fid of the file in which this vid is defined, with the
-    local vid.
-    """
+    def resolve_vid(
+            self, filevar: FileVarReference) -> Optional[FileVarReference]:
+        """Returns the local reference of the definition of (fid, vid).
 
-    def resolve_vid(self, fid: int, vid: int) -> Optional[Tuple[int, int]]:
+        An object (variable or function) may be declared in one file (fid) and
+        referenced by vid, but defined in another file, with file index def-fid
+        and variable reference def-vid. If the definition is found this method
+        returns (def-fid, def-vid).
+        """
         if self.is_single_file:
-            return (fid, vid)
-        msg = "indexmgr:resolve-vid(" + str(fid) + "," + str(vid) + "): "
+            # there is only one file, so all objects must be defined there.
+            return filevar
+
+        fid = filevar.fid
+        vid = filevar.vid
         if fid in self.vid2gvid:
             if vid in self.vid2gvid[fid]:
-                gvid = self.vid2gvid[fid][vid]
+                gvid = self.vid2gvid[fid][vid]    # global vid for (fid, vid)
                 if gvid in self.gviddefs:
-                    tgtfid = self.gviddefs[gvid]
+                    deffid = self.gviddefs[gvid]  # file that defines gvid
                     if gvid in self.gvid2vid:
-                        if tgtfid in self.gvid2vid[gvid]:
-                            return (tgtfid, self.gvid2vid[gvid][tgtfid])
+                        if deffid in self.gvid2vid[gvid]:
+                            defvid = self.gvid2vid[gvid][deffid]
+                            return FileVarReference(deffid, defvid)
                         chklogger.logger.debug(
                             "target fid: %s not found in gvid2vid[%s] for "
                             + "(%s, %s)",
-                            str(tgtfid),
+                            str(deffid),
                             str(gvid),
                             str(fid),
                             str(vid))
@@ -119,10 +172,13 @@ class IndexManager:
 
     """return a list of (fid,vid) pairs that refer to the same global variable."""
 
-    def get_gvid_references(self, gvid: int) -> List[Tuple[int, int]]:
-        result: List[Tuple[int, int]] = []
+    def get_gvid_references(self, gvid: int) -> List[FileVarReference]:
+        """Returns a list all file variables that refer to the same global var."""
+
+        result: List[FileVarReference] = []
         for fid in self.gvid2vid[gvid]:
-            result.append((fid, self.gvid2vid[gvid][fid]))
+            vid = self.gvid2vid[gvid][fid]
+            result.append(FileVarReference(fid, vid))
         return result
 
     def has_gvid_reference(self, gvid: int, fid: int) -> bool:
@@ -132,6 +188,8 @@ class IndexManager:
             return False
 
     def get_gvid_reference(self, gvid: int, fid: int) -> Optional[int]:
+        """Returns the vid that corresponds to gvid in the file with index fid."""
+
         if gvid in self.gvid2vid:
             if fid in self.gvid2vid[gvid]:
                 return self.gvid2vid[gvid][fid]
@@ -139,71 +197,69 @@ class IndexManager:
 
     """return a list of (fid,vid) pairs that refer to the same variable."""
 
-    def get_vid_references(self, srcfid: int, srcvid: int) -> List[Tuple[int, int]]:
-        result: List[Tuple[int, int]] = []
+    def get_vid_references(
+            self, filevar: FileVarReference) -> List[FileVarReference]:
+        """Returns a list of file vars that refer to the same variable as filevar.
+
+        Note: does not include filevar itself.
+        """
+
+        result: List[FileVarReference] = []
+
         if self.is_single_file:
             return result
-        if srcfid in self.vid2gvid:
-            if srcvid in self.vid2gvid[srcfid]:
-                gvid = self.vid2gvid[srcfid][srcvid]
+
+        if filevar.fid in self.vid2gvid:
+            if filevar.vid in self.vid2gvid[filevar.fid]:
+                gvid = self.vid2gvid[filevar.fid][filevar.vid]
                 for fid in self.gvid2vid[gvid]:
-                    if fid == srcfid:
+                    if fid == filevar.fid:
                         continue
-                    result.append((fid, self.gvid2vid[gvid][fid]))
+                    vid = self.gvid2vid[gvid][fid]
+                    result.append(FileVarReference(fid, vid))
         return result
 
-    """return the vid in the file with index fidtgt for the variable vid in fidsrc.
+    """return the vid in the file with index fidtgt for vid in fidsrc.
 
-    If the target file does not map the gvid then create a new vid in this file to
-    map the gvid.
+    If the target file does not map the gvid then create a new vid in this
+    file to map the gvid.
     """
 
-    def convert_vid(self, fidsrc: int, vid: int, fidtgt: int) -> Optional[int]:
-        if self.is_single_file:
-            return vid
-        gvid = self.get_gvid(fidsrc, vid)
-        msg = (
-            "indexmgr:convert-vid("
-            + str(fidsrc)
-            + ","
-            + str(vid)
-            + ","
-            + str(fidtgt)
-            + "): "
-        )
+    def convert_vid(
+            self, varref: FileVarReference, tgtfid: int) -> Optional[int]:
+        """Returns the vid of the var reference in (another) file tgtfid."""
+
+        if varref.fid == tgtfid:
+            # same file
+            return varref.vid
+
+        gvid = self.get_gvid(varref)
         if gvid is not None:
             if gvid in self.gvid2vid:
-                if fidtgt in self.gvid2vid[gvid]:
-                    return self.gvid2vid[gvid][fidtgt]
+                if tgtfid in self.gvid2vid[gvid]:
+                    return self.gvid2vid[gvid][tgtfid]
                 else:
                     chklogger.logger.warning(
-                        "create new index for global variable %s for "
-                        + "fidsrc: %s, vid: %s, fidtgt: %s",
-                        str(gvid),
-                        str(fidsrc),
-                        str(vid),
-                        str(fidtgt))
+                        "failed to convert %s for file %d (found gvid: %d)",
+                        str(varref), tgtfid, gvid)
                     return None
-                """
-                    self.gvid2vid[gvid][fidtgt] = self.fidvidmax[fidtgt]
-                    self.fidvidmax[fidtgt] += 1
-                    return self.gvid2vid[gvid][fidtgt]
-                """
         return None
 
-    """return the gvid of the vid in the file with index fid."""
+    def get_gvid(self, varref: FileVarReference) -> Optional[int]:
+        """Returns the global vid that corresponds to the file var reference."""
 
-    def get_gvid(self, fid: int, vid: int) -> Optional[int]:
         if self.is_single_file:
-            return vid
-        if fid in self.vid2gvid:
-            if vid in self.vid2gvid[fid]:
-                return self.vid2gvid[fid][vid]
-        return None
+            # for a single file the global vid is the same as the file vid
+            return varref.vid
 
-    """return the vid of the gvid in the file with index fid."""
+        if varref.fid in self.vid2gvid:
+            if varref.vid in self.vid2gvid[varref.fid]:
+                return self.vid2gvid[varref.fid][varref.vid]
+        return None
 
     def get_vid(self, fid: int, gvid: int) -> Optional[int]:
+        """Returns the vid of the gvid in the file with index fid."""
+
         if self.is_single_file:
             return gvid
         if gvid in self.gvid2vid:
@@ -211,63 +267,90 @@ class IndexManager:
                 return self.gvid2vid[gvid][fid]
         return None
 
-    def get_gckey(self, fid: int, ckey: int) -> Optional[int]:
+    def get_gckey(self, filekey: FileKeyReference) -> Optional[int]:
+        """Returns the global ckey index for a file ckey reference."""
+
         if self.is_single_file:
-            return ckey
-        if fid in self.ckey2gckey:
-            if ckey in self.ckey2gckey[fid]:
-                return self.ckey2gckey[fid][ckey]
+            # for a single file the global ckey is the same the file ckey
+            return filekey.ckey
+
+        if filekey.fid in self.ckey2gckey:
+            if filekey.ckey in self.ckey2gckey[filekey.fid]:
+                return self.ckey2gckey[filekey.fid][filekey.ckey]
+
+        chklogger.logger.warning(
+            "No global key found for file key %s", str(filekey))
         return None
 
-    def convert_ckey(self, fidsrc: int, ckey: int, fidtgt: int) -> Optional[int]:
-        if self.is_single_file:
-            return ckey
-        gckey = self.get_gckey(fidsrc, ckey)
+    def convert_ckey(
+            self, filekey: FileKeyReference, tgtfid: int) -> Optional[int]:
+        """Returns the ckey of filekey of the same struct in the file tgtfid."""
+
+        if filekey.fid == tgtfid:
+            # same file
+            return filekey.ckey
+
+        gckey = self.get_gckey(filekey)
         if gckey is not None:
             if gckey in self.gckey2ckey:
-                if fidtgt in self.gckey2ckey[gckey]:
-                    return self.gckey2ckey[gckey][fidtgt]
+                if tgtfid in self.gckey2ckey[gckey]:
+                    return self.gckey2ckey[gckey][tgtfid]
                 else:
-                    chklogger.logger.debug(
-                        "target fid %s not found for global key %s",
-                        str(fidtgt), str(gckey))
+                    chklogger.logger.warning(
+                        "Target fid %d not found for global key %d",
+                        tgtfid, gckey)
+                    return None
             else:
-                chklogger.logger.debug(
-                    "global key %s not found in converter", str(gckey))
+                chklogger.logger.warning(
+                    "Global key %d not found in converter", gckey)
+                return None
         else:
-            chklogger.logger.debug(
-                "local key %s not found in source file %s",
-                str(ckey), str(fidsrc))
-        return None
+            chklogger.logger.warning(
+                "No global key found for file key %s", str(filekey))
+            return None
 
-    def add_ckey2gckey(self, fid: int, ckey: int, gckey: int) -> None:
-        if fid not in self.ckey2gckey:
-            self.ckey2gckey[fid] = {}
-        self.ckey2gckey[fid][ckey] = gckey
-        if gckey not in self.gckey2ckey:
-            self.gckey2ckey[gckey] = {}
-        self.gckey2ckey[gckey][fid] = ckey
+    def add_ckey2gckey(self, filekey: FileKeyReference, gckey: int) -> None:
+        """Registers a local file ckey with a global ckey."""
 
-    def add_vid2gvid(self, fid: int, vid: int, gvid: int) -> None:
-        if fid not in self.vid2gvid:
-            self.vid2gvid[fid] = {}
-        self.vid2gvid[fid][vid] = gvid
-        if gvid not in self.gvid2vid:
-            self.gvid2vid[gvid] = {}
-        self.gvid2vid[gvid][fid] = vid
+        # add forward conversion to global ckey
+        self.ckey2gckey.setdefault(filekey.fid, {})
+        self.ckey2gckey[filekey.fid][filekey.ckey] = gckey
+
+        # add reverse conversion from global ckey
+        self.gckey2ckey.setdefault(gckey, {})
+        self.gckey2ckey[gckey][filekey.fid] = filekey.ckey
+
+    def add_vid2gvid(self, filevar: FileVarReference, gvid: int) -> None:
+        """Registers a local file vid with a global vid."""
+
+        # add forward conversion to global vid
+        self.vid2gvid.setdefault(filevar.fid, {})
+        self.vid2gvid[filevar.fid][filevar.vid] = gvid
+
+        # add reverse conversion from global vid
+        self.gvid2vid.setdefault(gvid, {})
+        self.gvid2vid[gvid][filevar.fid] = filevar.vid
 
     def add_file(self, cfile: "CFile") -> None:
         fid = cfile.index
         if not self.is_single_file:
-            path = cfile.capp.path
-            fname = cfile.name
-            xxreffile = UF.get_cxreffile_xnode(path, fname)
+            xxreffile = UF.get_cxreffile_xnode(
+                cfile.targetpath,
+                cfile.projectname,
+                cfile.cfilepath,
+                cfile.cfilename)
             if xxreffile is not None:
                 self._add_xrefs(xxreffile, fid)
-            self._add_globaldefinitions(cfile.declarations, fid)
+            self._add_globaldefinitions(cfile, fid)
         self.fidvidmax[fid] = fidvidmax_initial_value
 
-    def save_xrefs(self, path: str, fname: str, fid: int) -> None:
+    def save_xrefs(
+            self,
+            targetpath: str,
+            projectname: str,
+            cfilepath: Optional[str],
+            cfilename: str,
+            fid: int) -> None:
         xrefroot = UX.get_xml_header("global-xrefs", "global-xrefs")
         xrefsnode = ET.Element("global-xrefs")
         xrefroot.append(xrefsnode)
@@ -289,7 +372,9 @@ class IndexManager:
                 xref.set("gvid", str(self.vid2gvid[fid][vid]))
                 vxrefsnode.append(xref)
 
-        xreffilename = UF.get_cxreffile_filename(path, fname)
+        xreffilename = UF.get_cxreffile_filename(
+            targetpath, projectname, cfilepath, cfilename)
+        chklogger.logger.info("Write xref file: %s, with targetpath: %s and filepath: %s and filename: %s", xreffilename, targetpath, cfilepath, cfilename)
         xreffile = open(xreffilename, "w")
         xreffile.write(UX.doc_to_pretty(ET.ElementTree(xrefroot)))
 
@@ -340,15 +425,16 @@ class IndexManager:
                 else:
                     raise UF.CHCError("Varinfo xref without vid attribute")
 
-    def _add_globaldefinitions(
-            self, declarations: "CFileDeclarations", fid: int) -> None:
-        for gvar in declarations.get_globalvar_definitions():
-            gvid = self.get_gvid(fid, gvar.varinfo.vid)
+    def _add_globaldefinitions(self, cfile: "CFile", fid: int) -> None:
+        for gvar in cfile.gvardefs.values():
+            filevar = FileVarReference(fid, gvar.varinfo.vid)
+            gvid = self.get_gvid(filevar)
             if gvid is not None:
                 self.gviddefs[gvid] = fid
 
-        for gfun in declarations.get_global_functions():
-            gvid = self.get_gvid(fid, gfun.varinfo.vid)
+        for gfun in cfile.gfunctions.values():
+            filevar = FileVarReference(fid, gfun.varinfo.vid)
+            gvid = self.get_gvid(filevar)
             if gvid is not None:
                 chklogger.logger.info(
                     "set function %s (%s) to file %s",

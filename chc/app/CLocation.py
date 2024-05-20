@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2020-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,6 +26,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Location in a C source file (filename, line number)."""
 
 from typing import cast, List, Tuple, TYPE_CHECKING
 
@@ -43,9 +44,9 @@ if TYPE_CHECKING:
 class CLocation(CDeclarationsRecord):
     """Location in a C source program.
 
-    args[0]: filename index
-    args[1]: byte number
-    args[2]: line number
+    - args[0]: filename index
+    - args[1]: byte number
+    - args[2]: line number
     """
 
     def __init__(self, decls: "CDeclarations", ixval: IT.IndexedTableValue):
@@ -61,7 +62,8 @@ class CLocation(CDeclarationsRecord):
 
     @property
     def file(self) -> str:
-        return cast("CFileDeclarations", self.decls).get_filename(int(self.args[0]))
+        return cast(
+            "CFileDeclarations", self.decls).get_filename(int(self.args[0]))
 
     def get_loc(self) -> Tuple[str, int, int]:
         return (self.file, self.line, self.byte)

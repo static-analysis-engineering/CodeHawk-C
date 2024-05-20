@@ -26,17 +26,22 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Abstract super class for CGlobalDeclarations and CFileDeclarations."""
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from typing import Dict, Set, TYPE_CHECKING
 
 from chc.app.CDictionary import CDictionary
 
+import chc.util.fileutil as UF
+
 if TYPE_CHECKING:
+    from chc.app.CCompInfo import CCompInfo
     from chc.app.CFieldInfo import CFieldInfo
     from chc.app.CFile import CFile
     from chc.app.CInitInfo import CInitInfo, COffsetInitInfo
     from chc.app.CLocation import CLocation
+    from chc.app.CTyp import CTyp
 
 
 class CDeclarations(ABC):
@@ -67,9 +72,15 @@ class CDeclarations(ABC):
         ...
 
     @abstractmethod
-    def is_struct(self, ckey: int) -> bool:
+    def get_compinfo_by_ckey(self, ckey: int) -> "CCompInfo":
         ...
 
-    @abstractmethod
     def get_location(self, ix: int) -> "CLocation":
-        ...
+        raise UF.CHError("Global declarations does not keep a location.")
+
+    @property
+    def varinfo_storage_classes(sef) -> Dict[int, Set[str]]:
+        raise UF.CHError("File declarations does not keep storage classes.")
+
+    def expand(self, name: str) -> "CTyp":
+        raise UF.CHError("Types should be expanded at the file level.")

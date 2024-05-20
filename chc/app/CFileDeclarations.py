@@ -26,6 +26,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Declarations at the file level."""
 
 from typing import (
     Any,
@@ -45,12 +46,12 @@ import chc.app.CInitInfo as CI
 
 from chc.app.CDeclarations import CDeclarations
 
-from chc.app.CGCompTag import CGCompTag
-from chc.app.CGEnumTag import CGEnumTag
-from chc.app.CGFunction import CGFunction
-from chc.app.CGType import CGType
-from chc.app.CGVarDecl import CGVarDecl
-from chc.app.CGVarDef import CGVarDef
+from chc.app.CFileGlobals import CGCompTag
+from chc.app.CFileGlobals import CGEnumTag
+from chc.app.CFileGlobals import CGFunction
+from chc.app.CFileGlobals import CGType
+from chc.app.CFileGlobals import CGVarDecl
+from chc.app.CFileGlobals import CGVarDef
 
 from chc.app.CLocation import CLocation
 from chc.app.CCompInfo import CCompInfo
@@ -106,27 +107,15 @@ class CFilename(CDeclarationsRecord):
 class CFileDeclarations(CDeclarations):
     """C File level definitions and declarations.
 
-    This information is originally written by cchcil/cHCilWriteXml: write_xml_cfile
-    based on cchcil/cHCilDeclarations.cildeclarations.
+    This information is originally written by cchcil/cHCilWriteXml:
+    write_xml_cfile based on cchcil/cHCilDeclarations.cildeclarations.
 
     Declarations are dependent on CFileDictionary
     """
 
-    def __init__(self, cfile: "CFile", xnode: ET.Element, xdefnode: ET.Element
+    def __init__(self, cfile: "CFile", xnode: ET.Element
     ) -> None:
         self._cfile = cfile
-        # self._dictionary = self.cfile.dictionary
-        # Basic types dictionary
-
-        # File definitions and declarations
-        self.gtypes: Dict[str, CGType] = {}  # name -> CGType
-        self.gcomptagdefs: Dict[int, CGCompTag] = {}  # key -> CGCompTag
-        self.gcomptagdecls: Dict[int, CGCompTag] = {}  # key -> CGCompTag
-        self.gvardefs: Dict[int, CGVarDef] = {}  # vid -> CGVarDef
-        self.gvardecls: Dict[int, CGVarDecl] = {}  # vid -> CGVarDecl
-        self.genumtagdefs: Dict[str, CGEnumTag] = {}  # ename -> CGEnumTag
-        self.genumtagdecls: Dict[str, CGEnumTag] = {}  # ename -> CGEnumTag
-        self.gfunctions: Dict[int, CGFunction] = {}  # vid -> CGFunction
 
         # File definition dictionary
         self.initinfo_table = IndexedTable("initinfo-table")
@@ -149,7 +138,9 @@ class CFileDeclarations(CDeclarations):
             self.compinfo_table,
             self.enumitem_table,
             self.enuminfo_table]
-        self._objmaps: Dict[str, Callable[[], Mapping[int, IndexedTableValue]]] = {
+
+        self._objmaps: Dict[
+            str, Callable[[], Mapping[int, IndexedTableValue]]] = {
             "compinfo": self.get_compinfo_map,
             "enuminfo": self.get_enuminfo_map,
             "enumitem": self.get_enumitem_map,
@@ -159,10 +150,9 @@ class CFileDeclarations(CDeclarations):
             "offsetinfo": self.get_offset_init_map,
             "typeinfo": self.get_typeinfo_map,
             "varinfo": self.get_varinfo_map}
+
         # self.string_table = SI.StringIndexedTable("string-table")
-        self._initialize(xnode, xdefnode)
-        # for (key,g) in self.gcomptagdefs.items() + self.gcomptagdecls.items():
-        #     print(str(key) + ': ' + g.get_name())
+        self._initialize(xnode)
 
     @property
     def dictionary(self) -> "CFileDictionary":
@@ -171,14 +161,6 @@ class CFileDeclarations(CDeclarations):
     @property
     def cfile(self) -> "CFile":
         return self._cfile
-
-    # Retrieve definitions and declarations
-
-    def get_gfunction(self, vid: int) -> CGFunction:
-        if vid in self.gfunctions:
-            return self.gfunctions[vid]
-        else:
-            raise Exception("nothing in gfunctions for vid \"" + str(vid) + "\"")
 
     def make_opaque_global_varinfo(
             self, gvid: int, gname: str, gtypeix: int) -> int:
@@ -191,42 +173,11 @@ class CFileDeclarations(CDeclarations):
 
         return self.varinfo_table.add_tags_args(tags, args, f)
 
-    def get_globalvar_definitions(self) -> Iterable[CGVarDef]:
-        return self.gvardefs.values()
-
-    def get_global_functions(self) -> Iterable[CGFunction]:
-        return self.gfunctions.values()
-
-    def get_compinfos(self) -> List[CCompInfo]:
-        comptags = (
-            list(self.gcomptagdecls.values())
-            + list(self.gcomptagdefs.values()))
-        return [x.compinfo for x in comptags]
+    def get_compinfo_by_ckey(self, ckey: int) -> CCompInfo:
+        return self.cfile.get_compinfo_by_ckey(ckey)
 
     def get_global_varinfos(self) -> List[CVarInfo]:
-        result: List[CVarInfo] = []
-        result.extend([x.varinfo for x in self.gvardefs.values()])
-        result.extend([x.varinfo for x in self.gvardecls.values()])
-        result.extend([x.varinfo for x in self.gfunctions.values()])
-        return result
-
-    def get_global_varinfo(self, vid: int) -> CVarInfo:
-        if vid in self.gvardefs:
-            return self.gvardefs[vid].varinfo
-        if vid in self.gvardecls:
-            return self.gvardecls[vid].varinfo
-        if vid in self.gfunctions:
-            return self.gfunctions[vid].varinfo
-        else:
-            raise UF.CHCError("No variable found with vid: " + str(vid))
-
-    def get_global_varinfo_by_name(self, name: str) -> CVarInfo:
-        gvarinfos = self.get_global_varinfos()
-        for v in gvarinfos:
-            if v.vname == name:
-                return v
-        raise UF.CHCError(
-            "Global variable " + name + " not found in file " + self.cfile.name)
+        return self.cfile.cfileglobals.get_global_varinfos()
 
     # ------------------ Retrieve items from file definitions dictionary -----
 
@@ -352,58 +303,7 @@ class CFileDeclarations(CDeclarations):
     # ------------------- Miscellaneous other services -----------------------
 
     def expand(self, name: str) -> CTyp:
-        if name in self.gtypes:
-            return self.gtypes[name].typeinfo.type.expand()
-        else:
-            raise UF.CHCError("No type definition found for " + name)
-
-    def get_struct(self, ckey: int) -> CCompInfo:
-        if ckey in self.gcomptagdefs:
-            return self.gcomptagdefs[ckey].compinfo
-        elif ckey in self.gcomptagdecls:
-            return self.gcomptagdecls[ckey].compinfo
-        else:
-            raise UF.CHCError(
-                "No struct found with ckey: " + str(ckey))
-
-    def get_structname(self, ckey: int) -> str:
-        compinfo = self.get_struct(ckey)
-        if compinfo is None:
-            return "struct " + str(ckey)
-        else:
-            return compinfo.name
-
-    def get_structkey(self, name: str) -> int:
-        d: Dict[int, str] = {}
-        r: Dict[str, int] = {}
-        for (key, g) in (
-                list(self.gcomptagdefs.items())
-                + list(self.gcomptagdecls.items())):
-            if key in d:
-                if g.name == d[key]:
-                    continue
-                else:
-                    print(
-                        "Multiple names for key "
-                        + str(key)
-                        + ": "
-                        + str(d[key])
-                        + " and "
-                        + g.name
-                    )
-            else:
-                d[key] = g.name
-                r[g.name] = key
-        if name in r:
-            return r[name]
-        else:
-            raise UF.CHCError("Structkey not found for " + name)
-
-    def is_struct(self, ckey: int) -> bool:
-        return self.get_struct(ckey).is_struct
-
-    def get_function_count(self) -> int:
-        return len(self.gfunctions)
+        return self.cfile.cfileglobals.expand(name)
 
     def get_max_line(self) -> int:
         findex = self.index_filename(self.cfile.name + ".c")
@@ -429,8 +329,13 @@ class CFileDeclarations(CDeclarations):
         if name in self._objmaps:
             objmap = self._objmaps[name]()
             lines: List[str] = []
-            for (ix, obj) in objmap.items():
-                lines.append(str(ix).rjust(3) + "  " + str(obj))
+            if len(objmap) == 0:
+                lines.append(f"\nTable for {name} is empty\n")
+            else:
+                lines.append("index  value")
+                lines.append("-" * 80)
+                for (ix, obj) in objmap.items():
+                    lines.append(str(ix).rjust(3) + "    " + str(obj))
             return "\n".join(lines)
         else:
             raise UF.CHCError(
@@ -440,14 +345,6 @@ class CFileDeclarations(CDeclarations):
         lines: List[str] = []
         for t in self.tables:
             lines.append(str(t))
-        lines.append(table_to_string("Types", self.gtypes, headerlen=20))
-        lines.append(table_to_string("Compinfo definitions", self.gcomptagdefs))
-        lines.append(table_to_string("Compinfo declarations", self.gcomptagdecls))
-        lines.append(table_to_string("Enuminfo definitions", self.genumtagdefs))
-        lines.append(table_to_string("Enuminfo declarations", self.genumtagdecls))
-        lines.append(table_to_string("Variable definitions", self.gvardefs))
-        lines.append(table_to_string("Variable declarations", self.gvardecls))
-        lines.append(table_to_string("Functions", self.gfunctions))
         return "\n".join(lines)
 
     # ------------------------ Saving ----------------------------------------
@@ -472,7 +369,7 @@ class CFileDeclarations(CDeclarations):
     # ---------------------- Initialization ----------------------------------
 
     def _initialize(
-            self, xnode: ET.Element, xdefnode: ET.Element, force: bool = False
+            self, xnode: ET.Element, force: bool = False
     ) -> None:
         for t in self.tables:
             xtable = xnode.find(t.name)
@@ -489,164 +386,3 @@ class CFileDeclarations(CDeclarations):
         else:
             raise UF.CHCError(
                 "Filename table not found in file declarations")
-        '''
-        # Initialize file definitions dictionary from _dictionary file
-        self.dictionary.initialize(force)
-        xnode = UF.get_cfile_dictionary_xnode(self.cfile.capp.path, self.cfile.name)
-        if xnode is None:
-            raise Exception("cfile xnode returned None")
-        xnode = xnode.find("c-declarations")
-        if xnode is not None:
-            for (t, f) in self.dictionary_tables + self.string_tables:
-                t.reset()
-                f(xnode.find(t.name))
-
-        # Initialize definitions and declarations from _cfile file
-        xnode = UF.get_cfile_xnode(self.cfile.capp.path, self.cfile.name)
-        if xnode is None:
-            raise Exception("cfile xnode returned None")
-        '''
-        xtypedefs = xfind_node(xdefnode, "global-type-definitions")
-        self._initialize_gtypes(xtypedefs)
-        xcomptagdefs = xfind_node(xdefnode, "global-comptag-definitions")
-        self._initialize_gcomptagdefs(xcomptagdefs)
-        xcomptagdecls = xfind_node(xdefnode, "global-comptag-declarations")
-        self._initialize_gcomptagdecls(xcomptagdecls)
-        xenumtagdefs = xfind_node(xdefnode, "global-enumtag-definitions")
-        self._initialize_genumtagdefs(xenumtagdefs)
-        xenumtagdecls = xfind_node(xdefnode, "global-enumtag-declarations")
-        self._initialize_genumtagdecls(xenumtagdecls)
-        xvardefs = xfind_node(xdefnode, "global-var-definitions")
-        self._initialize_gvardefs(xvardefs)
-        xvardecls = xfind_node(xdefnode, "global-var-declarations")
-        self._initialize_gvardecls(xvardecls)
-        xfuns = xfind_node(xdefnode, "functions")
-        self._initialize_gfunctions(xfuns)
-
-    '''
-    def _read_xml_initinfo_table(self, xnode):
-        def get_value(node: ET.Element) -> CI.CInitInfoBase:
-            rep = get_rep(node)
-            tag = rep[1][0]
-            args = (self,) + rep
-            return initinfo_constructors[tag](args)
-
-        self.initinfo_table.read_xml(xnode, "n", get_value)
-
-    def _read_xml_offset_init_table(self, xnode):
-        def get_value(node: ET.Element) -> CI.COffsetInitInfo:
-            rep = get_rep(node)
-            args = (self,) + rep
-            return CI.COffsetInitInfo(*args)
-
-        self.offset_init_table.read_xml(xnode, "n", get_value)
-
-    def _read_xml_typeinfo_table(self, xnode):
-        def get_value(node: ET.Element) -> CTypeInfo:
-            rep = get_rep(node)
-            args = (self,) + rep
-            return CTypeInfo(*args)
-
-        self.typeinfo_table.read_xml(xnode, "n", get_value)
-
-    def _read_xml_varinfo_table(self, xnode):
-        def get_value(node: ET.Element) -> CVarInfo:
-            rep = get_rep(node)
-            args = (self,) + rep
-            return CVarInfo(*args)
-
-        self.varinfo_table.read_xml(xnode, "n", get_value)
-
-    def _read_xml_fieldinfo_table(self, xnode):
-        def get_value(node: ET.Element) -> CFieldInfo:
-            rep = get_rep(node)
-            args = (self,) + rep
-            return CFieldInfo(*args)
-
-        self.fieldinfo_table.read_xml(xnode, "n", get_value)
-
-    def _read_xml_compinfo_table(self, xnode):
-        def get_value(node: ET.Element) -> CCompInfo:
-            rep = get_rep(node)
-            args = (self,) + rep
-            return CCompInfo(*args)
-
-        self.compinfo_table.read_xml(xnode, "n", get_value)
-
-    def _read_xml_enumitem_table(self, xnode):
-        def get_value(node: ET.Element) -> CEnumItem:
-            rep = get_rep(node)
-            args = (self,) + rep
-            return CEnumItem(*args)
-
-        self.enumitem_table.read_xml(xnode, "n", get_value)
-
-    def _read_xml_enuminfo_table(self, xnode):
-        def get_value(node: ET.Element) -> CEnumInfo:
-            rep = get_rep(node)
-            args = (self,) + rep
-            return CEnumInfo(*args)
-
-        self.enuminfo_table.read_xml(xnode, "n", get_value)
-
-    def _read_xml_location_table(self, xnode):
-        def get_value(node: ET.Element) -> CLocation:
-            rep = get_rep(node)
-            args = (self,) + rep
-            return CLocation(*args)
-
-        self.location_table.read_xml(xnode, "n", get_value)
-
-    def _read_xml_filename_table(self, xnode):
-        self.filename_table.read_xml(xnode)
-    '''
-
-    def _initialize_gtypes(self, xnode: ET.Element) -> None:
-        for t in xnode.findall("gtype"):
-            typeinfo = self.get_typeinfo(xget_int_attr(t, "itinfo"))
-            location = self.get_location(xget_int_attr(t, "iloc"))
-            self.gtypes[typeinfo.name] = CGType(typeinfo, location)
-
-    def _initialize_gcomptagdefs(self, xnode: ET.Element) -> None:
-        for t in xnode.findall("gcomptag"):
-            compinfo = self.get_compinfo(xget_int_attr(t, "icinfo"))
-            location = self.get_location(xget_int_attr(t, "iloc"))
-            self.gcomptagdefs[compinfo.ckey] = CGCompTag(compinfo, location)
-
-    def _initialize_gcomptagdecls(self, xnode: ET.Element) -> None:
-        for t in xnode.findall("gcomptagdecl"):
-            compinfo = self.get_compinfo(xget_int_attr(t, "icinfo"))
-            location = self.get_location(xget_int_attr(t, "iloc"))
-            self.gcomptagdecls[compinfo.ckey] = CGCompTag(compinfo, location)
-
-    def _initialize_genumtagdefs(self, xnode: ET.Element) -> None:
-        for t in xnode.findall("genumtag"):
-            enuminfo = self.get_enuminfo(xget_int_attr(t, "ieinfo"))
-            location = self.get_location(xget_int_attr(t, "iloc"))
-            self.genumtagdefs[enuminfo.ename] = CGEnumTag(enuminfo, location)
-
-    def _initialize_genumtagdecls(self, xnode: ET.Element) -> None:
-        for t in xnode.findall("genumtagdecl"):
-            enuminfo = self.get_enuminfo(xget_int_attr(t, "ieinfo"))
-            location = self.get_location(xget_int_attr(t, "iloc"))
-            self.genumtagdecls[enuminfo.ename] = CGEnumTag(enuminfo, location)
-
-    def _initialize_gvardefs(self, xnode: ET.Element) -> None:
-        for t in xnode.findall("gvar"):
-            varinfo = self.get_varinfo(xget_int_attr(t, "ivinfo"))
-            location = self.get_location(xget_int_attr(t, "iloc"))
-            initializer = None
-            if "iinit" in t.attrib:
-                initializer = self.get_initinfo(xget_int_attr(t, "iinit"))
-            self.gvardefs[varinfo.vid] = CGVarDef(varinfo, location, initializer)
-
-    def _initialize_gvardecls(self, xnode: ET.Element) -> None:
-        for t in xnode.findall("gvardecl"):
-            varinfo = self.get_varinfo(xget_int_attr(t, "ivinfo"))
-            location = self.get_location(xget_int_attr(t, "iloc"))
-            self.gvardecls[varinfo.vid] = CGVarDecl(varinfo, location)
-
-    def _initialize_gfunctions(self, xnode: ET.Element) -> None:
-        for t in xnode.findall("gfun"):
-            varinfo = self.get_varinfo(xget_int_attr(t, "ivinfo"))
-            self.gfunctions[varinfo.vid] = CGFunction(varinfo)

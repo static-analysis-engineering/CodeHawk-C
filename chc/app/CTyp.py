@@ -26,6 +26,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Variant type for the CIL **typ** data type."""
 
 import xml.etree.ElementTree as ET
 
@@ -77,7 +78,7 @@ attribute_index = {
 
 
 class CTyp(CDictionaryRecord):
-    """Variable type. """
+    """Base class of all variable types."""
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
         CDictionaryRecord.__init__(self, cd, ixval)
@@ -93,7 +94,7 @@ class CTyp(CDictionaryRecord):
             return self
         else:
             newargs = self.args[:-1]
-            newtypix = self.cd.mk_typ(self.tags, newargs)
+            newtypix = self.cd.mk_typ_index(self.tags, newargs)
             if newtypix != self.index:
                 newtyp = self.cd.get_typ(newtypix)
                 chklogger.logger.info(
@@ -205,7 +206,7 @@ class CTyp(CDictionaryRecord):
 class CTypVoid(CTyp):
     """ Void type.
 
-    args[0]: attributes
+    * args[0]: attributes
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -229,9 +230,9 @@ class CTypVoid(CTyp):
 class CTypInt(CTyp):
     """ Integer type.
 
-    tags[1]: ikind
+    * tags[1]: ikind
 
-    args[0]: index of attributes in cdictionary
+    * args[0]: index of attributes in cdictionary
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -267,9 +268,9 @@ class CTypInt(CTyp):
 class CTypFloat(CTyp):
     """ Float type.
 
-    tags[1]: fkind
+    * tags[1]: fkind
 
-    args[0]: attributes
+    * args[0]: attributes
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue ) -> None:
@@ -299,11 +300,11 @@ class CTypFloat(CTyp):
 
 @cdregistry.register_tag("tnamed", CTyp)
 class CTypNamed(CTyp):
-    """ Type definition
+    """Type definition
 
-    tags[1]: tname
+    * tags[1]: tname
 
-    args[0]: attributes
+    * args[0]: attributes
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -340,12 +341,12 @@ class CTypNamed(CTyp):
 
 @cdregistry.register_tag("tcomp", CTyp)
 class CTypComp(CTyp):
-    """ Struct type (composite type; also includes union)
+    """Struct type (composite type; also includes union)
 
-    tags[0]: struct name
+    * tags[0]: struct name
 
-    args[0]: ckey
-    args[1]: index of attributes in cdictionary
+    * args[0]: ckey
+    * args[1]: index of attributes in cdictionary
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -356,20 +357,20 @@ class CTypComp(CTyp):
         return self.args[0]
 
     @property
-    def struct(self) -> "CCompInfo":
-        return self.decls.get_struct(self.ckey)
+    def compinfo(self) -> "CCompInfo":
+        return self.decls.get_compinfo_by_ckey(self.ckey)
 
     @property
     def name(self) -> str:
-        return self.decls.get_structname(self.ckey)
+        return self.compinfo.name
 
     @property
     def is_struct(self) -> bool:
-        return self.decls.is_struct(self.ckey)
+        return self.compinfo.is_struct
 
     @property
     def size(self) -> int:
-        return self.struct.size
+        return self.compinfo.size
 
     @property
     def is_comp(self) -> bool:
@@ -378,7 +379,7 @@ class CTypComp(CTyp):
     def get_opaque_type(self) -> CTyp:
         tags = ["tvoid"]
         args: List[int] = []
-        return self.cd.get_typ(self.cd.mk_typ(tags, args))
+        return self.cd.get_typ(self.cd.mk_typ_index(tags, args))
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -397,10 +398,10 @@ class CTypComp(CTyp):
 
 @cdregistry.register_tag("tenum", CTyp)
 class CTypEnum(CTyp):
-    """ Enum type.
+    """Enum type.
 
-    tags[1]: name of enum (ename)
-    args[0]: index of attributes in cdictionary
+    * tags[1]: name of enum (ename)
+    * args[0]: index of attributes in cdictionary
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -421,7 +422,7 @@ class CTypEnum(CTyp):
     def get_opaque_type(self) -> CTyp:
         tags = ["tint", "iint"]
         args: List[int] = []
-        return self.cd.get_typ(self.cd.mk_typ(tags, args))
+        return self.cd.get_typ(self.cd.mk_typ_index(tags, args))
 
     def to_dict(self) -> Dict[str, Any]:
         return {"base": "enum", "name": self.name}
@@ -433,9 +434,9 @@ class CTypEnum(CTyp):
 @cdregistry.register_tag("tbuiltinvaargs", CTyp)
 @cdregistry.register_tag("tbuiltin-va-list", CTyp)
 class CTypBuiltinVaargs(CTyp):
-    """ Builtin variable arguments
+    """Builtin variable arguments
 
-    args[0]: index of attributes in cdictionary
+    * args[0]: index of attributes in cdictionary
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -459,8 +460,8 @@ class CTypBuiltinVaargs(CTyp):
 class CTypPtr(CTyp):
     """ Pointer type
 
-    args[0]: index of pointed-to type in cdictionary
-    args[1]: index of attributes in cdictionary
+    * args[0]: index of pointed-to type in cdictionary
+    * args[1]: index of attributes in cdictionary
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -482,7 +483,7 @@ class CTypPtr(CTyp):
         tgttype = self.pointedto_type.get_opaque_type()
         tags = ["tptr"]
         args = [self.cd.index_typ(tgttype)]
-        return self.cd.get_typ(self.cd.mk_typ(tags, args))
+        return self.cd.get_typ(self.cd.mk_typ_index(tags, args))
 
     def to_dict(self) -> Dict[str, Any]:
         return {"base": "ptr", "tgt": self.pointedto_type.to_dict()}
@@ -495,9 +496,9 @@ class CTypPtr(CTyp):
 class CTypArray(CTyp):
     """ Array type
 
-    args[0]: index of base type in cdictionary
-    args[1]: index of size expression in cdictionary (optional)
-    args[2]: index of attributes in cdictionary
+    * args[0]: index of base type in cdictionary
+    * args[1]: index of size expression in cdictionary (optional)
+    * args[2]: index of attributes in cdictionary
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -538,7 +539,7 @@ class CTypArray(CTyp):
     def get_opaque_type(self) -> CTyp:
         tags = ["tvoid"]
         args: List[int] = []
-        return self.cd.get_typ(self.cd.mk_typ(tags, args))
+        return self.cd.get_typ(self.cd.mk_typ_index(tags, args))
 
     def to_dict(self) -> Dict[str, Any]:
         result = {"base": "array", "elem": self.array_basetype.to_dict()}
@@ -554,12 +555,12 @@ class CTypArray(CTyp):
 
 @cdregistry.register_tag("tfun", CTyp)
 class CTypFun(CTyp):
-    """ Function type
+    """Function type
 
-    args[0]: index of return type in cdictionary
-    args[1]: index of argument types list in cdictionary (optional
-    args[2]: 1 = varargs
-    args[3]: index of attributes in cdictionary
+    * args[0]: index of return type in cdictionary
+    * args[1]: index of argument types list in cdictionary (optional
+    * args[2]: 1 = varargs
+    * args[3]: index of attributes in cdictionary
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -584,7 +585,7 @@ class CTypFun(CTyp):
     def get_opaque_type(self) -> CTyp:
         tags = ["tvoid"]
         args: List[int] = []
-        return self.cd.get_typ(self.cd.mk_typ(tags, args))
+        return self.cd.get_typ(self.cd.mk_typ_index(tags, args))
 
     @property
     def is_default_function_prototype(self) -> bool:
@@ -606,7 +607,7 @@ class CTypFun(CTyp):
         if rtype.index != self.return_type.index:
             newargs = self.args[:]
             newargs[0] = rtype.index
-            newtypix = self.cd.mk_typ(self.tags, newargs)
+            newtypix = self.cd.mk_typ_index(self.tags, newargs)
             newtyp = self.cd.get_typ(newtypix)
             chklogger.logger.info(
                 "Change function type from %s to %s", str(self), str(newtyp))
@@ -615,7 +616,8 @@ class CTypFun(CTyp):
             return self
 
     def to_dict(self) -> Dict[str, Any]:
-        result = {"base": "fun", "rvtype": self.return_type.to_dict()}
+        result: Dict[str, Any] = {
+            "base": "fun", "rvtype": self.return_type.to_dict()}
         if self.is_default_function_prototype:
             result["default"] = "true"
         elif self.funargs is not None:
@@ -629,11 +631,11 @@ class CTypFun(CTyp):
 
 
 class CFunArg(CDictionaryRecord):
-    """ Function argument
+    """Function argument
 
-    tags[0]: argument name
-    args[0]: index of argument type in cdictionary
-    args[1]: index of attributes in cdictionary
+    * tags[0]: argument name
+    * args[0]: index of argument type in cdictionary
+    * args[1]: index of attributes in cdictionary
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -658,9 +660,9 @@ class CFunArg(CDictionaryRecord):
 
 
 class CFunArgs(CDictionaryRecord):
-    """ Function arguments
+    """Function arguments
 
-    args[0..]: indices of function arguments in cdictionary
+    * args[0..]: indices of function arguments in cdictionary
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -674,4 +676,4 @@ class CFunArgs(CDictionaryRecord):
         return [a.to_dict() for a in self.arguments]
 
     def __str__(self) -> str:
-        return ", ".join([str(x) for x in self.arguments])
+        return "(" + ", ".join([str(x) for x in self.arguments]) + ")"

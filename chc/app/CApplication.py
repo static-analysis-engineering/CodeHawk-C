@@ -28,62 +28,10 @@
 # ------------------------------------------------------------------------------
 """Main access point to the analysis of a C application.
 
-C Applications are analyzed by individual compilation unit (cfile called here)
-by the OCaml analyzer in multiple rounds. After each round, the results of those
-analyses are integrated by the python interface. This integration includes the
-generation of supporting proof obligations that reach across compilation units,
-and making available return value assumptions, by request. These new proof
-obligations and assumptions are added to the results files to be consumed by the
-OCaml analyzer. This process continues until stabilization, or when a specified
-maximum number of rounds is reached.
-
-In the following descriptions we use the abbreviations:
-ppo    primary proof obligation
-spo    supporting proof obligation
-
-The various intermediate files passed between the OCaml analyzer and python are
-the following.
-
-- at the file level:
-  * <filename>_cfile.xml    global declarations, created by cchcil upon parsing
-                            the C source code; never modified
-  * <filename>_cdict.xml    dictionary of types and expressions. Originally
-                            created by cchcil upon parsing the C source code,
-                            but updated by cchlib in subsequent rounds
-  * <filename>_ctxt.xml     dictionary of contexts used in expressing locations
-                            created and updated by cchcil
-  * <filename>_prd.xml      dictionary of predicates used in expressing proof
-                            obligations, created and updated by cchpre
-  * <filename>_ixf.xml      dictionary of interface predicates used in
-                            expressing assumptions and guarantees external to
-                            functions
-  * <filename>_cgl.xml      dictionary of assignments to global variables
-  * <filename>_gxrefs.xml   association table that relates file identifiers of
-                            variables (varinfo's) and structs (compinfo's) to
-                            global identifiers, to facilitate communication and
-                            exchange of assumptions/guarantees between different
-                            files.
-
-- at the function level (all prefixed with <filename_functionname>:
-  * _cfun.xml               function semantics, as produced by CIL, created by
-                            cchcil upon parsing the C source code, never
-                            modified
-  * _ppo.xml                primary proof obligations for the function, generated
-                            once by cchpre, not updated afterwards
-  * _spo.xml                supporting proof obligations for the function,
-                            primarily generated and updated by the python side
-  * _pod.xml                dictionary for assumptions, ppos, and spos, initially
-                            created by cchpre, and updated by both cchpre and the
-                            python side as new spos are added in each round.
-  * _api.xml                external assumptions and guarantees from other functions,
-                            global variables, and possibly user-provided contracts.
-  * _vars.xml               variable and expression dictionary containing all
-                            variables and expressions used in the invariants
-  * _invs.xml               invariant dictionary containing all location invariants
-                            (with locations specified by context)
-
 """
-from typing import Any, Callable, Dict, Iterable, List, Optional, TYPE_CHECKING
+
+from typing import (
+    Any, Callable, Dict, Iterable, List, Optional, Tuple, TYPE_CHECKING)
 import os
 import multiprocessing
 import sys
@@ -93,7 +41,7 @@ from chc.api.CGlobalContract import CGlobalContract
 from chc.app.CCompInfo import CCompInfo
 from chc.app.CFile import CFile
 from chc.app.CVarInfo import CVarInfo
-from chc.app.IndexManager import IndexManager
+from chc.app.IndexManager import IndexManager, FileVarReference, FileKeyReference
 from chc.app.CGlobalDeclarations import CGlobalDeclarations
 from chc.app.CGlobalDictionary import CGlobalDictionary
 
@@ -105,10 +53,38 @@ from chc.util.loggingutil import chklogger
 
 if TYPE_CHECKING:
     from chc.app.CFunction import CFunction
+    from chc.app.CInstr import CCallInstr
+    from chc.proof.CFunctionCallsiteSPOs import CFunctionCallsiteSPOs
+    from chc.proof.CFunctionPO import CFunctionPO
 
 
 class CApplication(object):
-    """Primary access point for source code and analysis results."""
+    """Primary access point for source code and analysis results.
+
+    An application can consist of a single file, or of multiple files managed
+    by a Makefile.
+
+    In case of a single file the following call on CApplication initializes
+    the single file:
+
+    - capp.initialize_single_file(cfilename)
+
+    The filepath in this case is assumed to be empty. The file index is set
+    to 0.
+
+    In case of multiple files the following file is assumed to be present in
+    the top analysis-results directory:
+
+    - <projectpath>/<projectname>.cch/a/target_files.xml
+
+    This file, normally created by the CodeHawk-C parser, is expected to
+    contain a list of c-file entries that provide the attributes:
+
+    - id: a unique file index, a number greater than zero;
+    - name: a string denoting the relative path of the file w.r.t. the project
+      directory (e.g., src/cgi/buffer.c)
+
+    """
 
     def __init__(
             self,
@@ -116,39 +92,25 @@ class CApplication(object):
             projectname: str,
             targetpath: str,
             contractpath: str,
-            singlefile: bool = False) -> None:
+            singlefile: bool = False,
+            excludefiles: List[str] = []) -> None:
         self._projectpath = projectpath
         self._projectname = projectname
         self._targetpath = targetpath
         self._contractpath = contractpath
         self._singlefile = singlefile
-        # path: str,
-        # cfilename: Optional[str] = None,
-        # srcpath: Optional[str] = None,
-        # contractpath: Optional[str] = None,
-        # candidate_contractpath: Optional[str] = None,
-        # excludefiles: List[str] = [],
-        # includefiles: Optional[List[str]] = None,
-        # ) -> None:
-
-        # self.singlefile = not (cfilename is None)
-        # self.path = UF.get_chc_artifacts_path(path)
-        # self.srcpath = os.path.join(path, "sourcefiles") if srcpath is None else srcpath
-        # self.globalcontract = None
-        # self.excludefiles = excludefiles  # files analyzed: all excluding these
-        # files analyzed (if not None): these
-        # self.includefiles = includefiles
-        # if self._contractpath is not None:
-        #    self.globalcontract = CGlobalContract(self)
-        # self.candidate_contractpath = candidate_contractpath
-        self._filenames: Dict[int, str] = {}  # file index -> filename
-        self._files: Dict[str, CFile] = {}  # filename -> CFile
-        self._indexmanager = IndexManager(self._singlefile)
-        self._callgraph: Dict[Any, Any] = {}  # (fid,vid) -> (callsitespos, (tgtfid,tgtvid))
-        self._revcallgraph: Dict[Any, Any] = {}  # (tgtfid,tgtvid) -> ((fid,vid),callsitespos)
+        self._excludefiles = excludefiles
+        self._indexmanager = IndexManager(singlefile)
+        self._globalcontract: Optional[CGlobalContract] = None
         self._dictionary: Optional[CGlobalDictionary] = None
         self._declarations: Optional[CGlobalDeclarations] = None
-        # self._initialize(cfilename)
+        self._files: Optional[Dict[int, CFile]] = None  # file-index -> CFile
+        self._callgraph: Optional[
+            Dict[Tuple[int, int],
+                 List[Tuple[Tuple[int, int], "CFunctionCallsiteSPOs"]]]] = None
+        self._revcallgraph: Optional[
+            Dict[Tuple[int, int],
+                 List[Tuple[Tuple[int, int], "CFunctionCallsiteSPOs"]]]] = None
 
     @property
     def projectpath(self) -> str:
@@ -164,23 +126,64 @@ class CApplication(object):
 
     @property
     def contractpath(self) -> str:
-        if self._contractpath is not None:
-            return self._contractpath
-        raise UF.CHCError("Contract path was not provided by the user")
+        return self._contractpath
 
-    def has_contractpath(self) -> bool:
-        return self._contractpath is not None
+    @property
+    def globalcontract(self) -> CGlobalContract:
+        if self._globalcontract is None:
+            self._globalcontract = CGlobalContract(self)
+        return self._globalcontract
 
-    def singlefile(self) -> bool:
+    @property
+    def is_singlefile(self) -> bool:
         return self._singlefile
 
     @property
-    def files(self) -> Dict[str, CFile]:
+    def excludefiles(self) -> List[str]:
+        return self._excludefiles
+
+    @property
+    def files(self) -> Dict[int, CFile]:
+        """Returns a map from file-indexes to CFile objects."""
+
+        if self._files is None:
+            self._files = {}
+            if self.is_singlefile:
+                chklogger.logger.error(
+                    "Single-file application should be initialized via "
+                    + " the call initialize_single_file(cfilename)")
+                raise UF.CHCError("Single file not yet initialized")
+            else:
+                self._initialize_from_target_files()
         return self._files
 
     @property
-    def filenames(self) -> Dict[int, str]:
-        return self._filenames
+    def cfiles(self) -> Iterable[CFile]:
+        return self.files.values()
+
+    @property
+    def filenames(self) -> List[str]:
+        """Returns full filenames relative to the project path (without .c)."""
+
+        return [cfile.name for cfile in self.files.values()]
+
+    def is_application_header(self, name: str) -> bool:
+        """Returns true if the name corresponds to an application file."""
+
+        for n in self.filenames:
+            if name == os.path.basename(n):
+                return True
+        else:
+            return False
+
+    @property
+    def filexref(self) -> Dict[str, int]:
+        """Returns a map from c filenames to file-indexes.
+
+        Note: filenames include extension and paths relative to project
+        directory.
+        """
+        return { cfile.name: index for (index, cfile) in self.files.items() }
 
     @property
     def indexmanager(self) -> IndexManager:
@@ -197,111 +200,89 @@ class CApplication(object):
     @property
     def declarations(self) -> CGlobalDeclarations:
         if self._declarations is None:
-            xnode = UF.get_global_declarations_xnode(self.path)
+            xnode = UF.get_global_declarations_xnode(
+                self.targetpath, self.projectname)
             self._declarations = CGlobalDeclarations(self, xnode)
         return self._declarations
 
-    def get_filenames(self) -> Iterable[str]:
-        return self.filenames.values()
+    def get_max_filename_length(self) -> int:
+        return max([len(x) for x in self.filenames])
 
-    """Returns true if name is a base filename."""
+    def get_cfile(self) -> CFile:
+        """Returns the CFile object in a single-file project."""
 
-    def is_application_header(self, name: str) -> bool:
-        for n in self.get_filenames():
-            if name == os.path.basename(n[:-2]):
-                return True
+        if self.is_singlefile:
+            if 0 in self.files:
+                return self.files[0]
+            else:
+                raise UF.CHCError("Single file has not been initialized")
+        else:
+            raise UF.CHCError(
+                "This application is not a single-file application")
+
+    def get_file(self, fname: str) -> CFile:
+        """Access to file with full relative path and no extension."""
+
+        if fname in self.filexref:
+            return self.files[self.filexref[fname]]
+        else:
+            chklogger.logger.error("File not found: %s", fname)
+            raise UF.CHCError(f"File with name {fname} not found")
+
+    def has_file(self, fname: str) -> bool:
+        return fname in self.filexref
+
+    def get_file_by_index(self, index: int) -> CFile:
+        if index in self.files:
+            return self.files[index]
+        else:
+            raise UF.CHCError(f"File with index {index} not found")
+
+    def has_file_index(self, index: int) -> bool:
+        return index in self.files
+
+    def get_function(self, filevar: FileVarReference) -> "CFunction":
+        if self.has_file_index(filevar.fid):
+            cfile = self.get_file_by_index(filevar.fid)
+            if cfile.has_function_by_index(filevar.vid):
+                return cfile.get_function_by_index(filevar.vid)
+            else:
+                raise UF.CHCError(
+                    f"Function with index {filevar.vid} not found in file {cfile.name}")
+        else:
+            raise UF.CHCError(f"File with index {filevar.fid} not found")
+
+    def has_function(self, filevar: FileVarReference) -> bool:
+        if self.has_file_index(filevar.fid):
+            cfile = self.get_file_by_index(filevar.fid)
+            return cfile.has_function_by_index(filevar.vid)
         else:
             return False
 
-    def get_max_filename_length(self) -> int:
-        return max([len(x) for x in self.get_filenames()])
+    def get_callsites(
+            self,
+            fid: int,
+            vid: int) -> List[Tuple[Tuple[int, int], "CFunctionCallsiteSPOs"]]:
+        """Return a list of ((fid, vid), callsitespos)."""
 
-    def get_filename_dictionary(self) -> Dict[str, List[str]]:
-        result: Dict[str, List[str]] = {}
-        for f in self.get_files():
-            result[f.name] = []
-            for fn in f.get_functions():
-                result[f.name].append(fn.name)
-        return result
-
-    def get_files(self) -> Iterable[CFile]:
-        self._initialize_files()
-        return sorted(self.files.values(), key=lambda x: x.name)
-
-    def has_single_file(self) -> bool:
-        return 0 in self.filenames
-
-    # return file from single-file application
-    def get_single_file(self) -> CFile:
-        if 0 in self.filenames:
-            return self.files[self.filenames[0]]
-        else:
-            tgtxnode = UF.get_targetfiles_xnode(self.path)
-            if not tgtxnode:
-                raise UF.CHCSingleCFileNotFoundError([])
-            filenames = [(c.get("name") or "") for c in tgtxnode.findall("c-file")]
-            raise UF.CHCSingleCFileNotFoundError(filenames)
-
-    def get_cfile(self) -> CFile:
-        if self.singlefile:
-            return self.get_single_file()
-        raise UF.CHCSingleCFileNotFoundError([])
-
-    def get_file(self, fname: str) -> CFile:
-        self._initialize_files()
-        index = self.get_file_index(fname)
-        self._initialize_file(index, fname)
-        if fname in self.files:
-            return self.files[fname]
-        raise Exception("Could not find file \"" + fname + "\"")
-
-    def get_file_by_index(self, index: int) -> CFile:
-        if index in self.filenames:
-            return self.get_file(self.filenames[index])
-        raise Exception("Could not find file with index \"" + str(index) + "\"")
-
-    def get_file_index(self, fname: str) -> int:
-        for i in self.filenames:
-            if self.filenames[i] == fname:
-                return i
-        raise Exception("Could not find file named \"" + fname + "\"")
-
-    def get_srcfile(self, fname: str) -> CSrcFile:
-        srcpath = UF.get_savedsource_path(self.targetpath, self.projectname)
-        srcfile = os.path.join(srcpath, fname)
-        return CSrcFile(self, srcfile)
-
-    # return a list of ((fid,vid),callsitespos).
-    def get_callsites(self, fid, vid):
-        self._initialize_callgraphs()
         if (fid, vid) in self.revcallgraph:
             return self.revcallgraph[(fid, vid)]
         return []
 
     def iter_files(self, f: Callable[[CFile], None]) -> None:
-        for file in self.get_files():
+        chklogger.logger.info(
+            "Iter files over %d cfiles", len(list(self.cfiles)))
+        for file in list(self.cfiles):
             f(file)
 
-    def iter_files_parallel(self, f: Callable[[CFile], None], processes: int) -> None:
-        for fname in self.get_files():
+    def iter_files_parallel(
+            self, f: Callable[[CFile], None], processes: int) -> None:
+        for cfile in self.cfiles:
             while len(multiprocessing.active_children()) >= processes:
                 pass
 
-            multiprocessing.Process(target=f, args=(fname,)).start()
-
-        while len(multiprocessing.active_children()) > 0:
-            pass
-
-    def iter_filenames(self, f: Callable[[str], None]) -> None:
-        for fname in self.filenames.values():
-            f(fname)
-
-    def iter_filenames_parallel(self, f: Callable[[str], None], processes: int) -> None:
-        for fname in self.filenames.values():
-            while len(multiprocessing.active_children()) >= processes:
-                pass
-
-            multiprocessing.Process(target=f, args=(fname,)).start()
+            p = multiprocessing.Process(target=f, args=(cfile,))
+            p.start()
 
         while len(multiprocessing.active_children()) > 0:
             pass
@@ -312,113 +293,88 @@ class CApplication(object):
 
         self.iter_files(g)
 
-    def iter_functions_parallel(self, f: Callable[["CFunction"], None], maxprocesses: int) -> None:
+    def iter_functions_parallel(
+            self, f: Callable[["CFunction"], None], maxprocesses: int) -> None:
         def g(fi: CFile) -> None:
             fi.iter_functions(f)
 
         self.iter_files_parallel(g, maxprocesses)
 
-    def resolve_vid_function(self, fid: int, vid: int) -> Optional["CFunction"]:
-        msg = "resolve-vid-function(" + str(fid) + "," + str(vid) + "):"
-        result = self.indexmanager.resolve_vid(fid, vid)
-        if result is not None:
-            tgtfid = result[0]
-            tgtvid = result[1]
-            if tgtfid in self.filenames:
-                filename = self.filenames[tgtfid]
-                self._initialize_file(tgtfid, filename)
-                if not self.files[filename] is None:
-                    if self.files[filename].has_function_by_index(tgtvid):
-                        return self.files[filename].get_function_by_index(tgtvid)
+    def resolve_vid_function(
+            self, filevar: FileVarReference) -> Optional["CFunction"]:
+        """Returns the function def for the local file-index fid and vid.
+
+        Note: the function definition may or may not reside in the same file,
+        that is, the c-file with index fid may have a function declaration
+        for the function with index vid, but not a a definition.
+
+        The location of the definition is obtained from the index manager via
+        the corresponding global index of the (local) vid (as initialized by
+        the linker).
+        """
+        defvar = self.indexmanager.resolve_vid(filevar)
+        if defvar is not None:
+            if defvar.fid in self.files:
+                deffile = self.files[defvar.fid]
+                if deffile.has_function_by_index(defvar.vid):
+                    return deffile.get_function_by_index(defvar.vid)
+                else:
                     chklogger.logger.warning(
-                        "Target function vid not found: %s (fid:%s, vid:%s)",
-                        str(tgtvid), str(fid), str(vid))
+                        ("Function definition %d not found in file %d for "
+                        + "(fid:%d, vid:%d)"),
+                        defvar.vid, defvar.fid, filevar.fid, filevar.vid)
                     return None
+            else:
                 chklogger.logger.warning(
-                    "Filename not found: %s (fid:%s, vid:%s)",
-                    filename, str(fid), str(vid))
+                    "File with index %d not found for (fid: %d, vid: %d)",
+                    defvar.fid, filevar.fid, filevar.vid)
                 return None
+        else:
             chklogger.logger.warning(
-                "Target fid %s not found (fid:%s, vid:%s)",
-                str(tgtfid), str(fid), str(vid))
+                "No function definition found for (fid: %d, vid: %d)",
+                filevar.fid, filevar.vid)
             return None
-        chklogger.logger.warning(
-            "Unable to resolve fid:%s, vid:%s", str(fid), str(vid))
-        return None
 
-    def convert_vid(self, fidsrc: int, vid: int, fidtgt: int) -> int:
-        return self.indexmanager.convert_vid(fidsrc, vid, fidtgt)
+    def convert_vid(self, filevar: FileVarReference, tgtfid: int) -> int:
+        cvid = self.indexmanager.convert_vid(filevar, tgtfid)
+        if cvid is None:
+            raise UF.CHCError("Error in convert_vid: " + str(filevar.vid))
+        return cvid
 
-    def get_gckey(self, fid, ckey):
-        return self.indexmanager.get_gckey(fid, ckey)
+    def get_gckey(self, filekey: FileKeyReference) -> Optional[int]:
+        return self.indexmanager.get_gckey(filekey)
 
-    def get_function_by_index(self, index: int):
+    def get_function_by_index(self, index: int) -> "CFunction":
         for f in self.files:
             if self.files[f].has_function_by_index(index):
                 return self.files[f].get_function_by_index(index)
         else:
-            print("No function found with index " + str(index))
-            # exit(1)
+            raise UF.CHCError(f"Function with index {index} not found")
 
-    def get_callinstrs(self):
-        result = []
+    def get_callinstrs(self) -> List["CCallInstr"]:
+        result: List["CCallInstr"] = []
 
-        def f(fi):
-            result.extend(fi.getcallinstrs())
+        def f(fi: CFile) -> None:
+            result.extend(fi.get_callinstrs())
 
         self.iter_files(f)
-        return result
-
-    def get_externals(self):
-        result = {}
-        for e in self.xnode.find("global-definitions").find("external-varinfos"):
-            vfile = e.get("vfile")
-            vname = e.get("vname")
-            summarized = e.get("summarized")
-            if vfile not in result:
-                result[vfile] = []
-            result[vfile].append((vname, summarized))
-        return result
-
-    def get_compinfo(self, fileindex, ckey):
-        return self.get_file_by_index(fileindex).get_compinfo(ckey)
-
-    def get_global_compinfos(self):
-        return self.declarations.compinfo_table.values()
-
-    def get_file_compinfos(self):
-        result = []
-
-        def f(f):
-            result.extend(f.declarations.getcompinfos())
-
-        self.fileiter(f)
-        return result
-
-    def get_file_global_varinfos(self):
-        result = []
-
-        def f(f):
-            result.extend(f.declarations.get_global_varinfos())
-
-        self.fileiter(f)
         return result
 
     # ------------------- Application statistics -----------------------------
-    def get_line_counts(self):
-        counts = {}
+    def get_line_counts(self) -> str:
+        counts: Dict[str, Tuple[int, int, int]] = {}
 
-        def f(cfile):
-            decls = cfile.declarations
+        def f(cfile: CFile) -> None:
             counts[cfile.name] = (
-                decls.get_max_line(),
-                decls.get_code_line_count(),
-                decls.get_function_count(),
+                cfile.declarations.get_max_line(),
+                cfile.declarations.get_code_line_count(),
+                cfile.functioncount,
             )
 
         self.iter_files(f)
+
         flen = self.get_max_filename_length()
-        lines = []
+        lines: List[str] = []
         lines.append(
             "file".ljust(flen)
             + "LOC".rjust(12)
@@ -445,30 +401,33 @@ class CApplication(object):
         )
         return "\n".join(lines)
 
-    def get_project_counts(self, filefilter=lambda f: True):
-        linecounts = []
-        clinecounts = []
-        cfuncounts = []
+    def get_project_counts(
+            self,
+            filefilter: Callable[[str], bool] = lambda f: True
+    ) -> Tuple[int, int, int]:
+        linecounts: List[int] = []
+        clinecounts: List[int] = []
+        cfuncounts: List[int] = []
 
-        def f(cfile):
+        def f(cfile: CFile) -> None:
             if filefilter(cfile.name):
                 decls = cfile.declarations
                 linecounts.append(decls.get_max_line())
                 clinecounts.append(decls.get_code_line_count())
-                cfuncounts.append(decls.get_function_count())
+                cfuncounts.append(cfile.functioncount)
 
         self.iter_files(f)
         return (sum(linecounts), sum(clinecounts), sum(cfuncounts))
 
-    def update_spos(self):
+    def update_spos(self) -> None:
         """Create supporting proof obligations for all call sites."""
 
-        def f(fn):
+        def f(fn: "CFunction") -> None:
             fn.update_spos()
             fn.save_spos()
             fn.save_pod()
 
-        def h(cfile):
+        def h(cfile: CFile) -> None:
             cfile.iter_functions(f)
             cfile.save_predicate_dictionary()
             cfile.save_interface_dictionary()
@@ -476,22 +435,24 @@ class CApplication(object):
 
         self.iter_files(h)
 
-    def collect_post_assumes(self):
-        """For all call sites collect postconditions from callee's contracts and add as assume."""
+    def collect_post_assumes(self) -> None:
+        """Collect postconditions from callee's contracts and add as assume."""
 
-        self.iter_files(lambda f: f.collect_post_assumes())
+        for fi in self.cfiles:
+            fi.collect_post_assumes()
 
-    def distribute_post_guarantees(self):
+    def distribute_post_guarantees(self) -> None:
         """add callee postcondition guarantees to call sites as assumptions"""
+
         if self.contractpath is None:
             return  # no contracts provided
 
-        def f(fn):
+        def f(fn: "CFunction") -> None:
             fn.distribute_post_guarantees()
             fn.save_spos()
             fn.save_pod()
 
-        def h(cfile):
+        def h(cfile: CFile) -> None:
             cfile.iter_functions(f)
             cfile.save_predicate_dictionary()
             cfile.save_interface_dictionary()
@@ -499,171 +460,164 @@ class CApplication(object):
 
         self.iter_files(h)
 
-    def reinitialize_tables(self):
-        def f(fi):
+    def reinitialize_tables(self) -> None:
+
+        def f(fi: CFile) -> None:
             fi.reinitialize_tables()
 
         self.iter_files(f)
 
-    # reload ppos after analyzer checks
-    def reload_ppos(self):
-        def f(fn):
+    def reload_ppos(self) -> None:
+        """Reload primary proof obligations after analyzer has run."""
+
+        def f(fn: "CFunction") -> None:
             fn.reload_ppos()
 
         self.iter_functions(f)
 
-    # reload spos after analyzer invariant generation and analyzer checks
-    def reload_spos(self):
-        def f(fn):
+    def reload_spos(self) -> None:
+        """Reload supporting proof obligations after analyzer has run."""
+
+        def f(fn: "CFunction") -> None:
             fn.reload_spos()
 
         self.iter_functions(f)
 
-    def get_contract_condition_violations(self):
-        result = []
+    def get_contract_condition_violations(
+            self) -> List[Tuple[str, List[Tuple[str, str]]]]:
+        result: List[Tuple[str, List[Tuple[str, str]]]] = []
 
-        def f(fn):
+        def f(fn: "CFunction") -> None:
             if fn.violates_contract_conditions():
                 result.append((fn.name, fn.get_contract_condition_violations()))
 
         self.iter_functions(f)
         return result
 
-    def get_ppos(self):
-        result = []
+    def get_ppos(self) -> List["CFunctionPO"]:
+        result: List["CFunctionPO"] = []
 
-        def f(fn):
+        def f(fn: "CFunction") -> None:
             result.extend(fn.get_ppos())
 
         self.iter_functions(f)
         return result
 
-    def get_spos(self):
-        result = []
+    def get_spos(self) -> List["CFunctionPO"]:
+        result: List["CFunctionPO"] = []
 
-        def f(fn):
+        def f(fn: "CFunction") -> None:
             result.extend(fn.get_spos())
 
         self.iter_functions(f)
         return result
 
-    def get_open_ppos(self):
-        result = []
+    def get_open_ppos(self) -> List["CFunctionPO"]:
+        result: List["CFunctionPO"] = []
 
-        def f(fn):
+        def f(fn: "CFunction") -> None:
             result.extend(fn.get_open_ppos())
 
         self.iter_functions(f)
         return result
 
-    def get_violations(self):
-        result = []
+    def get_ppos_violated(self) -> List["CFunctionPO"]:
+        result: List["CFunctionPO"] = []
 
-        def f(fn):
-            result.extend(fn.get_violations())
-
-        self.iter_functions(f)
-        return result
-
-    def get_delegated(self):
-        result = []
-
-        def f(fn):
-            result.extend(fn.get_delegated())
+        def f(fn: "CFunction") -> None:
+            result.extend(fn.get_ppos_violated())
 
         self.iter_functions(f)
         return result
 
-    def _initialize(self, fname: Optional[str]) -> None:
-        if fname is None:
-            # read target_files.xml file to retrieve application files
-            tgtxnode = UF.get_targetfiles_xnode(self.path)
-            if tgtxnode is None:
-                raise UF.CHCXmlParseError(self.path, 0, (0, 0))
-            if self.includefiles is None:
-                for c in tgtxnode.findall("c-file"):
-                    found_name = c.get("name")
-                    if found_name is None:
-                        raise UF.CHCXmlParseError(self.path, 0, (0, 0))
-                    if found_name in self.excludefiles:
-                        continue
-                    id = c.get("id")
-                    if id is None:
-                        print("No id found for " + (found_name or "(name not found)"))
-                    else:
-                        self.filenames[int(id)] = found_name
+    def get_ppos_delegated(self) -> List["CFunctionPO"]:
+        result: List["CFunctionPO"] = []
+
+        def f(fn: "CFunction") -> None:
+            result.extend(fn.get_ppos_delegated())
+
+        self.iter_functions(f)
+        return result
+
+    def initialize_files(self, filenames: Dict[int, str]) -> None:
+        self._files = {}
+        for (index, fname) in filenames.items():
+            self._files[index] = self._initialize_file(index, fname)
+
+    def _initialize_from_target_files(self) -> None:
+        chklogger.logger.info("Initialize from target files")
+        tgtxnode = UF.get_targetfiles_xnode(self.targetpath, self.projectname)
+        if tgtxnode is None:
+            raise UF.CHCXmlParseError(self.targetpath, 0, (0, 0))
+
+        self._files = {}
+
+        for c in tgtxnode.findall("c-file"):
+            cfilename_c = c.get("name")
+            if cfilename_c is None:
+                raise UF.CHCXmlParseError(self.targetpath, 0, (0, 0))
+            if cfilename_c in self.excludefiles:
+                continue
+            id = c.get("id")
+            if id is None:
+                chklogger.logger.error(
+                    "No id found for target file %s", cfilename_c)
             else:
-                for c in tgtxnode.findall("c-file"):
-                    found_name = c.get("name")
-                    if found_name is None:
-                        raise UF.CHCXmlParseError(self.path, 0, (0, 0))
-                    if found_name in self.includefiles:
-                        id = c.get("id")
-                        if id is None:
-                            print("No id found for " + found_name)
-                        else:
-                            self.filenames[int(id)] = found_name
-        else:
-            self._initialize_file(0, fname)
-
-    def _initialize_files(self) -> None:
-        for i, f in self.filenames.items():
-            self._initialize_file(i, f)
+                fid = int(id)
+                self._files[fid] = self._initialize_file(fid, cfilename_c)
 
     def initialize_single_file(self, fname: str) -> None:
-        if fname in self.files:
-            return
-
-        cfile = UF.get_cfile_xnode(
+        xcfile = UF.get_cfile_xnode(
             self.targetpath, self.projectname, None, fname)
-        if cfile is not None:
-            self.filenames[0] = fname
-            self.files[fname] = CFile(self, 0, cfile)
-            self.indexmanager.add_file(self.files[fname])
+        if xcfile is not None:
+            cfile = CFile(self, 0, fname, None)
+            self._files = {}
+            self._files[0] = cfile
+            self.indexmanager.add_file(cfile)
             chklogger.logger.info("Single c file was initialized %s", fname)
         else:
             chklogger.logger.error("c_file could not be extracted %s", fname)
 
-    def _initialize_file(self, index: int, fname: str) -> None:
-        if fname in self.files:
-            return
-
-        cfile = UF.get_cfile_xnode(self.path, fname)
-        if cfile is not None:
-            self.filenames[index] = fname
-            self.files[fname] = CFile(self, index, cfile)
-            self.indexmanager.add_file(self.files[fname])
-            chklogger.logger.info("initialized cfile %s", fname)
+    def _initialize_file(self, index: int, fname: str) -> CFile:
+        xcfilepath = os.path.dirname(fname)
+        cfilename = os.path.basename(fname)
+        if xcfilepath == "":
+            cfilepath: Optional[str] = None
         else:
-            tgtxnode = UF.get_targetfiles_xnode(self.path)
-            if tgtxnode is None:
-                raise UF.CHCXmlParseError(self.path, 0, (0, 0))
-            filenames = [c.get("name") or "name not found" for c in tgtxnode.findall("c-file")]
-            raise UF.CFileNotFoundException(filenames)
+            cfilepath = xcfilepath
+        chklogger.logger.info(
+            "Initialize file name: %s, file path: %s", cfilename, str(cfilepath))
+        cfile = CFile(self, index, cfilename[:-2], cfilepath)
+        self.indexmanager.add_file(cfile)
+        chklogger.logger.info("initialized cfile %s", fname)
+        return cfile
 
-    def _initialize_callgraphs(self) -> None:
-        if len(self.callgraph) > 0:
-            return
+    @property
+    def callgraph(self) -> Dict[
+            Tuple[int, int],
+            List[Tuple[Tuple[int, int], "CFunctionCallsiteSPOs"]]]:
+        if self._callgraph is None:
+            self._callgraph = {}
+            for (fid, cfile) in self.files.items():
+                for (vid, cfun) in cfile.functions.items():
+                    for cs in cfun.proofs.spos.callsite_spos.values():
+                        if cs.has_callee() and cs.callee is not None:
+                            fncallee = FileVarReference(fid, cs.callee.vid)
+                            fundef = self.indexmanager.resolve_vid(fncallee)
+                            if fundef is not None:
+                                self._callgraph.setdefault((fid, vid), [])
+                                self._callgraph[(fid, vid)].append(
+                                    (fundef.tuple, cs))
+        return self._callgraph
 
-        def collectcallers(fn: "CFunction") -> None:
-            fid = fn.cfile.index
-            vid = fn.svar.vid
-
-            def g(cs):
-                if cs.callee is None:
-                    return
-                fundef = self.indexmanager.resolve_vid(fid, cs.callee.get_vid())
-                if fundef is not None:
-                    if not (fid, vid) in self.callgraph:
-                        self.callgraph[(fid, vid)] = []
-                    self.callgraph[(fid, vid)].append((cs, fundef))
-
-            fn.iter_callsites(g)
-
-        self.iter_functions(collectcallers)
-
-        for s in self.callgraph:
-            for (cs, t) in self.callgraph[s]:
-                if t not in self.revcallgraph:
-                    self.revcallgraph[t] = []
-                self.revcallgraph[t].append((s, cs))
+    @property
+    def revcallgraph(self) -> Dict[
+            Tuple[int, int],
+            List[Tuple[Tuple[int, int], "CFunctionCallsiteSPOs"]]]:
+        if self._revcallgraph is None:
+            self._revcallgraph = {}
+            for s in self.callgraph:
+                for (t, cs) in self.callgraph[s]:
+                    self._revcallgraph.setdefault(t, [])
+                    self._revcallgraph[t].append((s, cs))
+        return self._revcallgraph

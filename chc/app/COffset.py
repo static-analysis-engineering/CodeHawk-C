@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2020-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,18 +26,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
-"""Object representation for CIL offset sum type
-
-cchlib/CCHBasicTypes.offset =      predicate     properties
-                                   ---------------------------------------------
-| NoOffset                         is_no_offset  -
-| Field of fielduse * offset       is_field      fieldname: str
-                                                 ckey: int
-                                                 offset: COffset
-| Index of exp * offset            is_index      index_exp: CExp
-                                                 offset: COffset
-
-"""
+"""Object representation for CIL offset sum type."""
 
 from typing import Dict, List, Tuple, TYPE_CHECKING
 
@@ -108,10 +97,10 @@ class CNoOffset(COffset):
 class CFieldOffset(COffset):
     """Field offset
 
-    tags[1]: fieldname
+    * tags[1]: fieldname
 
-    args[0]: ckey of the containing struct
-    args[1]: index of sub-offset in cdictionary
+    * args[0]: ckey of the containing struct
+    * args[1]: index of sub-offset in cdictionary
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -149,8 +138,8 @@ class CFieldOffset(COffset):
 class CIndexOffset(COffset):
     """Index offset into an array.
 
-    args[0]: index of base of index expression in cdictionary
-    args[1]: index of sub-offset in cdictionary
+    * args[0]: index of base of index expression in cdictionary
+    * args[1]: index of sub-offset in cdictionary
     """
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
         COffset.__init__(self, cd, ixval)

@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2020-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,6 +26,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Dictionary of types and expressions at the file level."""
 
 import xml.etree.ElementTree as ET
 
@@ -36,6 +37,7 @@ from chc.app.CExp import (CExp, CExpLval)
 from chc.app.CLHost import CLHost, CLHostVar
 from chc.app.CLval import CLval
 from chc.app.COffset import COffset
+from chc.app.IndexManager import FileKeyReference
 
 import chc.util.fileutil as UF
 import chc.util.IndexedTable as IT
@@ -43,8 +45,10 @@ import chc.util.IndexedTable as IT
 from chc.app.CDictionary import CDictionary
 
 if TYPE_CHECKING:
+    from chc.app.CApplication import CApplication
     from chc.app.CFile import CFile
     from chc.app.CFileDeclarations import CFileDeclarations
+    from chc.app.IndexManager import IndexManager
 
 
 class CKeyLookupError(Exception):
@@ -76,8 +80,20 @@ class CFileDictionary(CDictionary):
         self._initialize(xnode)
 
     @property
+    def is_global(self) -> bool:
+        return False
+
+    @property
     def cfile(self) -> "CFile":
         return self._cfile
+
+    @property
+    def capp(self) -> "CApplication":
+        return self.cfile.capp
+
+    @property
+    def indexmanager(self) -> "IndexManager":
+        return self.capp.indexmanager
 
     @property
     def decls(self) -> "CFileDeclarations":
@@ -91,7 +107,8 @@ class CFileDictionary(CDictionary):
         fid = self.cfile.index
         ckey = compinfo.ckey
         if not (cfid == fid):
-            tgtkey = self.cfile.capp.indexmanager.convert_ckey(cfid, ckey, fid)
+            fileckey = FileKeyReference(cfid, ckey)
+            tgtkey = self.indexmanager.convert_ckey(fileckey, fid)
             if tgtkey is None:
                 raise LookupError(
                     "Index_compinfo: Unable to find key for "
@@ -111,7 +128,8 @@ class CFileDictionary(CDictionary):
             return ckey
         thisfid = self.cfile.index
         if not (thisfid == fid):
-            tgtkey = self.cfile.capp.indexmanager.convert_ckey(fid, ckey, thisfid)
+            fileckey = FileKeyReference(fid, ckey)
+            tgtkey = self.indexmanager.convert_ckey(fileckey, thisfid)
             if tgtkey is None:
                 raise CKeyLookupError(thisfid, fid, ckey)
             else:

@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2020-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,21 +26,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
-"""Object representation of CIL constant sum type
-
-cchlib/CCHBasicTypes.constant =            predicate      properties
-                                           -------------------------------------
-| CInt of int64 * ikind * string option    is_int         intvalue: int
-                                                          ikind: str
-| CStr of string                           is_str         stringvalue: str
-| CWStr of int64 list                      is_wstr        stringvalue: str
-| CChr of char                             is_chr         chrvalue: str
-| CReal of float * fkind * string option   is_real        realvalue: float
-| CEnum of exp * string * string           is_enum        exp: CExp
-                                                          enum_name: str
-                                                          item_name: str
-
-"""
+"""Object representation of CIL constant sum type."""
 
 from typing import List, Tuple, TYPE_CHECKING
 
@@ -85,6 +71,10 @@ class CConst(CDictionaryRecord):
     def is_real(self) -> bool:
         return False
 
+    @property
+    def is_enum(self) -> bool:
+        return False
+
     def __str__(self) -> str:
         return "constantbase:" + self.tags[0]
 
@@ -94,8 +84,8 @@ class CConstInt(CConst):
     """
     Constant integer.
 
-    tags[1]: string representation of value
-    tags[2]: ikind
+    - tags[1]: string representation of value
+    - tags[2]: ikind
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -122,7 +112,7 @@ class CConstStr(CConst):
     """
     Constant string.
 
-    args[0]: string index
+    - args[0]: string index
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -151,7 +141,7 @@ class CConstWStr(CConst):
     """
     Constant wide string (represented as a sequence of int64 integers)
 
-    tags[1..]: string representation of int64 integers
+    - tags[1..]: string representation of int64 integers
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -174,7 +164,7 @@ class CConstChr(CConst):
     """
     Constant character.
 
-    args[0]: char code
+    - args[0]: char code
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -197,8 +187,8 @@ class CConstReal(CConst):
     """
     Constant real number.
 
-    tags[1]: string representation of real
-    tags[2]: fkind
+    - tags[1]: string representation of real
+    - tags[2]: fkind
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -225,10 +215,10 @@ class CConstEnum(CConst):
     """
     Constant enumeration value.
 
-    tags[1]: enum name
-    tags[1]: enum item name
+    - tags[1]: enum name
+    - tags[1]: enum item name
 
-    args[0]: exp
+    - args[0]: exp
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -246,23 +236,21 @@ class CConstEnum(CConst):
     def exp(self) -> "CExp":
         return CConst.get_exp(self, self.args[0])
 
+    @property
+    def is_enum(self) -> bool:
+        return True
+
     def __str__(self) -> str:
-        return (
-            self.enum_name
-            + ":"
-            + self.item_name
-            + "("
-            + str(self.exp)
-            + ")"
-        )
+        return f"{self.enum_name}: {self.item_name}({self.exp})"
 
 
 class CStringConstant(CDictionaryRecord):
-    """
-    tags[0]: string value or hexadecimal representation of string value
-    tags[1]: 'x' (optional) if string value is represented in hexadecimal
+    """Constant string value
 
-    args[0] length of original string
+    - tags[0]: string value or hexadecimal representation of string value
+    - tags[1]: 'x' (optional) if string value is represented in hexadecimal
+
+    - args[0] length of original string
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:

@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2020-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,6 +26,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""C instruction (assignment, call, or inserted assembly code)."""
 
 import xml.etree.ElementTree as ET
 
@@ -43,6 +44,7 @@ if TYPE_CHECKING:
 
 
 class CInstr:
+    """Base class for instructions."""
 
     def __init__(self, parent: "CStmt", xnode: ET.Element) -> None:
         self._parent = parent
@@ -81,6 +83,7 @@ class CInstr:
 
 
 class CCallInstr(CInstr):
+    """Call instruction."""
 
     def __init__(self, parent: "CStmt", xnode: ET.Element) -> None:
         CInstr.__init__(self, parent, xnode)
@@ -118,14 +121,16 @@ class CCallInstr(CInstr):
             self._callargs = []
             xargs = self.xnode.find("args")
             if xargs is None:
-                raise UF.CHCError("Argument element missing from call instruction")
+                raise UF.CHCError(
+                    "Argument element missing from call instruction")
             for a in xargs.findall("exp"):
                 xiexp = a.get("iexp")
                 if xiexp is not None:
                     exp = self.cdictionary.get_exp(int(xiexp))
                     self._callargs.append(exp)
                 else:
-                    raise UF.CHCError("iexp attribute not found in call argument")
+                    raise UF.CHCError(
+                        "iexp attribute not found in call argument")
         return self._callargs
 
     @property
@@ -146,6 +151,7 @@ class CCallInstr(CInstr):
 
     
 class CAssignInstr(CInstr):
+    """Assignment instruction."""
 
     def __init__(self, parent: "CStmt", xnode: ET.Element) -> None:
         CInstr.__init__(self, parent, xnode)
@@ -163,7 +169,8 @@ class CAssignInstr(CInstr):
             if xlval is not None:
                 self._lhs = self.cdictionary.get_lval(int(xlval))
             else:
-                raise UF.CHCError("Lhs attribute missing from assign instruction")
+                raise UF.CHCError(
+                    "Lhs attribute missing from assign instruction")
         return self._lhs
 
     @property
@@ -173,7 +180,8 @@ class CAssignInstr(CInstr):
             if xexp is not None:
                 self._rhs = self.cdictionary.get_exp(int(xexp))
             else:
-                raise UF.CHCError("Rhs attribute missing from assign instruction")
+                raise UF.CHCError(
+                    "Rhs attribute missing from assign instruction")
         return self._rhs
 
     @property
@@ -190,6 +198,7 @@ class CAssignInstr(CInstr):
 
 
 class CAsmInstr(CInstr):
+    """Instruction representing inserted assembly code."""
 
     def __init__(self, parent: "CStmt", xnode: ET.Element) -> None:
         CInstr.__init__(self, parent, xnode)

@@ -72,6 +72,12 @@ class CGCompTag:
     def is_struct(self) -> bool:
         return self.compinfo.is_struct
 
+    def __str__(self) -> str:
+        if self.is_struct:
+            return f"struct {self.name} (ckey: {self.ckey})"
+        else:
+            return f"union {self.name} (ckey: {self.ckey})"
+
 
 @dataclass
 class CGEnumTag:
@@ -107,7 +113,7 @@ class CGFunction:
 @dataclass
 class CGType:
     """Type definition that associates a name with a type."""
-    
+
     location: "CLocation"
     typeinfo: "CTypeInfo"
 
@@ -155,10 +161,10 @@ class CFileGlobals:
         self._gcomptagdefs: Optional[Dict[int, CGCompTag]] = None
         self._gcomptagdecls: Optional[Dict[int, CGCompTag]] = None
         self._genumtagdecls: Optional[Dict[str, CGEnumTag]] = None
-        self._genumtagdefs: Optional[Dict[str, CGEnumTag]] = None        
+        self._genumtagdefs: Optional[Dict[str, CGEnumTag]] = None
         self._gfunctions: Optional[Dict[int, CGFunction]] = None
-        self._gtypes: Optional[Dict[str, CGType]] = None        
-        self._gvardecls: Optional[Dict[int, CGVarDecl]] = None        
+        self._gtypes: Optional[Dict[str, CGType]] = None
+        self._gvardecls: Optional[Dict[int, CGVarDecl]] = None
         self._gvardefs: Optional[Dict[int, CGVarDef]] = None
 
         self._globalcompinfockeys: Optional[Dict[int, "CCompInfo"]] = None
@@ -261,7 +267,7 @@ class CFileGlobals:
                         chklogger.logger.error(
                             "Invalid enum declaration record in %s",
                             self.cfile.name)
-        return self._genumtagdefs    
+        return self._genumtagdefs
 
     @property
     def gfunctions(self) -> Dict[int, CGFunction]:
@@ -393,7 +399,3 @@ class CFileGlobals:
         for gcdecl in self.gcomptagdecls.values():
             result.append(gcdecl.compinfo)
         return result
-        
-                
-                              
-        

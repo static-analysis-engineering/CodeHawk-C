@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs
+# Copyright (c) 2020-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,37 +26,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
-"""Object representation of CIL attrparam sum type
-
-
-cchlib/CCHBasicTypes.attrparam =                  predicate     properties
-                                                  ------------------------------
-| AInt of int                                     is_int        intvalue: int
-| AStr of string                                  is_str        stringvalue: str
-| ACons of string * attrparam list                is_cons       name: str
-                                                                params: List[CAttr]
-| ASizeOf of typ                                  is_sizeof     typ: CTyp  
-| ASizeOfE of attrparam                           is_sizeofe    param: CAttr
-| ASizeOfS of typsig                              is_sizeofs    typsig: CTypsig
-| AAlignOf of typ                                 is_alignof    typ: CTyp
-| AAlignOfE of attrparam                          is_alignofe   param: CAttr
-| AAlignOfS of typsig                             is_alignofs   typsig: CTypsig
-| AUnOp of unop * attrparam                       is_unop       op: str
-                                                                param: CAttr
-| ABinOp of binop * attrparam * attrparam         is_binop      binop: str
-                                                                param1: CAttr
-                                                                param2: CAttr
-| ADot of attrparam * string                      is_dot        suffix: str
-                                                                param: CAttr
-| AStar of attrparam                              is_star       param: CAttr
-| AAddrOf of attrparam                            is_addrof     param: CAttr
-| AIndex of attrparam * attrparam                 is_index      param1: CAttr
-                                                                param2: CAttr
-| AQuestion of attrparam * attrparam * attrparam  is_question   param1: CAttr
-                                                                param2: CAttr
-                                                                param3: CAttr
-
-"""
+"""Object representation of CIL attrparam sum type."""
 
 from typing import List, Tuple, TYPE_CHECKING
 
@@ -64,6 +34,7 @@ from chc.app.CDictionaryRecord import CDictionaryRecord, cdregistry
 
 import chc.util.fileutil as UF
 import chc.util.IndexedTable as IT
+from chc.util.loggingutil import chklogger
 
 if TYPE_CHECKING:
     from chc.app.CDictionary import CDictionary
@@ -171,7 +142,7 @@ class CAttrInt(CAttr):
 class CAttrStr(CAttr):
     """String attribute.
 
-    args[0]: index in string table of string attribute
+    * args[0]: index in string table of string attribute
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -193,8 +164,8 @@ class CAttrStr(CAttr):
 class CAttrCons(CAttr):
     """Constructed attributes.
 
-    tags[1]: name
-    args[0..]: indices of attribute parameters in cdictionary.
+    * tags[1]: name
+    * args[0..]: indices of attribute parameters in cdictionary.
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -220,7 +191,7 @@ class CAttrCons(CAttr):
 class CAttrSizeOf(CAttr):
     """Attribute that describes the size of a type.
 
-    args[0]: index of target type in cdictionary
+    * args[0]: index of target type in cdictionary
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -242,7 +213,7 @@ class CAttrSizeOf(CAttr):
 class CAttrSizeOfE(CAttr):
     """Size of an attribute parameter.
 
-    args[0]: index of argument parameter in cdictionary
+    * args[0]: index of argument parameter in cdictionary
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -264,7 +235,7 @@ class CAttrSizeOfE(CAttr):
 class CAttrSizeOfS(CAttr):
     """Replacement ASizeOf in type signatures.
 
-    args[0]: index of target typsig in cdictionary
+    * args[0]: index of target typsig in cdictionary
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -286,7 +257,7 @@ class CAttrSizeOfS(CAttr):
 class CAttrAlignOf(CAttr):
     """Alignment of a type.
 
-    args[0]: index of target type in cdictionary
+    * args[0]: index of target type in cdictionary
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -308,7 +279,7 @@ class CAttrAlignOf(CAttr):
 class CAttrAlignOfE(CAttr):
     """Alignment of an attribute parameter.
 
-    args[0]: index of attribute parameter in cdictionary
+    * args[0]: index of attribute parameter in cdictionary
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -330,7 +301,7 @@ class CAttrAlignOfE(CAttr):
 class CAttrAlignOfS(CAttr):
     """Alignment of a type signature.
 
-    args[0]: target type signature
+    * args[0]: target type signature
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -352,8 +323,8 @@ class CAttrAlignOfS(CAttr):
 class CAttrUnOp(CAttr):
     """Unary attribute parameter operation.
 
-    tags[1]: operator
-    args[0]: index of attribute parameter in cdictionary
+    * tags[1]: operator
+    * args[0]: index of attribute parameter in cdictionary
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -379,9 +350,9 @@ class CAttrUnOp(CAttr):
 class CAttrBinOp(CAttr):
     """Binary attribute parameter operation.
 
-    tags[1]: operator
-    args[0]: index of first attribute parameter in cdictionary
-    args[1]: index of second attribute parameter in cdictionary
+    * tags[1]: operator
+    * args[0]: index of first attribute parameter in cdictionary
+    * args[1]: index of second attribute parameter in cdictionary
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -419,8 +390,8 @@ class CAttrBinOp(CAttr):
 class CAttrDot(CAttr):
     """Dot operator on attributes.
 
-    tags[1]: string suffix
-    args[0]: index of attribute parameter in cdictionary
+    * tags[1]: string suffix
+    * args[0]: index of attribute parameter in cdictionary
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -446,7 +417,7 @@ class CAttrDot(CAttr):
 class CAttrStar(CAttr):
     """Star operation on attribute.
 
-    args[0]: index of attribute parameter in cdictionary
+    * args[0]: index of attribute parameter in cdictionary
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -454,21 +425,28 @@ class CAttrStar(CAttr):
 
     @property
     def param(self) -> CAttr:
-        return self.cd.get_attrparam(int(self.args[0]))
+        chklogger.logger.info("Self-referential attribute (*)")
+        if self.index == int(self.args[0]):
+            return self
+        else:
+            return self.cd.get_attrparam(int(self.args[0]))
 
     @property
     def is_star(self) -> bool:
         return True
 
     def __str__(self) -> str:
-        return "astar(" + str(self.param) + ")"
+        if self.index == self.args[0]:
+            return "astar()"
+        else:
+            return "astar(" + str(self.param) + ")"
 
 
 @cdregistry.register_tag("aaddrof", CAttr)
 class CAttrAddrOf(CAttr):
     """Addressof operator on attribute.
 
-    args[0]: index of attribute parameter in cdictionary
+    * args[0]: index of attribute parameter in cdictionary
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -490,8 +468,8 @@ class CAttrAddrOf(CAttr):
 class CAttrIndex(CAttr):
     """Index operation on attributes
 
-    args[0]: index of first attribute parameter in cdictionary
-    args[1]: index of second attribute parameter in cdictionary
+    * args[0]: index of first attribute parameter in cdictionary
+    * args[1]: index of second attribute parameter in cdictionary
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -517,9 +495,9 @@ class CAttrIndex(CAttr):
 class CAttrQuestion(CAttr):
     """Question operator on attributes
 
-    args[0]: index of first attribute paramter in cdictionary
-    args[1]: index of second attribute parameter in cdictionary
-    args[2]: index of third attribute parameter in cdictionary
+    * args[0]: index of first attribute paramter in cdictionary
+    * args[1]: index of second attribute parameter in cdictionary
+    * args[2]: index of third attribute parameter in cdictionary
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
