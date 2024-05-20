@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2020-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,6 +26,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Dictionary of indexed variables for an individual function."""
 
 import os
 
@@ -73,7 +74,8 @@ class CFunVarDictionary:
             self.memory_reference_data_table,
             self.constant_value_variable_table,
             self.c_variable_denotation_table]
-        self._objmaps: Dict[str, Callable[[], Mapping[int, IndexedTableValue]]] = {
+        self._objmaps: Dict[
+            str, Callable[[], Mapping[int, IndexedTableValue]]] = {
             "membase": self.get_memory_base_map,
             "memref": self.get_memory_reference_data_map,
             "cvv": self.get_constant_value_variable_map,
@@ -190,10 +192,12 @@ class CFunVarDictionary:
             objmap = self._objmaps[name]()
             lines: List[str] = []
             if len(objmap) == 0:
-                lines.append("Table is empty")
+                lines.append(f"\nTable for {name} is empty")
             else:
+                lines.append("index  value")
+                lines.append("-" * 80)
                 for (ix, obj) in objmap.items():
-                    lines.append(str(ix).rjust(3) + "  " + str(obj))
+                    lines.append(str(ix).rjust(3) + "    " + str(obj))
             return "\n".join(lines)
         else:
             raise UF.CHCError(

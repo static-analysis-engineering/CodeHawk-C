@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2020-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,7 +26,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
-
+"""Different types of non-relational values used in invariants."""
 
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
@@ -51,6 +51,7 @@ if TYPE_CHECKING:
 
 
 class CNonRelationalValue(CFunInvDictionaryRecord):
+    """Base class for all non-relational values."""
 
     def __init__(
             self, invd: "CFunInvDictionary", ixval: IndexedTableValue) -> None:
@@ -90,6 +91,7 @@ class CNonRelationalValue(CFunInvDictionaryRecord):
 
 @invregistry.register_tag("sx", CNonRelationalValue)
 class CNRVSymbolicExpr(CNonRelationalValue):
+    """Symbolic expression (consisting of symbolic constants)."""
 
     def __init__(
             self, invd: "CFunInvDictionary", ixval: IndexedTableValue) -> None:
@@ -109,6 +111,7 @@ class CNRVSymbolicExpr(CNonRelationalValue):
 
 @invregistry.register_tag("sb", CNonRelationalValue)
 class CNRVSymbolicBound(CNonRelationalValue):
+    """Bound expressed by symbolic values."""
 
     def __init__(
             self, invd: "CFunInvDictionary", ixval: IndexedTableValue) -> None:
@@ -132,6 +135,7 @@ class CNRVSymbolicBound(CNonRelationalValue):
 
 @invregistry.register_tag("iv", CNonRelationalValue)
 class CNRVIntervalValue(CNonRelationalValue):
+    """Numerical interval value."""
 
     def __init__(
             self, invd: "CFunInvDictionary", ixval: IndexedTableValue) -> None:
@@ -185,6 +189,7 @@ class CNRVIntervalValue(CNonRelationalValue):
 
 @invregistry.register_tag("bv", CNonRelationalValue)
 class CNRVBaseOffsetValue(CNonRelationalValue):
+    """Symbolic base with numerical offset (interval) value."""
 
     def __init__(
             self, invd: "CFunInvDictionary", ixval: IndexedTableValue) -> None:
@@ -254,6 +259,7 @@ class CNRVBaseOffsetValue(CNonRelationalValue):
 
 @invregistry.register_tag("rs", CNonRelationalValue)
 class CNRVRegionSet(CNonRelationalValue):
+    """Set of symbolic memory regions."""
 
     def __init__(
             self, invd: "CFunInvDictionary", ixval: IndexedTableValue) -> None:
@@ -277,6 +283,7 @@ class CNRVRegionSet(CNonRelationalValue):
 
 @invregistry.register_tag("iz", CNonRelationalValue)
 class CNRVInitializedSet(CNonRelationalValue):
+    """Set of initialized variables."""
 
     def __init__(
             self, invd: "CFunInvDictionary", ixval: IndexedTableValue) -> None:
@@ -296,6 +303,7 @@ class CNRVInitializedSet(CNonRelationalValue):
 
 @invregistry.register_tag("ps", CNonRelationalValue)
 class CNRVPolicyStateSet(CNonRelationalValue):
+    """State machine (currently not used)."""
 
     def __init__(
             self, invd: "CFunInvDictionary", ixval: IndexedTableValue) -> None:
