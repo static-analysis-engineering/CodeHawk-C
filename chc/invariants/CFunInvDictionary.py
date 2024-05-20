@@ -5,7 +5,7 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2020-2022 Henny B. Sipma
 # Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -26,10 +26,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Dictionary of indexed function invariants."""
 
 import xml.etree.ElementTree as ET
 
-from typing import List, TYPE_CHECKING
+from typing import Callable, Dict, List, Mapping, TYPE_CHECKING
 
 from chc.invariants.CFunDictionaryRecord import invregistry
 from chc.invariants.CInvariantFact import CInvariantFact
@@ -59,6 +60,11 @@ class CFunInvDictionary(object):
             self.invariant_fact_table,
             # self.invariant_list_table
         ]
+        self._objmaps: Dict[
+            str, Callable[[], Mapping[int, IT.IndexedTableValue]]] = {
+                "nrv": self.get_non_relational_value_map,
+                "invfact": self.get_invariant_fact_map
+            }
         self.initialize(xnode)
 
     @property
@@ -85,11 +91,18 @@ class CFunInvDictionary(object):
             self.non_relational_value_table.retrieve(ix),
             CNonRelationalValue)
 
+    def get_non_relational_value_map(self) -> Dict[int, IT.IndexedTableValue]:
+        return self.non_relational_value_table.objectmap(
+            self.get_non_relational_value)
+
     def get_invariant_fact(self, ix: int) -> CInvariantFact:
         return invregistry.mk_instance(
             self,
             self.invariant_fact_table.retrieve(ix),
             CInvariantFact)
+
+    def get_invariant_fact_map(self) -> Dict[int, IT.IndexedTableValue]:
+        return self.invariant_fact_table.objectmap(self.get_invariant_fact)
 
     # ------------------- Provide read_xml service ---------------------------
 
@@ -112,6 +125,21 @@ class CFunInvDictionary(object):
                     "Inv dictionary table " + t.name + " not found")
 
     # ---------------------- Printing ----------------------------------------
+
+    def objectmap_to_string(self, name: str) -> str:
+        if name in self._objmaps:
+            objmap = self._objmaps[name]()
+            lines: List[str] = []
+            if len(objmap) == 0:
+                lines.append("\nTable for {name} is empty\n")
+            else:
+                lines.append("index  value")
+                lines.append("-" * 80)
+                for (ix, obj) in objmap.items():
+                    lines.append(str(ix).rjust(3) + "    " + str(obj))
+            return "\n".join(lines)
+        else:
+            raise UF.CHCError(f"Name: {name} does not correspond to a table")
 
     def __str__(self) -> str:
         lines: List[str] = []

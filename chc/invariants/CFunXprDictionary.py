@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2020-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,14 +26,16 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Dictionary of indexed expressions for an individual function."""
 
 import os
 
 import xml.etree.ElementTree as ET
 
-from typing import List, TYPE_CHECKING
+from typing import Callable, Dict, List, Mapping, TYPE_CHECKING
 
 import chc.util.fileutil as UF
+from chc.util.IndexedTable import IndexedTableValue
 import chc.util.IndexedTable as IT
 
 from chc.invariants.CFunDictionaryRecord import xprregistry
@@ -71,6 +73,15 @@ class CFunXprDictionary(object):
             self.xpr_list_table,
             self.xpr_list_list_table
         ]
+        self._objmaps: Dict[
+            str, Callable[[], Mapping[int, IndexedTableValue]]] = {
+                "numerical": self.get_numerical_map,
+                "symbol": self.get_symbol_map,
+                "variable": self.get_variable_map,
+                "xcst": self.get_xcst_map,
+                "xpr": self.get_xpr_map,
+                "xprlist": self.get_xpr_list_map,
+                "xprlistlist": self.get_xpr_list_list_map}
         self.initialize(xnode)
 
     @property
@@ -85,17 +96,26 @@ class CFunXprDictionary(object):
         else:
             raise UF.CHCError("Illegal numerical index value: " + str(ix))
 
+    def get_numerical_map(self) -> Dict[int, IndexedTableValue]:
+        return self.numerical_table.objectmap(self.get_numerical)
+
     def get_symbol(self, ix: int) -> CXSymbol:
         if ix > 0:
             return CXSymbol(self, self.symbol_table.retrieve(ix))
         else:
             raise UF.CHCError("Illegal symbol index value: " + str(ix))
 
+    def get_symbol_map(self) -> Dict[int, IndexedTableValue]:
+        return self.symbol_table.objectmap(self.get_symbol)
+
     def get_variable(self, ix: int) -> CXVariable:
         if ix > 0:
             return CXVariable(self, self.variable_table.retrieve(ix))
         else:
             raise UF.CHCError("Illegal variable index value: " + str(ix))
+
+    def get_variable_map(self) -> Dict[int, IndexedTableValue]:
+        return self.variable_table.objectmap(self.get_variable)
 
     def get_xcst(self, ix: int) -> CXConstant:
         if ix > 0:
@@ -106,6 +126,9 @@ class CFunXprDictionary(object):
         else:
             raise UF.CHCError("Illegal constant index value: " + str(ix))
 
+    def get_xcst_map(self) -> Dict[int, IndexedTableValue]:
+        return self.xcst_table.objectmap(self.get_xcst)
+
     def get_xpr(self, ix: int) -> CXXpr:
         if ix > 0:
             return xprregistry.mk_instance(
@@ -115,17 +138,26 @@ class CFunXprDictionary(object):
         else:
             raise UF.CHCError("Illegal xpr index value: " + str(ix))
 
+    def get_xpr_map(self) -> Dict[int, IndexedTableValue]:
+        return self.xpr_table.objectmap(self.get_xpr)
+
     def get_xpr_list(self, ix: int) -> CXprList:
         if ix > 0:
             return CXprList(self, self.xpr_list_table.retrieve(ix))
         else:
             raise UF.CHCError("Illegal xpr-list index value: " + str(ix))
 
+    def get_xpr_list_map(self) -> Dict[int, IndexedTableValue]:
+        return self.xpr_list_table.objectmap(self.get_xpr_list)
+
     def get_xpr_list_list(self, ix: int) -> CXprListList:
         if ix > 0:
             return CXprListList(self, self.xpr_list_list_table.retrieve(ix))
         else:
             raise UF.CHCError("Illegal xpr-list-list index value: " + str(ix))
+
+    def get_xpr_list_list_map(self) -> Dict[int, IndexedTableValue]:
+        return self.xpr_list_list_table.objectmap(self.get_xpr_list_list)
 
     # ------------ Provide read_xml service ----------------------------------
 
@@ -148,6 +180,21 @@ class CFunXprDictionary(object):
                     "Xpr dictionary table " + t.name + " not found")
 
     # ------------------ Printing --------------------------------------------
+
+    def objectmap_to_string(self, name: str) -> str:
+        if name in self._objmaps:
+            objmap = self._objmaps[name]()
+            lines: List[str] = []
+            if len(objmap) == 0:
+                lines.append(f"\nTable for {name} is empty\n")
+            else:
+                lines.append("index  value")
+                lines.append("-" * 80)
+                for (ix, obj) in objmap.items():
+                    lines.append(str(ix).rjust(3) + "    " + str(obj))
+            return "\n".join(lines)
+        else:
+            raise UF.CHCError(f"Name: {name} does not correspond to a table")
 
     def __str__(self) -> str:
         lines: List[str] = []

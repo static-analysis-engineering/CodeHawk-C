@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2020-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,7 +26,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
-
+"""Symbolic values that are constant in the context of a function."""
 
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
@@ -92,6 +92,11 @@ class CVConstantValueVariable(CFunVarDictionaryRecord):
 
 @varregistry.register_tag("iv", CVConstantValueVariable)
 class CVVInitialValue(CVConstantValueVariable):
+    """Inital value of a variable at function entry.
+
+    - args[0]: index of original variable in the xprdictionary
+    - args[1]: index of variable type in cdictionary
+    """
 
     def __init__(
             self, vd: "CFunVarDictionary", ixval: IndexedTableValue) -> None:
@@ -115,6 +120,13 @@ class CVVInitialValue(CVConstantValueVariable):
 
 @varregistry.register_tag("frv", CVConstantValueVariable)
 class CVVFunctionReturnValue(CVConstantValueVariable):
+    """Return value from a direct function call at a particular callsite.
+
+    - args[0]: index of callsite location in file declarations
+    - args[1]: index of programcontext in context dictionary
+    - args[2]: vid of the varinfo of the function called
+    - args[3..]: indices of argument expressions to the call in the xprdictionary
+    """
 
     def __init__(
             self, vd: "CFunVarDictionary", ixval: IndexedTableValue) -> None:
@@ -152,6 +164,14 @@ class CVVFunctionReturnValue(CVConstantValueVariable):
 
 @varregistry.register_tag("erv", CVConstantValueVariable)
 class CVVExpFunctionReturnValue(CVConstantValueVariable):
+    """Return value from an indirect function call at a particular callsite.
+
+    - args[0]: index of callsite location in file declarations
+    - args[1]: index of porgramcontext in context dictionary
+    - args[2]: index of indirect call expression in xprdictionary
+    - args[3]: index of the typ of the call expression in the cdictionary
+    - args[4..]: indices of argument expressions to the call in the xprdictionary
+    """
 
     def __init__(
             self, vd: "CFunVarDictionary", ixval: IndexedTableValue) -> None:
@@ -189,6 +209,15 @@ class CVVExpFunctionReturnValue(CVConstantValueVariable):
 
 @varregistry.register_tag("fsev", CVConstantValueVariable)
 class CVVSideEffectValue(CVConstantValueVariable):
+    """Side effect value of a direct call at a particular call site.
+
+    - args[0]: index of callsite location in file declarations
+    - args[1]: index of programcontext in context dictionary
+    - args[2]: vid of the varinfo of the function called
+    - args[3]: argument index of the side-effect (index starting at 1)
+    - args[4]: index of the type of side-effect value in cdictionary
+    - args[5..]: indices of the arguments passed to the call in xprdictionary
+    """
 
     def __init__(
             self, vd: "CFunVarDictionary", ixval: IndexedTableValue) -> None:
@@ -204,7 +233,7 @@ class CVVSideEffectValue(CVConstantValueVariable):
 
     @property
     def callee(self) -> "CVarInfo":
-        return self.fdecls.get_varinfo(self.args[2])
+        return self.fundecls.get_varinfo(self.args[2])
 
     @property
     def argindex(self) -> int:
@@ -234,6 +263,16 @@ class CVVSideEffectValue(CVConstantValueVariable):
 
 @varregistry.register_tag("esev", CVConstantValueVariable)
 class CVVExpSideEffectValue(CVConstantValueVariable):
+    """Side effect value of an indirect call at a particular call site.
+
+    - args[0]: index of callsite location in file declarations
+    - args[1]: index of programcontext in context dictionary
+    - args[2]: index of the indirect call expression in the xprdictionary
+    - args[3]: argument index of the side-effect value (starting at 1)
+    - args[4]: index of the type of the side-effect value in cdictionary
+    - args[5..]: indices of the arguments passed to the call in xprdictionary
+    """
+
     def __init__(
             self, vd: "CFunVarDictionary", ixval: IndexedTableValue) -> None:
         CVConstantValueVariable.__init__(self, vd, ixval)
@@ -278,6 +317,11 @@ class CVVExpSideEffectValue(CVConstantValueVariable):
 
 @varregistry.register_tag("sv", CVConstantValueVariable)
 class CVVSymbolicValue(CVConstantValueVariable):
+    """Value representing a constant-value expression.
+
+    - args[0]: index of the original expression in the xprdictionary
+    - args[1]: index of the type of the expression in the cdictionary
+    """
 
     def __init__(
             self, vd: "CFunVarDictionary", ixval: IndexedTableValue) -> None:
@@ -301,6 +345,13 @@ class CVVSymbolicValue(CVConstantValueVariable):
 
 @varregistry.register_tag("tv", CVConstantValueVariable)
 class CVVTaintedValue(CVConstantValueVariable):
+    """External input value, optionally bounded.
+
+    - args[0]: index of the external variable in the xprdictionary
+    - args[1]: index of lower bound value in xprdictionary (or -1 for unbounded)
+    - args[2]: index of upper bound vlaue in xprdictionary (or -1 for unbounded)
+    - args[3]: index of the type of the variable in the cdictionary
+    """
 
     def __init__(
             self, vd: "CFunVarDictionary", ixval: IndexedTableValue) -> None:
@@ -373,6 +424,11 @@ class CVVByteSequence(CVConstantValueVariable):
 
 @varregistry.register_tag("ma", CVConstantValueVariable)
 class CVVMemoryAddress(CVConstantValueVariable):
+    """Memory address.
+
+    - args[0]: memory reference index
+    - args[1]: index of the offset in the cdictionary
+    """
 
     def __init__(
             self, vd: "CFunVarDictionary", ixval: IndexedTableValue) -> None:

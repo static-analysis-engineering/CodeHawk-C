@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2020-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,6 +26,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Table of invariant facts for an individual function."""
 
 import xml.etree.ElementTree as ET
 
@@ -95,7 +96,8 @@ class CFunInvariantTable:
                                 self.invd.get_invariant_fact(findex))
         return self._invariants
 
-    def context_invariants(self, context: "ProgramContext") -> List[CInvariantFact]:
+    def context_invariants(
+            self, context: "ProgramContext") -> List[CInvariantFact]:
         ictxt = self.ctxtd.index_cfg_projection(context)
         if ictxt in self.invariants:
             return self.invariants[ictxt]
@@ -173,13 +175,3 @@ class CFunInvariantTable:
             for inv in invs:
                 lines.append("  " + str(inv))
         return "\n".join(lines)
-
-    '''
-    def _read_xml(self, xnode):
-        for xloc in xnode.findall("loc"):
-            ictxt = int(xloc.get("ictxt"))
-            self.invariants[ictxt] = []
-            if "ifacts" in xloc.attrib:
-                for findex in [int(x) for x in xloc.get("ifacts").split(",")]:
-                    self.invariants[ictxt].append(self.invd.get_invariant_fact(findex))
-    '''
