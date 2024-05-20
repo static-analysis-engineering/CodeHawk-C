@@ -26,7 +26,16 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
-"""Object representation of sum type s_term (term in an external predicate)."""
+"""Object representation of sum type s_term (term in an external predicate).
+
+Object representation of the corresponding OCaml sumtype: s_term_t: a term that
+solely refers to entities that are visible outside of a function, such as its
+parameters or return value.
+
+The properties of a term are constructed from its indexed value in the
+InterfaceDictionary.
+
+"""
 from typing import Dict, List, Optional, TYPE_CHECKING
 import xml.etree.ElementTree as ET
 

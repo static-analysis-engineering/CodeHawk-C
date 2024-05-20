@@ -1,5 +1,18 @@
 {
     "headers": {
+	"string": {
+	    "path": "string",
+	    "files": {
+		"strlen": {
+		    "path": "strlen",
+		    "file": "strlen_test.c"
+		},
+		"strncpy": {
+		    "path": "strncpy",
+		    "file": "strncpy_test.c"
+		}
+	    }
+	},
 	"time": {
 	    "path": "time",
 	    "files": {

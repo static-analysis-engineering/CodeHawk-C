@@ -216,26 +216,3 @@ class CLinker:
         chklogger.logger.info("Saving global compinfos to %s", filename)
         with open(filename, "w") as fp:
             fp.write(UX.doc_to_pretty(ET.ElementTree(xroot)))
-
-    """
-    def _checkcompinfopairs(self) -> None:
-        self.possiblycompatiblestructs = []
-        compinfos = sorted(self.compinfos, key=lambda c: c.getid())
-        print(
-            "Checking all combinations of "
-            + str(len(compinfos))
-            + " struct definitions"
-        )
-        for (c1, c2) in itertools.combinations(compinfos, 2):
-            if c1.getid() == c2.getid():
-                continue
-            pair = (c1.getid(), c2.getid())
-            if c1.getfieldcount() == c2.getfieldcount():
-                if pair in self.notcompatiblestructs:
-                    continue
-                cc = CompCompatibility(c1, c2)
-                if cc.are_shallow_compatible(self.notcompatiblestructs):
-                    self.possiblycompatiblestructs.append(pair)
-                else:
-                    self.notcompatiblestructs.add(pair)
-    """

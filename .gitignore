@@ -1,12 +1,17 @@
 # CodeHawk C Analyzer artifacts
 semantics
 *.i
+*.cch
 
 # CodeHawk-C local configuration file
 ConfigLocal.py
 
 # Emacs
 *.py~
+*.rst~
+*.c~
+*.css~
+chkc~
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -15,6 +20,7 @@ __pycache__/
 
 # C extensions
 *.so
+*.o
 
 # Distribution / packaging
 .Python

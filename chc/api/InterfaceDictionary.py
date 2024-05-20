@@ -104,7 +104,8 @@ class InterfaceDictionary(object):
             self.postrequest_table,
             self.postassume_table,
             self.ds_condition_table]
-        self._objmaps: Dict[str, Callable[[], Mapping[int, IndexedTableValue]]] = {
+        self._objmaps: Dict[
+            str, Callable[[], Mapping[int, IndexedTableValue]]] = {
             "apiparam": self.get_api_parameter_map,
             "postassume": self.get_postassume_map,
             "postrequest": self.get_postrequest_map,
@@ -668,10 +669,12 @@ class InterfaceDictionary(object):
             objmap = self._objmaps[name]()
             lines: List[str] = []
             if len(objmap) == 0:
-                lines.append("Table is empty")
+                lines.append(f"\nTable for {name} is empty\n")
             else:
+                lines.append("index  value")
+                lines.append("-" * 80)
                 for (ix, obj) in objmap.items():
-                    lines.append(str(ix).rjust(3) + "  " + str(obj))
+                    lines.append(str(ix).rjust(3) + "    " + str(obj))
             return "\n".join(lines)
         else:
             raise UF.CHCError(

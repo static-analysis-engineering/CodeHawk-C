@@ -175,7 +175,7 @@ def get_function_method_count(
     """Create function, discharge method count dictionary from proof obligation list.
 
     Args:
-      pos: flat list of proof obligations (primary or secondary)
+      pos: flat list of proof obligations (primary or supporting)
       filefilter: predicate that specifies which c files to include
       extradsmethods: additional discharge methods to include in classification
     Returns:
@@ -907,7 +907,7 @@ def totals_to_presentation_string(
         + "line count".rjust(10)
         + "total ppo's".rjust(15)
         + "%closed".rjust(10)
-        + "total spo'".rjust(15)
+        + "total spo's".rjust(15)
         + "%closed".rjust(10))
     barlen = 64 + rhlen
     lines.append("-" * barlen)

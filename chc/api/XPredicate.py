@@ -26,7 +26,15 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
-"""Object representation of sum type xpredicate_t."""
+"""Object representation of sum type xpredicate_t.
+
+Object representation of the corresponding OCaml sumtype: xpredicate_t: a
+predicate over s_term_t terms (terms that are visible outside of a function).
+
+The properties of an xpredicate are constructed from its indexed value in the
+InterfaceDictionary
+
+"""
 
 from typing import cast, List, Optional, TYPE_CHECKING
 import xml.etree.ElementTree as ET
