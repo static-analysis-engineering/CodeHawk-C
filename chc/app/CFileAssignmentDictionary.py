@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2020-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,6 +26,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Dictionary of global and field assignments."""
+
 import xml.etree.ElementTree as ET
 
 from typing import List, Optional, TYPE_CHECKING
@@ -41,20 +43,9 @@ if TYPE_CHECKING:
     from chc.app.CFileDeclarations import CFileDeclarations
     from chc.app.CFileDictionary import CFileDictionary
 
-'''
-assignment_constructors = {
-    "init": lambda x: GA.InitAssignment(*x),
-    "g": lambda x: GA.GlobalAssignment(*x),
-    "gi": lambda x: GA.GlobalIndexAssignment(*x),
-    "s": lambda x: GA.StaticAssignment(*x),
-    "si": lambda x: GA.StaticIndexAssignment(*x),
-    "f": lambda x: GA.FieldAssignment(*x),
-    "u": lambda x: GA.UnknownAssignment(*x),
-}
-'''
 
 class CFileAssignmentDictionary(object):
-    """Dictionary that encodes assignments to global and static variables and fields."""
+    """Dictionary of assignments to global and static variables and fields."""
 
     def __init__(self, cfile: "CFile", xnode: Optional[ET.Element]) -> None:
         self._cfile = cfile
@@ -94,7 +85,6 @@ class CFileAssignmentDictionary(object):
         def f(index: int, tags: List[str], args: List[int]) -> CFileAssignment:
             itv = IT.IndexedTableValue(index, tags, args)
             return adregistry.mk_instance(self, itv, CFileAssignment)
-            # return assignment_constructors[tags[0]]((self, index, tags, args))
 
         return self.assignment_table.add_tags_args(tags, args, f)
 
@@ -119,22 +109,3 @@ class CFileAssignmentDictionary(object):
         for t in self.tables:
             lines.append(str(t))
         return "\n".join(lines)
-
-    '''
-    def _read_xml_function_name_table(self, txnode):
-        def get_value(node):
-            rep = IT.get_rep(node)
-            args = (self,) + rep
-            return GA.GlobalAssignmentFunctionName(*args)
-
-        self.function_name_table.read_xml(txnode, "n", get_value)
-
-    def _read_xml_assignment_table(self, txnode):
-        def get_value(node):
-            rep = IT.get_rep(node)
-            tag = rep[1][0]
-            args = (self,) + rep
-            return assignment_constructors[tag](args)
-
-        self.assignment_table.read_xml(txnode, "n", get_value)
-    '''

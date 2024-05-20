@@ -5,7 +5,7 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
+# Copyright (c) 2020-2022 Henny B. Sipma
 # Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -26,27 +26,30 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Main access point for a c function."""
 
 import xml.etree.ElementTree as ET
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+
+from typing import Any, Callable, Dict, List, Optional, Tuple, TYPE_CHECKING
 
 
 from chc.api.CFunctionApi import CFunctionApi
-
 
 from chc.app.CLocation import CLocation
 from chc.app.CFunDeclarations import CFunDeclarations
 from chc.app.CInstr import CCallInstr
 from chc.app.CStmt import CFunctionBody
+from chc.app.IndexManager import FileVarReference
+
 from chc.invariants.CFunVarDictionary import CFunVarDictionary
 from chc.invariants.CFunInvDictionary import CFunInvDictionary
 from chc.invariants.CFunInvariantTable import CFunInvariantTable
 from chc.invariants.CInvariantFact import CInvariantFact
 
 from chc.proof.CFunPODictionary import CFunPODictionary
+from chc.proof.CFunctionCallsiteSPOs import CFunctionCallsiteSPOs
 from chc.proof.CFunctionPO import CFunctionPO
 from chc.proof.CFunctionPPO import CFunctionPPO
-from chc.proof.CFunctionPPOs import CFunctionPPOs
 from chc.proof.CFunctionProofs import CFunctionProofs
 from chc.proof.CFunctionSPOs import CFunctionSPOs
 
@@ -54,6 +57,7 @@ import chc.util.fileutil as UF
 from chc.util.loggingutil import chklogger
 
 if TYPE_CHECKING:
+    from chc.api.CFunctionContract import CFunctionContract
     from chc.api.InterfaceDictionary import InterfaceDictionary
     from chc.app.CApplication import CApplication
     from chc.app.CFile import CFile
@@ -62,7 +66,7 @@ if TYPE_CHECKING:
     from chc.app.CVarInfo import CVarInfo
 
 
-class CFunction(object):
+class CFunction:
     """Function implementation."""
 
     def __init__(self, cfile: "CFile", xnode: ET.Element, fname: str) -> None:
@@ -80,7 +84,6 @@ class CFunction(object):
         self._vard: Optional[CFunVarDictionary] = None
         self._invd: Optional[CFunInvDictionary] = None
         self._invarianttable: Optional[CFunInvariantTable] = None
-        self._initialize()
 
     def xmsg(self, txt: str) -> str:
         return "Function " + self.name + ": " + txt
@@ -106,7 +109,7 @@ class CFunction(object):
         return self.cfile.projectname
 
     @property
-    def cfilepath(self) -> str:
+    def cfilepath(self) -> Optional[str]:
         return self.cfile.cfilepath
 
     @property
@@ -159,6 +162,9 @@ class CFunction(object):
             else:
                 raise UF.CHCError(self.xmsg("api file not found"))
         return self._api
+
+    def has_outstanding_api_requests(self) -> bool:
+        return self.api.has_outstanding_requests()
 
     @property
     def svar(self) -> "CVarInfo":
@@ -250,7 +256,11 @@ class CFunction(object):
     def invarianttable(self) -> CFunInvariantTable:
         if self._invarianttable is None:
             ixnode = UF.get_invs_xnode(
-                self.capp.path, self.cfile.name, self.name)
+                self.targetpath,
+                self.projectname,
+                self.cfilepath,
+                self.cfilename,
+                self.name)
             if ixnode is not None:
                 xinvs = ixnode.find("location-invariants")
                 if xinvs is not None:
@@ -288,7 +298,6 @@ class CFunction(object):
                 self.name)
             if xpponode is None:
                 raise UF.CHCError(self.xmsg("ppo file is missing"))
-            chklogger.logger.info("Ppo file for %s retrieved", self.name)
             xxpponode = xpponode.find("ppos")
             if xxpponode is None:
                 raise UF.CHCError(self.xmsg("_ppo file has no ppos element"))
@@ -300,7 +309,6 @@ class CFunction(object):
                 self.name)
             if xsponode is None:
                 raise UF.CHCError(self.xmsg("spo file is missing"))
-            chklogger.logger.info("Spo file for %s retrieved", self.name)
             xxsponode = xsponode.find("spos")
             if xxsponode is None:
                 raise UF.CHCError(self.xmsg("_spo file has no spos element"))
@@ -311,18 +319,7 @@ class CFunction(object):
         self._api = None
         self._podictionary = None
         self._vardictionary = None
-
-    '''
-    def export_function_data(self, result: Dict[str, object]) -> None:
-        fnresult: Dict[str, object] = {}
-        fnresult["type"] = self.ftype.to_idict()
-        fnresult["typestr"] = str(self.ftype)
-        fnresult["stmt-count"] = self.get_stmt_count()
-        fnresult["instr-count"] = self.get_instr_count()
-        fnresult["call-instrs"] = [i.to_dict() for i in self.get_call_instrs()]
-        fnresult["call-instrs-strs"] = [str(i) for i in self.get_call_instrs()]
-        result[self.name] = fnresult
-    '''
+        self._proofs = None
 
     def get_formal_vid(self, name: str) -> int:
         for v in self.formals:
@@ -341,6 +338,15 @@ class CFunction(object):
                 return self.locals[v].vid
         raise UF.CHCError("Could not find vid for variable \"" + vname + "\"")
 
+    def has_variable_vid(self, vname: str) -> bool:
+        for v in self.formals:
+            if self.formals[v].vname == vname:
+                return True
+        for v in self.locals:
+            if self.locals[v].vname == vname:
+                return True
+        return False
+
     @property
     def strings(self) -> List[str]:
         return self.sbody.strings
@@ -352,52 +358,68 @@ class CFunction(object):
     def has_function_contract(self) -> bool:
         return self.cfile.has_function_contract(self.name)
 
-    def get_function_contract(self):
+    def get_function_contract(self)  -> Optional["CFunctionContract"]:
         if self.has_function_contract():
             return self.cfile.get_function_contract(self.name)
+        return None
 
     def selfignore(self):
         return self.has_function_contract() and self.get_function_contract().ignore
 
-    def iter_ppos(self, f):
+    def iter_ppos(self, f: Callable[[CFunctionPPO], None]) -> None:
         self.proofs.iter_ppos(f)
 
-    def get_ppo(self, index):
+    def get_ppo(self, index: int) -> CFunctionPPO:
         return self.proofs.get_ppo(index)
 
-    def get_spo(self, index):
+    def get_spo(self, index: int) -> CFunctionPO:
         return self.proofs.get_spo(index)
 
-    def iter_callsites(self, f):
+    def iter_callsites(self, f: Callable[[CFunctionCallsiteSPOs], None]) -> None:
         self.proofs.iter_callsites(f)
 
-    def get_vid(self):
-        return self.svar.get_vid()
+    def get_vid(self) -> int:
+        return self.svar.vid
 
     def get_api(self) -> CFunctionApi:
         return self.api
 
-    def get_location(self):
-        return self.svar.vdecl
+    def has_location(self) -> bool:
+        return self.svar.vdecl is not None
+
+    def get_location(self) -> CLocation:
+        if self.svar.vdecl is not None:
+            return self.svar.vdecl
+        else:
+            raise UF.CHCError(f"Function {self.name} does not have a location")
+
+    def has_source_code_file(self) -> bool:
+        return self.has_location()
 
     def get_source_code_file(self) -> str:
-        return self.get_location().file
+        if self.has_location():
+            return self.get_location().file
+        else:
+            raise UF.CHCError(f"Function {self.name} does not have source file")
+
+    def has_line_number(self) -> bool:
+        if self.has_source_code_file():
+            srcfile = self.get_source_code_file()
+            return self.cfile.cfilename + ".c" == srcfile
+        else:
+            return False
 
     def get_line_number(self) -> int:
-        if self.cfile.name + ".c" == self.get_source_code_file():
+        if self.has_line_number():
             return self.get_location().line
-        raise Exception("No relevant line number")
+        else:
+            raise UF.CHCError(f"Function {self.name} does not have a line number")
 
-    def get_formals(self):
-        return self.formals.values()
+    def get_formals(self)-> List["CVarInfo"] :
+        return list(self.formals.values())
 
-    def get_locals(self):
-        return self.locals.values()
-
-    '''
-    def get_body(self) -> CFunctionBody:
-        return self.body
-    '''
+    def get_locals(self) -> List["CVarInfo"]:
+        return list(self.locals.values())
 
     @property
     def block_count(self) -> int:
@@ -415,21 +437,11 @@ class CFunction(object):
     def call_instrs(self) -> List[CCallInstr]:
         return self.sbody.call_instrs
 
-    def get_invariants(self):
-        self._readinvariants()
-        return self.invariants
+    def violates_contract_conditions(self) -> bool:
+        return len(self.api.contract_condition_failures) > 0
 
-    def violates_contract_conditions(self):
-        return len(self.api.contractconditionfailures) > 0
-
-    def get_contract_condition_violations(self):
-        return self.api.contractconditionfailures
-
-    def get_proofs(self):
-        return self.proofs
-
-    def get_callsite_spos(self):
-        return self.proofs.getspos
+    def get_contract_condition_violations(self) -> List[Tuple[str, str]]:
+        return self.api.contract_condition_failures
 
     def update_spos(self) -> None:
         if self.selfignore():
@@ -442,21 +454,20 @@ class CFunction(object):
         self.proofs.collect_post_assumes()
         self.save_spos()
 
-    def distribute_post_guarantees(self):
+    def distribute_post_guarantees(self) -> None:
         self.proofs.distribute_post_guarantees()
 
     def collect_post(self) -> None:
         """Add postcondition requests to the contract of the callee"""
         for r in self.api.postcondition_requests.values():
-            tgtfid = r.callee.vid
-            tgtfun = self.capp.resolve_vid_function(self.cfile.index, tgtfid)
+            tgtvid = r.callee.vid
+            filevar = FileVarReference(self.cfile.index, tgtvid)
+            tgtfun = self.capp.resolve_vid_function(filevar)
             if tgtfun is None:
-                print(
-                    "No function found to register post request in function "
-                    + self.cfile.name
-                    + ":"
-                    + self.name
-                )
+                chklogger.logger.warning(
+                    ("No function found to register post request in function: "
+                     + "%s:%s"),
+                    self.cfile.name, self.name)
             else:
                 tgtcfile = tgtfun.cfile
                 if tgtfun.cfile.has_function_contract(tgtfun.name):
@@ -464,7 +475,8 @@ class CFunction(object):
                     tgtpostconditionix = tgtifx.index_xpredicate(r.postcondition)
                     tgtpostcondition = tgtifx.get_xpredicate(tgtpostconditionix)
                     cfuncontract = tgtcfile.get_function_contract(tgtfun.name)
-                    cfuncontract.add_postrequest(tgtpostcondition)
+                    if cfuncontract is not None:
+                        cfuncontract.add_postrequest(tgtpostcondition)
 
     def save_spos(self) -> None:
         self.proofs.save_spos()
@@ -487,34 +499,23 @@ class CFunction(object):
     def reload_spos(self) -> None:
         self.proofs.reload_spos()
 
-    def get_ppos(self) -> List[CFunctionPPO]:
+    def get_ppos(self) -> List[CFunctionPO]:
         return self.proofs.ppolist
 
     def get_spos(self) -> List[CFunctionPO]:
         return self.proofs.spolist
 
-    def get_open_ppos(self) -> List[CFunctionPPO]:
+    def get_open_ppos(self) -> List[CFunctionPO]:
         return self.proofs.open_ppos
 
     def get_open_spos(self) -> List[CFunctionPO]:
         return self.proofs.open_spos
 
-    def get_violations(self):
-        return self.proofs.get_violations()
+    def get_ppos_violated(self) -> List[CFunctionPO]:
+        return self.proofs.ppos_violated
 
-    def get_spo_violations(self):
+    def get_spo_violations(self) -> List[CFunctionPO]:
         return self.proofs.get_spo_violations()
 
-    def get_delegated(self):
-        return self.proofs.get_delegated()
-
-    def _initialize(self) -> None:
-        pass
-    '''
-        for v in self.cfundecls.get_formals():
-            self.formals[v.get_vid()] = v
-        for v in self.cfundecls.get_locals():
-            self.locals[v.get_vid()] = v
-        self.vard.initialize()
-        self.invtable.initialize()
-    '''
+    def get_ppos_delegated(self) -> List[CFunctionPO]:
+        return self.proofs.ppos_delegated

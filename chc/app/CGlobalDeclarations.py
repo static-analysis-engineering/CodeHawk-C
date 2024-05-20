@@ -26,8 +26,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Declarations of global entities across files."""
 
-from typing import Any, Callable, Dict, List, Optional, Tuple, TYPE_CHECKING
+from dataclasses import dataclass
+
+from typing import (
+    Any, Callable, cast, Dict, List, Optional, Set, Tuple, TYPE_CHECKING)
 import xml.etree.ElementTree as ET
 
 import chc.util.fileutil as UF
@@ -39,14 +43,17 @@ from chc.app.CDeclarations import CDeclarations
 from chc.app.CFieldInfo import CFieldInfo
 from chc.app.CGlobalDictionary import CGlobalDictionary
 from chc.app.CInitInfo import CInitInfo, COffsetInitInfo
+from chc.app.IndexManager import VarReference, CKeyReference
 from chc.app.CVarInfo import CVarInfo
 
-from chc.util.IndexedTable import IndexedTable
+from chc.util.IndexedTable import IndexedTable, IndexedTableValue
 from chc.util.loggingutil import chklogger
 
 if TYPE_CHECKING:
+    from chc.api.CGlobalContract import CGlobalContract
     from chc.app.CApplication import CApplication
     from chc.app.CFile import CFile
+    from chc.app.CInitInfo import CSingleInitInfo, CCompoundInitInfo
 
 
 class ConjectureFailure(Exception):
@@ -57,46 +64,42 @@ class ConjectureFailure(Exception):
 
     def __str__(self) -> str:
         return (
-            "Compinfo "
-            + str(self.ckey)
-            + " is not compatible with global compinfo "
-            + str(self.gckey)
-        )
+            f"Compinfo {self.ckey} is not compatible with global compinfo {self.gckey}")
 
 
 class CGlobalDeclarations(CDeclarations):
-    """Dictionary that indexes global variables and struct definitions from all files.
+    """Dictionary that indexes global vars and struct definitions from all files.
 
-     The indexing of struct definitions may involve backtracking in the case of
-     structs that contain pointer references to itself, or circular references that
-     involve multiple structs.
+    The indexing of struct definitions may involve backtracking in the case of
+    structs that contain pointer references to itself, or circular references
+    that involve multiple structs.
 
-     The backtracking is performed per file. When a struct (represented by a compinfo)
-     is indexed its status is set to pending. When a request for a TComp ckey
-     conversion for the same compinfo is encountered a new global key is conjectured
-     as follows:
-     - gckey that has already been reserved for this ckey
-     - gckey that has already been conjectured for this ckey
-     - gckey for an existing global compinfo that has the same fields, if
-            (ckey,gckey) is not in the list of incompatibles
+    The backtracking is performed per file. When a struct (represented by a
+    compinfo) is indexed its status is set to pending. When a request for a
+    TComp ckey conversion for the same compinfo is encountered a new global
+    key is conjectured as follows:
+
+    - gckey that has already been reserved for this ckey
+    - gckey that has already been conjectured for this ckey
+    - gckey for an existing global compinfo that has the same fields, if
+      (ckey,gckey) is not in the list of incompatibles
     - reserve a new key from the indexed table and set its status to reserved,
-            and remove its pending status
+      and remove its pending status
 
+    When the compinfo for ckey has been constructed the state is updated as
+    follows:
 
-     When the compinfo for ckey has been constructed the state is updated as follows:
-     - if ckey had a reserved key the reserved key is now committed
-     - if ckey had a conjectured key and the conjectured key is the same as the
-           returned gckey, nothing needs to be done
-     - if ckey had a conjectured key but the conjectured key is not the same as the
-           returned gckey, add (ckey,gckey) to the list of incompatibles, reset
-           the indexed table to the file checkpoint, and re-index all compinfos
-           in the file.
+    - if ckey had a reserved key the reserved key is now committed
+    - if ckey had a conjectured key and the conjectured key is the same as the
+      returned gckey, nothing needs to be done
+    - if ckey had a conjectured key but the conjectured key is not the same as the
+      returned gckey, add (ckey,gckey) to the list of incompatibles, reset
+      the indexed table to the file checkpoint, and re-index all compinfos
+      in the file.
 
     """
 
     def __init__(self, capp: "CApplication", xnode: Optional[ET.Element]) -> None:
-        # Basic types dictionary
-        # CDeclarations.__init__(self, CGlobalDictionary(self))
         self._capp = capp
 
         # Global definitions and declarations dictionary
@@ -114,22 +117,24 @@ class CGlobalDeclarations(CDeclarations):
         ]
 
         # Collect names for compinfo equivalence classes
-        self.compinfo_names: Dict[Any, Any] = {}  # gckey -> string set
+        self.compinfo_names: Dict[int, Set[str]] = {}  # gckey -> string set
 
         # Collect storage classes for varinfo equivalence classes
-        self.varinfo_storage_classes: Dict[Any, Any] = {}  # gvid -> string
+        self._varinfo_storage_classes: Dict[int, Set[str]] = {}  # gvid -> string
 
         # Support data structures for linker
-        self.ckey2gckey: Dict[Any, Any] = {}  # fid -> ckey -> gckey
-        self.vid2gvid: Dict[Any, Any] = {}  # fid -> vid -> gvid
-        self.fieldstrings: Dict[Any, Any] = {}  # string of joined fields -> gckey list
-        self.pending: List[Any] = []
-        self.conjectured: Dict[Any, Any] = {}  # ckey -> gckey
-        self.reserved: Dict[Any, Any] = {}  # ckey -> gckey
-        self.incompatibles: Dict[Any, Any] = {}  # ckey -> gckey set
-        self.default_function_prototypes: List[Any] = []  # (fid,varinfo) list
+        self._ckey2gckey: Dict[int, Dict[int, int]] = {}  # fid -> ckey -> gckey
+        self._vid2gvid: Dict[int, Dict[int, int]] = {}  # fid -> vid -> gvid
 
-        self.globalcontract = self.capp.globalcontract
+        # string of joined fields -> gckey list
+        self._fieldstrings: Dict[str, List[int]] = {}
+        self.pending: List[int] = []
+        self.conjectured: Dict[int, int] = {}  # ckey -> gckey
+        self.reserved: Dict[int, int] = {}  # ckey -> gckey
+        self.incompatibles: Dict[int, Set[int]] = {}  # ckey -> gckey set
+
+        # (fid,varinfo) list
+        self.default_function_prototypes: List[Tuple[int, CVarInfo]] = []
 
         self._initialize(xnode)
         if self.compinfo_table.size() == 0:
@@ -144,32 +149,86 @@ class CGlobalDeclarations(CDeclarations):
         return self._capp
 
     @property
+    def globalcontract(self) -> "CGlobalContract":
+        return self.capp.globalcontract
+
+    @property
     def dictionary(self) -> "CGlobalDictionary":
         return self.capp.dictionary
 
+    @property
+    def varinfo_storage_classes(self) -> Dict[int, Set[str]]:
+        return self._varinfo_storage_classes
+
+    @property
+    def fieldstrings(self) -> Dict[str, List[int]]:
+        """Returns a map from a conjoined fieldstring to global struct keys
+
+        fieldstrings -> gckey
+        """
+        return self._fieldstrings
+
+    @property
+    def ckey2gckey(self) -> Dict[int, Dict[int, int]]:
+        """Returns the global compinfo key for a given file and compinfo key
+
+        fid -> ckey -> gckey
+        """
+
+        return self._ckey2gckey
+
+    def get_gckey(self, ckeyref: CKeyReference) -> Optional[int]:
+        if ckeyref.fid is None:
+            # this already is a global key
+            return ckeyref.ckey
+
+        if ckeyref.fid in self.ckey2gckey:
+            if ckeyref.ckey in self.ckey2gckey[ckeyref.fid]:
+                return self.ckey2gckey[ckeyref.fid][ckeyref.ckey]
+        return None
+
+    def register_gcompinfo(
+            self, ckeyref: CKeyReference, gcompinfo: CCompInfo) -> None:
+        if ckeyref.fid is None:
+            chklogger.logger.warning(
+                "register_gcompinfo is called with a global ckeyref: %s",
+                gcompinfo.name)
+            return
+
+        gckey = gcompinfo.ckey
+        fields = gcompinfo.field_strings
+        self._fieldstrings.setdefault(fields, [])
+        if gckey not in self.fieldstrings[fields]:
+            self._fieldstrings[fields].append(gckey)
+        self._ckey2gckey.setdefault(ckeyref.fid, {})
+        self._ckey2gckey[ckeyref.fid][ckeyref.ckey] = gckey
+
+    @property
+    def vid2gvid(self) -> Dict[int, Dict[int, int]]:
+        """Returns the global vid for a given file and varinfo vid.
+
+        fid -> vid -> gvid.
+        """
+
+        return self._vid2gvid
+
+    def get_gvid(self, varref: VarReference) -> Optional[int]:
+        if varref.fid is None:
+            chklogger.logger.warning(
+                "get_gvid is called with a global vid; returning global vid")
+            return varref.vid
+
+        if varref.fid in self.vid2gvid:
+            if varref.vid in self.vid2gvid[varref.fid]:
+                return self.vid2gvid[varref.fid][varref.vid]
+        return None
+
     def is_hidden_field(self, compname: str, fieldname: str) -> bool:
-        if self.globalcontract is not None:
-            return self.globalcontract.is_hidden_field(compname, fieldname)
-        return False
+        return self.globalcontract.is_hidden_field(compname, fieldname)
 
     def is_hidden_struct(self, filename: str, compname: str) -> bool:
-        if self.globalcontract is not None:
-            return self.globalcontract.is_hidden_struct(filename, compname)
-        return False
+        return self.globalcontract.is_hidden_struct(filename, compname)
 
-    '''
-    def get_stats(self) -> str:
-        lines = []
-        lines.append("=" * 80)
-        lines.append("Dictionary")
-        lines.append("=" * 80)
-        lines.append(self.dictionary.get_stats())
-        lines.append("=" * 80)
-        for t in self.tables:
-            if t.size() > 0:
-                lines.append(t.name.ljust(25) + str(t.size()).rjust(4))
-        return "\n".join(lines)
-    '''
     # ---------------------- Retrieve items from definitions dictionary ------
 
     def get_fieldinfo(self, ix: int) -> CFieldInfo:
@@ -206,56 +265,49 @@ class CGlobalDeclarations(CDeclarations):
                 return v
         raise Exception("No varinfo with name \"" + name + "\"")
 
-    def get_structname(self, ckey):
+    def get_compinfo_by_ckey(self, ckey: int) -> CCompInfo:
+        raise Exception("get_compinfo_by_ckey: not yet implemented")
+
+    def get_structname(self, ckey: int) -> str:
         if ckey in self.compinfo_names:
             return list(self.compinfo_names[ckey])[0]
         chklogger.logger.warning("Compinfo name for %s not found", str(ckey))
+        return "struct " + str(ckey)
 
-    def get_gcompinfo(self, fid, ckey):
-        gckey = self.get_gckey(fid, ckey)
+    def get_gcompinfo(self, ckeyref: CKeyReference) -> Optional[CCompInfo]:
+        """Returns the global compinfo associated with a file compinfo."""
+
+        if ckeyref.fid is None:
+            chklogger.logger.warning(
+                "get_gcompinfo is called with a global ckeyref")
+            return None
+
+        gckey = self.get_gckey(ckeyref)
         if gckey is not None:
-            return self.compinfo_table.retrieve(gckey)
+            return self.get_compinfo(gckey)
         return None
 
-    def is_struct(self, ckey: int) -> bool:
-        cinfo = self.get_compinfo(ckey)
-        if cinfo is None:
-            print("Compinfo " + str(ckey) + " not found")
-            return False
-        return self.get_compinfo(ckey).is_struct
+    def convert_ckey(self, ckeyref: CKeyReference) -> Optional[int]:
+        if ckeyref.fid is None:
+            # this already is a global key
+            return ckeyref.ckey
 
-    def convert_ckey(self, ckey: int, fid: int = -1) -> Optional[int]:
-        if fid >= 0:
-            return self.get_gckey(fid, ckey)
-        else:
-            return ckey
+        return self.get_gckey(ckeyref)
 
-    def get_gckey(self, fid: int, ckey: int) -> Optional[int]:
-        if fid in self.ckey2gckey:
-            if ckey in self.ckey2gckey[fid]:
-                return self.ckey2gckey[fid][ckey]
-        return None
-
-    def get_gvid(self, fid: int, vid: int) -> Optional[int]:
-        if fid in self.vid2gvid:
-            if vid in self.vid2gvid[fid]:
-                return self.vid2gvid[fid][vid]
-        return None
-
-    def list_compinfos(self):
-        lines = []
+    def list_compinfos(self) -> str:
+        lines: List[str] = []
         for gckey in self.compinfo_names:
             names = ",".join(list(self.compinfo_names[gckey]))
             lines.append(names)
         return "\n".join(sorted(lines))
 
-    def show_compinfos(self, name):
-        result = []
+    def show_compinfos(self, name: str) -> List[Tuple[int, CCompInfo]]:
+        result: List[Tuple[int, CCompInfo]] = []
         gckeys = [
-            x for x in self.compinfo_names.keys() if name in self.compinfo_names[x]
-        ]
+            x for x in self.compinfo_names.keys()
+            if name in self.compinfo_names[x]]
         for k in gckeys:
-            result.append((k, self.compinfo_table.retrieve(k)))
+            result.append((k, self.get_compinfo(k)))
         return result
 
     # -------------------- Linker support services ---------------------------
@@ -265,7 +317,7 @@ class CGlobalDeclarations(CDeclarations):
         self.conjectured = {}
         self.reserved = {}
 
-    def cleanup(self, checkpoint, ckey, gckey):
+    def cleanup(self, checkpoint: int, ckey: int, gckey: int) -> None:
         if ckey not in self.incompatibles:
             self.incompatibles[ckey] = set([])
         self.incompatibles[ckey].add(gckey)
@@ -273,10 +325,10 @@ class CGlobalDeclarations(CDeclarations):
         for k in self.compinfo_names.keys():
             if k >= checkpoint:
                 self.compinfo_names.pop(k)
-        for k in self.fieldstrings.keys():
-            for gckey in self.fieldstrings[k]:
+        for fs in self.fieldstrings.keys():
+            for gckey in self.fieldstrings[fs]:
                 if gckey >= checkpoint:
-                    self.fieldstrings[k].remove(gckey)
+                    self.fieldstrings[fs].remove(gckey)
 
     def get_state(self) -> str:
         lines = []
@@ -285,7 +337,8 @@ class CGlobalDeclarations(CDeclarations):
         lines.append("Reserved   : " + str(self.reserved))
         return "\n".join(lines)
 
-    def get_field_strings_conjecture(self, cname, fields, ckey):
+    def get_field_strings_conjecture(
+            self, cname: str, fields: str, ckey: int) -> Optional[int]:
         if fields in self.fieldstrings:
             for gckey in self.fieldstrings[fields]:
                 conjecturedkey = gckey
@@ -301,14 +354,14 @@ class CGlobalDeclarations(CDeclarations):
             return conjecturedkey
         return None
 
-    def conjecture_key(self, fid, compinfo):
-        ckey = compinfo.get_ckey()
+    def conjecture_key(self, fid: int, compinfo: CCompInfo) -> int:
+        ckey = compinfo.ckey
         if ckey in self.reserved:
             return self.reserved[ckey]
         if ckey in self.conjectured:
             return self.conjectured[ckey]
         conjecturedkey = self.get_field_strings_conjecture(
-            compinfo.get_name(), compinfo.get_field_strings(), ckey
+            compinfo.name, compinfo.field_strings, ckey
         )
         if conjecturedkey is None:
             reservedkey = self.compinfo_table.reserve()
@@ -320,82 +373,73 @@ class CGlobalDeclarations(CDeclarations):
             self.pending.remove(ckey)
             return conjecturedkey
 
-    def register_gcompinfo(self, fid, ckey, gcompinfo):
-        gckey = gcompinfo.get_ckey()
-        fields = gcompinfo.get_field_strings()
-        if fields not in self.fieldstrings:
-            self.fieldstrings[fields] = []
-        if gckey not in self.fieldstrings[fields]:
-            self.fieldstrings[fields].append(gckey)
-        self.ckey2gckey[fid][ckey] = gckey
-
     # ------------------- Indexing compinfos ---------------------------------
 
-    def index_fieldinfo(self, fieldinfo, compinfoname):
+    def index_fieldinfo(self, fieldinfo: CFieldInfo, compinfoname: str) -> int:
+
+        def f(index: int, tags: List[str], args: List[int]) -> CFieldInfo:
+            itv = IndexedTableValue(index, tags, args)
+            return CFieldInfo(self, itv)
+
         tags = [fieldinfo.fname]
         if self.is_hidden_field(compinfoname, fieldinfo.fname):
             gftype = self.index_opaque_struct_pointer()
         else:
             gftype = self.dictionary.index_typ(
-                fieldinfo.ftype.expand().strip_attributes()
-            )
+                fieldinfo.ftype.expand().strip_attributes())
         args = [-1, gftype, fieldinfo.bitfield, -1, -1]
 
-        def f(index, key):
-            return CFieldInfo(self, index, tags, args)
-
-        gfieldinfo = self.fieldinfo_table.add(IT.get_key(tags, args), f)
-        return gfieldinfo
+        return self.fieldinfo_table.add_tags_args(tags, args, f)
 
     # only compinfo's from files should be indexed
-    def index_compinfo_key(self, compinfo, fid):
-        ckey = compinfo.get_ckey()
-        gckey = self.get_gckey(fid, ckey)
-        logmsg = (
-            "Compinfo "
-            + compinfo.get_name()
-            + " (fid,ckey: "
-            + str(fid)
-            + ","
-            + str(ckey)
-            + "): "
-        )
+    def index_compinfo_key(self, compinfo: CCompInfo, fid: int) -> int:
+        """Returns the global ckey for the given compinfo and file id."""
+
+        chklogger.logger.info(
+            "Index compinfo key for %s and fid %d", compinfo.name, fid)
+        ckey = compinfo.ckey
+        ckeyref = CKeyReference(fid, ckey)
+        gckey = self.get_gckey(ckeyref)
         if gckey is not None:
             return gckey
+
         if ckey in self.conjectured:
             chklogger.logger.info(
                 "Compinfo %s (fid.ckey: %s.%s) conjectured key: %s",
-                compinfo.get_name(),
+                compinfo.name,
                 str(fid),
                 str(ckey),
                 str(self.conjectured[ckey]))
             return self.conjectured[ckey]
+
         if ckey in self.reserved:
             chklogger.logger.info(
                 "Compinfo %s (fid.ckey: %s.%s) reserved key: %s",
-                compinfo.get_name(),
+                compinfo.name,
                 str(fid),
                 str(ckey),
                 str(self.reserved[ckey]))
             return self.reserved[ckey]
+
         if ckey in self.pending:
             pendingkey = self.conjecture_key(fid, compinfo)
             chklogger.logger.info(
                 "Compinfo %s (fid.ckey: %s.%s) new pending key: %s",
-                compinfo.get_name(),
+                compinfo.name,
                 str(fid),
                 str(ckey),
                 str(pendingkey))
             return pendingkey
-        return self.index_compinfo(fid, compinfo).get_ckey()
+
+        # this compinfo is new
+        return self.make_global_compinfo(fid, compinfo).ckey
 
     def index_opaque_struct(self) -> int:
         tags = ["?"]
         args = [-1, 1, -1]
 
         def f(index: int, tags: List[str], args: List[int]) -> CCompInfo:
-            if index not in self.compinfo_names:
-                self.compinfo_names[index] = set([])
+            self.compinfo_names.setdefault(index, set([]))
             self.compinfo_names[index].add("opaque-struct")
             itv = IT.IndexedTableValue(index, tags, args)
             return CCompInfo(self, itv)
@@ -406,78 +450,101 @@ class CGlobalDeclarations(CDeclarations):
         itv = self.compinfo_table.retrieve(1)
         return CCompInfo(self, itv)
 
-    def index_opaque_struct_pointer(self):
+    def index_opaque_struct_pointer(self) -> int:
         tags = ["tcomp"]
         args = [1]
-        comptypix = self.dictionary.mk_typ(tags, args)
+        comptypix = self.dictionary.mk_typ_index(tags, args)
         tags = ["tptr"]
         args = [comptypix]
-        return self.dictionary.mk_typ(tags, args)
+        return self.dictionary.mk_typ_index(tags, args)
 
-    def index_compinfo(self, fid, compinfo):
+    def make_global_compinfo(self, fid: int, compinfo: CCompInfo) -> CCompInfo:
+        chklogger.logger.info(
+            "Indexing compinfo %s for fid: %d", compinfo.name, fid)
         filename = self.capp.get_file_by_index(fid).name
-        ckey = compinfo.get_ckey()
-        cname = compinfo.get_name()
+        ckey = compinfo.ckey
+        cname = compinfo.name
         if self.is_hidden_struct(filename, cname):
             chklogger.logger.info("Hide struct %s in file %", cname, filename)
             return self.get_opaque_struct()
-        gcompinfo = self.get_gcompinfo(fid, ckey)
+
+        keyref = CKeyReference(fid, ckey)
+        gcompinfo = self.get_gcompinfo(keyref)
         if gcompinfo is not None:
             return gcompinfo
-        self.pending.append(compinfo.get_ckey())
-        tags = ["?"]
-        fields = [self.index_fieldinfo(f, cname) for f in compinfo.fields]
-        args = [-1, 1 if compinfo.isstruct else 0, -1] + fields
+
+        chklogger.logger.info("Make compinfo pending: %s", compinfo.name)
+        self.pending.append(compinfo.ckey)
+        tags = ["?"]    # we don't have a name yet
+        fieldixs = [self.index_fieldinfo(f, cname) for f in compinfo.fields]
+
+        # create a key with args: ckey = -1; is_struct; iattributes
+        args = [-1, 1 if compinfo.is_struct else 0, -1] + fieldixs
         key = (",".join(tags), ",".join([str(x) for x in args]))
+
         if ckey in self.reserved:
             gckey = self.reserved[ckey]
-            gcompinfo = CCompInfo(self, gckey, tags, args)
+            itv = IT.IndexedTableValue(gckey, tags, args)
+            gcompinfo = CCompInfo(self, itv)
             self.compinfo_table.commit_reserved(gckey, key, gcompinfo)
             self.reserved.pop(ckey)
-            if gckey not in self.compinfo_names:
-                self.compinfo_names[gckey] = set([])
-            self.compinfo_names[gckey].add(compinfo.get_name())
-            self.register_gcompinfo(fid, ckey, gcompinfo)
+            self.compinfo_names.setdefault(gckey, set([]))
+            self.compinfo_names[gckey].add(compinfo.name)
+            self.register_gcompinfo(keyref, gcompinfo)
             return gcompinfo
 
-        def f(index, key):
-            if index not in self.compinfo_names:
-                self.compinfo_names[index] = set([])
-            self.compinfo_names[index].add(compinfo.get_name())
-            return CCompInfo(self, index, tags, args)
+        # use tags and args to obtain an index from the comp-info table
 
-        compinfoindex = self.compinfo_table.add(key, f)
+        def f(index: int, tags: List[str], args: List[int]) -> CCompInfo:
+            self.compinfo_names.setdefault(index, set([]))
+            self.compinfo_names[index].add(compinfo.name)
+            itv = IT.IndexedTableValue(index, tags, args)
+            return CCompInfo(self, itv)
+
+        compinfoindex = self.compinfo_table.add_tags_args(tags, args, f)
+
+        # check if this new index corresponds to an earlier conjectured key
+        # if so return the global compinfo, otherwise fail and backtrack
+
         gcompinfo = self.get_compinfo(compinfoindex)
         if ckey in self.conjectured:
             conjecturedkey = self.conjectured[ckey]
-            gckey = gcompinfo.get_ckey()
+            gckey = gcompinfo.ckey
             if gckey == conjecturedkey:
-                self.ckey2gckey[fid][ckey] = gcompinfo.get_ckey()
+                self.ckey2gckey[fid][ckey] = gcompinfo.ckey
                 self.conjectured.pop(ckey)
                 return gcompinfo
             else:
                 chklogger.logger.info(
                     "Conjecture failure for %s (fid:%s, ckey:%s, gckey:%s, "
                     + "conjectured key: %s",
-                    + compinfo.get_name()
-                    + str(fid),
-                    + str(ckey),
-                    + str(gckey),
-                    + str(conjecturedkey))
+                    compinfo.name,
+                    str(fid),
+                    str(ckey),
+                    str(gckey),
+                    str(conjecturedkey))
                 raise ConjectureFailure(ckey, conjecturedkey)
+
         else:
-            self.register_gcompinfo(fid, ckey, gcompinfo)
-            self.pending.remove(compinfo.get_ckey())
+            # connect the global compinfo to the file compinfo and clean up
+            keyref = CKeyReference(fid, ckey)
+            self.register_gcompinfo(keyref, gcompinfo)
+            self.pending.remove(compinfo.ckey)
             return gcompinfo
 
-    def index_file_compinfos(self, fid, compinfos):
+    def index_file_compinfos(self, fid: int, compinfos: List[CCompInfo]) -> None:
+        """Indexes and connects the compinfos from the individual c files."""
+
         if len(compinfos) > 0:
+            chklogger.logger.info("Index %d compinfos", len(compinfos))
             while 1:
                 self.compinfo_table.set_checkpoint()
-                self.ckey2gckey[fid] = {}
+                self._ckey2gckey[fid] = {}
                 try:
                     for c in compinfos:
-                        self.index_compinfo(fid, c)
+                        chklogger.logger.info(
+                            "Index compinfo (fid: %d): %s", fid, c.name)
+                        self.make_global_compinfo(fid, c)
                 except ConjectureFailure as e:
                     checkpoint = self.compinfo_table.reset_to_checkpoint()
                     self.cleanup(checkpoint, e.ckey, e.gckey)
@@ -488,81 +555,111 @@ class CGlobalDeclarations(CDeclarations):
 
     # -------------------- Indexing varinfos ---------------------------------
 
-    def index_init(self, init, fid=-1):
-        try:
-            if init.is_single():
-                tags = ["single"]
-                args = [self.dictionary.index_exp(init.get_exp())]
+    def mk_single_init_index(self, tags: List[str], args: List[int]) -> int:
 
-                def f(index, key):
-                    return CI.CSingleInitInfo(self, index, tags, args)
+        def f(index: int, tags: List[str], args: List[int]) -> CI.CInitInfo:
+            itv = IndexedTableValue(index, tags, args)
+            return CI.CSingleInitInfo(self, itv)
 
-                return self.initinfo_table.add(IT.get_key(tags, args), f)
-            if init.is_compound():
-                tags = ["compound"]
-                gtype = self.dictionary.index_typ(init.get_typ())
-                oinits = [
-                    self.index_offset_init(x) for x in init.get_offset_initializers()
-                ]
-                args = [gtype] + oinits
+        return self.initinfo_table.add_tags_args(tags, args, f)
 
-                def f(index, key):
-                    return CI.CCompoundInitInfo(self, index, tags, args)
+    def mk_compound_init_index(self, tags: List[str], args: List[int]) -> int:
 
-                return self.initinfo_table.add(IT.get_key(tags, args), f)
-            raise InvalidArgumentError("indexinit: " + str(init))
-        except IndexedTableError as e:
-            print("Error in indexing " + str(init) + ": " + str(e))
+        def f(index: int, tags: List[str], args: List[int]) -> CI.CInitInfo:
+            itv = IndexedTableValue(index, tags, args)
+            return CI.CCompoundInitInfo(self, itv)
 
-    def index_offset_init(self, oinit, fid=-1):
-        args = [
-            self.dictionary.index_offset(oinit.get_offset()),
-            self.index_init(oinit.get_initializer()),
-        ]
+        return self.initinfo_table.add_tags_args(tags, args, f)
 
-        def f(index, key):
-            return CI.COffsetInitInfo(self, index, [], args)
+    def mk_offset_init_index(self, tags: List[str], args: List[int]) -> int:
 
-        return self.offset_init_table.add(IT.get_key([], args), f)
+        def f(index: int, tags: List[str], args: List[int]) -> CI.COffsetInitInfo:
+            itv = IndexedTableValue(index, tags, args)
+            return CI.COffsetInitInfo(self, itv)
 
-    def index_varinfo_vid(self, vid, fid):
-        if fid == -1:
-            return vid
-        return self.get_gvid(vid, fid)
+        return self.offset_init_table.add_tags_args(tags, args, f)
 
-    def index_varinfo(self, fid, varinfo):
-        if varinfo.vtype.is_default_function_prototype():
+    def index_init(self, init: CInitInfo, fid: int = -1) -> int:
+
+        args: List[int]
+
+        if init.is_single:
+            init = cast("CSingleInitInfo", init)
+            args = [self.dictionary.index_exp(init.exp)]
+            return self.mk_single_init_index(init.tags, args)
+
+        if init.is_compound:
+            init = cast("CCompoundInitInfo", init)
+            gtype = self.dictionary.index_typ(init.typ)
+            oinits: List[int] = [
+                self.index_offset_init(x) for x in init.offset_initializers]
+            args = [gtype] + oinits
+            return self.mk_compound_init_index(init.tags, args)
+
+        else:
+            raise Exception("InitInfo not recognized")
+
+    def index_offset_init(self, oinit: COffsetInitInfo, fid: int = -1) -> int:
+        args: List[int] = [
+            self.dictionary.index_offset(oinit.offset),
+            self.index_init(oinit.initializer)]
+        return self.mk_offset_init_index(oinit.tags, args)
+
+    def index_varinfo_vid(self, varref: VarReference) -> Optional[int]:
+        if varref.fid is None:
+            # this already is a global vid
+            return varref.vid
+
+        return self.get_gvid(varref)
+
+    def make_global_varinfo(self, fid: int, varinfo: CVarInfo) -> None:
+        """Returns the global varinfo that corresponds to a file varinfo."""
+
+        if varinfo.vtype.is_default_function_prototype:
+            # a function declaration without arguments
             self.default_function_prototypes.append((fid, varinfo))
             return
+
         vid = varinfo.vid
-        if varinfo.get_vstorage() == "s":
+        if varinfo.vstorage == "s":
+            # create a file-specific name for static variables
             vname = varinfo.vname + "__file__" + str(fid) + "__"
         else:
             vname = varinfo.vname
-        vtypeix = self.dictionary.index_typ(varinfo.vtype.expand().strip_attributes())
+        vtype = varinfo.vtype.expand().strip_attributes()
+        vtypeix = self.dictionary.index_typ(vtype)
         vtype = self.dictionary.get_typ(vtypeix)
         if varinfo.has_initializer():
-            vinit = varinfo.get_initializer()
+            vinit = varinfo.initializer
             gvinit = [self.index_init(vinit, fid=fid)]
         else:
             gvinit = []
         tags = [vname]
         vargs = varinfo.args
-        vaddrof = 1 if vtype.is_function() else vargs[6]
-        args = [-1, vtypeix, -1, vargs[3], vargs[4], -1, vaddrof, vargs[7]] + gvinit
-        key = (",".join(tags), ",".join([str(x) for x in args]))
+        vaddrof = 1 if vtype.is_function else vargs[6]
 
-        def f(index, key):
-            return CVarInfo(self, index, tags, args)
+        args = [
+            -1,          # vid: use the CVarInfo index as the gvid
+            vtypeix,     # vtype index, as indexed in the global dictionary
+            -1,          # vattr index: drop the attributes
+            vargs[3],    # vglob: same as file varinfo
+            vargs[4],    # vinline: same as file varinfo
+            -1,          # vdecl: location is not kept at the global level
+            vaddrof,     # true for functions, otherwise same as file varinfo
+            vargs[7]] + gvinit  # global initializer as converted, or absent
 
-        gvarinfoindex = self.varinfo_table.add(key, f)
+        def f(index: int, tags: List[str], args: List[int]) -> CVarInfo:
+            itv = IndexedTableValue(index, tags, args)
+            return CVarInfo(self, itv)
+
+        gvarinfoindex = self.varinfo_table.add_tags_args(tags, args, f)
         gvarinfo = self.get_varinfo(gvarinfoindex)
         gvid = gvarinfo.vid
         if gvid not in self.varinfo_storage_classes:
-            self.varinfo_storage_classes[gvid] = ""
+            self._varinfo_storage_classes[gvid] = set([""])
         vstorageclass = varinfo.tags[1]
         if vstorageclass not in self.varinfo_storage_classes[gvid]:
-            self.varinfo_storage_classes[gvid] += vstorageclass
+            self._varinfo_storage_classes[gvid].add(vstorageclass)
         self.vid2gvid[fid][vid] = gvarinfo.vid
         chklogger.logger.debug(
             "Fid: %s, vid:%s, gvid:%s: %s",
@@ -570,27 +667,26 @@ class CGlobalDeclarations(CDeclarations):
             str(vid),
             str(gvarinfo.vid),
             gvarinfo.vname)
-        return gvarinfo
 
-    def index_file_varinfos(self, fid, varinfos):
+    def index_file_varinfos(self, fid: int, varinfos: List[CVarInfo]) -> None:
         if len(varinfos) > 0:
             self.vid2gvid[fid] = {}
             for v in varinfos:
-                self.index_varinfo(fid, v)
+                self.make_global_varinfo(fid, v)
 
     def resolve_default_function_prototypes(self) -> None:
-        print(
-            "Resolving "
-            + str(len(self.default_function_prototypes))
-            + " function prototypes"
-        )
+        chklogger.logger.info(
+            "Resolving %d function prototypes",
+            len(self.default_function_prototypes))
+
         for (fid, varinfo) in self.default_function_prototypes:
 
-            def f(key):
+            def f(key: Tuple[str, str]) -> bool:
                 return key[0].startswith(varinfo.vname)
 
             itvcandidates = self.varinfo_table.retrieve_by_key(f)
-            candidates = [(itv[0], CVarInfo(self, itv[1])) for itv in itvcandidates]
+            candidates = [
+                (itv[0], CVarInfo(self, itv[1])) for itv in itvcandidates]
             if len(candidates) == 1:
                 self.vid2gvid[fid][varinfo.vid] = candidates[0][1].vid
                 chklogger.logger.info(
@@ -599,7 +695,7 @@ class CGlobalDeclarations(CDeclarations):
                 pcandidates = ",".join([c[1].vname for c in candidates])
                 for (_, c) in candidates:
                     if c.vname == varinfo.vname:
-                        self.vid2gvid[fid][varinfo.get_vid()] = c.vid
+                        self.vid2gvid[fid][varinfo.vid] = c.vid
                         chklogger.logger.warning(
                             "Selected prototype %s for %s from multiple "
                             + "candidates: %s",
@@ -621,7 +717,7 @@ class CGlobalDeclarations(CDeclarations):
         self.dictionary.write_xml(dnode)
         node.append(dnode)
 
-        def f(n, r):
+        def f(n: ET.Element, r: IndexedTableValue) -> None:
             r.write_xml(n)
 
         for t in self.tables:
@@ -641,9 +737,15 @@ class CGlobalDeclarations(CDeclarations):
         for vid in sorted(self.varinfo_storage_classes):
             if "n" in self.varinfo_storage_classes[vid]:
                 continue
+            if len(self.varinfo_storage_classes[vid]) > 1:
+                chklogger.logger.warning(
+                    "Multiple storage classes for variable %d", vid)
+                continue
+            else:
+                storageclass = list(self.varinfo_storage_classes[vid])[0]
             vnode = ET.Element("n")
             vnode.set("vid", str(vid))
-            vnode.set("s", self.varinfo_storage_classes[vid])
+            vnode.set("s", storageclass)
             vsnode.append(vnode)
         node.append(vsnode)
 
@@ -660,6 +762,7 @@ class CGlobalDeclarations(CDeclarations):
         # available
         if xnode is None:
             return
+
         for t in self.tables:
             xtable = xnode.find(t.name)
             if xtable is None:
@@ -690,7 +793,7 @@ class CGlobalDeclarations(CDeclarations):
             xml_s = n.get("s")
             if xml_s is None:
                 raise Exception("Missing element `s`")
-            self.varinfo_storage_classes[int(xml_vid)] = xml_s
+            self.varinfo_storage_classes[int(xml_vid)] = set([xml_s])
 
     def _read_xml_varinfo_storage_classes(self, xnode: ET.Element) -> None:
         for n in xnode.findall("n"):

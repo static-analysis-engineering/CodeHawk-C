@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2020-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,6 +26,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Cross references between variable and struct definitions in different files."""
 
 import xml.etree.ElementTree as ET
 
@@ -44,7 +45,6 @@ class CGXrefs:
         self._cfile = cfile
         self._compkeys: Optional[Dict[int, int]] = None  # local id -> global id
         self._varinfos: Optional[Dict[int, int]] = None  # local id -> global id
-        # self._initialize(xnode)
 
     @property
     def cfile(self) -> "CFile":
@@ -91,14 +91,3 @@ class CGXrefs:
         if localvid in self.varinfos:
             return self.varinfos[localvid]
         return localvid
-
-    '''
-    def _initialize(self, xnode: Optional[ET.Element]):
-        if self.xnode is None:
-            return
-        if len(self.compkeys) == 0 or len(self.varinfos) == 0:
-            for c in self.xnode.find("compinfo-xrefs").findall("cxref"):
-                self.compkeys[int(c.get("ckey"))] = int(c.get("gckey"))
-            for v in self.xnode.find("varinfo-xrefs").findall("vxref"):
-                self.varinfos[int(v.get("vid"))] = int(v.get("gvid"))
-    '''

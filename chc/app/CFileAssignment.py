@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2020-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,47 +26,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
-"""Object representation of sum type assignment_t
+"""Object representation of sum type assignment_t."""
 
-cchpre/CCHPreTypes.type assignment_t =   predicate         properties
-                                     -------------------------------------------
-  | InitAssignment                   is_init_assignment    vname: str
-      of string * int * init                               vid: int
-                                                           lhs: CVarInfo
-                                                           rhs: CInitInfo
-  | GlobalAssignment                 is_global_assignment  vname: str
-      of string                                            vid: int
-       * string                                            fname: str
-       * int                                               lhs: CVarInfo 
-       * assignment_data_t                                 rhs: CExp
-  | GlobalIndexAssignment      is_global_index_assignment  vname: str
-       of string                                           vid: int
-       * string                                            fname: str
-       * int                                               index: int
-       * int                                               lhs: CVarInfo
-       * assignment_data_t                                 rhs: CExp
-  | StaticAssignment                  is_static_assignment vname: str
-       of string                                           vid: int
-       * string                                            fname: str
-       * int                                               lhs: CVarInfo
-       * assignment_data_t                                 rhs: CExp
-  | StaticIndexAssignment       is_static_index_assignment vname: stri
-       of string                                           vid: int
-       * string                                            fname: str
-       * int                                               index: int
-       * int                                               lhs: CVarInfo
-       * assignment_data_t                                 rhs: CExp
-  | FieldAssignment                   is_field_assignment  fieldname: str
-       of string                                           fname: str
-       * string                                            ckey: int
-       * int                                               lhs: CLval
-       * lval                                              rhs: CExp
-       * assignment_data_t
-  | UnknownAssignment               is_unknown_assignment  lval: CLval
-       of string                                           fname: str
-       * lval                                              rhs: CExp
-       * assignment_data_t
-"""
 import xml.etree.ElementTree as ET
 
 from typing import cast, List, Optional, TYPE_CHECKING
@@ -138,9 +99,9 @@ class GlobalAssignmentFunctionName(AssignDictionaryRecord):
 class InitAssignment(CFileAssignment):
     """Static initializer assignment.
 
-    tags[1]: vname
-    args[0]: vid of lhs
-    args[1]: index of init_info in cdeclarations dictionary
+    - tags[1]: vname
+    - args[0]: vid of lhs
+    - args[1]: index of init_info in cdeclarations dictionary
     """
 
     def __init__(
@@ -165,7 +126,7 @@ class InitAssignment(CFileAssignment):
         return self.args[0]
 
     def lhs(self) -> "CVarInfo":
-        return self.cdecls.get_global_varinfo(self.vid)
+        return self.cfile.get_global_varinfo(self.vid)
 
     def rhs(self) -> "CInitInfo":
         return self.cdecls.get_initinfo(self.args[1])
@@ -178,12 +139,12 @@ class InitAssignment(CFileAssignment):
 class GlobalAssignment(CFileAssignment):
     """Global assignment within a function.
 
-    tags[1]: variable name
-    args[0]: vid of lhs
-    args[1]: index of enclosing function name in function-name table
-    args[2]: index of rhs expression in cdictionary
-    args[3]: index of location in cdecls dictionary
-    args[4]: index of context in context table
+    - tags[1]: variable name
+    - args[0]: vid of lhs
+    - args[1]: index of enclosing function name in function-name table
+    - args[2]: index of rhs expression in cdictionary
+    - args[3]: index of location in cdecls dictionary
+    - args[4]: index of context in context table
     """
 
     def __init__(
@@ -209,7 +170,7 @@ class GlobalAssignment(CFileAssignment):
 
     @property
     def lhs(self) -> "CVarInfo":
-        return self.cdecls.get_global_varinfo(self.args[0])
+        return self.cfile.get_global_varinfo(self.args[0])
 
     @property
     def rhs(self) -> "CExp":
@@ -223,13 +184,13 @@ class GlobalAssignment(CFileAssignment):
 class GlobalIndexAssignment(CFileAssignment):
     """Assignment to an array element of a global array.
 
-    tags[1]: vname (variable name)
-    args[0]: vid (variable id)
-    args[1]: index of function name in assign dictionary
-    args[2]: array index value
-    args[3]: index of rhs expression in cdictionary
-    args[4]: index of location in cdecls dictionary
-    args[5]: index of context in context table
+    - tags[1]: vname (variable name)
+    - args[0]: vid (variable id)
+    - args[1]: index of function name in assign dictionary
+    - args[2]: array index value
+    - args[3]: index of rhs expression in cdictionary
+    - args[4]: index of location in cdecls dictionary
+    - args[5]: index of context in context table
     """
 
     def __init__(
@@ -251,7 +212,7 @@ class GlobalIndexAssignment(CFileAssignment):
 
     @property
     def lhs(self) -> "CVarInfo":
-        return self.cdecls.get_global_varinfo(self.args[0])
+        return self.cfile.get_global_varinfo(self.args[0])
 
     @property
     def rhs(self) -> "CExp":
@@ -277,12 +238,12 @@ class GlobalIndexAssignment(CFileAssignment):
 class StaticAssignment(CFileAssignment):
     """Assignment to a static variable.
 
-    tags[1]: vname
-    args[0]: vid
-    args[1]: index of function name in function-name table
-    args[2]: index of lhs in cdeclarations dictionary
-    args[3]: index of rhs in cdictionary
-    args[4]: index of context in context table
+    - tags[1]: vname
+    - args[0]: vid
+    - args[1]: index of function name in function-name table
+    - args[2]: index of lhs in cdeclarations dictionary
+    - args[3]: index of rhs in cdictionary
+    - args[4]: index of context in context table
     """
 
     def __init__(self, ad: "CFileAssignmentDictionary", ixval: IT.IndexedTableValue
@@ -307,7 +268,7 @@ class StaticAssignment(CFileAssignment):
 
     @property
     def lhs(self) -> "CVarInfo":
-        return self.cdecls.get_global_varinfo(self.args[0])
+        return self.cfile.get_global_varinfo(self.args[0])
 
     @property
     def rhs(self) -> "CExp":
@@ -321,16 +282,17 @@ class StaticAssignment(CFileAssignment):
 class StaticIndexAssignment(CFileAssignment):
     """Assignment to an element of a static array.
 
-    tags[1]: vname
-    args[0]: vid
-    args[1]: index of function name in function-name table
-    args[2]: index
-    args[3]: index of rhs in cdictionary
-    args[4]: index of location in cdeclarations
-    args[5]: index of context in context table
+    - tags[1]: vname
+    - args[0]: vid
+    - args[1]: index of function name in function-name table
+    - args[2]: index
+    - args[3]: index of rhs in cdictionary
+    - args[4]: index of location in cdeclarations
+    - args[5]: index of context in context table
     """
 
-    def __init__(self, ad: "CFileAssignmentDictionary", ixval: IT.IndexedTableValue
+    def __init__(
+            self, ad: "CFileAssignmentDictionary", ixval: IT.IndexedTableValue
     ) -> None:
         CFileAssignment.__init__(self, ad, ixval)
 
@@ -352,7 +314,7 @@ class StaticIndexAssignment(CFileAssignment):
 
     @property
     def lhs(self) -> "CVarInfo":
-        return self.cdecls.get_global_varinfo(self.args[0])
+        return self.cfile.get_global_varinfo(self.args[0])
 
     @property
     def index(self) -> int:
@@ -378,16 +340,17 @@ class StaticIndexAssignment(CFileAssignment):
 class FieldAssignment(CFileAssignment):
     """Assignment to a global struct field.
 
-    tags[1]: fieldname
-    args[0]: ckey (key that identifies the struct)
-    args[1]: index of function name in function name table
-    args[2]: index of lval in cdictionary
-    args[3]: index of rhs expression in cdictionary
-    args[4]: index of location in location table
-    args[5]: index of context in context table
+    - tags[1]: fieldname
+    - args[0]: ckey (key that identifies the struct)
+    - args[1]: index of function name in function name table
+    - args[2]: index of lval in cdictionary
+    - args[3]: index of rhs expression in cdictionary
+    - args[4]: index of location in location table
+    - args[5]: index of context in context table
     """
 
-    def __init__(self, ad: "CFileAssignmentDictionary", ixval: IT.IndexedTableValue
+    def __init__(
+            self, ad: "CFileAssignmentDictionary", ixval: IT.IndexedTableValue
     ) -> None:
         CFileAssignment.__init__(self, ad, ixval)
 
@@ -419,14 +382,15 @@ class FieldAssignment(CFileAssignment):
 class UnknownAssignment(CFileAssignment):
     """Assignment to unknown lval
 
-    args[0]: index of function name in function name table
-    args[1]: index of lval in cdictionary
-    args[2]: index of rhs in cdictionary
-    args[3]: index of location in cdeclarations dictionary
-    args[4]: index of context in context table
+    - args[0]: index of function name in function name table
+    - args[1]: index of lval in cdictionary
+    - args[2]: index of rhs in cdictionary
+    - args[3]: index of location in cdeclarations dictionary
+    - args[4]: index of context in context table
     """
 
-    def __init__(self, ad: "CFileAssignmentDictionary", ixval: IT.IndexedTableValue
+    def __init__(
+            self, ad: "CFileAssignmentDictionary", ixval: IT.IndexedTableValue
     ) -> None:
         CFileAssignment.__init__(self, ad, ixval)
 

@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2021-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2021-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -54,8 +54,9 @@ class CContextDictionary:
             self.cfgcontext_table,
             self.expcontext_table,
             self.context_table]
-        self._objmaps: Dict[str, Callable[[], Mapping[int, IndexedTableValue]]] = {
-            "cfg": self.get_cfg_context_map,            
+        self._objmaps: Dict[
+            str, Callable[[], Mapping[int, IndexedTableValue]]] = {
+            "cfg": self.get_cfg_context_map,
             "exp": self.get_exp_context_map,
             "p": self.get_program_context_map}
         self.initialize(xnode)
@@ -87,14 +88,19 @@ class CContextDictionary:
     def get_program_context_map(self) -> Dict[int, IndexedTableValue]:
         return self.context_table.objectmap(self.get_program_context)
 
-    # ----------------------- printing -----------------------------------------
+    # ----------------------- Printing -----------------------------------------
 
     def objectmap_to_string(self, name: str) -> str:
         if name in self._objmaps:
             objmap = self._objmaps[name]()
             lines: List[str] = []
-            for (ix, obj) in objmap.items():
-                lines.append(str(ix).rjust(3) + "  " + str(obj))
+            if len(objmap) > 0:
+                lines.append("index  value")
+                lines.append("-" * 80)
+                for (ix, obj) in objmap.items():
+                    lines.append(str(ix).rjust(3) + "    " + str(obj))
+            else:
+                lines.append(f"Table for {name} is empty")
             return "\n".join(lines)
         else:
             raise UF.CHCError(
@@ -165,7 +171,8 @@ class CContextDictionary:
         return self.get_program_context(int(ictxt))
 
     # assume that python never adds new contexts
-    def write_xml_context(self, xnode: ET.Element, context: ProgramContext) -> None:
+    def write_xml_context(
+            self, xnode: ET.Element, context: ProgramContext) -> None:
         xnode.set("ictxt", str(context.index))
 
     # --------------------- initialize dictionary from file --------------------

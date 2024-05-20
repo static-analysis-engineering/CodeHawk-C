@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2020-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,6 +26,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Base class for items in CDictionary and CDeclarations."""
 
 import xml.etree.ElementTree as ET
 
@@ -33,6 +34,7 @@ from typing import cast, Callable, Dict, List, Tuple, Type, TypeVar, TYPE_CHECKI
 
 import chc.util.fileutil as UF
 import chc.util.IndexedTable as IT
+from chc.util.loggingutil import chklogger
 
 if TYPE_CHECKING:
     from chc.app.CDeclarations import CDeclarations

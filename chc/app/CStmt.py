@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2020-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,10 +26,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Control flow element in a function."""
 
 import xml.etree.ElementTree as ET
 
-from typing import Callable, Dict, List, Optional, TYPE_CHECKING
+from typing import Callable, cast, Dict, List, Optional, TYPE_CHECKING
 
 from chc.app.CInstr import (CInstr, CCallInstr, CAssignInstr, CAsmInstr)
 
@@ -146,12 +147,24 @@ class CStmt:
     def stmts(self) -> Dict[int, "CStmt"]:
         return {}
 
+    def iter_stmts(self, f: Callable[["CStmt"], None]) -> None:
+        for s in self.stmts.values():
+            f(s)
+
     @property
-    def is_instr_stmt(self) -> bool:
+    def is_instrs_stmt(self) -> bool:
         return False
 
     @property
     def is_if_stmt(self) -> bool:
+        return False
+
+    @property
+    def is_block_stmt(self) -> bool:
+        return False
+
+    @property
+    def is_function_body(self) -> bool:
         return False
 
     @property
@@ -208,10 +221,15 @@ class CBlock(CStmt):
             bstmts = self.xnode.find("bstmts")
             if bstmts is not None:
                 for s in bstmts.findall("stmt"):
-                    self._stmts[self.sid] = get_statement(self, s)
+                    stmt = get_statement(self, s)
+                    self._stmts[stmt.sid] = stmt
             else:
                 raise UF.CHCError("stmts element is missing from block element")
         return self._stmts
+
+    @property
+    def is_block_stmt(self) -> bool:
+        return True
 
     @property
     def block_count(self) -> int:
@@ -228,6 +246,11 @@ class CFunctionBody(CBlock):
     def cfun(self) -> "CFunction":
         return self._cfun
 
+    @property
+    def is_function_body(self) -> bool:
+        return self.parent is None
+
+
 
 class CIfStmt(CStmt):
 
@@ -242,11 +265,13 @@ class CIfStmt(CStmt):
             xthen = self.xskind.find("thenblock")
             if xthen is not None:
                 thenblock = CBlock(self, xthen)
-                self._stmts[thenblock.sid] = thenblock
+                for s in thenblock.stmts.values():
+                    self._stmts[s.sid] = s
             xelse = self.xskind.find("elseblock")
             if xelse is not None:
                 elseblock = CBlock(self, xelse)
-                self._stmts[elseblock.sid] = elseblock
+                for s in elseblock.stmts.values():
+                    self._stmts[s.sid] = s
         return self._stmts
 
     @property
@@ -287,7 +312,8 @@ class CLoopStmt(CStmt):
             xblock = self.xskind.find("block")
             if xblock is not None:
                 loopblock = CBlock(self, xblock)
-                self._stmts[loopblock.sid] = loopblock
+                for s in loopblock.stmts.values():
+                    self._stmts[s.sid] = s
             else:
                 raise UF.CHCError("Loop stmt without nested block")
         return self._stmts
@@ -306,7 +332,8 @@ class CSwitchStmt(CStmt):
             sblock = self.xskind.find("block")
             if sblock is not None:
                 switchblock = CBlock(self, sblock)
-                self._stmts[switchblock.sid] = switchblock
+                for s in switchblock.stmts.values():
+                    self._stmts[s.sid] = s
             else:
                 raise UF.CHCError("Switch stmt without nested block")
         return self._stmts
@@ -331,12 +358,14 @@ class CGotoStmt(CStmt):
 
 
 class CReturnStmt(CStmt):
+    """Function return."""
 
     def __init__(self, parent: "CStmt", xnode: ET.Element) -> None:
         CStmt.__init__(self, parent, xnode)
 
 
 class CInstrsStmt(CStmt):
+    """Sequence of instructions without control flow."""
 
     def __init__(self, parent: "CStmt", xnode: ET.Element) -> None:
         CStmt.__init__(self, parent, xnode)
@@ -366,6 +395,14 @@ class CInstrsStmt(CStmt):
                 else:
                     raise UF.CHCError("unknown instruction tag: " + xitag)
         return self._instrs
+
+    @property
+    def call_instrs(self) -> List["CCallInstr"]:
+        result: List["CCallInstr"] = []
+        for i in self.instrs:
+            if i.is_call:
+                result.append(cast("CCallInstr", i))
+        return result
 
     def __str__(self) -> str:
         lines: List[str] = []

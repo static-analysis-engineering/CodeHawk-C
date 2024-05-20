@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2020-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,6 +26,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Local variable declarations at the function level."""
 
 import xml.etree.ElementTree as ET
 
@@ -54,9 +55,7 @@ class CFunDeclarations:
         self._cfun = cfun
         self.xnode = xnode
         self._varinfos: Dict[int, CVarInfo] = {}  # indexed by vid
-        # self.dictionary = cfun.cfile.declarations.dictionary
         self.local_varinfo_table = IndexedTable("local-varinfo-table")
-        # self.tables = [(self.local_varinfo_table, self._read_xml_local_varinfo_table)]
         self.initialize(xnode)
 
     @property
@@ -90,16 +89,17 @@ class CFunDeclarations:
     def get_varinfo(self, vid: int) -> CVarInfo:
         if vid in self.varinfos:
             return self.varinfos[vid]
-        return self.cfun.cfile.declarations.get_global_varinfo(vid)
+        return self.cfun.cfile.get_global_varinfo(vid)
 
     def get_local_varinfo(self, ix: int) -> CVarInfo:
-        return CVarInfo(self.cfile.declarations, self.local_varinfo_table.retrieve(ix))
+        return CVarInfo(
+            self.cfile.declarations, self.local_varinfo_table.retrieve(ix))
 
     def get_local_varinfo_map(self) -> Dict[int, IndexedTableValue]:
         return self.local_varinfo_table.objectmap(self.get_local_varinfo)
 
     def get_global_varinfo_by_name(self, name: str) -> CVarInfo:
-        return self.fdecls.get_global_varinfo_by_name(name)
+        return self.cfile.get_global_varinfo_by_name(name)
 
     def get_location(self, ix: int) -> "CLocation":
         return self.fdecls.get_location(ix)
@@ -133,10 +133,3 @@ class CFunDeclarations:
         else:
             raise UF.CHCError(
                 "Local-varinfo-table not found in cfun for " + self.cfun.name)
-
-    '''
-    def initialize_varinfos(self):
-        for itv in self.local_varinfo_table.values():
-            vinfo = CVarInfo(self.cfile.declarations, itv)
-            self.varinfos[vinfo.vid] = vinfo
-    '''

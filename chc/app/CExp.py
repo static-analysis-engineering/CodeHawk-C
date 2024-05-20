@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2020-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,55 +26,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
-"""Object representation of CIL expression sum type
-
-(derived from: https://goblint.github.io/cil/)
-
-cchlib/CCHBasicTypes.exp =            predicate       properties
-                                      ------------------------------------------
-| Const of constant                   is_constant      constant: CConst
-| Lval of lval                        is_lval          lval: CLval
-| SizeOf of typ                       is_sizeof        typ: CTyp
-| Real of exp                         --               --
-| Imag of exp                         --               --
-| SizeOfE exp                         is_sizeofe       exp: CExp
-| SizeOfStr of string                 is_sizeofstr     stringvalue: str
-| AlignOf typ                         is_alignof       typ: CTyp
-| AlignOfE exp                        is_alignofe      exp: CExp
-| UnOp of unop * exp * typ            is_unop          op: str
-                                                       exp: CExp
-                                                       typ: CTyp
-| BinOp of binop * exp * exp * typ    is_binop         op: str
-                                                       exp1: CExp
-                                                       exp2: CExp
-                                                       typ: CTyp
-| Question of exp * exp * exp * typ   is_question      condition: CExp
-                                                       true_exp: CExp
-                                                       false_exp: CExp
-                                                       typ: CTyp
-| CastE of typ * exp                  is_caste         typ: CTyp
-                                                       exp: CExp
-| AddrOf of lval                      is_addrof        lval: CLval
-| AddrOfLabel of stmt Stdlib.ref      is_addroflabel   label_sid: int
-| StartOf of lval                     is_startof       lval: CLval
-
-Not in GoblintCil:
-
-| FnApp of                            is_fn_app        (location: CLocation)
-   location * exp * (exp option) list                  exp: CExp
-                                                       arguments: List[Optional[CExp]]
-
-| CnApp of                            is_cn_app        name: str
-   string * (exp option) list * typ                    arguments: List[Optional[CExp]]
-                                                       typ: CTyp
-
-
-GoblintCil.exp variants currently missing:
-
-| Real of exp
-| Imag of exp
-"""
-
+"""Object representation of CIL expression sum type."""
 
 from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
 
@@ -210,7 +162,7 @@ class CExpConst(CExp):
     """
     Constant expression
 
-    args[0]: constant
+    - args[0]: constant
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -238,7 +190,7 @@ class CExpConst(CExp):
 class CExpLval(CExp):
     """ Lvalue expression.
 
-    args[0]: index of lval in cdictionary
+    - args[0]: index of lval in cdictionary
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -272,7 +224,7 @@ class CExpLval(CExp):
 class CExpSizeOf(CExp):
     """ Sizeof type expression.
 
-    args[0]: index of target type in cdictionary
+    - args[0]: index of target type in cdictionary
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -297,7 +249,7 @@ class CExpSizeOf(CExp):
 class CExpSizeOfE(CExp):
     """ Sizeof expression expression
 
-    args[0]: exp
+    - args[0]: exp
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -328,7 +280,7 @@ class CExpSizeOfE(CExp):
 class CExpSizeOfStr(CExp):
     """ Sizeof string expression
 
-    args[0]:index of  string in the string table
+    - args[0]:index of  string in the string table
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -356,7 +308,7 @@ class CExpSizeOfStr(CExp):
 class CExpAlignOf(CExp):
     """ Alignof type expression
 
-    args[0]: index of type in cdictionary
+    - args[0]: index of type in cdictionary
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -381,7 +333,7 @@ class CExpAlignOf(CExp):
 class CExpAlignOfE(CExp):
     """ Align of expression expression
 
-    args[0]: index of expression in cdictionary
+    - args[0]: index of expression in cdictionary
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -415,10 +367,10 @@ class CExpAlignOfE(CExp):
 class CExpUnOp(CExp):
     """ Unary expression
 
-    tags[1]: unary operator
+    - tags[1]: unary operator
 
-    args[0]: index of subexpression in cdictionary
-    args[1]: index of result type in cdictionary
+    - args[0]: index of subexpression in cdictionary
+    - args[1]: index of result type in cdictionary
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -460,10 +412,10 @@ class CExpUnOp(CExp):
 class CExpBinOp(CExp):
     """ Binary expression
 
-    tags[1]: binary operator
-    args[0]: index of exp1 in cdictionary
-    args[1]: index of exp2 in cdictionary
-    args[2]: index of typ in cdictionary
+    - tags[1]: binary operator
+    - args[0]: index of exp1 in cdictionary
+    - args[1]: index of exp2 in cdictionary
+    - args[2]: index of typ in cdictionary
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -531,12 +483,12 @@ class CExpBinOp(CExp):
 
 @cdregistry.register_tag("question", CExp)
 class CExpQuestion(CExp):
-    """ Question expression.
+    """Question expression.
 
-    args[0]: index of conditional expression in cdictionary
-    args[1]: index of if-true expression in cdictionary
-    args[2]: index of if-false expression in cdictionary
-    args[3]: index of result type in cdictionary
+    - args[0]: index of conditional expression in cdictionary
+    - args[1]: index of if-true expression in cdictionary
+    - args[2]: index of if-false expression in cdictionary
+    - args[3]: index of result type in cdictionary
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -604,10 +556,10 @@ class CExpQuestion(CExp):
 
 @cdregistry.register_tag("caste", CExp)
 class CExpCastE(CExp):
-    """ Cast expression.
+    """Cast expression.
 
-    args[0]: index of target type in cdictionary
-    args[1]: index of expression to be cast in cdictionary
+    - args[0]: index of target type in cdictionary
+    - args[1]: index of expression to be cast in cdictionary
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -647,9 +599,9 @@ class CExpCastE(CExp):
 
 @cdregistry.register_tag("addrof", CExp)
 class CExpAddrOf(CExp):
-    """ Address-of expression
+    """Address-of expression
 
-    args[0]: index of lval in cdictionary
+    - args[0]: index of lval in cdictionary
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -681,9 +633,9 @@ class CExpAddrOf(CExp):
 
 @cdregistry.register_tag("addroflabel", CExp)
 class CExpAddrOfLabel(CExp):
-    """ Address-of label expression
+    """Address-of label expression
 
-    args[0]: statement sid
+    - args[0]: statement sid
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -702,9 +654,9 @@ class CExpAddrOfLabel(CExp):
 
 @cdregistry.register_tag("startof", CExp)
 class CExpStartOf(CExp):
-    """ Start-of expression
+    """Start-of expression
 
-    args[0]: index of lval in cdictionary
+    - args[0]: index of lval in cdictionary
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -736,13 +688,13 @@ class CExpStartOf(CExp):
 
 @cdregistry.register_tag("fnapp", CExp)
 class CExpFnApp(CExp):
-    """ Function application.
+    """Function application.
 
-    tags[1]: filename
-    args[0]: line number
-    args[1]: byte number
-    args[2]: index of target function expression in cdictionary
-    args[3..]: indices of arguments (optional) in cdictionary
+    - tags[1]: filename
+    - args[0]: line number
+    - args[1]: byte number
+    - args[2]: index of target function expression in cdictionary
+    - args[3..]: indices of arguments (optional) in cdictionary
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -774,11 +726,11 @@ class CExpFnApp(CExp):
 
 @cdregistry.register_tag("cnapp", CExp)
 class CExpCnApp(CExp):
-    """ Constant function application.
+    """Constant function application.
 
-    tags[0]: name
-    args[0]: index of result type in cdictionary
-    args[1..]: indices of arguments (optional) in cdictionary
+    - tags[0]: name
+    - args[0]: index of result type in cdictionary
+    - args[1..]: indices of arguments (optional) in cdictionary
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:

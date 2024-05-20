@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2020-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,6 +26,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Left-hand side base (storage location for variable)."""
 
 from typing import Dict, List, Tuple, TYPE_CHECKING
 
@@ -82,8 +83,8 @@ class CLHost(CDictionaryRecord):
 class CLHostVar(CLHost):
     """ Variable.
 
-    tags[1]: vname (name of variable)
-    args[0]: vid (variable id)
+    - tags[1]: vname (name of variable)
+    - args[0]: vid (variable id)
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
@@ -122,7 +123,7 @@ class CLHostVar(CLHost):
 class CLHostMem(CLHost):
     """ Memory reference.
 
-    args[0]: index of address expression in cdictionary
+    - args[0]: index of address expression in cdictionary
     """
 
     def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:

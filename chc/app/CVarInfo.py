@@ -26,6 +26,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Variable definition."""
 
 from typing import cast, List, Optional, TYPE_CHECKING
 
@@ -33,6 +34,7 @@ from chc.app.CDictionaryRecord import CDictionaryRecord, CDeclarationsRecord
 
 import chc.util.fileutil as UF
 import chc.util.IndexedTable as IT
+from chc.util.loggingutil import chklogger
 
 if TYPE_CHECKING:
     from chc.app.CDeclarations import CDeclarations
@@ -45,20 +47,19 @@ if TYPE_CHECKING:
 class CVarInfo(CDeclarationsRecord):
     """Local or global variable.
 
-    tags:
-        0: vname
-        1: vstorage     ('?' for global variable, 'o_gvid' for opaque variable)
+    * tags[0]: vname
+    * tags[1]: vstorage  ('?' for global variable, 'o_gvid' for opaque variable)
 
-    args:
-        0: vid          (-1 for global variable)
-        1: vtype
-        2: vattr        (-1 for global variable) (TODO: add global attributes)
-        3: vglob
-        4: vinline
-        5: vdecl        (-1 for global variable) (TODO: add global locations)
-        6: vaddrof
-        7: vparam
-        8: vinit        (optional)
+    * args[0]: vid       (-1 for global variable)
+    * args[1]: vtype
+    * args[2]: vattr     (-1 for global variable) (TODO: add global attributes)
+    * args[3]: vglob
+    * args[4]: vinline
+    * args[5]: vdecl     (-1 for global variable) (TODO: add global locations)
+    * args[6]: vaddrof
+    * args[7]: vparam
+    * args[8]: vinit     (optional)
+
     """
 
     def __init__(self, cdecls: "CDeclarations", ixval: IT.IndexedTableValue
@@ -117,6 +118,8 @@ class CVarInfo(CDeclarationsRecord):
 
     @property
     def vid(self) -> int:
+        """Returns the CIL vid for file vinfos and the index for global vinfos."""
+
         vid = self.args[0]
         return vid if vid >= 0 else self.index
 
@@ -130,7 +133,17 @@ class CVarInfo(CDeclarationsRecord):
             return self.tags[1]
         vid = self.vid
         if vid in self.decls.varinfo_storage_classes:
-            return self.decls.varinfo_storage_classes[vid]
+            stclasses = self.decls.varinfo_storage_classes[vid]
+            if len(stclasses) > 1:
+                chklogger.logger.warning(
+                    "Multiple storage classes found for vinfo: %s", self.vname)
+                return list(stclasses)[0]
+            if len(stclasses) == 0:
+                chklogger.logger.warning(
+                    "No storage classes found for vinfo: %s", self.vname)
+                return "n"
+            else:
+                return list(self.decls.varinfo_storage_classes[vid])[0]
         return "n"
 
     @property

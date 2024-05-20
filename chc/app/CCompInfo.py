@@ -5,8 +5,8 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
-# Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023      Aarno Labs LLC
+# Copyright (c) 2020-2022 Henny B. Sipma
+# Copyright (c) 2023-2024 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,6 +26,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""Definition of a struct/union."""
 
 from typing import cast, List, TYPE_CHECKING
 
@@ -41,14 +42,14 @@ if TYPE_CHECKING:
 
 
 class CCompInfo(CDeclarationsRecord):
-    """Struct definition.
+    """Struct/union definition.
 
-    tags[0]: cname                 ('?' for global struct)
+    * tags[0]: cname                 ('?' for global struct)
 
-    args[0]: ckey                  (-1 for global struct)
-    args[1]: isstruct
-    args[2]: iattr                 (-1 for global struct)
-    args[3..]: field indices
+    * args[0]: ckey                  (-1 for global struct)
+    * args[1]: isstruct
+    * args[2]: iattr                 (-1 for global struct)
+    * args[3..]: field indices
     """
 
     def __init__(
@@ -58,6 +59,14 @@ class CCompInfo(CDeclarationsRecord):
     @property
     def fields(self) -> List["CFieldInfo"]:
         return [self.decls.get_fieldinfo(i) for i in self.args[3:]]
+
+    @property
+    def fieldcount(self) -> int:
+        return len(self.fields)
+
+    @property
+    def fieldnames(self) -> List[str]:
+        return [f.fname for f in self.fields]
 
     @property
     def is_struct(self) -> bool:

@@ -26,38 +26,48 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ------------------------------------------------------------------------------
+"""C-file main access point."""
+
 import os
 import xml.etree.ElementTree as ET
-from typing import Any, Callable, Dict, Iterable, Optional, Tuple, TYPE_CHECKING
+
+from typing import (
+    Any, Callable, Dict, Iterable, List, Optional, Tuple, TYPE_CHECKING)
+
+from chc.api.InterfaceDictionary import InterfaceDictionary
+from chc.api.CFileContracts import CFileContracts
+from chc.api.CFunctionContract import CFunctionContract
+
+from chc.app.CContextDictionary import CContextDictionary
+from chc.app.CFileAssignmentDictionary import CFileAssignmentDictionary
+from chc.app.CFileDictionary import CFileDictionary
+from chc.app.CFileDeclarations import CFileDeclarations
+from chc.app.CFileGlobals import CFileGlobals
+from chc.app.CFunction import CFunction
+from chc.app.CFileGlobals import CGCompTag
+from chc.app.CFileGlobals import CGEnumTag
+from chc.app.CFileGlobals import CGFunction
+from chc.app.CFileGlobals import CGType
+from chc.app.CFileGlobals import CGVarDecl
+from chc.app.CFileGlobals import CGVarDef
+from chc.app.CGXrefs import CGXrefs
+
+from chc.proof.CFilePredicateDictionary import CFilePredicateDictionary
+from chc.proof.CFunctionPO import CFunctionPO
+from chc.proof.CFunctionPPO import CFunctionPPO
+
+from chc.source.CSrcFile import CSrcFile
 
 import chc.util.fileutil as UF
 from chc.util.loggingutil import chklogger
 import chc.util.xmlutil as UX
 
-from chc.app.CContextDictionary import CContextDictionary
-from chc.app.CFunction import CFunction
-from chc.app.CGCompTag import CGCompTag
-from chc.app.CGEnumTag import CGEnumTag
-from chc.app.CGFunction import CGFunction
-from chc.app.CGType import CGType
-from chc.app.CGVarDecl import CGVarDecl
-from chc.app.CGVarDef import CGVarDef
-
-from chc.api.InterfaceDictionary import InterfaceDictionary
-from chc.api.CFileContracts import CFileContracts
-from chc.api.CFileCandidateContracts import CFileCandidateContracts
-
-from chc.app.CGXrefs import CGXrefs
-from chc.source.CSrcFile import CSrcFile
-from chc.app.CContextDictionary import CContextDictionary
-from chc.app.CFileDictionary import CFileDictionary
-from chc.app.CFileDeclarations import CFileDeclarations
-from chc.app.CFileAssignmentDictionary import CFileAssignmentDictionary
-
-from chc.proof.CFilePredicateDictionary import CFilePredicateDictionary
 
 if TYPE_CHECKING:
     from chc.app.CApplication import CApplication
+    from chc.app.CCompInfo import CCompInfo
+    from chc.app.CInstr import CCallInstr
+    from chc.app.CVarInfo import CVarInfo
 
 
 class CFunctionNotFoundException(Exception):
@@ -85,53 +95,59 @@ class CFunctionNotFoundException(Exception):
 
 
 class CFile(object):
-    """C File level declarations."""
+    """C File main access point."""
 
     def __init__(
-            self, capp: "CApplication", index: int, xnode: ET.Element
-    ) -> None:
+            self,
+            capp: "CApplication",
+            index: int,
+            cfilename: str,
+            cfilepath: Optional[str]) -> None:
         self._index = index
         self._capp = capp
-        self.xnode = xnode
-        found_name = self.xnode.get("filename")
-        if found_name is None:
-            raise Exception("xml missing \"filename\"")
-        self.name = found_name
+        self._cfilename = cfilename
+        self._cfilepath = cfilepath
+        self._xnode: Optional[ET.Element] = None
         self._declarations: Optional[CFileDeclarations] = None
         self._dictionary: Optional[CFileDictionary] = None
         self._contextdictionary: Optional[CContextDictionary] = None
         self._predicatedictionary: Optional[CFilePredicateDictionary] = None
         self._interfacedictionary: Optional[InterfaceDictionary] = None
         self._assigndictionary: Optional[CFileAssignmentDictionary] = None
-        self.functions: Dict[int, CFunction] = {}  # vid -> CFunction
-        self.functionnames: Dict[str, int] = {}  # functionname -> vid
+        self._functions: Optional[Dict[int, CFunction]] = None  # vid -> CFunction
         self.strings: Dict[int, Tuple[int, str]] = {}  # string-index -> (len,string)
-        self._sourcefile = None  # CSrcFile
-        # self.contracts = None
-        # self.candidate_contracts = None
-        # if self.capp.has_contractpath() and UF.has_contracts(
-        #    self.capp.contractpath, self.name
-        # ):
-        #    self.contracts = CFileContracts(self, self.capp.contractpath)
-        # if not (
-        #    self.capp.candidate_contractpath is None
-        # ) and UF.has_candidate_contracts(self.capp.candidate_contractpath, self.name):
-        #    self.candidate_contracts = CFileCandidateContracts(
-        #        self, self.capp.candidate_contractpath
-        #    )
-        # if self.contracts is not None:
-        #    xnode = ET.Element("interface-dictionary")
-        #    self.interfacedictionary.write_xml(xnode)
-        #    UF.save_cfile_interface_dictionary(self.capp.path, self.name, xnode)
-        self.gtypes: Dict[Any, Any] = {}  # name -> CGType
-        self.gcomptagdefs: Dict[Any, Any] = {}  # key -> CGCompTag
-        self.gcomptagdecls: Dict[Any, Any] = {}  # key -> CGCompTag
-        self.gvardecls: Dict[Any, Any] = {}  # vid -> CGVarDecl
-        self.gvardefs: Dict[Any, Any] = {}  # vid -> CGVarDef
+        self._sourcefile: Optional[CSrcFile] = None
+        self._contracts: Optional[CFileContracts] = None
+
+        self._cfileglobals: Optional[CFileGlobals] = None
 
     @property
     def index(self) -> int:
         return self._index
+
+    @property
+    def cfilename(self) -> str:
+        """Returns base filename (without extension)."""
+
+        return self._cfilename
+
+    @property
+    def cfilepath(self) -> Optional[str]:
+        """Returns path relative to project directory or None if at toplevel."""
+
+        return self._cfilepath
+
+    @property
+    def name(self) -> str:
+        """Returns the full name relative to the project directory.
+
+        Note: the filename is without extension
+        """
+
+        if self.cfilepath is None:
+            return self.cfilename
+        else:
+            return os.path.join(self.cfilepath, self.cfilename)
 
     @property
     def capp(self) -> "CApplication":
@@ -146,36 +162,119 @@ class CFile(object):
         return self.capp.projectname
 
     @property
+    def contractpath(self) -> str:
+        return self.capp.contractpath
+
+    @property
+    def cfileglobals(self) -> CFileGlobals:
+        if self._cfileglobals is None:
+            chklogger.logger.info("Load _cfile for %s", self.name)
+            xcfile = UF.get_cfile_xnode(
+                self.targetpath,
+                self.projectname,
+                self.cfilepath,
+                self.cfilename)
+            if xcfile is None:
+                raise UF.CHCError(f"_cfile.xml not found for {self.name}")
+            self._cfileglobals = CFileGlobals(self, xcfile)
+        return self._cfileglobals
+
+    @property
+    def gfunctions(self) -> Dict[int, "CGFunction"]:
+        return self.cfileglobals.gfunctions
+
+    @property
+    def functioncount(self) -> int:
+        return self.cfileglobals.functioncount
+
+    @property
+    def gcomptagdecls(self) -> Dict[int, "CGCompTag"]:
+        return self.cfileglobals.gcomptagdecls
+
+    @property
+    def gcomptagdefs(self) -> Dict[int, "CGCompTag"]:
+        return self.cfileglobals.gcomptagdefs
+
+    @property
+    def genumtagdecls(self) -> Dict[str, "CGEnumTag"]:
+        return self.cfileglobals.genumtagdecls
+
+    @property
+    def genumtagdefs(self) -> Dict[str, "CGEnumTag"]:
+        return self.cfileglobals.genumtagdefs
+
+    @property
+    def gtypes(self) -> Dict[str, "CGType"]:
+        return self.cfileglobals.gtypes
+
+    @property
+    def gvardecls(self) -> Dict[int, "CGVarDecl"]:
+        return self.cfileglobals.gvardecls
+
+    @property
+    def gvardefs(self) -> Dict[int, "CGVarDef"]:
+        return self.cfileglobals.gvardefs
+
+    def has_global_varinfo(self, vid: int) -> bool:
+        return vid in self.cfileglobals.global_varinfo_vids
+
+    def get_global_varinfo(self, vid: int) -> "CVarInfo":
+        if vid in self.cfileglobals.global_varinfo_vids:
+            return self.cfileglobals.global_varinfo_vids[vid]
+        else:
+            raise UF.CHCError(f"Global variable with vid: {vid} not found")
+
+    def has_global_varinfo_by_name(self, name: str) -> bool:
+        return name in self.cfileglobals.global_varinfo_names
+
+    def get_global_varinfo_by_name(self, name: str) -> "CVarInfo":
+        if name in self.cfileglobals.global_varinfo_names:
+            return self.cfileglobals.global_varinfo_names[name]
+        else:
+            raise UF.CHCError(
+                f"Varinfo with name {name} not found in {self.name}")
+
+    @property
+    def functions(self) -> Dict[int, CFunction]:
+        if self._functions is None:
+            self._functions = {}
+            for (vid, gf) in self.gfunctions.items():
+                fnname = gf.vname
+                xnode = UF.get_cfun_xnode(
+                    self.targetpath,
+                    self.projectname,
+                    self.cfilepath,
+                    self.cfilename,
+                    fnname)
+                if xnode is not None:
+                    cfunction = CFunction(self, xnode, fnname)
+                    self._functions[vid] = cfunction
+                else:
+                    chklogger.logger.warning("Function {fnname} not found")
+        return self._functions
+
+    @property
+    def functionxref(self) -> Dict[str, int]:
+        """Returns a map from function names to vid's."""
+
+        return { cfun.name: index for (index, cfun) in self.functions.items() }
+
+    @property
+    def functionnames(self) -> List[str]:
+        return [cfun.name for cfun in self.functions.values()]
+
+    @property
     def sourcefile(self) -> "CSrcFile":
         if self._sourcefile is None:
-            self._initialize_source()
+            srcpath = UF.get_savedsource_path(self.targetpath, self.projectname)
+            srcfile = os.path.join(srcpath, self.name + ".c")
+            chklogger.logger.info("Source file: %s", srcfile)
+            self._sourcefile = CSrcFile(self.capp, srcfile)
         return self._sourcefile
-
-    @property
-    def xcfilename(self) -> str:
-        """Returns the filename with relative path."""
-
-        name = self.xnode.get("filename")
-        if name is None:
-            raise Exception("xml missing 'filename' attribute")
-        return name
-
-    @property
-    def cfilename(self) -> str:
-        return os.path.basename(self.xcfilename)
-
-    @property
-    def cfilepath(self) -> Optional[str]:
-        path = os.path.dirname(self.xcfilename)
-        if path == "":
-            return None
-        else:
-            return path
 
     @property
     def dictionary(self) -> CFileDictionary:
         if self._dictionary is None:
-            chklogger.logger.info("CFile dictionary is retrieved")
             xnode = UF.get_cfile_dictionary_xnode(
                 self.targetpath,
                 self.projectname,
@@ -202,7 +301,6 @@ class CFile(object):
                 self.cfilename)
             if xnode is None:
                 raise UF.CHCError("Context table file not found")
-            chklogger.logger.info("Context dictionary retrieved")
             self._contextdictionary = CContextDictionary(self, xnode)
         return self._contextdictionary
 
@@ -223,14 +321,7 @@ class CFile(object):
             xdecls = xnode.find("c-declarations")
             if xdecls is None:
                 raise UF.CHCError("File declarations node not found")
-            xdefs = UF.get_cfile_xnode(
-                self.targetpath,
-                self.projectname,
-                self.cfilepath,
-                self.cfilename)
-            if xdefs is None:
-                raise UF.CHCError("File with definitions not found")
-            self._declarations = CFileDeclarations(self, xdecls, xdefs)
+            self._declarations = CFileDeclarations(self, xdecls)
         return self._declarations
 
     def reset_declarations(self) -> None:
@@ -244,8 +335,6 @@ class CFile(object):
                 self.projectname,
                 self.cfilepath,
                 self.cfilename)
-            # if xnode is None:
-            #    raise UF.CHCError("Interface dictionary file not found")
             self._interfacedictionary = InterfaceDictionary(self, xnode)
         return self._interfacedictionary
 
@@ -255,7 +344,11 @@ class CFile(object):
     @property
     def assigndictionary(self) -> CFileAssignmentDictionary:
         if self._assigndictionary is None:
-            xnode = UF.get_cfile_assignment_dictionary_xnode(self.capp.path, self.name)
+            xnode = UF.get_cfile_assignment_dictionary_xnode(
+                self.targetpath,
+                self.projectname,
+                self.cfilepath,
+                self.cfilename)
             self._assigndictionary = CFileAssignmentDictionary(self, xnode)
         return self._assigndictionary
 
@@ -274,34 +367,37 @@ class CFile(object):
         self._predicatedictionary = None
 
     def collect_post_assumes(self) -> None:
-        """For all call sites collect postconditions from callee's contracts and add as assume."""
+        """Collect callsite postconditions from callee's contracts and add as assume."""
 
-        self.iter_functions(lambda fn: fn.collect_post_assumes())
+        for fn in self.get_functions():
+            fn.collect_post_assumes()
+
         self.save_interface_dictionary()
         self.save_predicate_dictionary()
         self.save_declarations()
 
-    def save_candidate_contracts(self) -> None:
-        if self.candidate_contracts is not None:
-            self.candidate_contracts.save_mathml_contract()
-        self.save_predicate_dictionary()
-        self.save_interface_dictionary()
+    @property
+    def contracts(self) -> CFileContracts:
+        if self._contracts is None:
+            self._contracts = CFileContracts(self, self.contractpath)
+        return self._contracts
 
     def has_file_contracts(self) -> bool:
         return not (self.contracts is None)
 
-    def has_file_candidate_contracts(self) -> bool:
-        return not (self.candidate_contracts is None)
+    def has_outstanding_fn_api_requests(self) -> bool:
+        """Returns true if any of this file's functions posted a request."""
+
+        return (
+            any(fn.has_outstanding_api_requests() for fn in self.get_functions()))
 
     def has_function_contract(self, name: str) -> bool:
-        return False
-        # return (not (self.contracts is None)) and (
-        #    self.contracts.has_function_contract(name)
-        # )
+        return self.contracts.has_function_contract(name)
 
-    def get_function_contract(self, name):
-        if not (self.contracts is None):
+    def get_function_contract(self, name: str) -> Optional[CFunctionContract]:
+        if self.has_function_contract(name):
             return self.contracts.function_contract(name)
+        return None
 
     def get_max_functionname_length(self) -> int:
         if len(self.functionnames) > 0:
@@ -309,189 +405,148 @@ class CFile(object):
         else:
             return 10
 
-    def get_source_line(self, n):
-        self._initialize_source()
-        if self.sourcefile is not None:
-            return self.sourcefile.get_line(n)
+    def get_source_line(self, n: int) -> str:
+        line = self.sourcefile.get_line(n)
+        return line if line else "n/a"
 
     def reinitialize_tables(self) -> None:
-        '''
-        xnode = UF.get_cfile_dictionary_xnode(self.capp.path, self.name)
-        if xnode is None:
-            raise UF.CHCError("File dictionary file not found")
-        xdict = xnode.find("c-dictionary")
-        if xdict is None:
-            raise UF.CHCError("File dictionary does not have c-dictionary")
-        self.dictionary._initialize(xdict)
-        xdecls = xnode.find("c-declarations")
-        if xdecls is None:
-            raise UF.CHCError("File dictionary does not have c-declarations")
-        self.declarations._initialize(xdecls)
-        self.contexttable.initialize()
-        xnode = UF.get_cfile_predicate_dictionary_xnode(self.capp.path, self.name)
-        self.predicatedictionary.initialize(xnode, force=True)
-        xnode = UF.get_cfile_interface_dictionary_xnode(self.capp.path, self.name)
-        if xnode is None:
-            raise UF.CHCError("Interface dictionary file not found")
-        self.interfacedictionary.reinitialize(xnode)
-        '''
+        chklogger.logger.info("Reinitialize tables: %s", self.name)
         self.reset_dictionary()
+        self.reset_contextdictionary()
         self.reset_declarations()
         self.reset_predicatedictionary()
         self.reset_interfacedictionary()
-        self.iter_functions(lambda f: f.reinitialize_tables())
+        for fn in self.get_functions():
+            fn.reinitialize_tables()
 
-    def is_struct(self, ckey):
-        return self.declarations.is_struct(ckey)
+    def has_function_by_name(self, fnname: str) -> bool:
+        return fnname in self.functionxref
 
-    def get_structname(self, ckey):
-        return self.declarations.get_structname(ckey)
-
-    def get_function_names(self):
-        self._initialize_functions()
-        return self.functionnames.keys()
-
-    def has_function_by_name(self, fname: str) -> bool:
-        self._initialize_functions()
-        return fname in self.functionnames
-
-    def get_function_by_name(self, fname: str) -> CFunction:
-        self._initialize_functions()
-        if fname in self.functionnames:
-            vid = self.functionnames[fname]
-            return self.functions[vid]
+    def get_function_by_name(self, fnname: str) -> CFunction:
+        if fnname in self.functionxref:
+            fvid = self.functionxref[fnname]
+            return self.functions[fvid]
         else:
-            raise UF.CFunctionNotFoundException(
-                self, fname, list(self.functionnames.keys())
-            )
+            raise CFunctionNotFoundException(self, fnname)
 
     def get_function_by_index(self, index: int) -> CFunction:
-        self._initialize_functions()
-        index = int(index)
         if index in self.functions:
             return self.functions[index]
         else:
-            raise Exception('Unable to find function with global vid ' + str(index))
+            raise Exception(
+                'Unable to find function with global vid ' + str(index))
 
     def has_function_by_index(self, index: int) -> bool:
-        self._initialize_functions()
         return index in self.functions
 
     def get_functions(self) -> Iterable[CFunction]:
-        self._initialize_functions()
         return self.functions.values()
 
     def iter_functions(self, f: Callable[[CFunction], None]) -> None:
         for fn in self.get_functions():
             f(fn)
 
-    def get_strings(self):
+    def get_compinfos(self) -> List["CCompInfo"]:
+        return self.cfileglobals.get_compinfos()
+
+    def get_compinfo_by_ckey(self, ckey: int) -> "CCompInfo":
+        if ckey in self.cfileglobals.global_compinfo_ckeys:
+            return self.cfileglobals.global_compinfo_ckeys[ckey]
+        else:
+            raise UF.CHCError(f"Struct with ckey {ckey} not found")
+
+    def get_strings(self) -> Dict[str, List[str]]:
         """Returns a list of the strings referenced in this file."""
 
-        result = {}
-
-        def f(fn):
-            result[fn.name] = fn.get_strings()
-
-        self.iter_functions(f)
+        result: Dict[str, List[str]] = {}
+        for fn in self.get_functions():
+            result[fn.name] = fn.strings
         return result
 
-    def get_variable_uses(self, vid):
+    def get_variable_uses(self, vid: int) -> Dict[str, int]:
         """Returns a mapping from function name to a count of variable refs.
 
         function name -> number of references with a given vid.
         """
-        result = {}
-
-        def f(fn):
+        result: Dict[str, int] = {}
+        for fn in self.get_functions():
             result[fn.name] = fn.get_variable_uses(vid)
-
-        self.iter_functions(f)
         return result
 
-    def get_callinstrs(self):
-        result = []
+    def get_callinstrs(self) -> List["CCallInstr"]:
+        result: List["CCallInstr"] = []
 
-        def f(fn):
-            result.extend(fn.getcallinstrs())
-
-        self.iter_functions(f)
+        for fn in self.get_functions():
+            result.extend(fn.call_instrs)
         return result
 
-    def reload_spos(self):
-        def f(fn):
+    def reload_spos(self) -> None:
+        for fn in self.get_functions():
             fn.reload_spos()
 
-        self.iter_functions(f)
-
-    def reload_ppos(self):
-        def f(fn):
+    def reload_ppos(self) -> None:
+        for fn in self.get_functions():
             fn.reload_ppos()
 
-        self.iter_functions(f)
-
-    def get_ppos(self):
-        result = []
-
-        def f(fn):
+    def get_ppos(self) -> List[CFunctionPO]:
+        result: List[CFunctionPO] = []
+        for fn in self.get_functions():
             result.extend(fn.get_ppos())
-
-        self.iter_functions(f)
         return result
 
-    def get_line_ppos(self):
-        result = {}
+    def get_open_ppos(self) -> List[CFunctionPO]:
+        """Returns a list of open primary proof obligations."""
+
+        result: List[CFunctionPO] = []
+        for fn in self.get_functions():
+            result.extend(fn.get_open_ppos())
+        return result
+
+    def get_ppos_violated(self) -> List[CFunctionPO]:
+        """Returns a list of primary proof obligations violated."""
+
+        result: List[CFunctionPO] = []
+        for fn in self.get_functions():
+            result.extend(fn.get_ppos_violated())
+        return result
+
+    def get_ppos_delegated(self) -> List[CFunctionPO]:
+        """Returns a list of primary proof obligations delegated."""
+
+        result: List[CFunctionPO] = []
+        for fn in self.get_functions():
+            result.extend(fn.get_ppos_delegated())
+        return result
+
+    def get_spos(self) -> List[CFunctionPO]:
+        result: List[CFunctionPO] = []
+        for fn in self.get_functions():
+            result.extend(fn.get_spos())
+        return result
+
+    def get_line_ppos(self) -> Dict[int, Dict[str, Any]]:
+        result: Dict[int, Dict[str, Any]] = {}
         fnppos = self.get_ppos()
-        for fn in fnppos:
-            for ppo in fnppos[fn]:
-                line = ppo.getline()
-                pred = ppo.get_predicate_tag()
-                if line not in result:
-                    result[line] = {}
-                if pred not in result[line]:
-                    result[line][pred] = {}
-                    result[line][pred]["function"] = fn
-                    result[line][pred]["ppos"] = []
+        for ppo in fnppos:
+            line = ppo.line
+            pred = ppo.predicate_name
+            if line not in result:
+                result[line] = {}
+            if pred not in result[line]:
+                result[line][pred] = {}
+                result[line][pred]["function"] = "TBD"
+                result[line][pred]["ppos"] = []
                 result[line][pred]["ppos"].append(ppo)
         return result
 
-    def get_spos(self):
-        result = []
+    def get_fn_spos(self, fname: str) -> List[CFunctionPO]:
+        if self.has_function_by_name(fname):
+            fn = self.get_function_by_name(fname)
+            return fn.get_spos()
+        else:
+            return []
 
-        def f(fn):
-            result.extend(fn.get_spos())
-
-        self.iter_functions(f)
-        return result
-
-    def get_open_ppos(self):
-        result = []
-
-        def f(fn):
-            result.extend(fn.get_open_ppos())
-
-        self.iter_functions(f)
-        return result
-
-    def get_violations(self):
-        result = []
-
-        def f(fn):
-            result.extend(fn.get_violations())
-
-        self.iter_functions(f)
-        return result
-
-    def get_delegated(self):
-        result = []
-
-        def f(fn):
-            result.extend(fn.get_delegated())
-
-        self.iter_functions(f)
-        return result
-
-    def save_predicate_dictionary(self):
+    def save_predicate_dictionary(self) -> None:
         xroot = UX.get_xml_header("po-dictionary", "po-dictionary")
         xnode = ET.Element("po-dictionary")
         xroot.append(xnode)
@@ -500,8 +555,9 @@ class CFile(object):
             self.targetpath, self.projectname, self.cfilepath, self.cfilename)
         with open(filename, "w") as fp:
             fp.write(UX.doc_to_pretty(ET.ElementTree(xroot)))
+        chklogger.logger.info("Saved predicate dictionary: %s", filename)
 
-    def save_interface_dictionary(self):
+    def save_interface_dictionary(self) -> None:
         xroot = UX.get_xml_header("interface-dictionary", "interface-dictionary")
         xnode = ET.Element("interface-dictionary")
         xroot.append(xnode)
@@ -510,8 +566,9 @@ class CFile(object):
             self.targetpath, self.projectname, self.cfilepath, self.cfilename)
         with open(filename, "w") as fp:
             fp.write(UX.doc_to_pretty(ET.ElementTree(xroot)))
+        chklogger.logger.info("Saved interface dictionary: %s", filename)
 
-    def save_declarations(self):
+    def save_declarations(self) -> None:
         xroot = UX.get_xml_header("cfile", "cfile")
         xnode = ET.Element("cfile")
         xroot.append(xnode)
@@ -520,6 +577,7 @@ class CFile(object):
             self.targetpath, self.projectname, self.cfilepath, self.cfilename)
         with open(filename, "w") as fp:
             fp.write(UX.doc_to_pretty(ET.ElementTree(xroot)))
+        chklogger.logger.info("Saved file declarations: %s", filename)
 
     def save_user_assumptions(self, userdata, assumptions):
         path = self.capp.path
@@ -530,8 +588,10 @@ class CFile(object):
         filename = UF.get_cfile_usr_filename(path, self.name)
         with open(filename, "w") as fp:
             fp.write(UX.doc_to_pretty(ET.ElementTree(xroot)))
+        chklogger.logger.info("Saved user assumptions: %s", filename)
 
-    def create_contract(self, contractpath, preservesmemory=[], seed={}, ignorefns={}):
+    def create_contract(
+            self, contractpath, preservesmemory=[], seed={}, ignorefns={}):
         if UF.has_contracts(contractpath, self.name):
             return
         cnode = ET.Element("cfile")
@@ -555,7 +615,8 @@ class CFile(object):
         ffnode = ET.Element("functions")
         cnode.append(ffnode)
         fseedfunctions = (
-            fseed["functions"] if (fseed is not None) and "functions" in fseed else None
+            fseed["functions"] if (fseed is not None) and "functions" in fseed
+            else None
         )
 
         # add functions
@@ -606,136 +667,3 @@ class CFile(object):
                 pcnode.append(pnode)
             ffnode.append(fnode)
         UF.save_contracts_file(contractpath, self.name, cnode)
-
-    def create_candidate_contract(self, contractpath):
-        cnode = ET.Element("cfile")
-        cnode.set("name", self.name)
-        ffnode = ET.Element("functions")
-        dnode = ET.Element("data-structures")
-        cnode.extend([dnode, ffnode])
-        for fn in self.get_functions():
-            fnode = ET.Element("function")
-            fnode.set("name", fn.name)
-            ppnode = ET.Element("parameters")
-            for fid in sorted(fn.formals, key=lambda fid: fn.formals[fid].vparam):
-                pnode = ET.Element("par")
-                pnode.set("name", fn.formals[fid].vname)
-                pnode.set("nr", str(fn.formals[fid].vparam))
-                ppnode.append(pnode)
-            fnode.append(ppnode)
-            fnode.append(ET.Element("postconditions"))
-            fnode.append(ET.Element("data-structure-requests"))
-            ffnode.append(fnode)
-        UF.save_candidate_contracts_file(contractpath, self.name, cnode)
-
-    def export_file_data(self):
-        result = {}
-        result["filename"] = self.name
-        result["functions"] = {}
-        self.iter_functions(lambda f: f.export_function_data(result["functions"]))
-        return result
-
-    def get_gtypes(self):
-        self._initialize_gtypes()
-        return self.gtypes
-
-    def _initialize_gtypes(self):
-        if len(self.gtypes) > 0:
-            return
-        for t in self.xnode.find("global-type-definitions").findall("gtype"):
-            name = t.find("typeinfo").get("tname")
-            self.gtypes[name] = CGType(self, t)
-
-    def get_gcomptagdefs(self):
-        self._initialize_gcomptagdefs()
-        return self.gcomptagdefs
-
-    def _initialize_gcomptagdefs(self):
-        if len(self.gcomptagdefs) > 0:
-            return
-        for c in self.xnode.find("global-comptag-definitions").findall("gcomptag"):
-            key = int(c.find("compinfo").get("ckey"))
-            self.gcomptagdefs[key] = CGCompTag(self, c)
-
-    def get_gcomptagdecls(self):
-        self._initialize_gcomptagdecls()
-        return self.gcomptagdecls
-
-    def _initialize_gcomptagdecls(self):
-        if len(self.gcomptagdecls) > 0:
-            return
-        for c in self.xnode.find("global-comptag-declarations").findall("gcomptagdecl"):
-            key = int(c.find("compinfo").get("ckey"))
-            self.gcomptagdecls[key] = CGCompTag(self, c)
-
-    def _initialize_genumtagdefs(self):
-        if len(self.genumtagdefs) > 0:
-            return
-        for e in self.xnode.find("global-enumtag-definitions").findall("genumtag"):
-            name = e.find("enuminfo").get("ename")
-            self.genumtagdefs[name] = CGEnumTag(self, e)
-
-    def _initialize_genumtagdecls(self):
-        if len(self.genumtagdecls) > 0:
-            return
-        for e in self.xnode.find("global-enumtag-declarations").findall("genumtag"):
-            name = e.find("enuminfo").get("ename")
-            self.genumtagdecls[name] = CGEnumTag(self, e)
-
-    def get_gvardecls(self):
-        self._initialize_gvardecls()
-        return self.gvardecls
-
-    def _initialize_gvardecls(self):
-        if len(self.gvardecls) > 0:
-            return
-        for v in self.xnode.find("global-var-declarations").findall("gvardecl"):
-            vid = int(v.find("varinfo").get("vid"))
-            self.gvardecls[vid] = CGVarDecl(self, v)
-
-    def get_gvardefs(self):
-        self._initialize_gvardefs()
-        return self.gvardefs
-
-    def _initialize_gvardefs(self):
-        if len(self.gvardefs) > 0:
-            return
-        for v in self.xnode.find("global-var-definitions").findall("gvar"):
-            vid = int(v.find("varinfo").get("vid"))
-            self.gvardefs[vid] = CGVarDef(self, v)
-
-    def get_gfunctions(self):
-        self._initialize_gfunctions()
-        return self.declarations.gfunctions
-
-    def _initialize_gfunctions(self):
-        if len(self.declarations.gfunctions) > 0:
-            return
-        for f in self.xnode.find("functions").findall("gfun"):
-            vid = int(f.find("svar").get("vid"))
-            self.declarations.gfunctions[vid] = CGFunction(self, f)
-
-    def _initialize_function(self, vid: int) -> None:
-        if vid in self.functions:
-            return
-        fname = self.declarations.get_gfunction(vid).name
-        xnode = UF.get_cfun_xnode(
-            self.targetpath,
-            self.projectname,
-            self.cfilepath,
-            self.cfilename,
-            fname)
-        if xnode is not None:
-            chklogger.logger.info(
-                "C function %s from file %s retrieved", fname, self.cfilename)
-            self.functions[vid] = CFunction(self, xnode, fname)
-            self.functionnames[fname] = vid
-
-    def _initialize_functions(self) -> None:
-        self._initialize_gfunctions()
-        for vid in self.declarations.gfunctions.keys():
-            self._initialize_function(vid)
-
-    def _initialize_source(self) -> None:
-        if self._sourcefile is None:
-            self._sourcefile = self.capp.get_srcfile(self.name)
