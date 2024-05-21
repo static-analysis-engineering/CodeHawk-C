@@ -83,7 +83,8 @@ class CFileAssignment(AssignDictionaryRecord):
 
 class GlobalAssignmentFunctionName(AssignDictionaryRecord):
 
-    def __init__(self, ad: "CFileAssignmentDictionary", ixval: IT.IndexedTableValue
+    def __init__(
+            self, ad: "CFileAssignmentDictionary", ixval: IT.IndexedTableValue
     ) -> None:
         AssignDictionaryRecord.__init__(self, ad, ixval)
 
@@ -149,7 +150,7 @@ class GlobalAssignment(CFileAssignment):
 
     def __init__(
             self, ad: "CFileAssignmentDictionary", ixval: IT.IndexedTableValue
-        ) -> None:
+    ) -> None:
         CFileAssignment.__init__(self, ad, ixval)
 
     @property
@@ -246,7 +247,8 @@ class StaticAssignment(CFileAssignment):
     - args[4]: index of context in context table
     """
 
-    def __init__(self, ad: "CFileAssignmentDictionary", ixval: IT.IndexedTableValue
+    def __init__(
+            self, ad: "CFileAssignmentDictionary", ixval: IT.IndexedTableValue
     ) -> None:
         CFileAssignment.__init__(self, ad, ixval)
 
@@ -257,7 +259,7 @@ class StaticAssignment(CFileAssignment):
     @property
     def fname(self) -> str:
         return self.ad.get_function_name(self.args[1])
-    
+
     @property
     def vid(self) -> int:
         return self.args[0]
@@ -306,7 +308,7 @@ class StaticIndexAssignment(CFileAssignment):
 
     @property
     def fname(self) -> str:
-        return self.ad.get_function_name(self.args[1])    
+        return self.ad.get_function_name(self.args[1])
 
     @property
     def vid(self) -> int:
@@ -360,7 +362,7 @@ class FieldAssignment(CFileAssignment):
 
     @property
     def fname(self) -> str:
-        return self.ad.get_function_name(self.args[1])    
+        return self.ad.get_function_name(self.args[1])
 
     @property
     def field(self) -> str:
@@ -400,7 +402,7 @@ class UnknownAssignment(CFileAssignment):
 
     @property
     def fname(self) -> str:
-        return self.ad.get_function_name(self.args[0])    
+        return self.ad.get_function_name(self.args[0])
 
     @property
     def lhs(self) -> "CLval":

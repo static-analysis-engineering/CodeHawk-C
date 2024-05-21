@@ -334,9 +334,13 @@ class CHCSummaryTestNotFound(CHCError):
     def __str__(self) -> str:
         lines = []
         lines.append(
-            "Libc summary test " + self.fname + " not found for header " + self.header
+            "Libc summary test "
+            + self.fname
+            + " not found for header "
+            + self.header
         )
-        lines.append("Function tests available for header " + self.header + " are:")
+        lines.append(
+            "Function tests available for header " + self.header + " are:")
         for name in sorted(self.fnames):
             lines.append("  - " + name)
         return "\n".join(lines)
@@ -364,13 +368,16 @@ class CHCJulietTestSuiteNotRegisteredError(CHCError):
     def __str__(self) -> str:
         lines = []
         lines.append(
-            "Juliet Test Suite repository has not been registered in ConfigLocal.py"
+            "Juliet Test Suite repository has not been registered "
+            + "in ConfigLocal.py"
         )
         lines.append("Please download or clone")
         lines.append(
-            "  " + "https://github.com/kestreltechnology/CodeHawk-C-Targets-Juliet"
+            "  "
+            + "https://github.com/kestreltechnology/CodeHawk-C-Targets-Juliet"
         )
-        lines.append("and add the path to juliettestcases.json in ConfigLocal.py")
+        lines.append(
+            "and add the path to juliettestcases.json in ConfigLocal.py")
         return "\n".join(lines)
 
 
@@ -392,7 +399,8 @@ class CHCJulietTargetFileCorruptedError(CHCError):
 
 class CHCJulietCWENotFoundError(CHCError):
     def __init__(self, cwe: str, cwes: List[str]) -> None:
-        CHCError.__init__(self, "Cwe " + cwe + " not found in juliettestcases.json")
+        CHCError.__init__(
+            self, "Cwe " + cwe + " not found in juliettestcases.json")
         self.cwe = cwe
         self.cwes = cwes
 
@@ -408,14 +416,16 @@ class CHCJulietCWENotFoundError(CHCError):
 
 class CHCJulietTestNotFoundError(CHCError):
     def __init__(self, cwe: str, test: str, tests: List[str]) -> None:
-        CHCError.__init__(self, "Test case " + test + " not found for cwe " + cwe)
+        CHCError.__init__(
+            self, "Test case " + test + " not found for cwe " + cwe)
         self.cwe = cwe
         self.test = test
         self.tests = tests
 
     def __str__(self) -> str:
         lines = []
-        lines.append("Test case " + self.test + " not found for cwe " + self.cwe)
+        lines.append(
+            "Test case " + self.test + " not found for cwe " + self.cwe)
         lines.append("-" * 80)
         lines.append("test cases available for " + self.cwe + ":")
         for t in sorted(self.tests):
@@ -432,7 +442,8 @@ class CHCJulietScoreKeyNotFoundError(CHCError):
 
 class CHCJulietScoreFileNotFoundError(CHCError):
     def __init__(self, cwe: str, test: str) -> None:
-        CHCError.__init__(self, "No score file found for " + cwe + " -  " + test)
+        CHCError.__init__(
+            self, "No score file found for " + cwe + " -  " + test)
         self.cwe = cwe
         self.test = test
 
@@ -595,6 +606,7 @@ def get_chc_artifacts_path(path: str) -> str:
     if os.path.isdir(dirname):
         return dirname
     raise CHCArtifactsNotFoundError(path)
+
 
 # -- Global paths -----------------------------------------------------------
 
@@ -1292,7 +1304,7 @@ def get_spo_filename(
         fnname: str) -> str:
     fnpath = get_cfile_fnpath(
         targetpath, projectname, cfilepath, cfilename, fnname)
-    filename =get_fn_composite(cfilename, fnname, "spo")
+    filename = get_fn_composite(cfilename, fnname, "spo")
     return os.path.join(fnpath, filename)
 
 
@@ -1514,24 +1526,6 @@ def get_kendra_cpath(cfilename: str) -> str:
         return get_kendra_testpath_byid(int(testbase))
     else:
         raise CHCFileNotFoundError(cfilename)
-
-
-# ------------------------------------------------------------ zitser tests ----
-
-
-def get_zitser_path() -> str:
-    return Config().zitserdir
-
-
-def get_zitser_summaries() -> str:
-    path = get_zitser_path()
-    summarypath = os.path.join(path, "testcasesupport")
-    summarypath = os.path.join(summarypath, "zitsersummaries")
-    return os.path.join(summarypath, "zitsersummaries.jar")
-
-
-def get_zitser_testpath(testname: str) -> str:
-    return os.path.join(get_zitser_path(), testname)
 
 
 # --------------------------------------------------------libc summary tests ---
@@ -1982,11 +1976,6 @@ if __name__ == "__main__":
         except CHError as e:
             print(str(e.wrap()))
             exit(1)
-
-    print("\nzitser paths:")
-    print("-" * 80)
-    for special_id in ["id1283", "id1310"]:
-        print("  " + special_id + get_zitser_testpath(special_id))
 
     print("\nRegistered target files:")
     print("-" * 80)

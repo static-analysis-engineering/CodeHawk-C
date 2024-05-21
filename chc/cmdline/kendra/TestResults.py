@@ -42,7 +42,7 @@ if TYPE_CHECKING:
 class TestResults(object):
     def __init__(self, testsetref: "TestSetRef") -> None:
         self._testsetref = testsetref  # TestSetRef
-        self._parseresults: Dict[str, str]  = {}
+        self._parseresults: Dict[str, str] = {}
         self._xfileresults: Dict[str, Dict[str, Any]] = {}
         self._pporesults: Dict[str, Dict[str, Dict[str, Any]]] = {}
         self._pevresults: Dict[str, Dict[str, Dict[str, Any]]] = {}
@@ -53,7 +53,7 @@ class TestResults(object):
         self._includes_pevs = False
         self._includes_spos = False
         self._includes_sevs = False
-        self._initialize()        
+        self._initialize()
 
     @property
     def cfiles(self) -> Iterable["TestCFileRef"]:

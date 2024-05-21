@@ -34,6 +34,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from chc.app.CFunction import CFunction
 
+
 class FieldAssignment:
 
     def __init__(self, cfun: "CFunction", xnode: ET.Element) -> None:

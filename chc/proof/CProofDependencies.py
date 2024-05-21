@@ -37,11 +37,12 @@ import chc.util.fileutil as UF
 if TYPE_CHECKING:
     from chc.proof.CFunctionProofs import CFunctionProofs
 
+
 class CProofDependencies:
     """Extent of dependency of a closed proof obligation.
 
     levels:
-       
+
     - 's': dependent on statement itself only
     - 'f': dependent on function context
     - 'r': reduced to local spo in function context

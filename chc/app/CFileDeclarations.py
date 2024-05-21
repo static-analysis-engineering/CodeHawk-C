@@ -113,8 +113,7 @@ class CFileDeclarations(CDeclarations):
     Declarations are dependent on CFileDictionary
     """
 
-    def __init__(self, cfile: "CFile", xnode: ET.Element
-    ) -> None:
+    def __init__(self, cfile: "CFile", xnode: ET.Element) -> None:
         self._cfile = cfile
 
         # File definition dictionary
@@ -339,7 +338,7 @@ class CFileDeclarations(CDeclarations):
             return "\n".join(lines)
         else:
             raise UF.CHCError(
-                "Name: " + name +  " does not correspond to a table")
+                "Name: " + name + " does not correspond to a table")
 
     def __str__(self) -> str:
         lines: List[str] = []

@@ -71,8 +71,6 @@ def set_logging(
 def kendra_list(args: argparse.Namespace) -> NoReturn:
     """Prints out the list of kendra tests available in the test directory."""
 
-    #arguments
-
     path = UF.get_kendra_path()
 
     result: List[str] = []
@@ -208,7 +206,6 @@ def kendra_test_set(args: argparse.Namespace) -> NoReturn:
     except UF.CHError as e:
         print_error(str(e.wrap()))
         exit(1)
-
 
     set_logging(
         loglevel,

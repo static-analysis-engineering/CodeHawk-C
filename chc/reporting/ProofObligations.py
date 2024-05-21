@@ -347,7 +347,7 @@ class FunctionDisplay:
                 self._currentline = po.line + 1
                 continue
             line = po.line
-            indent: int = 18 if po.is_ppo else 24            
+            indent: int = 18 if po.is_ppo else 24
             if line >= self._currentline:
                 if len(contexts) > 0 and showinvs:
                     lines.append(
@@ -940,7 +940,7 @@ def totals_to_presentation_string(
             """
         else:
             rsum = rpposum  # TBD: check
-            r = rppo # TBD: check
+            r = rppo  # TBD: check
             lines.append(
                 t.ljust(rhlen)
                 + "".join(

@@ -57,7 +57,6 @@ import sys
 
 from typing import NoReturn
 
-
 from chc.app.CHVersion import chcversion
 
 import chc.cmdline.c_file.cfileutil as C
@@ -85,7 +84,7 @@ def showinfo(args: argparse.Namespace) -> NoReturn:
 
 
 def cfilecommand(args: argparse.Namespace) -> NoReturn:
-    descr =  """
+    descr = """
 The chkc c-file set of commands is used to analyze a single file.
 
 The regular sequence of commands is:
@@ -307,6 +306,7 @@ their dependencies and diagnostics for the given test.
 """
     print(descr)
     exit(0)
+
 
 def parse() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -798,7 +798,7 @@ def parse() -> argparse.Namespace:
 
     # --- file-table
     cfilefiletablescmd = cfileparsers.add_parser("file-table")
-    cfilefiletablescmd.set_defaults(func= cfile_filetable_command)
+    cfilefiletablescmd.set_defaults(func=cfile_filetable_command)
     cfiletablesparsers = cfilefiletablescmd.add_subparsers(title="show options")
 
     # --- file-table: attrparam

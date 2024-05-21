@@ -208,7 +208,7 @@ class CFunctionApi:
                             (header is not None)
                             and (fname is not None)
                             and (count is not None)):
-                            self._library_calls[(header, fname)] = int(count)
+                        self._library_calls[(header, fname)] = int(count)
         return self._library_calls
 
     @property

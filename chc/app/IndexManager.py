@@ -49,6 +49,7 @@ TODO:
   - save gxrefs file if new vid's were added to a file
 """
 
+
 @dataclass
 class FileVarReference:
     fid: int   # file index
@@ -91,7 +92,6 @@ class CKeyReference:
         return self.fid is None
 
 
-
 class IndexManager:
 
     def __init__(self, issinglefile: bool) -> None:
@@ -100,7 +100,8 @@ class IndexManager:
         self.vid2gvid: Dict[int, Dict[int, int]] = {}  # fid -> vid -> gvid
         self.gvid2vid: Dict[int, Dict[int, int]] = {}  # gvid -> fid -> vid
 
-        self.fidvidmax: Dict[int, int] = {}  # fid -> maximum vid in file with index fid
+        # fid -> maximum vid in file with index fid
+        self.fidvidmax: Dict[int, int] = {}
 
         self.ckey2gckey: Dict[int, Dict[int, int]] = {}  # fid -> ckey -> gckey
         self.gckey2ckey: Dict[int, Dict[int, int]] = {}  # gckey -> fid -> ckey
@@ -374,7 +375,6 @@ class IndexManager:
 
         xreffilename = UF.get_cxreffile_filename(
             targetpath, projectname, cfilepath, cfilename)
-        chklogger.logger.info("Write xref file: %s, with targetpath: %s and filepath: %s and filename: %s", xreffilename, targetpath, cfilepath, cfilename)
         xreffile = open(xreffilename, "w")
         xreffile.write(UX.doc_to_pretty(ET.ElementTree(xrefroot)))
 

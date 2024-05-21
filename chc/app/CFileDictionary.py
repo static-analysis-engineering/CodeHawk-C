@@ -74,7 +74,7 @@ class CFileDictionary(CDictionary):
     All other indexing is handled by the superclass.
     """
 
-    def __init__(self, cfile: "CFile", xnode: ET.Element)  -> None:
+    def __init__(self, cfile: "CFile", xnode: ET.Element) -> None:
         CDictionary.__init__(self)
         self._cfile = cfile
         self._initialize(xnode)
@@ -137,7 +137,6 @@ class CFileDictionary(CDictionary):
         else:
             return ckey
 
-
     def index_lhost_offset(self, lhost: int, offset: int) -> int:
         args = [lhost, offset]
 
@@ -167,9 +166,9 @@ class CFileDictionary(CDictionary):
 
         if not lhost.is_var:
             return CDictionary.index_exp(self, e, subst, fid)
-    
+
         lhost = cast(CLHostVar, lhost)
-        if not lhost.vid in subst:
+        if lhost.vid not in subst:
             return CDictionary.index_exp(self, e, subst, fid)
 
         # if lhost.is_var and lhost.vid in subst:

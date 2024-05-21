@@ -33,8 +33,6 @@ import xml.etree.ElementTree as ET
 
 from typing import Dict, List, Tuple, TYPE_CHECKING
 
-
-
 from chc.app.CCompInfo import CCompInfo
 from chc.app.IndexManager import FileKeyReference, FileVarReference
 from chc.app.CGlobalDictionary import CGlobalDictionary

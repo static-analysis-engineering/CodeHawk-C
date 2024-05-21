@@ -53,7 +53,6 @@ if TYPE_CHECKING:
 
 
 @dataclass
-
 class CGCompTag:
     """Definition of a struct."""
 

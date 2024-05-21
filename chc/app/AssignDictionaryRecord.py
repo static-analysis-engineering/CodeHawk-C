@@ -34,7 +34,7 @@ import chc.util.IndexedTable as IT
 
 if TYPE_CHECKING:
     from chc.app.CFile import CFile
-    from chc.app.CFileDeclarations import CFileDeclarations    
+    from chc.app.CFileDeclarations import CFileDeclarations
     from chc.app.CFileDictionary import CFileDictionary
     from chc.app.CFileAssignmentDictionary import CFileAssignmentDictionary
 

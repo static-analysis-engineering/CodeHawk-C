@@ -76,7 +76,7 @@ class ParseManager(object):
             posix: bool = False,
             verbose: bool = True,
             keepUnused: bool = False,
-            tgtplatform: str= "-m64",
+            tgtplatform: str = "-m64",
     ) -> None:
         """Initialize paths to code, results, and parser executable.
 

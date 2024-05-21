@@ -48,7 +48,8 @@ class PostRequest(InterfaceDictionaryRecord):
     """
 
     def __init__(
-        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue) -> None:
+        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+    ) -> None:
         InterfaceDictionaryRecord.__init__(self, ifd, ixval)
 
     @property

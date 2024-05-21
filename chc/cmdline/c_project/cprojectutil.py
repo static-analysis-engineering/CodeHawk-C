@@ -59,6 +59,7 @@ if TYPE_CHECKING:
     from chc.app.CFunction import CFunction
     from chc.app.CInstr import CInstr
     from chc.app.CStmt import CInstrsStmt, CStmt
+    from chc.proof.CFunctionPO import CFunctionPO
 
 
 def print_error(m: str) -> None:
@@ -97,7 +98,6 @@ def timing(activity: str) -> Generator:
         + "\n"
         + ("=" * 80)
     )
-
 
 
 def cproject_parse_project(args: argparse.Namespace) -> NoReturn:
@@ -313,12 +313,13 @@ def cproject_report_file(args: argparse.Namespace) -> NoReturn:
         print_error(f"File {filename} not found")
         exit(1)
 
-    if showcode:
+    def pofilter(po: "CFunctionPO") -> bool:
         if showopen:
-            pofilter = lambda po: (not po.is_closed)
+            return not po.is_closed
         else:
-            pofilter = lambda po: True
+            return True
 
+    if showcode:
         print(RP.file_code_tostring(cfile, pofilter=pofilter))
 
     print(RP.file_proofobligation_stats_tostring(cfile))
@@ -510,7 +511,7 @@ def cproject_make_callgraph(args: argparse.Namespace) -> NoReturn:
                 + "  "
                 + str(c))
 
-    if not save is None:
+    if save is not None:
         saveresult: Dict[str, Any] = {}
         saveresult["callgraph"] = result
         saveresult["rev-callgraph"] = revresult

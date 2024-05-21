@@ -53,7 +53,8 @@ class CCompInfo(CDeclarationsRecord):
     """
 
     def __init__(
-        self, decls: "CDeclarations", ixval: IT.IndexedTableValue) -> None:
+        self, decls: "CDeclarations", ixval: IT.IndexedTableValue
+    ) -> None:
         CDeclarationsRecord.__init__(self, decls, ixval)
 
     @property

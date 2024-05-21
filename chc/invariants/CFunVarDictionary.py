@@ -201,7 +201,7 @@ class CFunVarDictionary:
             return "\n".join(lines)
         else:
             raise UF.CHCError(
-                "Name: " + name +  " does not correspond to a table")    
+                "Name: " + name + " does not correspond to a table")
 
     def __str__(self) -> str:
         lines: List[str] = []

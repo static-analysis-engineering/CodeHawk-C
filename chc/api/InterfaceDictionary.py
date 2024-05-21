@@ -55,7 +55,6 @@ import chc.api.STerm as ST
 import chc.api.XPredicate as XP
 
 
-
 if TYPE_CHECKING:
     from chc.app.CFile import CFile
     from chc.app.CFileDeclarations import CFileDeclarations
@@ -328,7 +327,7 @@ class InterfaceDictionary(object):
             args = [self.index_s_term(p.term)]
 
         elif p.is_non_negative:
-            p  = cast(XP.XNonNegative, p)
+            p = cast(XP.XNonNegative, p)
             args = [self.index_s_term(p.term)]
 
         elif p.is_initialized:
@@ -383,7 +382,11 @@ class InterfaceDictionary(object):
         self, name: str, pars: Dict[str, int], gvars: List[str] = []
     ) -> int:
         if (name not in pars) and (name not in gvars):
-            raise Exception("Error in reading user data: " + name + " in file " + self.cfile.name)
+            raise Exception(
+                "Error in reading user data: "
+                + name
+                + " in file "
+                + self.cfile.name)
         if name in pars:
             tags = ["pf"]
             args = [pars[name]]
@@ -440,7 +443,8 @@ class InterfaceDictionary(object):
                 if tnode_text is None:
                     raise Exception("Expected element to have text")
                 args = [
-                    self.parse_mathml_api_parameter(tnode_text, pars, gvars=gvars),
+                    self.parse_mathml_api_parameter(
+                        tnode_text, pars, gvars=gvars),
                     self.parse_mathml_offset(None),
                 ]
 
@@ -497,9 +501,11 @@ class InterfaceDictionary(object):
                 tags = ["ax", "minusa"]
 
             else:
-                raise Exception('Parse mathml s-term apply not found for "' + op + '"')
+                raise Exception(
+                    'Parse mathml s-term apply not found for "' + op + '"')
         else:
-            raise Exception('Parse mathml s-term not found for "' + tnode.tag + '"')
+            raise Exception(
+                'Parse mathml s-term not found for "' + tnode.tag + '"')
 
         return self.mk_s_term(tags, args)
 
@@ -625,22 +631,26 @@ class InterfaceDictionary(object):
 
     # ------------------------ Read/write xml services -----------------------
 
-    def read_xml_xpredicate(self, node: ET.Element, tag: str = "ipr") -> XPredicate:
+    def read_xml_xpredicate(
+            self, node: ET.Element, tag: str = "ipr") -> XPredicate:
         xml_value = node.get(tag)
         if xml_value is None:
             raise Exception('No value for tag "' + tag + '"')
         return self.get_xpredicate(int(xml_value))
 
-    def read_xml_postcondition(self, node: ET.Element, tag: str = "ixpre") -> XPredicate:
+    def read_xml_postcondition(
+            self, node: ET.Element, tag: str = "ixpre") -> XPredicate:
         xml_value = node.get(tag)
         if xml_value is None:
             raise Exception('No value for tag "' + tag + '"')
         return self.get_xpredicate(int(xml_value))
 
-    def write_xml_postcondition(self, node: ET.Element, pc: XPredicate, tag: str = "ixpre") -> None:
+    def write_xml_postcondition(
+            self, node: ET.Element, pc: XPredicate, tag: str = "ixpre") -> None:
         return node.set(tag, str(self.index_xpredicate(pc)))
 
-    def read_xml_postrequest(self, node: ET.Element, tag: str = "iipr") -> PostRequest:
+    def read_xml_postrequest(
+            self, node: ET.Element, tag: str = "iipr") -> PostRequest:
         xml_value = node.get(tag)
         if xml_value is None:
             raise Exception('No value for tag "' + tag + '"')
@@ -678,7 +688,7 @@ class InterfaceDictionary(object):
             return "\n".join(lines)
         else:
             raise UF.CHCError(
-                "Name: " + name +  " does not correspond to a table")
+                "Name: " + name + " does not correspond to a table")
 
     def write_xml(self, node: ET.Element) -> None:
         def f(n: ET.Element, r: Any) -> None:

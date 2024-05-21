@@ -459,7 +459,7 @@ class CExpBinOp(CExp):
         c2 = self.exp2.get_variable_uses(vid)
         return c1 + c2
 
-    def to_dict(self) -> Dict[str, Any ]:
+    def to_dict(self) -> Dict[str, Any]:
         return {
             "base": "binop",
             "op": self.op,

@@ -69,7 +69,7 @@ class CHKLogger:
             logfilename: str = None,
             mode: str = "a") -> None:
 
-        if not level in LogLevel.all():
+        if level not in LogLevel.all():
             level = LogLevel.warning.value
 
         newlogger = logging.getLogger("chkc")

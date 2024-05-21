@@ -62,7 +62,8 @@ class CVarInfo(CDeclarationsRecord):
 
     """
 
-    def __init__(self, cdecls: "CDeclarations", ixval: IT.IndexedTableValue
+    def __init__(
+            self, cdecls: "CDeclarations", ixval: IT.IndexedTableValue
     ) -> None:
         CDeclarationsRecord.__init__(self, cdecls, ixval)
 
@@ -111,7 +112,7 @@ class CVarInfo(CDeclarationsRecord):
 
     @property
     def vinit(self) -> Optional["CInitInfo"]:
-        if len(self.args) >  8:
+        if len(self.args) > 8:
             return self.decls.get_initinfo(self.args[8])
         else:
             return None

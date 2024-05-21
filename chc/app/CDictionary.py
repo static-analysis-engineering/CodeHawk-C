@@ -314,7 +314,7 @@ class CDictionary(ABC):
             return self.mk_attrparam(a.tags, a.args)
 
         if a.is_str:
-            args = [self.index_string(cast("CAttrStr",a).stringvalue)]
+            args = [self.index_string(cast("CAttrStr", a).stringvalue)]
             return self.mk_attrparam(a.tags, args)
 
         if a.is_cons:
@@ -419,7 +419,7 @@ class CDictionary(ABC):
 
     def mk_constant_index(self, tags: List[str], args: List[int]) -> int:
 
-        def f(index:int, tags: List[str], args: List[int]) -> CConst:
+        def f(index: int, tags: List[str], args: List[int]) -> CConst:
             itv = IndexedTableValue(index, tags, args)
             return cdregistry.mk_instance(self, itv, CConst)
 
@@ -841,7 +841,7 @@ class CDictionary(ABC):
             return "\n".join(lines)
         else:
             raise UF.CHCError(
-                "Name: " + name +  " does not correspond to a table")
+                "Name: " + name + " does not correspond to a table")
 
     def __str__(self) -> str:
         lines = []

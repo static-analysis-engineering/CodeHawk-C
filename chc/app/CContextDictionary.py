@@ -104,7 +104,7 @@ class CContextDictionary:
             return "\n".join(lines)
         else:
             raise UF.CHCError(
-                "Name: " + name +  " does not correspond to a table")
+                "Name: " + name + " does not correspond to a table")
 
     # ------------------- create new contexts ----------------------------------
 

@@ -326,13 +326,14 @@ def cfile_report_file(args: argparse.Namespace) -> NoReturn:
                 print(json.dumps(jsonokresult, indent=2))
         exit(0)
 
+    def pofilter(po: "CFunctionPO") -> bool:
+        if copen:
+            return not po.is_closed
+        else:
+            return True
+
     if cfunctions is None:
         if cshowcode:
-            if args.open:
-                pofilter = lambda po: (not po.is_closed)
-            else:
-                pofilter = lambda po: True
-
             print(RP.file_code_tostring(cfile, pofilter=pofilter))
 
         print(RP.file_proofobligation_stats_tostring(cfile))
@@ -341,12 +342,6 @@ def cfile_report_file(args: argparse.Namespace) -> NoReturn:
     for fnname in cfunctions:
         if cfile.has_function_by_name(fnname):
             cfun = cfile.get_function_by_name(fnname)
-
-            if args.open:
-                pofilter = lambda po: (not po.is_closed)
-            else:
-                pofilter = lambda po: True
-
             print(RP.function_code_tostring(cfun, pofilter=pofilter))
 
     print(RP.file_proofobligation_stats_tostring(cfile))
@@ -392,13 +387,11 @@ def cfile_investigate_file(args: argparse.Namespace) -> NoReturn:
     capp.initialize_single_file(cfilename)
     cfile = capp.get_cfile()
 
-    pofilter: Callable[["CFunctionPO"], bool] = lambda po: True
-
-    if predicates is not None:
-
-        # need to reassign predicates to satisfy mypy
-        xpredicates: List[str] = predicates
-        pofilter = lambda po: po.predicate_name in xpredicates
+    def pofilter(po: "CFunctionPO") -> bool:
+        if predicates is not None:
+            return po.predicate_name in predicates
+        else:
+            return True
 
     openppos = cfile.get_open_ppos()
     violations = cfile.get_ppos_violated()
@@ -533,12 +526,13 @@ def cfile_testlibc_summary(args: argparse.Namespace) -> NoReturn:
     capp.initialize_single_file(cfilename)
     cfile = capp.get_cfile()
 
-    if cshowcode:
+    def pofilter(po: "CFunctionPO") -> bool:
         if copen:
-            pofilter = lambda po: (not po.is_closed)
+            return not po.is_closed
         else:
-            pofilter = lambda po: True
+            return True
 
+    if cshowcode:
         print(RP.file_code_tostring(cfile, pofilter=pofilter))
 
     print(RP.file_proofobligation_stats_tostring(cfile))

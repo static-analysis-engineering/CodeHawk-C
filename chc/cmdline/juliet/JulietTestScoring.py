@@ -58,7 +58,6 @@ def scoreheader(name: str, width: int) -> str:
     return header1 + "\n" + header2
 
 
-
 def keymatches(tppo: "JulietPpo", ppo: "CFunctionPO") -> bool:
     """Return true if a ppo matches a ppo listed in the test set reference.
 

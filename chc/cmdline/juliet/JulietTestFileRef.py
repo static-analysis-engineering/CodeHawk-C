@@ -248,8 +248,9 @@ class JulietPpo:
         )
 
     def matches_target_type(self, ppo: "CFunctionPO") -> bool:
-        return (not self.has_target_type()) or str(ppo.predicate.tgtkind
-        ) == self.targettype
+        return (
+            (not self.has_target_type())
+            or str(ppo.predicate.tgtkind) == self.targettype)
 
     def matches_reference_type(self, ppo: "CFunctionPO") -> bool:
         return (not self.has_reference_type()) or (

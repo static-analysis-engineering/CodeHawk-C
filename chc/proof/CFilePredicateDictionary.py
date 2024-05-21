@@ -116,7 +116,7 @@ class CFilePredicateDictionary(object):
     def index_predicate(
             self,
             p: PO.CPOPredicate,
-            subst: Dict[int, "CExp"]={}) -> int:
+            subst: Dict[int, "CExp"] = {}) -> int:
 
         def f(index: int, tags: List[str], args: List[int]) -> PO.CPOPredicate:
             itv = IndexedTableValue(index, tags, args)
@@ -332,7 +332,8 @@ class CFilePredicateDictionary(object):
 
         return self.po_predicate_table.add_tags_args(p.tags, args, f)
 
-    def read_xml_predicate(self, xnode: ET.Element, tag: str = "ipr") -> PO.CPOPredicate:
+    def read_xml_predicate(
+            self, xnode: ET.Element, tag: str = "ipr") -> PO.CPOPredicate:
         xipr = xnode.get(tag)
         if xipr is not None:
             return self.get_predicate(int(xipr))
@@ -374,7 +375,7 @@ class CFilePredicateDictionary(object):
             return "\n".join(lines)
         else:
             raise UF.CHCError(
-                "Name: " + name +  " does not correspond to a table")
+                "Name: " + name + " does not correspond to a table")
 
     def __str__(self) -> str:
         lines: List[str] = []

@@ -34,7 +34,7 @@ if TYPE_CHECKING:
     from chc.api.CFunctionApi import CFunctionApi
     from chc.api.XPredicate import XPredicate
     from chc.app.CFunction import CFunction
-    
+
 
 class GlobalAssumption:
     """

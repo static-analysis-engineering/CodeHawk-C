@@ -45,7 +45,8 @@ if TYPE_CHECKING:
 class AssumptionType(CFunPODictionaryRecord):
     """Base class for assumption types."""
 
-    def __init__(self, pod: "CFunPODictionary", ixval: IndexedTableValue
+    def __init__(
+            self, pod: "CFunPODictionary", ixval: IndexedTableValue
     ) -> None:
         CFunPODictionaryRecord.__init__(self, pod, ixval)
 
@@ -84,7 +85,8 @@ class LocalAssumptionType(AssumptionType):
     * args[0]: index of predicate in predicate dictionary
     """
 
-    def __init__(self, pod: "CFunPODictionary", ixval: IndexedTableValue
+    def __init__(
+            self, pod: "CFunPODictionary", ixval: IndexedTableValue
     ) -> None:
         AssumptionType.__init__(self, pod, ixval)
 
@@ -112,7 +114,8 @@ class ApiAssumptionType(AssumptionType):
     * args[0]: index of predicate in predicate dictionary
     """
 
-    def __init__(self, pod: "CFunPODictionary", ixval: IndexedTableValue
+    def __init__(
+            self, pod: "CFunPODictionary", ixval: IndexedTableValue
     ) -> None:
         AssumptionType.__init__(self, pod, ixval)
 
@@ -145,7 +148,8 @@ class GlobalApiAssumptionType(AssumptionType):
     * args[0]: index of predicate in predicate dictionary
     """
 
-    def __init__(self, pod: "CFunPODictionary", ixval: IndexedTableValue
+    def __init__(
+            self, pod: "CFunPODictionary", ixval: IndexedTableValue
     ) -> None:
         AssumptionType.__init__(self, pod, ixval)
 
@@ -173,7 +177,8 @@ class PostconditionType(AssumptionType):
     * args[1]: index of xpredicate in interface dictionary
     """
 
-    def __init__(self, pod: "CFunPODictionary", ixval: IndexedTableValue
+    def __init__(
+            self, pod: "CFunPODictionary", ixval: IndexedTableValue
     ) -> None:
         AssumptionType.__init__(self, pod, ixval)
 
@@ -204,7 +209,8 @@ class GlobalAssumptionType(AssumptionType):
     * args[0]: index of xpredicate in interfacedictionary
     """
 
-    def __init__(self, pod: "CFunPODictionary", ixval: IndexedTableValue
+    def __init__(
+            self, pod: "CFunPODictionary", ixval: IndexedTableValue
     ) -> None:
         AssumptionType.__init__(self, pod, ixval)
 

@@ -47,7 +47,8 @@ if TYPE_CHECKING:
 class PPOType(CFunPOType):
     """Base class for primary proof obligation types."""
 
-    def __init__(self, pod: "CFunPODictionary", ixval: IndexedTableValue
+    def __init__(
+            self, pod: "CFunPODictionary", ixval: IndexedTableValue
     ) -> None:
         CFunPOType.__init__(self, pod, ixval)
 
@@ -72,7 +73,8 @@ class ProgramPPOType(PPOType):
     * args[2]: index of predicate in predicate dictionary
     """
 
-    def __init__(self, pod: "CFunPODictionary", ixval: IndexedTableValue
+    def __init__(
+            self, pod: "CFunPODictionary", ixval: IndexedTableValue
     ) -> None:
         PPOType.__init__(self, pod, ixval)
 
@@ -114,7 +116,8 @@ class LibPPOType(PPOType):
     * args[3]: index of xpredicate in interface dictionary
     """
 
-    def __init__(self, pod: "CFunPODictionary", ixval: IndexedTableValue
+    def __init__(
+            self, pod: "CFunPODictionary", ixval: IndexedTableValue
     ) -> None:
         PPOType.__init__(self, pod, ixval)
 
@@ -125,7 +128,7 @@ class LibPPOType(PPOType):
     @property
     def lib_function_name(self) -> str:
         return self.tags[1]
-    
+
     @property
     def location(self) -> "CLocation":
         return self.cdecls.get_location(self.args[0])
