@@ -104,8 +104,8 @@ def ppo_to_json_result(po: "CFunctionPO") -> JSONResult:
             content["keydiagnostics"] = po.diagnostic.keyword_msgs
             content["msgdiagnostics"] = po.diagnostic.msgs
     return JSONResult("ppo", content, "ok")
-        
-    
+
+
 def fn_proofobligations_to_json_result(fn: "CFunction") -> JSONResult:
     content: Dict[str, Any] = {}
     ppos: Sequence["CFunctionPO"] = fn.get_ppos()
@@ -129,5 +129,3 @@ def file_proofobligations_to_json_result(cfile: "CFile") -> JSONResult:
         fnsdata.append(fndata)
     content["functions"] = fnsdata
     return JSONResult("fileproofobligations", content, "ok")
-        
-    

@@ -44,8 +44,7 @@ if TYPE_CHECKING:
     from chc.app.CFunction import CFunction
 
 
-
-class CFunctionContract(object):
+class CFunctionContract:
 
     def __init__(
             self,
@@ -58,7 +57,6 @@ class CFunctionContract(object):
         self._preconditions: Optional[Dict[int, "XPredicate"]] = None
         self._sideeffects: Optional[Dict[int, "XPredicate"]] = None
         self._postrequests: Dict[int, "XPredicate"] = {}
-        # self._initialize(self.xnode)
 
     @property
     def cfilecontracts(self) -> "CFileContracts":

@@ -35,7 +35,7 @@ if TYPE_CHECKING:
     from chc.api.PostRequest import PostRequest
     from chc.api.XPredicate import XPredicate
     from chc.app.CVarInfo import CVarInfo
-    
+
 
 class PostConditionRequest:
 

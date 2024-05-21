@@ -358,7 +358,7 @@ class CFunction:
     def has_function_contract(self) -> bool:
         return self.cfile.has_function_contract(self.name)
 
-    def get_function_contract(self)  -> Optional["CFunctionContract"]:
+    def get_function_contract(self) -> Optional["CFunctionContract"]:
         if self.has_function_contract():
             return self.cfile.get_function_contract(self.name)
         return None
@@ -415,7 +415,7 @@ class CFunction:
         else:
             raise UF.CHCError(f"Function {self.name} does not have a line number")
 
-    def get_formals(self)-> List["CVarInfo"] :
+    def get_formals(self) -> List["CVarInfo"]:
         return list(self.formals.values())
 
     def get_locals(self) -> List["CVarInfo"]:

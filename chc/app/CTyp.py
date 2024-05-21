@@ -273,7 +273,7 @@ class CTypFloat(CTyp):
     * args[0]: attributes
     """
 
-    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue ) -> None:
+    def __init__(self, cd: "CDictionary", ixval: IT.IndexedTableValue) -> None:
         CTyp.__init__(self, cd, ixval)
 
     @property

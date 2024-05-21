@@ -121,7 +121,8 @@ class CFunctionPPOs:
         for ppo in self.ppos.values():
             lines.append(str(ppo))
         return "\n".join(lines)
-'''
+
+    '''
     def _initialize(self):
         for p in self.xnode.find("ppos").findall("ppo"):
             ppotype = self.cfun.podictionary.read_xml_ppo_type(p)
@@ -169,4 +170,4 @@ class CFunctionPPOs:
                         kmsgs[key] = msgs
                 diag = CProofDiagnostic(pinvs, pmsgs, amsgs, kmsgs)
             self.ppos[id] = CFunctionPPO(self, ppotype, status, deps, expl, diag)
-'''
+    '''

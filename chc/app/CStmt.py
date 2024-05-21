@@ -251,7 +251,6 @@ class CFunctionBody(CBlock):
         return self.parent is None
 
 
-
 class CIfStmt(CStmt):
 
     def __init__(self, parent: "CStmt", xnode: ET.Element) -> None:
@@ -338,7 +337,7 @@ class CSwitchStmt(CStmt):
                 raise UF.CHCError("Switch stmt without nested block")
         return self._stmts
 
-                
+
 class CBreakStmt(CStmt):
 
     def __init__(self, parent: "CStmt", xnode: ET.Element) -> None:

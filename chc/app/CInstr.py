@@ -149,14 +149,14 @@ class CCallInstr(CInstr):
     def __str__(self) -> str:
         return "      call " + str(self.callee)
 
-    
+
 class CAssignInstr(CInstr):
     """Assignment instruction."""
 
     def __init__(self, parent: "CStmt", xnode: ET.Element) -> None:
         CInstr.__init__(self, parent, xnode)
         self._lhs: Optional["CLval"] = None
-        self._rhs: Optional["CExp" ] = None
+        self._rhs: Optional["CExp"] = None
 
     @property
     def is_assign(self) -> bool:
@@ -252,7 +252,7 @@ class CAsmInstr(CInstr):
         for o in self.asmoutputs:
             lines.append("  " + str(o))
         return "\n".join(lines)
-                                                         
+
 
 class CAsmOutput:
 

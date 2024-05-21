@@ -42,7 +42,8 @@ if TYPE_CHECKING:
 
 class CContextDictionaryRecord(IndexedTableValue):
 
-    def __init__(self, cxd: "CContextDictionary", ixval: IndexedTableValue
+    def __init__(
+            self, cxd: "CContextDictionary", ixval: IndexedTableValue
     ) -> None:
         IndexedTableValue.__init__(self, ixval.index, ixval.tags, ixval.args)
         self._cxd = cxd
@@ -63,7 +64,8 @@ class CContextNode(CContextDictionaryRecord):
     - args[0]: stmt.id for statements, instr sequence number for instructions
     """
 
-    def __init__(self, cxd: "CContextDictionary", ixval: IndexedTableValue
+    def __init__(
+            self, cxd: "CContextDictionary", ixval: IndexedTableValue
     ) -> None:
         CContextDictionaryRecord.__init__(self, cxd, ixval)
 
@@ -73,7 +75,7 @@ class CContextNode(CContextDictionaryRecord):
 
     @property
     def data_id(self) -> int:
-        if len (self.args) > 0:
+        if len(self.args) > 0:
             return self.args[0]
         else:
             raise UF.CHCError(
@@ -87,7 +89,6 @@ class CContextNode(CContextDictionaryRecord):
                 "_".join(self.tags) + ":" + "_".join(str(x) for x in self.args))
 
 
-
 class CfgContext(CContextDictionaryRecord):
     """Control-flow-graph context expressed by a list of context nodes.
 
@@ -95,7 +96,8 @@ class CfgContext(CContextDictionaryRecord):
       context last
     """
 
-    def __init__(self, cxd: "CContextDictionary", ixval: IndexedTableValue
+    def __init__(
+            self, cxd: "CContextDictionary", ixval: IndexedTableValue
     ) -> None:
         CContextDictionaryRecord.__init__(self, cxd, ixval)
 
@@ -118,7 +120,8 @@ class ExpContext(CContextDictionaryRecord):
       context last
     """
 
-    def __init__(self, cxd: "CContextDictionary", ixval: IndexedTableValue
+    def __init__(
+            self, cxd: "CContextDictionary", ixval: IndexedTableValue
     ) -> None:
         CContextDictionaryRecord.__init__(self, cxd, ixval)
 
@@ -137,7 +140,8 @@ class ProgramContext(CContextDictionaryRecord):
     args[1]: index of exp context in context dictionary
     """
 
-    def __init__(self, cxd: "CContextDictionary", ixval: IndexedTableValue
+    def __init__(
+            self, cxd: "CContextDictionary", ixval: IndexedTableValue
     ) -> None:
         CContextDictionaryRecord.__init__(self, cxd, ixval)
 

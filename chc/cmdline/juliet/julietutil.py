@@ -115,7 +115,7 @@ def juliet_check_config(args: argparse.Namespace) -> NoReturn:
 
     width = 15
 
-    def itemstr(name: str, item: str, check: bool =True) -> str:
+    def itemstr(name: str, item: str, check: bool = True) -> str:
         if check:
             if os.path.isfile(item):
                 found = " (found)"
@@ -161,7 +161,6 @@ def juliet_check_config(args: argparse.Namespace) -> NoReturn:
 
     print("\n".join(lines))
     exit(0)
-
 
 
 def juliet_list(args: argparse.Namespace) -> NoReturn:
@@ -553,8 +552,6 @@ def juliet_report_file(args: argparse.Namespace) -> NoReturn:
     capp.initialize_single_file(cfilename)
     cfile = capp.get_cfile()
 
-    pofilter = lambda po: True
-
     if jshowcode:
         if jopen:
             print(RP.file_code_open_tostring(cfile, showinvs=jinvariants))
@@ -703,14 +700,14 @@ def juliet_investigate(args: argparse.Namespace) -> NoReturn:
 
     excludefiles = ["io.c", "main_linux.c", "std_thread.c"]
 
-    pofilter: Callable[["CFunctionPO"], bool] = lambda po: True
-
     def header(s: str) -> str:
         return (s + ":\n" + ("=" * 80))
 
-    if len(predicates) > 0:
-
-        pofilter = lambda po: po.predicate_name in predicates
+    def pofilter(po: "CFunctionPO") -> bool:
+        if len(predicates) > 0:
+            return po.predicate_name in predicates
+        else:
+            return True
 
     capp = CApplication(
         projectpath,
@@ -810,7 +807,6 @@ def juliet_report_requests(args: argparse.Namespace) -> NoReturn:
                         stats["ndepppo"] += len(a.get_open_ppos())
                         stats["ndepspo"] += len(a.get_open_spos())
 
-
     def report_requests(cfile: "CFile") -> None:
         if cfile.has_outstanding_fn_api_requests():
             lines.append(cfile.name)
@@ -888,7 +884,6 @@ def juliet_dashboard(args: argparse.Namespace) -> NoReturn:
 
     def dataline(cats: List[str], d: Dict[str, int]) -> str:
         return ("".join([str(d[c]).rjust(5) for c in cats]))
-
 
     for cwe in sorted(testcases):
         if not (cwe == cwerequested or cwerequested == "all"):
@@ -1003,8 +998,8 @@ def juliet_project_dashboard(args: argparse.Namespace) -> NoReturn:
         print(str(e.wrap()))
         exit(1)
 
-    nosummary: List[str] = [] # tests without results
-    corrupted: List[str] = [] # tests with invalid results
+    nosummary: List[str] = []  # tests without results
+    corrupted: List[str] = []  # tests with invalid results
 
     ppo_project_totals: Dict[str, Dict[str, int]] = {}
     spo_project_totals: Dict[str, Dict[str, int]] = {}
@@ -1135,7 +1130,6 @@ def juliet_project_dashboard(args: argparse.Namespace) -> NoReturn:
         "\n".join(
             RP.totals_to_presentation_string(
                 ppo_project_totals, spo_project_totals, projectstats)))
-
 
     print("\n".join(lines))
 

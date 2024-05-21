@@ -48,7 +48,8 @@ if TYPE_CHECKING:
 class SPOType(CFunPOType):
     """Base class for supporting proof obligation types."""
 
-    def __init__(self, pod: "CFunPODictionary", ixval: IndexedTableValue
+    def __init__(
+            self, pod: "CFunPODictionary", ixval: IndexedTableValue
     ) -> None:
         CFunPOType.__init__(self, pod, ixval)
 
@@ -81,7 +82,8 @@ class LocalSPOType(SPOType):
     * args[2]: index of predicate in predicate dictionary
     """
 
-    def __init__(self, pod: "CFunPODictionary", ixval: IndexedTableValue
+    def __init__(
+            self, pod: "CFunPODictionary", ixval: IndexedTableValue
     ) -> None:
         SPOType.__init__(self, pod, ixval)
 
@@ -122,7 +124,8 @@ class CallsiteSPOType(SPOType):
     * args[3]: api-id
     """
 
-    def __init__(self, pod: "CFunPODictionary", ixval: IndexedTableValue
+    def __init__(
+            self, pod: "CFunPODictionary", ixval: IndexedTableValue
     ) -> None:
         SPOType.__init__(self, pod, ixval)
 
@@ -155,7 +158,7 @@ class CallsiteSPOType(SPOType):
             + ", "
             + str(self.predicate)
             + ")")
-    
+
 
 @podregistry.register_tag("rs", SPOType)
 class ReturnsiteSPOType(SPOType):
@@ -167,7 +170,8 @@ class ReturnsiteSPOType(SPOType):
     * args[3]: index of xpredicate in interface dictionary
     """
 
-    def __init__(self, pod: "CFunPODictionary", ixval: IndexedTableValue
+    def __init__(
+            self, pod: "CFunPODictionary", ixval: IndexedTableValue
     ) -> None:
         SPOType.__init__(self, pod, ixval)
 
@@ -206,4 +210,3 @@ class ReturnsiteSPOType(SPOType):
             + ", "
             + str(self.postcondition)
             + ")")
-    

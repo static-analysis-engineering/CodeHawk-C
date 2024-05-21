@@ -49,7 +49,8 @@ class ApiParameter(InterfaceDictionaryRecord):
     """
 
     def __init__(
-        self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue) -> None:
+        self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+    ) -> None:
         InterfaceDictionaryRecord.__init__(self, cd, ixval)
 
     @property
@@ -72,7 +73,8 @@ class APFormal(ApiParameter):
     """
 
     def __init__(
-        self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue) -> None:
+        self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+    ) -> None:
         ApiParameter.__init__(self, cd, ixval)
 
     @property
@@ -92,7 +94,8 @@ class APGlobal(ApiParameter):
     """Global variable used in a function; treated as a formal parameter."""
 
     def __init__(
-        self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue) -> None:
+        self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+    ) -> None:
         ApiParameter.__init__(self, cd, ixval)
 
     @property

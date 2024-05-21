@@ -111,7 +111,6 @@ class CallsiteTarget:
             raise UF.CHCError("Call target does not have resolved callees")
 
 
-
 class CFunctionCallsiteSPOs:
     """Represents the supporting proof obligations associated with a call site."""
 
@@ -502,12 +501,12 @@ class CFunctionCallsiteSPOs:
                     calleefun.name)
                 for p in fcontract.postconditions.values():
                     iipc = self.cfile.interfacedictionary.index_xpredicate(p)
-                    chklogger.logger.info("Found contract postcondition: %s", str(p))
                     if iipc not in self.postassumes:
                         self.postassumes.append(iipc)
         else:
-            chklogger.logger.info("No function contract found for %s",
-                                  calleefun.name)
+            chklogger.logger.info(
+                "No function contract found for %s", calleefun.name)
+
     def get_context_string(self):
         return self.context.context_strings()
 

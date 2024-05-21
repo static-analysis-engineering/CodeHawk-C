@@ -257,7 +257,7 @@ class CFile(object):
     def functionxref(self) -> Dict[str, int]:
         """Returns a map from function names to vid's."""
 
-        return { cfun.name: index for (index, cfun) in self.functions.items() }
+        return {cfun.name: index for (index, cfun) in self.functions.items()}
 
     @property
     def functionnames(self) -> List[str]:

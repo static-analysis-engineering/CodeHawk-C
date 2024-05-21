@@ -46,7 +46,8 @@ class SOffset(InterfaceDictionaryRecord):
     """Base class for s_term offset."""
 
     def __init__(
-        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue) -> None:
+        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+    ) -> None:
         InterfaceDictionaryRecord.__init__(self, ifd, ixval)
 
     @property
@@ -73,7 +74,8 @@ class STArgNoOffset(SOffset):
     """No Offset."""
 
     def __init__(
-        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue) -> None:
+        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+    ) -> None:
         SOffset.__init__(self, ifd, ixval)
 
     @property
@@ -96,7 +98,8 @@ class STArgFieldOffset(SOffset):
     """
 
     def __init__(
-        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue) -> None:
+        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+    ) -> None:
         SOffset.__init__(self, ifd, ixval)
 
     @property
@@ -132,7 +135,8 @@ class STArgIndexOffset(SOffset):
     """
 
     def __init__(
-        self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue) -> None:
+        self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+    ) -> None:
         SOffset.__init__(self, cd, ixval)
 
     @property

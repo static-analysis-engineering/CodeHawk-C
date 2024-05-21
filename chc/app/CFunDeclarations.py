@@ -76,7 +76,7 @@ class CFunDeclarations:
             for itv in self.local_varinfo_table.values():
                 vinfo = CVarInfo(self.cfile.declarations, itv)
                 self._varinfos[vinfo.vid] = vinfo
-        return self._varinfos        
+        return self._varinfos
 
     @property
     def formals(self) -> List[CVarInfo]:
@@ -115,7 +115,7 @@ class CFunDeclarations:
             return "\n".join(lines)
         else:
             raise UF.CHCError(
-                "Name: " + name +  " does not correspond to a table")
+                "Name: " + name + " does not correspond to a table")
 
     def __str__(self) -> str:
         lines: List[str] = []

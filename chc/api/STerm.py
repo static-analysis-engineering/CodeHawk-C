@@ -47,7 +47,7 @@ import chc.util.IndexedTable as IT
 
 if TYPE_CHECKING:
     from chc.api.ApiParameter import ApiParameter
-    from chc.api.InterfaceDictionary import InterfaceDictionary    
+    from chc.api.InterfaceDictionary import InterfaceDictionary
     from chc.api.SOffset import SOffset
 
 
@@ -71,7 +71,8 @@ def get_printop(s: str) -> str:
 
 class STerm(InterfaceDictionaryRecord):
     def __init__(
-        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue) -> None:
+        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+    ) -> None:
         InterfaceDictionaryRecord.__init__(self, ifd, ixval)
 
     def get_iterm(self, argix: int) -> "STerm":
@@ -161,7 +162,8 @@ class STArgValue(STerm):
     """
 
     def __init__(
-        self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue) -> None:
+        self, cd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+    ) -> None:
         STerm.__init__(self, cd, ixval)
 
     @property
@@ -192,7 +194,8 @@ class STLocalVariable(STerm):
 """
 
     def __init__(
-        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue) -> None:
+        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+    ) -> None:
         STerm.__init__(self, ifd, ixval)
 
     @property
@@ -206,13 +209,14 @@ class STLocalVariable(STerm):
     def __str__(self) -> str:
         return self.name
 
-    
+
 @ifdregistry.register_tag("rv", STerm)
 class STReturnValue(STerm):
     """Return value, as used in post conditions."""
-    
+
     def __init__(
-        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue) -> None:
+        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+    ) -> None:
         STerm.__init__(self, ifd, ixval)
 
     @property
@@ -234,7 +238,8 @@ class STNamedConstant(STerm):
     """
 
     def __init__(
-        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue) -> None:
+        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+    ) -> None:
         STerm.__init__(self, ifd, ixval)
 
     @property
@@ -259,7 +264,8 @@ class STNumConstant(STerm):
     """Constant with given numerical value."""
 
     def __init__(
-        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue) -> None:
+        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+    ) -> None:
         STerm.__init__(self, ifd, ixval)
 
     @property
@@ -295,7 +301,8 @@ class STIndexSize(STerm):
     """
 
     def __init__(
-        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue) -> None:
+        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+    ) -> None:
         STerm.__init__(self, ifd, ixval)
 
     @property
@@ -325,7 +332,8 @@ class STByteSize(STerm):
     """
 
     def __init__(
-        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue) -> None:
+        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+    ) -> None:
         STerm.__init__(self, ifd, ixval)
 
     @property
@@ -345,6 +353,7 @@ class STByteSize(STerm):
 
     def __str__(self) -> str:
         return "byte-size(" + str(self.term) + ")"
+
 
 '''
 @ifdregistry.register_tag("fo", STerm)
@@ -381,7 +390,8 @@ class STArgAddressedValue(STerm):
     """
 
     def __init__(
-        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue) -> None:
+        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+    ) -> None:
         STerm.__init__(self, ifd, ixval)
 
     @property
@@ -423,7 +433,8 @@ class STArgNullTerminatorPos(STerm):
     """
 
     def __init__(
-        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue) -> None:
+        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+    ) -> None:
         STerm.__init__(self, ifd, ixval)
 
     @property
@@ -453,7 +464,8 @@ class STArgSizeOfType(STerm):
     """
 
     def __init__(
-        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue) -> None:
+        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+    ) -> None:
         STerm.__init__(self, ifd, ixval)
 
     @property
@@ -485,7 +497,8 @@ class STArithmeticExpr(STerm):
     """
 
     def __init__(
-        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue) -> None:
+        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+    ) -> None:
         STerm.__init__(self, ifd, ixval)
 
     @property
@@ -543,7 +556,8 @@ class STFormattedOutputSize(STerm):
     """
 
     def __init__(
-        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue) -> None:
+        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+    ) -> None:
         STerm.__init__(self, ifd, ixval)
 
     @property
@@ -573,7 +587,8 @@ class STRegion(STerm):
     """
 
     def __init__(
-        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue) -> None:
+        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+    ) -> None:
         STerm.__init__(self, ifd, ixval)
 
     @property
@@ -593,14 +608,15 @@ class STRegion(STerm):
 
     def __str__(self) -> str:
         return "region(" + str(self.term) + ")"
-    
+
 
 @ifdregistry.register_tag("rt", STerm)
 class STRuntimeValue(STerm):
     """A value that is determined at runtime."""
 
     def __init__(
-        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue) -> None:
+        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+    ) -> None:
         STerm.__init__(self, ifd, ixval)
 
     @property
@@ -623,7 +639,8 @@ class STChoiceValue(STerm):
     """
 
     def __init__(
-        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue) -> None:
+        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+    ) -> None:
         STerm.__init__(self, ifd, ixval)
 
     @property

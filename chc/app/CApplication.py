@@ -183,7 +183,7 @@ class CApplication(object):
         Note: filenames include extension and paths relative to project
         directory.
         """
-        return { cfile.name: index for (index, cfile) in self.files.items() }
+        return {cfile.name: index for (index, cfile) in self.files.items()}
 
     @property
     def indexmanager(self) -> IndexManager:
@@ -321,8 +321,11 @@ class CApplication(object):
                 else:
                     chklogger.logger.warning(
                         ("Function definition %d not found in file %d for "
-                        + "(fid:%d, vid:%d)"),
-                        defvar.vid, defvar.fid, filevar.fid, filevar.vid)
+                         + "(fid:%d, vid:%d)"),
+                        defvar.vid,
+                        defvar.fid,
+                        filevar.fid,
+                        filevar.vid)
                     return None
             else:
                 chklogger.logger.warning(

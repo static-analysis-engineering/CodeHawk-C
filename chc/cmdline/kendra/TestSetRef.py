@@ -60,20 +60,9 @@ class TestSetRef:
                 self._cfiles[f] = TestCFileRef(self, f, fdata)
         return self._cfiles
 
-    '''
-    def iter(self, f):
-        for cfile in self.cfiles.values():
-            f(cfile)
-    '''
-
     @property
     def cfilenames(self) -> List[str]:
         return sorted(self.cfiles.keys())
-
-    '''
-    def get_cfiles(self):
-        return sorted(self.cfiles.values(), key=lambda f: f.name)
-    '''
 
     def cfile(self, cfilename: str) -> Optional[TestCFileRef]:
         if cfilename in self.cfiles:
@@ -86,7 +75,8 @@ class TestSetRef:
     ) -> None:
         self._refd["cfiles"][cfilename]["functions"][cfun]["ppos"] = ppos
 
-    def set_spos(self, cfilename: str, cfun: str, spos: List[Dict[str, str]]
+    def set_spos(
+            self, cfilename: str, cfun: str, spos: List[Dict[str, str]]
     ) -> None:
         self._refd["cfiles"][cfilename]["functions"][cfun]["spos"] = spos
 
@@ -122,7 +112,7 @@ class TestSetRef:
         lines: List[str] = []
         for cfile in self.cfiles.values():
             lines.append(cfile.name)
-            for cfun in sorted(cfile.functions.values(), key=lambda f:f.name):
+            for cfun in sorted(cfile.functions.values(), key=lambda f: f.name):
                 lines.append("  " + cfun.name)
                 if cfun.has_ppos():
                     for ppo in sorted(cfun.ppos, key=lambda p: p.line):
