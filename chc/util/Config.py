@@ -68,17 +68,12 @@ class Config(object):
 
         self.chc_gui: Optional[str] = None
 
-        # bear: a tool that generates a compilation database in json
-        self.bear = None
-        self.libear = None
-
         # summaries
         summariesdir = os.path.join(self.rootdir, "summaries")
         self.summaries = os.path.join(summariesdir, "cchsummaries.jar")
 
         # tests included in this repository
         self.kendradir = os.path.join(self.testdir, "kendra")
-        self.zitserdir = os.path.join(self.testdir, "zitser")
         self.libcsummarytestdir = os.path.join(self.testdir, "libcsummaries")
 
         # analysis targets
@@ -105,9 +100,6 @@ class Config(object):
         if self.chc_gui is not None:
             chcguifound = " (found)" if os.path.isfile(self.chc_gui) else " (not found)"
             lines.append("  gui      : " + self.chc_gui + chcguifound)
-        if self.bear is not None:
-            lines.append("bear  :" + self.bear)
-            lines.append("libear:" + self.libear)
         lines.append("\n  summaries: " + self.summaries + summariesfound)
 
         lines.append("\nTest directories")
