@@ -1,0 +1,48 @@
+name: Documentation 
+
+on:
+  push:
+    branches:
+      - "master"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  document:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+    - name: Install dependencies
+      run: |
+        sudo apt update && sudo apt upgrade && sudo apt install -y make python3-sphinx sphinx-rtd-theme-common python3-sphinx-rtd-theme
+    - name: Generate documentation
+      run: |
+        cd docs/source && make html
+    - name: Fix permissions
+      run: |
+            chmod -c -R +rX "CodeHawk/_build/default/_doc/_html" | while read line; do
+              echo "::warning title=Invalid file permissions automatically fixed::$line"
+            done
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v2
+      with:
+        path: ./docs/source/_build/html/
+
+  deploy_document:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: document
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2
