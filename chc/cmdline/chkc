@@ -1180,16 +1180,6 @@ def parse() -> argparse.Namespace:
         "--tgtpath", help="directory that holds the analysis results")
     cfile_membasetable.set_defaults(func=CT.cfile_membase_table)
 
-    # --- function table: membase
-    cfile_membasetable = cfilefntablesparsers.add_parser("memory-base")
-    cfile_membasetable.add_argument(
-        "filename", help="name of file analyzed ((<cpath/>)<cfilename>)")
-    cfile_membasetable.add_argument(
-        "function", help="name of function of interest")
-    cfile_membasetable.add_argument(
-        "--tgtpath", help="directory that holds the analysis results")
-    cfile_membasetable.set_defaults(func=CT.cfile_membase_table)
-
     # --- function table: memref
     cfile_memreftable = cfilefntablesparsers.add_parser("memory-reference")
     cfile_memreftable.add_argument(
