@@ -711,7 +711,7 @@ class CDictionary(ABC):
             self, lval: CLval, subst: Dict[int, CExp] = {}, fid: int = -1) -> int:
         args: List[int] = [
             self.index_lhost(lval.lhost, subst=subst, fid=fid),
-            self.index_offset(lval.offset)]
+            self.index_offset(lval.offset, fid=fid)]
         return self.mk_lval_index(lval.tags, args)
 
     def index_offset(self, o: COffset, fid: int = -1) -> int:

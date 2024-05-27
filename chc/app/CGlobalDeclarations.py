@@ -585,14 +585,15 @@ class CGlobalDeclarations(CDeclarations):
 
         if init.is_single:
             init = cast("CSingleInitInfo", init)
-            args = [self.dictionary.index_exp(init.exp)]
+            args = [self.dictionary.index_exp(init.exp, fid=fid)]
             return self.mk_single_init_index(init.tags, args)
 
         if init.is_compound:
             init = cast("CCompoundInitInfo", init)
             gtype = self.dictionary.index_typ(init.typ)
             oinits: List[int] = [
-                self.index_offset_init(x) for x in init.offset_initializers]
+                self.index_offset_init(x, fid=fid)
+                for x in init.offset_initializers]
             args = [gtype] + oinits
             return self.mk_compound_init_index(init.tags, args)
 
@@ -601,8 +602,8 @@ class CGlobalDeclarations(CDeclarations):
 
     def index_offset_init(self, oinit: COffsetInitInfo, fid: int = -1) -> int:
         args: List[int] = [
-            self.dictionary.index_offset(oinit.offset),
-            self.index_init(oinit.initializer)]
+            self.dictionary.index_offset(oinit.offset, fid=fid),
+            self.index_init(oinit.initializer, fid=fid)]
         return self.mk_offset_init_index(oinit.tags, args)
 
     def index_varinfo_vid(self, varref: VarReference) -> Optional[int]:
@@ -631,7 +632,19 @@ class CGlobalDeclarations(CDeclarations):
         vtype = self.dictionary.get_typ(vtypeix)
         if varinfo.has_initializer():
             vinit = varinfo.initializer
-            gvinit = [self.index_init(vinit, fid=fid)]
+            try:
+                gvinit = [self.index_init(vinit, fid=fid)]
+            except UF.CHError as e:
+                chklogger.logger.warning(
+                    ("Global variable initializer for %s "
+                     + "(vid: %d, line: %s, fid: %d) "
+                     + " could not be indexed: %s"),
+                    varinfo.vname,
+                    varinfo.vid,
+                    (varinfo.vdecl.line if varinfo.vdecl is not None else -1),
+                    fid,
+                    str(e))
+                gvinit = []
         else:
             gvinit = []
         tags = [vname]
@@ -669,6 +682,15 @@ class CGlobalDeclarations(CDeclarations):
             gvarinfo.vname)
 
     def index_file_varinfos(self, fid: int, varinfos: List[CVarInfo]) -> None:
+        chklogger.logger.debug(
+            "Index %d file varinfos for fid: %d (%s)",
+            len(varinfos), fid,
+            ", ".join(v.vname
+                      + "("
+                      + str(v.vid)
+                      + ", line: "
+                      + str(v.line if v.vdecl is not None else "?")
+                      + ")" for v in varinfos))
         if len(varinfos) > 0:
             self.vid2gvid[fid] = {}
             for v in varinfos:
