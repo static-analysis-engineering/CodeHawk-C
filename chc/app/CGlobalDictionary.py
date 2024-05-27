@@ -73,7 +73,7 @@ class CGlobalDictionary(CDictionary):
     def decls(self) -> "CGlobalDeclarations":
         return self.capp.declarations
 
-    def index_compinfo_key(self, compinfo, fid):
+    def index_compinfo_key(self, compinfo, fid) -> int:
         chklogger.logger.info(
             "Index compinfo key %s for fid %d", compinfo.name, fid)
         return self.decls.index_compinfo_key(compinfo, fid)

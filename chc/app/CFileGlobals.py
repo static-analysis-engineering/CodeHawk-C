@@ -370,12 +370,12 @@ class CFileGlobals:
     def global_varinfo_vids(self) -> Dict[int, "CVarInfo"]:
         if self._globalvarinfovids is None:
             self._globalvarinfovids = {}
+            for (vid, gfun) in self.gfunctions.items():
+                self._globalvarinfovids[vid] = gfun.varinfo
             for (vid, vardef) in self.gvardefs.items():
                 self._globalvarinfovids[vid] = vardef.varinfo
             for (vid, vardecl) in self.gvardecls.items():
                 self._globalvarinfovids[vid] = vardecl.varinfo
-            for (vid, gfun) in self.gfunctions.items():
-                self._globalvarinfovids[vid] = gfun.varinfo
         return self._globalvarinfovids
 
     def get_global_varinfos(self) -> List["CVarInfo"]:
