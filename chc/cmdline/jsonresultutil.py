@@ -108,12 +108,19 @@ def ppo_to_json_result(po: "CFunctionPO") -> JSONResult:
 
 def fn_proofobligations_to_json_result(fn: "CFunction") -> JSONResult:
     content: Dict[str, Any] = {}
+    # XXX: Add fn.api like in the text report
     ppos: Sequence["CFunctionPO"] = fn.get_ppos()
     jppos: List[Dict[str, Any]] = []
     for ppo in sorted(ppos, key=lambda po: po.line):
         pporesult = ppo_to_json_result(ppo)
         jppos.append(pporesult.content)
     content["ppos"] = jppos
+    spos = fn.get_spos()
+    jspos: List[Dict[str, Any]] = []
+    for spo in sorted(spos, key=lambda po: po.line):
+        sporesult = ppo_to_json_result(spo)
+        jspos.append(sporesult.content)
+    content["spos"] = jspos
     return JSONResult("cfunppos", content, "ok")
 
 
@@ -125,7 +132,7 @@ def file_proofobligations_to_json_result(cfile: "CFile") -> JSONResult:
     for fn in cfile.get_functions():
         fndata: Dict[str, Any] = {}
         fndata["functiondata"] = jsonfunctiondata(fn)
-        fndata["ppos"] = fn_proofobligations_to_json_result(fn).content
+        fndata["pos"] = fn_proofobligations_to_json_result(fn).content
         fnsdata.append(fndata)
     content["functions"] = fnsdata
     return JSONResult("fileproofobligations", content, "ok")
