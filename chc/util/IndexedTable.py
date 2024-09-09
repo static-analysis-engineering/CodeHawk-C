@@ -241,7 +241,7 @@ class IndexedTable(IndexedTableSuperclass):
             if i in self.reserved:
                 continue
             self.indextable.pop(i)
-        toberemoved: List[int] = []
+        toberemoved: List[Tuple[str, str]] = []
         for k in self.keytable.keys():
             if self.keytable[k] >= cp:
                 toberemoved.append(k)
