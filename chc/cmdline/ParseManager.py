@@ -453,10 +453,16 @@ class ParseManager(object):
                 print("\nRun the parser: " + str(command) + "\n")
             sys.stdout.flush()
             if self.verbose:
-                subprocess.call(command)
+                returncode = subprocess.call(command)
                 print("\n" + ("-" * 80) + "\n\n")
             else:
-                subprocess.call(command, stdout=open(os.devnull, "w"))
+                returncopde = (
+                    subprocess.call(command, stdout=open(os.devnull, "w")))
+            if returncode == 1:
+                print("\n" + ("*" * 80))
+                print("Parsing error in " + cfilename)
+                print("*" * 80)
+                break
 
         if self.verbose:
             print("\n\nCollect c files")

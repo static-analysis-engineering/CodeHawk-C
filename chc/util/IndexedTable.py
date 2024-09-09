@@ -241,9 +241,12 @@ class IndexedTable(IndexedTableSuperclass):
             if i in self.reserved:
                 continue
             self.indextable.pop(i)
+        toberemoved: List[int] = []
         for k in self.keytable.keys():
             if self.keytable[k] >= cp:
-                self.keytable.pop(k)
+                toberemoved.append(k)
+        for k in toberemoved:
+            self.keytable.pop(k)
         self.checkpoint = None
         self.reserved = []
         self.next = cp
