@@ -29,7 +29,7 @@
 
 import os
 
-from typing import Any, Dict, Iterable, List, TYPE_CHECKING
+from typing import Any, Dict, Iterable, List, Tuple, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from chc.cmdline.kendra.TestCFileRef import TestCFileRef
@@ -363,7 +363,8 @@ class TestResults(object):
                         fname = cfun.name
                         funresults = self.pporesults[cfilename][fname]
                         count: str = funresults["count"]
-                        missing: List[str] = funresults["missingpredicates"]
+                        missing: List[Tuple[str, Any]] = funresults[
+                            "missingpredicates"]
                         if count == "ok" and len(missing) == 0:
                             lines.append("    " + fname + ": ok")
                         else:
