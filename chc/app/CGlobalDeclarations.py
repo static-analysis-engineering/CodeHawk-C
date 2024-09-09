@@ -322,13 +322,19 @@ class CGlobalDeclarations(CDeclarations):
             self.incompatibles[ckey] = set([])
         self.incompatibles[ckey].add(gckey)
         self.reset_conjectures()
+        keystoberemoved: List[int] = []
         for k in self.compinfo_names.keys():
             if k >= checkpoint:
-                self.compinfo_names.pop(k)
+                keystoberemoved.append(k)
+        for k in keystoberemoved:
+            self.compinfo_names.pop(k)
+        fskeystoberemoved: List[Tuple[str, int]] = []
         for fs in self.fieldstrings.keys():
             for gckey in self.fieldstrings[fs]:
                 if gckey >= checkpoint:
-                    self.fieldstrings[fs].remove(gckey)
+                    fskeystoberemoved.append((fs, gckey))
+        for (fs, gckey) in fskeystoberemoved:
+            self.fieldstrings[fs].remove(gckey)
 
     def get_state(self) -> str:
         lines = []

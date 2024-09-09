@@ -486,7 +486,7 @@ def cfile_run_file(args: argparse.Namespace) -> NoReturn:
 
     def pofilter(po: "CFunctionPO") -> bool:
         if copen:
-            return not po.is_closed
+            return (po.is_violated or (not po.is_closed))
         else:
             return True
 

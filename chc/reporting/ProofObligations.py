@@ -468,8 +468,14 @@ def function_code_tostring(
     ppos = fn.get_ppos()
     # ppos = [x for x in ppos if pofilter(x)]
     spos = fn.get_spos()
-    fnstartlinenr = fn.get_line_number()
-    if fnstartlinenr is None:
+    if fn.has_line_number():
+        fnstartlinenr = fn.get_line_number()
+        fnstartline = fn.cfile.get_source_line(fnstartlinenr)
+        lines.append("\nFunction " + fn.name)
+        lines.append("-" * 80)
+        lines.append(fnstartline.strip())
+        fd = FunctionDisplay(fn, True)
+    else:
         lines.append(
             "\nFunction "
             + fn.name
@@ -478,12 +484,7 @@ def function_code_tostring(
             + ")"
         )
         fd = FunctionDisplay(fn, False)
-    else:
-        fnstartline = fn.cfile.get_source_line(fnstartlinenr)
-        lines.append("\nFunction " + fn.name)
-        lines.append("-" * 80)
-        lines.append(fnstartline.strip())
-        fd = FunctionDisplay(fn, True)
+
     if showpreamble:
         lines.append("-" * 80)
         lines.append(str(fn.api))
@@ -499,6 +500,7 @@ def function_code_tostring(
         lines.append(
             fd.pos_on_code_tostring(spos, pofilter=pofilter, showinvs=showinvs)
         )
+        lines.append("-" * 80)
     return "\n".join(lines)
 
 

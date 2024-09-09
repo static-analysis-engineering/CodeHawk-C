@@ -212,6 +212,7 @@ class AnalysisManager:
             chklogger.logger.info(
                 "Ocaml analyzer is called with %s", str(cmd))
             if self.verbose:
+                print(str(cmd))
                 result = subprocess.call(
                     cmd, cwd=self.targetpath, stderr=subprocess.STDOUT)
                 print("\nResult: " + str(result))
