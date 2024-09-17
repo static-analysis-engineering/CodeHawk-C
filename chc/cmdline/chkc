@@ -750,6 +750,9 @@ def parse() -> argparse.Namespace:
         "--output", "-o",
         help="name of outputfile (without extension)")
     cfilerun.add_argument(
+        "--verbose", "-v",
+        action="store_true")
+    cfilerun.add_argument(
         "--loglevel", "-log",
         choices=UL.LogLevel.options(),
         default="NONE",

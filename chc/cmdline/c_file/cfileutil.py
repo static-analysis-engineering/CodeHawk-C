@@ -358,6 +358,7 @@ def cfile_run_file(args: argparse.Namespace) -> NoReturn:
     copen: bool = args.open
     jsonoutput: bool = args.json
     outputfile: Optional[str] = args.output
+    verbose: bool = args.verbose
     loglevel: str = args.loglevel
     logfilename: Optional[str] = args.logfilename
     logfilemode: str = args.logfilemode
@@ -451,7 +452,7 @@ def cfile_run_file(args: argparse.Namespace) -> NoReturn:
     capp.initialize_single_file(cfilename)
     cfile = capp.get_cfile()
 
-    am = AnalysisManager(capp)
+    am = AnalysisManager(capp, verbose=verbose)
 
     am.create_file_primary_proofobligations(cfilename)
     am.reset_tables(cfile)
