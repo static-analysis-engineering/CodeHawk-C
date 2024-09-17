@@ -767,7 +767,8 @@ class CGlobalDeclarations(CDeclarations):
                 continue
             if len(self.varinfo_storage_classes[vid]) > 1:
                 chklogger.logger.warning(
-                    "Multiple storage classes for variable %d", vid)
+                    "Multiple storage classes for variable %d: %s",
+                    vid, ", ".join(self.varinfo_storage_classes[vid]))
                 continue
             else:
                 storageclass = list(self.varinfo_storage_classes[vid])[0]
