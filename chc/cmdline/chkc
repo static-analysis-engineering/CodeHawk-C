@@ -704,6 +704,10 @@ def parse() -> argparse.Namespace:
         action="store_true",
         help="only show open proof obligations")
     cfilereport.add_argument(
+        "--showinvariants",
+        action="store_true",
+        help="show location invariants on the code")
+    cfilereport.add_argument(
         "--json",
         action="store_true",
         help="output results in json format")
@@ -742,6 +746,10 @@ def parse() -> argparse.Namespace:
         "--open",
         action="store_true",
         help="only show open proof obligations")
+    cfilerun.add_argument(
+        "--showinvariants",
+        action="store_true",
+        help="show location invariants on the code")
     cfilerun.add_argument(
         "--json",
         action="store_true",

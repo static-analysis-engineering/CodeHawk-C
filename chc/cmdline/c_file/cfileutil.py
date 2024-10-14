@@ -285,6 +285,7 @@ def cfile_report_file(args: argparse.Namespace) -> NoReturn:
     xcfilename: str = args.filename
     opttgtpath: Optional[str] = args.tgtpath
     cshowcode: bool = args.showcode
+    cshowinvariants: bool = args.showinvariants
     cfunctions: Optional[List[str]] = args.functions
     copen: bool = args.open
     jsonoutput: bool = args.json
@@ -334,7 +335,8 @@ def cfile_report_file(args: argparse.Namespace) -> NoReturn:
 
     if cfunctions is None:
         if cshowcode:
-            print(RP.file_code_tostring(cfile, pofilter=pofilter))
+            print(RP.file_code_tostring(
+                cfile, pofilter=pofilter, showinvs=cshowinvariants))
 
         print(RP.file_proofobligation_stats_tostring(cfile))
         exit(0)
@@ -356,6 +358,7 @@ def cfile_run_file(args: argparse.Namespace) -> NoReturn:
     opttgtpath: Optional[str] = args.tgtpath
     cshowcode: bool = args.showcode
     copen: bool = args.open
+    cshowinvariants: bool = args.showinvariants
     jsonoutput: bool = args.json
     outputfile: Optional[str] = args.output
     verbose: bool = args.verbose
@@ -492,7 +495,8 @@ def cfile_run_file(args: argparse.Namespace) -> NoReturn:
             return True
 
     if cshowcode:
-        print(RP.file_code_tostring(cfile, pofilter=pofilter))
+        print(RP.file_code_tostring(
+            cfile, pofilter=pofilter, showinvs=cshowinvariants))
 
     print(RP.file_proofobligation_stats_tostring(cfile))
     exit(0)
