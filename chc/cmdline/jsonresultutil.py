@@ -37,6 +37,10 @@ import chc.util.fileutil as UF
 from chc.util.loggingutil import chklogger
 
 if TYPE_CHECKING:
+    from chc.api.ApiAssumption import ApiAssumption
+    from chc.api.CFunctionApi import CFunctionApi
+    from chc.api.GlobalAssumption import GlobalAssumption
+    from chc.api.PostConditionRequest import PostConditionRequest
     from chc.app.CFile import CFile
     from chc.app.CFunction import CFunction
     from chc.proof.CFunctionPO import CFunctionPO
@@ -90,6 +94,54 @@ def csource_to_json_result(csrc: "CSrcFile") -> JSONResult:
     return JSONResult("sourcelines", content, "ok")
 
 
+def api_assumption_to_json_result(a: "ApiAssumption") -> JSONResult:
+    content: Dict[str, Any] = {}
+    content["index"] = a.id
+    content["predicate"] = str(a.predicate)
+    content["dependent-ppos"] = sorted(a.ppos)
+    content["dependent-spos"] = sorted(a.spos)
+    return JSONResult("api-assumption", content, "ok")
+
+
+def postcondition_request_to_json_result(
+        pcr: "PostConditionRequest") -> JSONResult:
+    content: Dict[str, Any] = {}
+    content["callee"] = pcr.callee.vname
+    content["predicate"] = str(pcr.postcondition)
+    content["dependent-ppos"] = sorted(pcr.get_open_ppos())
+    content["dependent-spos"] = sorted(pcr.get_open_spos())
+    return JSONResult("postcondition-request", content, "ok")
+
+
+def global_assumption_request_to_json_result(g: "GlobalAssumption") -> JSONResult:
+    content: Dict[str, Any] = {}
+    content["index"] = g.id
+    content["predicate"] = str(g.predicate)
+    content["dependent-ppos"] = sorted(g.get_open_ppos())
+    content["dependent-spos"] = sorted(g.get_open_spos())
+    return JSONResult("global-assumption-request", content, "ok")
+
+
+def fn_api_to_json_result(fapi: "CFunctionApi") -> JSONResult:
+    content: Dict[str, Any] = {}
+    aaresults: List[Dict[str, Any]] = []
+    for assumption in fapi.api_assumptions.values():
+        aaresult = api_assumption_to_json_result(assumption)
+        aaresults.append(aaresult.content)
+    postreqresults: List[Dict[str, Any]] = []
+    for postrequest in fapi.postcondition_requests.values():
+        pcresult = postcondition_request_to_json_result(postrequest)
+        postreqresults.append(pcresult.content)
+    globalrequests: List[Dict[str, Any]] = []
+    for globalrequest in fapi.global_assumption_requests.values():
+        gresult = global_assumption_request_to_json_result(globalrequest)
+        globalrequests.append(gresult.content)
+    content["api-assumptions"] = aaresults
+    content["postcondition-requests"] = postreqresults
+    content["global-requests"] = globalrequests
+    return JSONResult("fnapi", content, "ok")
+
+
 def ppo_to_json_result(po: "CFunctionPO") -> JSONResult:
     content: Dict[str, Any] = {}
     content["index"] = po.po_index
@@ -133,6 +185,7 @@ def file_proofobligations_to_json_result(cfile: "CFile") -> JSONResult:
         fndata: Dict[str, Any] = {}
         fndata["functiondata"] = jsonfunctiondata(fn)
         fndata["pos"] = fn_proofobligations_to_json_result(fn).content
+        fndata["api"] = fn_api_to_json_result(fn.api).content
         fnsdata.append(fndata)
     content["functions"] = fnsdata
     return JSONResult("fileproofobligations", content, "ok")
