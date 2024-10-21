@@ -1376,6 +1376,10 @@ def parse() -> argparse.Namespace:
         "--open",
         action="store_true",
         help="only show open proof obligations (or violations)")
+    cprojectreportfile.add_argument(
+        "--showinvariants",
+        action="store_true",
+        help="show location invariants on the code")
     cprojectreportfile.set_defaults(func=P.cproject_report_file)
 
     # --- count-statements
@@ -1399,6 +1403,14 @@ def parse() -> argparse.Namespace:
     cprojectcallgraph.add_argument(
         "--save", help="name of file (without extension) to save the results")
     cprojectcallgraph.set_defaults(func=P.cproject_make_callgraph)
+
+    # --- collect-call-arguments
+    cprojectcollectcallargs = cprojectparsers.add_parser("collect-call-arguments")
+    cprojectcollectcallargs.add_argument(
+        "tgtpath", help="directory that contains the analysis results")
+    cprojectcollectcallargs.add_argument(
+        "projectname", help="name of the project")
+    cprojectcollectcallargs.set_defaults(func=P.cproject_collect_call_arguments)
 
     # --- missing-summaries
     cprojectmissingsummaries = cprojectparsers.add_parser("missing-summaries")

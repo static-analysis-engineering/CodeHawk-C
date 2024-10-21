@@ -38,7 +38,7 @@ import time
 from contextlib import contextmanager
 
 from typing import (
-    Any, cast, Dict, Generator, List, Optional, NoReturn, TYPE_CHECKING)
+    Any, cast, Dict, Generator, List, Optional, NoReturn, Tuple, TYPE_CHECKING)
 
 from chc.app.CApplication import CApplication
 
@@ -291,6 +291,7 @@ def cproject_report_file(args: argparse.Namespace) -> NoReturn:
     filename: str = args.filename
     showcode: bool = args.showcode
     showopen: bool = args.open
+    showinvariants: bool = args.showinvariants
 
     targetpath = os.path.abspath(tgtpath)
     projectpath = targetpath
@@ -320,7 +321,8 @@ def cproject_report_file(args: argparse.Namespace) -> NoReturn:
             return True
 
     if showcode:
-        print(RP.file_code_tostring(cfile, pofilter=pofilter))
+        print(RP.file_code_tostring(
+            cfile, pofilter=pofilter, showinvs=showinvariants))
 
     print(RP.file_proofobligation_stats_tostring(cfile))
 
@@ -517,6 +519,58 @@ def cproject_make_callgraph(args: argparse.Namespace) -> NoReturn:
         saveresult["rev-callgraph"] = revresult
         with open(save + ".json", "w") as fp:
             json.dump(saveresult, fp)
+
+    print("\n".join(lines))
+
+    exit(0)
+
+
+def cproject_collect_call_arguments(args: argparse.Namespace) -> NoReturn:
+
+    # arguments
+    tgtpath: str = args.tgtpath
+    projectname: str = args.projectname
+
+    targetpath = os.path.abspath(tgtpath)
+    projectpath = targetpath
+    contractpath = os.path.join(targetpath, "chc_contracts")
+
+    if not UF.has_analysisresults_path(targetpath, projectname):
+        print_error(
+            f"No analysis results found for {projectname} in {targetpath}")
+        exit(1)
+
+    capp = CApplication(
+        projectpath, projectname, targetpath, contractpath)
+
+    # callee -> (file, caller) -> arguments
+    result: Dict[str, Dict[Tuple[int, str, str], List[str]]] = {}
+
+    counter: int = 0
+    for cfile in capp.cfiles:
+        for cfun in cfile.get_functions():
+            for instr in cfun.call_instrs:
+                callee = str(instr.callee)
+                callargs = instr.callargs
+                result.setdefault(callee, {})
+                result[callee][(counter, cfile.cfilename, cfun.name)] = [
+                    str(i) for i in callargs]
+                counter += 1
+
+    lines: List[str] = []
+
+    for callee in sorted(result):
+        lines.append("\n" + callee)
+        lines.append("-" * len(callee))
+        for (index, cfilename, caller) in sorted(result[callee]):
+            calltxt = (
+                callee
+                + "("
+                + ", ".join(result[callee][(index, cfilename, caller)])
+                + ")")
+            lines.append(
+                ("[" + cfilename + ".c:" + caller + "] ").ljust(35)
+                + calltxt)
 
     print("\n".join(lines))
 
