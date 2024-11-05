@@ -73,6 +73,9 @@ class CContextNode(CContextDictionaryRecord):
     def name(self) -> str:
         return self.tags[0]
 
+    def has_data_id(self) -> bool:
+        return len(self.args) > 0
+
     @property
     def data_id(self) -> int:
         if len(self.args) > 0:
@@ -80,6 +83,13 @@ class CContextNode(CContextDictionaryRecord):
         else:
             raise UF.CHCError(
                 "Context node " + self.name + " does not have a data-id")
+
+    def has_additional_info(self) -> bool:
+        return len(self.tags) > 1
+
+    @property
+    def info(self) -> List[str]:
+        return self.tags[1:]
 
     def __str__(self) -> str:
         if len(self.args) == 0:
