@@ -41,6 +41,10 @@ if TYPE_CHECKING:
     from chc.api.CFunctionApi import CFunctionApi
     from chc.api.GlobalAssumption import GlobalAssumption
     from chc.api.PostConditionRequest import PostConditionRequest
+    from chc.app.CContext import CContextNode
+    from chc.app.CContext import CfgContext
+    from chc.app.CContext import ExpContext
+    from chc.app.CContext import ProgramContext
     from chc.app.CFile import CFile
     from chc.app.CFunction import CFunction
     from chc.proof.CFunctionPO import CFunctionPO
@@ -142,12 +146,62 @@ def fn_api_to_json_result(fapi: "CFunctionApi") -> JSONResult:
     return JSONResult("fnapi", content, "ok")
 
 
+def contextnode_to_json_result(node: "CContextNode") -> JSONResult:
+    content: Dict[str, Any] = {}
+    if node.has_data_id():
+        content["ctxtid"] = node.data_id
+    content["name"] = node.name
+    if node.has_additional_info():
+        content["info"] = node.info
+    return JSONResult("contextnode", content, "ok")
+
+
+def expcontext_to_json_result(ectxt: "ExpContext") -> JSONResult:
+    content: Dict[str, Any] = {}
+    content["nodes"] = nodes = []
+    for n in ectxt.nodes:
+        cnode = contextnode_to_json_result(n)
+        if not cnode.is_ok:
+            return JSONResult("contextnode", {}, "fail", cnode.reason)
+        else:
+            nodes.append(cnode.content)
+    return JSONResult("expcontext", content, "ok")
+
+
+def cfgcontext_to_json_result(cctxt: "CfgContext") -> JSONResult:
+    content: Dict[str, Any] = {}
+    content["nodes"] = nodes = []
+    for n in cctxt.nodes:
+        cnode = contextnode_to_json_result(n)
+        if not cnode.is_ok:
+            return JSONResult("contextnode", {}, "fail", cnode.reason)
+        else:
+            nodes.append(cnode.content)
+    return JSONResult("cfgcontext", content, "ok")
+
+
+def programcontext_to_json_result(pctxt: "ProgramContext") -> JSONResult:
+    content: Dict[str, Any] = {}
+    jcfgcontext = cfgcontext_to_json_result(pctxt.cfg_context)
+    if not jcfgcontext.is_ok:
+        return JSONResult("programcontext", {}, "fail", jcfgcontext.reason)
+    else:
+        content["cfg-context"] = jcfgcontext.content
+    jexpcontext = expcontext_to_json_result(pctxt.exp_context)
+    if not jexpcontext.is_ok:
+        return JSONResult("programcontext", {}, "fail", jexpcontext.reason)
+    else:
+        content["exp-context"] = jexpcontext.content
+    return JSONResult("programcontext", content, "ok")
+
+
 def ppo_to_json_result(po: "CFunctionPO") -> JSONResult:
     content: Dict[str, Any] = {}
     content["index"] = po.po_index
     content["line"] = po.line
     content["status"] = po.status
     content["predicate"] = str(po.predicate)
+    content["context"] = programcontext_to_json_result(po.context).content
     if po.is_closed:
         content["expl"] = po.explanation
     else:
