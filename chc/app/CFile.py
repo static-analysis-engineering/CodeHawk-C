@@ -370,7 +370,11 @@ class CFile(object):
         """Collect callsite postconditions from callee's contracts and add as assume."""
 
         for fn in self.get_functions():
-            fn.collect_post_assumes()
+            try:
+                fn.collect_post_assumes()
+            except UF.CHCError as e:
+                chklogger.logger.error(str(e))
+                continue
 
         self.save_interface_dictionary()
         self.save_predicate_dictionary()
@@ -444,7 +448,11 @@ class CFile(object):
 
     def iter_functions(self, f: Callable[[CFunction], None]) -> None:
         for fn in self.get_functions():
-            f(fn)
+            try:
+                f(fn)
+            except UF.CHCError as e:
+                chklogger.logger.error(str(e))
+                continue
 
     def get_compinfos(self) -> List["CCompInfo"]:
         return self.cfileglobals.get_compinfos()
@@ -482,16 +490,28 @@ class CFile(object):
 
     def reload_spos(self) -> None:
         for fn in self.get_functions():
-            fn.reload_spos()
+            try:
+                fn.reload_spos()
+            except UF.CHCError as e:
+                chklogger.logger.error(e.msg)
+                continue
 
     def reload_ppos(self) -> None:
         for fn in self.get_functions():
-            fn.reload_ppos()
+            try:
+                fn.reload_ppos()
+            except UF.CHCError as e:
+                chklogger.logger.error(e.msg)
+                continue
 
     def get_ppos(self) -> List[CFunctionPO]:
         result: List[CFunctionPO] = []
         for fn in self.get_functions():
-            result.extend(fn.get_ppos())
+            try:
+                result.extend(fn.get_ppos())
+            except UF.CHCError as e:
+                chklogger.logger.error(str(e))
+                continue
         return result
 
     def get_open_ppos(self) -> List[CFunctionPO]:
@@ -521,7 +541,11 @@ class CFile(object):
     def get_spos(self) -> List[CFunctionPO]:
         result: List[CFunctionPO] = []
         for fn in self.get_functions():
-            result.extend(fn.get_spos())
+            try:
+                result.extend(fn.get_spos())
+            except UF.CHCError as e:
+                chklogger.logger.error(str(e))
+                continue
         return result
 
     def get_line_ppos(self) -> Dict[int, Dict[str, Any]]:

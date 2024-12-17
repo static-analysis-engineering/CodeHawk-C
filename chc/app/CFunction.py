@@ -446,7 +446,10 @@ class CFunction:
     def update_spos(self) -> None:
         if self.selfignore():
             return
-        self.proofs.update_spos()
+        try:
+            self.proofs.update_spos()
+        except UF.CHCError as e:
+            chklogger.logger.error(str(e))
 
     def collect_post_assumes(self) -> None:
         """For all call sites collect postconditions from callee's contracts and add as assume."""
@@ -479,19 +482,25 @@ class CFunction:
                         cfuncontract.add_postrequest(tgtpostcondition)
 
     def save_spos(self) -> None:
-        self.proofs.save_spos()
+        try:
+            self.proofs.save_spos()
+        except UF.CHCError as e:
+            chklogger.logger.error(str(e))
 
     def save_pod(self) -> None:
         cnode = ET.Element("function")
         cnode.set("name", self.name)
-        self.podictionary.write_xml(cnode)
-        UF.save_pod_file(
-            self.targetpath,
-            self.projectname,
-            self.cfilepath,
-            self.cfilename,
-            self.name,
-            cnode)
+        try:
+            self.podictionary.write_xml(cnode)
+            UF.save_pod_file(
+                self.targetpath,
+                self.projectname,
+                self.cfilepath,
+                self.cfilename,
+                self.name,
+                cnode)
+        except UF.CHCError as e:
+            chklogger.logger.error(str(e))
 
     def reload_ppos(self) -> None:
         self.proofs.reload_ppos()
