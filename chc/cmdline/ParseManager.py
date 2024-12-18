@@ -292,8 +292,12 @@ class ParseManager(object):
         """Return the number of lines in named file."""
 
         with open(fname) as f:
-            for i, l in enumerate(f):
-                pass
+            try:
+                for i, _l in enumerate(f):
+                    pass
+            except UnicodeDecodeError as e:
+                chklogger.logger.warning("Unable to read %s: %s", fname, str(e))
+                i = -1
         return i + 1
 
     def normalize_filename(self, filename: str) -> str:
