@@ -290,11 +290,8 @@ class ParseManager(object):
 
     def get_file_length(self, fname: str) -> int:
         """Return the number of lines in named file."""
-
-        with open(fname) as f:
-            for i, l in enumerate(f):
-                pass
-        return i + 1
+        with open(fname, 'rb') as f:
+            return sum(1 for _ in f)
 
     def normalize_filename(self, filename: str) -> str:
         """Make filename relative to project directory (if in project
