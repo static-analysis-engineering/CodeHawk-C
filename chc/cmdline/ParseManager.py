@@ -6,7 +6,7 @@
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
 # Copyright (c) 2020-2022 Henny B. Sipma
-# Copyright (c) 2023-2024 Aarno Labs LLC
+# Copyright (c) 2023-2025 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -456,8 +456,8 @@ class ParseManager(object):
                 returncode = subprocess.call(command)
                 print("\n" + ("-" * 80) + "\n\n")
             else:
-                returncopde = (
-                    subprocess.call(command, stdout=open(os.devnull, "w")))
+                returncode = subprocess.call(command, stdout=open(os.devnull, "w"))
+
             if returncode == 1:
                 print("\n" + ("*" * 80))
                 print("Parsing error in " + cfilename)
