@@ -6,6 +6,10 @@ semantics
 # CodeHawk-C local configuration file
 ConfigLocal.py
 
+# Ocaml binaries
+chc/bin/*/canalyzer
+chc/bin/*/parseFile
+
 # Emacs
 *.py~
 *.rst~
