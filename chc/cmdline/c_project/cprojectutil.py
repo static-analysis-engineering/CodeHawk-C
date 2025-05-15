@@ -4,7 +4,7 @@
 # ------------------------------------------------------------------------------
 # The MIT License (MIT)
 #
-# Copyright (c) 2024  Aarno Labs, LLC
+# Copyright (c) 2024-2025  Aarno Labs, LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -170,6 +170,7 @@ def cproject_analyze_project(args: argparse.Namespace) -> NoReturn:
     loglevel: str = args.loglevel
     logfilename: Optional[str] = args.logfilename
     logfilemode: str = args.logfilemode
+    excludefiles: List[str] = args.exclude
 
     if not os.path.isdir(tgtpath):
         print_error(f"Target directory {tgtpath} not found")
@@ -193,7 +194,7 @@ def cproject_analyze_project(args: argparse.Namespace) -> NoReturn:
         exit(1)
 
     capp = CApplication(
-        projectpath, projectname, targetpath, contractpath)
+        projectpath, projectname, targetpath, contractpath, excludefiles=excludefiles)
 
     def save_xrefs(f: "CFile") -> None:
         capp.indexmanager.save_xrefs(
@@ -206,7 +207,7 @@ def cproject_analyze_project(args: argparse.Namespace) -> NoReturn:
     linker.save_global_compinfos()
 
     capp = CApplication(
-        projectpath, projectname, targetpath, contractpath)
+        projectpath, projectname, targetpath, contractpath, excludefiles=excludefiles)
 
     am = AnalysisManager(capp, verbose=True)
 
