@@ -650,6 +650,34 @@ def parse() -> argparse.Namespace:
 
     cfileparse.set_defaults(func=C.cfile_parse_file)
 
+    # --- mk-headerfile
+    cfilemkheader = cfileparsers.add_parser("mk-headerfile")
+    cfilemkheader.add_argument(
+        "filename",
+        help="name of file to analyze ((<cpath/>)<cfilename>)")
+    cfilemkheader.add_argument(
+        "--tgtpath",
+        help="directory in which to store the analysis artifacts "
+        + "(default: <cpath>)")
+    cfilemkheader.add_argument(
+        "--output", "-o",
+        help=("basename of file to save output "
+              + "(without extension): a file with extension .c will be created"))
+    cfilemkheader.add_argument(
+        "--loglevel", "-log",
+        choices=UL.LogLevel.options(),
+        default="NONE",
+        help="activate logging with given level (default to stderr)")
+    cfilemkheader.add_argument(
+        "--logfilename",
+        help="name of file to write log messages")
+    cfilemkheader.add_argument(
+        "--logfilemode",
+        choices=["a", "w"],
+        default="a",
+        help="file mode for log file: append (a, default), or write (w)")
+    cfilemkheader.set_defaults(func=C.cfile_mk_headerfile)
+
     # --- analyze
     cfileanalyze = cfileparsers.add_parser("analyze")
     cfileanalyze.add_argument(
@@ -1326,6 +1354,44 @@ def parse() -> argparse.Namespace:
 
     cprojectparse.set_defaults(func=P.cproject_parse_project)
 
+    # --- mk-headerfile
+    cprojectmkheader = cprojectparsers.add_parser("mk-headerfile")
+    cprojectmkheader.add_argument(
+        "tgtpath", help="directory that contains the analysis results")
+    cprojectmkheader.add_argument(
+        "projectname", help="name of the project")
+    cprojectmkheader.add_argument(
+        "--userdata", help="name of json file with userdata")
+    cprojectmkheader.add_argument(
+        "--includepaths",
+        nargs="*",
+        default=[],
+        help="names of (relative) paths from which to include source files")
+    cprojectmkheader.add_argument(
+        "--includedirs",
+        nargs="*",
+        default=[],
+        help="names of (relative) directories from which to include source files")
+    cprojectmkheader.add_argument(
+        "--excludepaths",
+        nargs="*",
+        default=[],
+        help="names of (relative) path from which not to include source files")
+    cprojectmkheader.add_argument(
+        "--loglevel", "-log",
+        choices=UL.LogLevel.options(),
+        default="NONE",
+        help="activate logging with given level (default to stderr)")
+    cprojectmkheader.add_argument(
+        "--logfilename",
+        help="name of file to write log messages")
+    cprojectmkheader.add_argument(
+        "--logfilemode",
+        choices=["a", "w"],
+        default="a",
+        help="file mode for log file: append (a, default), or write (w)")
+    cprojectmkheader.set_defaults(func=P.cproject_mk_headerfile)
+
     # --- analyze
     cprojectanalyze = cprojectparsers.add_parser("analyze")
     cprojectanalyze.add_argument(
@@ -1426,6 +1492,14 @@ def parse() -> argparse.Namespace:
         action="store_true",
         help="show for all files (including application files)")
     cprojectmissingsummaries.set_defaults(func=P.cproject_missing_summaries)
+
+    # --- create_header_file
+    cprojectcreateheader = cprojectparsers.add_parser("create-header-file")
+    cprojectcreateheader.add_argument(
+        "tgtpath", help="directory that contains the analysis results")
+    cprojectcreateheader.add_argument(
+        "projectname", help="name of the project")
+    cprojectcreateheader.set_defaults(func=P.cproject_create_header_file)
 
     args = parser.parse_args()
     return args

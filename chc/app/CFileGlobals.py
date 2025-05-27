@@ -6,7 +6,7 @@
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
 # Copyright (c) 2020-2023 Henny B. Sipma
-# Copyright (c) 2024      Aarno Labs LLC
+# Copyright (c) 2024-2025 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -104,6 +104,11 @@ class CGFunction:
     @property
     def line(self) -> int:
         return self.varinfo.line
+
+    @property
+    def is_system_function(self) -> bool:
+        vdecl = self.varinfo.vdecl
+        return vdecl is None or vdecl.file.startswith("/")
 
     def __str__(self) -> str:
         return f"{self.vname}: {self.vtype}"
