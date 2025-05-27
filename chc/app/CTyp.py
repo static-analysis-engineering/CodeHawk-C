@@ -6,7 +6,7 @@
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
 # Copyright (c) 2020-2022 Henny B. Sipma
-# Copyright (c) 2023-2024 Aarno Labs LLC
+# Copyright (c) 2023-2025 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -44,6 +44,7 @@ if TYPE_CHECKING:
     from chc.app.CAttributes import CAttributes
     from chc.app.CCompInfo import CCompInfo
     from chc.app.CConst import CConst, CConstInt
+    from chc.app.CVisitor import CVisitor
 
 
 integernames = {
@@ -164,6 +165,10 @@ class CTyp(CDictionaryRecord):
         return False
 
     @property
+    def is_function_pointer(self) -> bool:
+        return False
+
+    @property
     def is_int(self) -> bool:
         return False
 
@@ -186,6 +191,9 @@ class CTyp(CDictionaryRecord):
     @property
     def is_default_function_prototype(self) -> bool:
         return False
+
+    def accept(self, visitor: "CVisitor") -> None:
+        raise Exception("CTyp.accept: " + str(self))
 
     def writexml(self, cnode: ET.Element) -> None:
         cnode.set("ix", str(self.index))
@@ -216,6 +224,9 @@ class CTypVoid(CTyp):
     def is_void(self) -> bool:
         return True
 
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_voidtyp(self)
+
     def get_opaque_type(self) -> CTyp:
         return self
 
@@ -241,6 +252,9 @@ class CTypInt(CTyp):
     @property
     def is_int(self) -> bool:
         return True
+
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_inttyp(self)
 
     @property
     def size(self) -> int:
@@ -280,6 +294,9 @@ class CTypFloat(CTyp):
     def is_float(self) -> bool:
         return True
 
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_floattyp(self)
+
     @property
     def fkind(self) -> str:
         return self.tags[1]
@@ -316,6 +333,9 @@ class CTypNamed(CTyp):
 
     def expand(self) -> CTyp:
         return self.cd.decls.expand(self.name)
+
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_namedtyp(self)
 
     @property
     def size(self) -> int:
@@ -368,6 +388,9 @@ class CTypComp(CTyp):
     def is_struct(self) -> bool:
         return self.compinfo.is_struct
 
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_comptyp(self)
+
     @property
     def size(self) -> int:
         return self.compinfo.size
@@ -419,6 +442,9 @@ class CTypEnum(CTyp):
     def is_enum(self) -> bool:
         return True
 
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_enumtyp(self)
+
     def get_opaque_type(self) -> CTyp:
         tags = ["tint", "iint"]
         args: List[int] = []
@@ -445,6 +471,9 @@ class CTypBuiltinVaargs(CTyp):
     @property
     def is_builtin_vaargs(self) -> bool:
         return True
+
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_builtinvaargs(self)
 
     def get_opaque_type(self) -> CTyp:
         return self
@@ -478,6 +507,13 @@ class CTypPtr(CTyp):
     @property
     def is_pointer(self) -> bool:
         return True
+
+    @property
+    def is_function_pointer(self) -> bool:
+        return self.pointedto_type.is_function
+
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_ptrtyp(self)
 
     def get_opaque_type(self) -> CTyp:
         tgttype = self.pointedto_type.get_opaque_type()
@@ -536,6 +572,9 @@ class CTypArray(CTyp):
     def is_array(self) -> bool:
         return True
 
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_arraytyp(self)
+
     def get_opaque_type(self) -> CTyp:
         tags = ["tvoid"]
         args: List[int] = []
@@ -581,6 +620,9 @@ class CTypFun(CTyp):
     @property
     def is_function(self) -> bool:
         return True
+
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_funtyp(self)
 
     def get_opaque_type(self) -> CTyp:
         tags = ["tvoid"]
@@ -652,6 +694,9 @@ class CFunArg(CDictionaryRecord):
     def typ(self) -> CTyp:
         return self.cd.get_typ(self.args[0])
 
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_funarg(self)
+
     def to_dict(self) -> Dict[str, Any]:
         return self.typ.to_dict()
 
@@ -671,6 +716,9 @@ class CFunArgs(CDictionaryRecord):
     @property
     def arguments(self) -> List[CFunArg]:
         return [self.cd.get_funarg(i) for i in self.args]
+
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_funargs(self)
 
     def to_dict(self) -> List[Dict[str, Any]]:
         return [a.to_dict() for a in self.arguments]

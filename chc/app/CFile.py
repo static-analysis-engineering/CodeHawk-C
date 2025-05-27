@@ -6,7 +6,7 @@
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
 # Copyright (c) 2020-2022 Henny B. Sipma
-# Copyright (c) 2023-2024 Aarno Labs LLC
+# Copyright (c) 2023-2025 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -51,6 +51,7 @@ from chc.app.CFileGlobals import CGType
 from chc.app.CFileGlobals import CGVarDecl
 from chc.app.CFileGlobals import CGVarDef
 from chc.app.CGXrefs import CGXrefs
+from chc.app.CPrettyPrinter import CPrettyPrinter
 
 from chc.proof.CFilePredicateDictionary import CFilePredicateDictionary
 from chc.proof.CFunctionPO import CFunctionPO
@@ -182,6 +183,36 @@ class CFile(object):
     @property
     def gfunctions(self) -> Dict[int, "CGFunction"]:
         return self.cfileglobals.gfunctions
+
+    def header_declarations(
+            self,
+            gvarnames: Dict[str, str] = {},
+            fnnames: Dict[str, str] = {}) -> str:
+        lines: List[str] = []
+        srcfilename = self.name + ".c"
+        lines.append("// " + srcfilename + "\n")
+        gvars = self.gvardefs.values()
+        if len(gvars) > 0:
+            lines.append("// static and global variable definitions\n")
+        for gvar in gvars:
+            pp = CPrettyPrinter()
+            binloc: Optional[str] = gvarnames.get(gvar.varinfo.vname)
+            gvardef = pp.gvar_definition_str(
+                gvar.varinfo, srcloc=srcfilename, binloc=binloc)
+            lines.append(gvardef)
+
+        fns = self.gfunctions.values()
+        if len(gvars) > 0 and len(fns) > 0:
+            lines.append("// function signatures\n")
+        for fn in fns:
+            if fn.is_system_function:
+                continue
+            pp = CPrettyPrinter()
+            binloc = fnnames.get(fn.varinfo.vname)
+            fndecl = pp.function_declaration_str(
+                fn.varinfo, srcloc=srcfilename, binloc=binloc)
+            lines.append(fndecl)
+        return "\n".join(lines)
 
     @property
     def functioncount(self) -> int:

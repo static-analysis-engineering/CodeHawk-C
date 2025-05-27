@@ -6,7 +6,7 @@
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
 # Copyright (c) 2020-2022 Henny B. Sipma
-# Copyright (c) 2023-2024 Aarno Labs LLC
+# Copyright (c) 2023-2025 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -39,6 +39,7 @@ if TYPE_CHECKING:
     from chc.app.CConst import CConst
     from chc.app.CTyp import CTyp
     from chc.app.CLval import CLval
+    from chc.app.CVisitor import CVisitor
 
 
 binoperatorstrings = {
@@ -147,6 +148,9 @@ class CExp(CDictionaryRecord):
     def get_variable_uses(self, vid: int) -> int:
         return 0
 
+    def accept(self, visitor: "CVisitor") -> None:
+        raise Exception("CExp.accept: " + str(self))
+
     def to_dict(self) -> Dict[str, Any]:
         return {"base": "exp"}
 
@@ -178,6 +182,9 @@ class CExpConst(CExp):
 
     def get_strings(self) -> List[str]:
         return self.constant.get_strings()
+
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_constexp(self)
 
     def to_dict(self) -> Dict[str, Any]:
         return {"base": "const", "value": str(self.constant)}

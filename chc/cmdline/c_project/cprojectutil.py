@@ -4,7 +4,7 @@
 # ------------------------------------------------------------------------------
 # The MIT License (MIT)
 #
-# Copyright (c) 2024  Aarno Labs, LLC
+# Copyright (c) 2024-2025  Aarno Labs, LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -157,6 +157,86 @@ def cproject_parse_project(args: argparse.Namespace) -> NoReturn:
     parsemanager.initialize_paths()
     parsemanager.parse_with_ccommands(compilecommands, copyfiles=True)
     parsemanager.save_semantics()
+
+    exit(0)
+
+
+def cproject_mk_headerfile(args: argparse.Namespace) -> NoReturn:
+
+    # arguments
+    tgtpath: str = args.tgtpath
+    projectname: str = args.projectname
+    userdatafile: Optional[str] = args.userdata
+    includepaths: List[str] = args.includepaths
+    includedirs: List[str] = args.includedirs
+    excludepaths: List[str] = args.excludepaths
+    loglevel: str = args.loglevel
+    logfilename: Optional[str] = args.logfilename
+    logfilemode: str = args.logfilemode
+
+    if not os.path.isdir(tgtpath):
+        print_error(f"Target directory {tgtpath} not found")
+        exit(1)
+
+    if userdatafile and not os.path.isfile(userdatafile):
+        print_error(f"Userdata file {userdatafile} not found")
+        exit(1)
+
+    targetpath = os.path.abspath(tgtpath)
+    projectpath = targetpath
+    contractpath = os.path.join(projectpath, "cch_contracts")
+
+    if userdatafile:
+        with open(userdatafile, "r") as fp:
+            userdata = json.load(fp).get("userdata", {})
+    else:
+        userdata = {}
+
+    fnnames: Dict[str, str] = userdata.get("function-names", {})
+    gvarnames: Dict[str, str] = userdata.get("symbolic-addresses", {})
+
+    fnnames = {v: k for (k, v) in fnnames.items()}
+    gvarnames = {v: k for (k, v) in gvarnames.items()}
+
+    set_logging(
+        loglevel,
+        targetpath,
+        logfilename=logfilename,
+        mode=logfilemode,
+        msg="c-project mk-headerfile invoked")
+
+    capp = CApplication(
+        projectpath, projectname, targetpath, contractpath)
+
+    if not UF.has_analysisresults_path(targetpath, projectname):
+        print_error(
+            f"No analysis results found for {projectname} in {targetpath}")
+        exit(1)
+
+    capp = CApplication(
+        projectpath, projectname, targetpath, contractpath)
+
+    lines: List[str] = []
+
+    def is_included(path: Optional[str]) -> bool:
+        if path is None:
+            return True
+        if len(includepaths) > 0:
+            return any(path.startswith(p) for p in includepaths)
+        elif len(includedirs) > 0:
+            return path in includedirs
+        elif len(excludepaths) > 0:
+            return not (any(path.startswith(p) for p in excludepaths))
+        else:
+            return True
+
+    for cfile in capp.cfiles:
+        if not is_included(cfile.cfilepath):
+            continue
+        fheader = cfile.header_declarations(gvarnames, fnnames)
+        lines.append(fheader)
+
+    print("\n\n".join(lines))
 
     exit(0)
 
@@ -634,5 +714,32 @@ def cproject_missing_summaries(args: argparse.Namespace) -> NoReturn:
             lines.append(str(result[m]).rjust(4) + "  " + m)
 
     print("\n".join(lines))
+
+    exit(0)
+
+
+def cproject_create_header_file(args: argparse.Namespace) -> NoReturn:
+
+    # arguments
+    tgtpath: str = args.tgtpath
+    projectname: str = args.projectname
+
+    targetpath = os.path.abspath(tgtpath)
+    projectpath = targetpath
+    contractpath = os.path.join(targetpath, "chc_contracts")
+
+    if not UF.has_analysisresults_path(targetpath, projectname):
+        print_error(
+            f"No analysis results found for {projectname} in {targetpath}")
+        exit(1)
+
+    capp = CApplication(
+        projectpath, projectname, targetpath, contractpath)
+
+    for cfile in capp.cfiles:
+        for gfun in cfile.gfunctions.values():
+            if gfun.is_system_function:
+                continue
+            print(str(gfun.varinfo))
 
     exit(0)
