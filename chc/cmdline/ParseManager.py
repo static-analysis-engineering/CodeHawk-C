@@ -6,7 +6,7 @@
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
 # Copyright (c) 2020-2022 Henny B. Sipma
-# Copyright (c) 2023-2024 Aarno Labs LLC
+# Copyright (c) 2023-2025 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -290,15 +290,8 @@ class ParseManager(object):
 
     def get_file_length(self, fname: str) -> int:
         """Return the number of lines in named file."""
-
-        with open(fname) as f:
-            try:
-                for i, _l in enumerate(f):
-                    pass
-            except UnicodeDecodeError as e:
-                chklogger.logger.warning("Unable to read %s: %s", fname, str(e))
-                i = -1
-        return i + 1
+        with open(fname, 'rb') as f:
+            return sum(1 for _ in f)
 
     def normalize_filename(self, filename: str) -> str:
         """Make filename relative to project directory (if in project
@@ -460,8 +453,8 @@ class ParseManager(object):
                 returncode = subprocess.call(command)
                 print("\n" + ("-" * 80) + "\n\n")
             else:
-                returncopde = (
-                    subprocess.call(command, stdout=open(os.devnull, "w")))
+                returncode = subprocess.call(command, stdout=open(os.devnull, "w"))
+
             if returncode == 1:
                 print("\n" + ("*" * 80))
                 print("Parsing error in " + cfilename)

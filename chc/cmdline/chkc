@@ -1416,6 +1416,9 @@ def parse() -> argparse.Namespace:
         choices=["a", "w"],
         default="a",
         help="file mode for log file: append (a, default), or write (w)")
+    cprojectanalyze.add_argument("-x", "--exclude", action='append',
+        help="Exclude file from analysis. To exclude multiple files, use "
+             "this option for each file, e.g. -x dir1/f1.c, -x dir2/f2.c")
     cprojectanalyze.set_defaults(func=P.cproject_analyze_project)
 
     # --- report
