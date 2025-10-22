@@ -310,12 +310,12 @@ class CPrettyPrinter(CVisitor):
                     self.funtypptr_with_name(ptx, funarg.name)
                     return
 
-            if (
-                    argtyp.attributes.length > 0
-                    and argtyp.attributes.attributes[0].name == "arraylen"):
-                self.ptrarg_with_attribute_length(
-                    ptargtyp, argtyp.attributes.attributes[0], funarg.name)
-                return
+            # if (
+            #        argtyp.attributes.length > 0
+            #         and argtyp.attributes.attributes[0].name == "arraylen"):
+            #    self.ptrarg_with_attribute_length(
+            #        ptargtyp, argtyp.attributes.attributes[0], funarg.name)
+            #    return
 
         funarg.typ.accept(self)
         self.ccode.write(" ")

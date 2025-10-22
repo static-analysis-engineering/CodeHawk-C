@@ -56,13 +56,15 @@ import shutil
 import subprocess
 import sys
 
-from typing import Callable, List, NoReturn, Optional, TYPE_CHECKING
+from typing import (
+    Any, Callable, cast, Dict, List, NoReturn, Optional, TYPE_CHECKING)
 
 from chc.cmdline.AnalysisManager import AnalysisManager
 from chc.cmdline.ParseManager import ParseManager
 import chc.cmdline.jsonresultutil as JU
 
 from chc.app.CApplication import CApplication
+from chc.app.CPrettyPrinter import CPrettyPrinter
 
 import chc.reporting.ProofObligations as RP
 
@@ -71,7 +73,11 @@ import chc.util.fileutil as UF
 from chc.util.loggingutil import chklogger, LogLevel
 
 if TYPE_CHECKING:
+    from chc.app.CAttributes import CAttributes
+    from chc.app.CTyp import (
+        CTypComp, CTypFloat, CTypFun, CTypInt, CTypPtr)
     from chc.proof.CFunctionPO import CFunctionPO
+
 
 
 def print_error(m: str) -> None:
@@ -170,6 +176,149 @@ def cfile_parse_file(args: argparse.Namespace) -> NoReturn:
     parsemanager.save_semantics()
 
     chklogger.logger.info("cfile parse completed")
+
+    exit(0)
+
+
+def cfile_scan_op(args: argparse.Namespace) -> NoReturn:
+
+    # arguments
+    xcfilename: str = args.filename
+    jsonoutput: bool = args.json
+    outputfilename: Optional[str] = args.output
+    loglevel: str = args.loglevel
+    logfilename: Optional[str] = args.logfilename
+    logfilemode: str = args.logfilemode
+
+    projectpath = os.path.dirname(os.path.abspath(xcfilename))
+    targetpath = projectpath
+    targetpath = os.path.abspath(targetpath)
+    cfilename_ext = os.path.basename(xcfilename)
+    cfilename = cfilename_ext[:-2]
+    projectname = cfilename
+
+    set_logging(
+        loglevel,
+        targetpath,
+        logfilename=logfilename,
+        mode=logfilemode,
+        msg="Command cfile scan-output-parameters invoked")
+
+    chklogger.logger.info(
+        "Project path: %s; target path: %s", projectpath, targetpath)
+
+    parsearchive = UF.get_parse_archive(targetpath, projectname)
+
+    if not os.path.isfile(parsearchive):
+        print_error("Please run parser first on c file")
+        exit(1)
+
+    if os.path.isfile(parsearchive):
+        os.chdir(targetpath)
+        tarname = os.path.basename(parsearchive)
+        cmd = ["tar", "xfz", os.path.basename(tarname)]
+        result = subprocess.call(cmd, cwd=targetpath, stderr=subprocess.STDOUT)
+        if result != 0:
+            print_error("Error in extracting " + tarname)
+            exit(1)
+
+    def has_const_attribute(attrs: "CAttributes") -> bool:
+        for attr in attrs.attributes:
+            if "const" in attr.name:
+                return True
+        return False
+
+    contractpath = os.path.join(targetpath, "chc_contracts")
+
+    capp = CApplication(
+        projectpath, projectname, targetpath, contractpath, singlefile=True)
+
+    capp.initialize_single_file(cfilename)
+    cfile = capp.get_cfile()
+
+    ptrcandidates: List[Dict[str, Any]] = []
+    opcandidates: List[Dict[str, Any]] = []
+
+    for cfun in cfile.gfunctions.values():
+        if cfun.varinfo.vname == "main":
+            continue
+        pp = CPrettyPrinter()
+        fndecl = pp.function_declaration_str(cfun.varinfo).strip()
+        cfuntyp = cfun.varinfo.vtype
+        if not cfuntyp.is_function:
+            continue
+        cfuntyp = cast("CTypFun", cfuntyp)
+        cfunargs = cfuntyp.funargs
+        if cfunargs is None:
+            continue
+        cfunarguments = cfunargs.arguments
+        if not any(cfunarg.typ.is_pointer for cfunarg in cfunarguments):
+            continue
+        candidate: Dict[str, Any] = {}
+        candidate["name"] = cfun.vname
+        candidate["signature"] = fndecl
+        ptrargs = candidate["ptrargs"] = []
+        for (index, cfunarg) in enumerate(cfunarguments):
+            argtyp = cfunarg.typ.expand()
+            if argtyp.is_pointer:
+                disqualifiers: List[str] = []
+                argtgttyp = cast("CTypPtr", argtyp).pointedto_type.expand()
+                ptrarg: Dict[str, Any] = {}
+                ptrarg["index"] = index
+                ptrarg["name"] = cfunarg.name
+                ptrarg["target-type"] = str(argtgttyp)
+                if argtgttyp.attributes.length > 0:
+                    ptrarg["attributes"] = (
+                        [str(attr) for attr in argtgttyp.attributes.attributes])
+                    if has_const_attribute(argtgttyp.attributes):
+                        disqualifiers.append("const")
+                if argtgttyp.is_int:
+                    ptrarg["kind"] = ["int", cast("CTypInt", argtgttyp).ikind]
+                    if "ichar" in ptrarg["kind"]:
+                        disqualifiers.append("ichar")
+                    elif "iuchar" in ptrarg["kind"]:
+                        disqualifiers.append("iuchar")
+                elif argtgttyp.is_float:
+                    ptrarg["kind"] = ["float", cast("CTypFloat", argtgttyp).fkind]
+                elif argtgttyp.is_void:
+                    ptrarg["kind"] = ["void"]
+                    disqualifiers.append("void")
+                elif argtgttyp.is_pointer:
+                    ptrarg["kind"] = ["pointer"]
+                    disqualifiers.append("pointer")
+                elif argtgttyp.is_struct:
+                    ptrarg["kind"] = ["struct", cast("CTypComp", argtgttyp).name]
+                elif argtgttyp.is_union:
+                    ptrarg["kind"] = ["union", cast("CTypComp", argtgttyp).name]
+                    disqualifiers.append("union")
+                else:
+                    ptrarg["kind"] = ["other"]
+                if len(disqualifiers) > 0:
+                    ptrarg["disqualifiers"] = disqualifiers
+                else:
+                    opcandidate: Dict[str, Any] = {}
+                    opcandidate["function"] = cfun.varinfo.vname
+                    opcandidate["arg-index"] = index
+                    opcandidate["arg-name"] = cfunarg.name
+                    opcandidate["arg-target-type"] = str(argtgttyp)
+                    opcandidates.append(opcandidate)
+                ptrargs.append(ptrarg)
+        ptrcandidates.append(candidate)
+
+    results: Dict[str, Any] = {}
+    results["function-count"] = len(cfile.gfunctions.keys())
+    results["ptr-candidates"] = ptrcandidates
+    results["op-candidates"] = opcandidates
+
+    if jsonoutput:
+        jsonresult = JU.cfile_output_parameters_to_json_result(cfilename, results)
+        jsonok = JU.jsonok("scan_output_parameters", jsonresult.content)
+        if outputfilename is not None:
+            with open(outputfilename, "w") as fp:
+                json.dump(jsonok, fp, indent=2)
+        else:
+            resultstring = json.dumps(jsonok, indent=2)
+            print(resultstring)
 
     exit(0)
 

@@ -650,6 +650,34 @@ def parse() -> argparse.Namespace:
 
     cfileparse.set_defaults(func=C.cfile_parse_file)
 
+    # --- scan for output parameters
+    cfilescanop = cfileparsers.add_parser("scan-output-parameters")
+    cfilescanop.add_argument(
+        "filename",
+        help="name of file to scan ((<cpath/>)<cfilename>)")
+    cfilescanop.add_argument(
+        "--json",
+        action="store_true",
+        help="output results in json format")
+    cfilescanop.add_argument(
+        "--output", "-o",
+        help="name of output file")
+    cfilescanop.add_argument(
+        "--loglevel", "-log",
+        choices=UL.LogLevel.options(),
+        default="NONE",
+        help="activate logging with given level (default to stderr)")
+    cfilescanop.add_argument(
+        "--logfilename",
+        help="name of file to write log messages")
+    cfilescanop.add_argument(
+        "--logfilemode",
+        choices=["a", "w"],
+        default="a",
+        help="file mode for log file: append (a, default), or write (w)")
+
+    cfilescanop.set_defaults(func=C.cfile_scan_op)
+
     # --- mk-headerfile
     cfilemkheader = cfileparsers.add_parser("mk-headerfile")
     cfilemkheader.add_argument(
@@ -1353,6 +1381,34 @@ def parse() -> argparse.Namespace:
         help="file mode for log file: append (a, default), or write (w)")
 
     cprojectparse.set_defaults(func=P.cproject_parse_project)
+
+    # --- scan for output parameters
+    cprojectscanop = cprojectparsers.add_parser("scan-output-parameters")
+    cprojectscanop.add_argument(
+        "tgtpath", help="directory that contains the analysis results")
+    cprojectscanop.add_argument(
+        "projectname", help="name of the project")
+    cprojectscanop.add_argument(
+        "--json",
+        action="store_true",
+        help="output results in json format")
+    cprojectscanop.add_argument(
+        "--output", "-o",
+        help="name of output file")
+    cprojectscanop.add_argument(
+        "--loglevel", "-log",
+        choices=UL.LogLevel.options(),
+        default="NONE",
+        help="activate logging with given level (default to stderr)")
+    cprojectscanop.add_argument(
+        "--logfilename",
+        help="name of file to write log messages")
+    cprojectscanop.add_argument(
+        "--logfilemode",
+        choices=["a", "w"],
+        default="a",
+        help="file mode for log file: append (a, default), or write (w)")
+    cprojectscanop.set_defaults(func=P.cproject_scan_op)
 
     # --- mk-headerfile
     cprojectmkheader = cprojectparsers.add_parser("mk-headerfile")
