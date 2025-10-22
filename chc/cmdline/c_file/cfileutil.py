@@ -79,7 +79,6 @@ if TYPE_CHECKING:
     from chc.proof.CFunctionPO import CFunctionPO
 
 
-
 def print_error(m: str) -> None:
     sys.stderr.write(("*" * 80) + "\n")
     sys.stderr.write(m + "\n")
