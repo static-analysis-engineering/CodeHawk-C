@@ -103,7 +103,7 @@ def set_logging(
 def cfile_parse_file(args: argparse.Namespace) -> NoReturn:
     """Parses a single file and saves the results in the .cch directory.
 
-    This command runs the gcc preprocessor on the single c-file presented and
+    This command runs the `cc` preprocessor on the single c-file presented and
     then calls the ocaml C analyzer to parse (using the goblint cil parser)
     the resulting .i file into ocaml data structures. These data structures
     are saved in the <projectname>.cch/a directory. The original c-file and
@@ -159,7 +159,7 @@ def cfile_parse_file(args: argparse.Namespace) -> NoReturn:
     parsemanager.initialize_paths()
 
     try:
-        cfilename_i = parsemanager.preprocess_file_with_gcc(cfilename_c)
+        cfilename_i = parsemanager.preprocess_file_with_cc(cfilename_c)
         result = parsemanager.parse_ifile(cfilename_i)
         if result != 0:
             print("*" * 80)
@@ -627,7 +627,7 @@ def cfile_run_file(args: argparse.Namespace) -> NoReturn:
     parsemanager.initialize_paths()
 
     try:
-        cfilename_i = parsemanager.preprocess_file_with_gcc(cfilename_c)
+        cfilename_i = parsemanager.preprocess_file_with_cc(cfilename_c)
         result = parsemanager.parse_ifile(cfilename_i)
         if result != 0:
             print("*" * 80)
@@ -855,7 +855,7 @@ def cfile_testlibc_summary(args: argparse.Namespace) -> NoReturn:
     parsemanager.initialize_paths()
 
     try:
-        cfilename_i = parsemanager.preprocess_file_with_gcc(cfilename_c)
+        cfilename_i = parsemanager.preprocess_file_with_cc(cfilename_c)
         result = parsemanager.parse_ifile(cfilename_i)
         if result != 0:
             print("*" * 80)
