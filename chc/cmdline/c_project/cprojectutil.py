@@ -429,6 +429,9 @@ def cproject_analyze_project(args: argparse.Namespace) -> NoReturn:
     logfilemode: str = args.logfilemode
     excludefiles: List[str] = args.exclude
 
+    if excludefiles is None:
+        excludefiles = []
+
     if not os.path.isdir(tgtpath):
         print_error(f"Target directory {tgtpath} not found")
         exit(1)
@@ -451,7 +454,11 @@ def cproject_analyze_project(args: argparse.Namespace) -> NoReturn:
         exit(1)
 
     capp = CApplication(
-        projectpath, projectname, targetpath, contractpath, excludefiles=excludefiles)
+        projectpath,
+        projectname,
+        targetpath,
+        contractpath,
+        excludefiles=excludefiles)
 
     def save_xrefs(f: "CFile") -> None:
         capp.indexmanager.save_xrefs(
@@ -464,7 +471,11 @@ def cproject_analyze_project(args: argparse.Namespace) -> NoReturn:
     linker.save_global_compinfos()
 
     capp = CApplication(
-        projectpath, projectname, targetpath, contractpath, excludefiles=excludefiles)
+        projectpath,
+        projectname,
+        targetpath,
+        contractpath,
+        excludefiles=excludefiles)
 
     am = AnalysisManager(capp, verbose=True)
 
