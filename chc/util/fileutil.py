@@ -58,7 +58,7 @@ multiple stages:
 1. A new analysis directory is created: tp/pn.cch with two subdirectories:
    tp/pn.cch/a and tp/pn.cch/s
 
-2. x.c is preprocessed with the gcc preprocessor, producing the file
+2. x.c is preprocessed with the C preprocessor, producing the file
    pp/fp/x.i. Both pp/fp/x.c and pp/fp/x.i are copied to tp/pn.cch/s/fp.
 
 3. x.c is parsed by the CodeHawk/CIL parser, producing the following files

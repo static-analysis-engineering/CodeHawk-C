@@ -57,7 +57,7 @@ Interaction with the analyzer is primarily through the command-line interpreter
    > chkc c-file analyze <filename>
    > chkc c-file report-file <filename>
    ```
-   The first command preprocesses the file with gcc; the preprocessed file (.i file)
+   The first command preprocesses the file with `cc`; the preprocessed file (.i file)
    is then parsed with **parseFile** (a wrapper for goblint-cil,
    https://opam.ocaml.org/packages/goblint-cil/).
    The second command analyzes the parsed artifacts, and the third command (and

@@ -221,12 +221,12 @@ class ParseManager(object):
             )
         os.chdir(cwd)
 
-    def preprocess_file_with_gcc(
+    def preprocess_file_with_cc(
             self,
             cfilename: str,
             copyfiles: bool = True,
             moreoptions: List[str] = []) -> str:
-        """Invoke gcc preprocessor on c source file.
+        """Invoke C preprocessor on c source file.
 
         Args:
             cfilename: c source code filename relative to cpath
@@ -234,19 +234,19 @@ class ParseManager(object):
                            preprocessor
 
         Effects:
-            invokes the gcc preprocessor on the c source file and optionally
+            invokes the C preprocessor on the c source file and optionally
             copies the original source file and the generated .i file to the
-            tgtpath/sourcefiles directory
+            tgtpath/sourcefiles directory.
         """
 
-        chklogger.logger.info("Preprocess file with gcc: %s", cfilename)
+        chklogger.logger.info("Preprocess file with cc: %s", cfilename)
         cwd = os.getcwd()
         mac = self.config.platform == "mac"
         ifilename = cfilename[:-1] + "i"
         macoptions = [
             "-U___BLOCKS___", "-D_DARWIN_C_SOURCE", "-D_FORTIFY_SOURCE=0"]
         cmd = [
-            "gcc",
+            "cc",
             "-fno-inline",
             "-fno-builtin",
             "-E",
@@ -498,7 +498,7 @@ class ParseManager(object):
         targetfiles.save_xml_file(self.analysisresultspath)
 
     def parse_cfiles(self, copyfiles: bool = True) -> None:
-        """Preprocess (with gcc) and run the CodeHawk C parser on all .c
+        """Preprocess and run the CodeHawk C parser on all .c
         files in the directory."""
 
         os.chdir(self.projectpath)
@@ -509,7 +509,7 @@ class ParseManager(object):
                     fname = self.normalize_filename(os.path.join(d, fname))
                     if fname.startswith("semantics"):
                         continue
-                    ifilename = self.preprocess_file_with_gcc(fname, copyfiles)
+                    ifilename = self.preprocess_file_with_cc(fname, copyfiles)
                     self.parse_ifile(ifilename)
                     targetfiles.add_file(self.normalize_filename(fname))
         targetfiles.save_xml_file(self.analysisresultspath)
@@ -585,7 +585,7 @@ class TargetFiles:
 
 if __name__ == "__main__":
 
-    # preprocess and parse single files with gcc
+    # preprocess and parse single files with cc
     thisdir = os.path.dirname(os.path.abspath(__file__))
     topdir = os.path.dirname(os.path.dirname(thisdir))
     testsdir = os.path.join(topdir, "tests")
@@ -594,5 +594,5 @@ if __name__ == "__main__":
     pm = ParseManager(id115dir, "kendra115", id115dir)
     pm.initialize_paths()
     for f in ["id115.c", "id116.c", "id117.c", "id118.c"]:
-        ifilename = pm.preprocess_file_with_gcc(f)
+        ifilename = pm.preprocess_file_with_cc(f)
         pm.parse_ifile(ifilename)

@@ -219,7 +219,7 @@ class TestManager:
         self.parsemanager.initialize_paths()
         for cfile in self.cref_files:
             cfilename_c = cfile.name
-            ifilename = self.parsemanager.preprocess_file_with_gcc(
+            ifilename = self.parsemanager.preprocess_file_with_cc(
                 cfilename_c, copyfiles=True
             )
             parseresult = self.parsemanager.parse_ifile(ifilename)

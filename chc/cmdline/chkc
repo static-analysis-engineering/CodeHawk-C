@@ -91,7 +91,7 @@ The regular sequence of commands is:
 
 > chkc c-file parse <cfilename>.c
 
-This command will call gcc to preprocess the file and produce an .i file.
+This command will call `cc` to preprocess the file and produce an .i file.
 Then the CodeHawk/CIL parser is called to convert the preprocessed file into
 OCaml data structures for further analysis. The data structures are stored
 in xml_format in (by default) the directory <cfilename>.cch .
