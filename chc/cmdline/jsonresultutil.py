@@ -243,3 +243,19 @@ def file_proofobligations_to_json_result(cfile: "CFile") -> JSONResult:
         fnsdata.append(fndata)
     content["functions"] = fnsdata
     return JSONResult("fileproofobligations", content, "ok")
+
+
+def cfile_output_parameters_to_json_result(
+        cfilename: str, results: Dict[str, Any]) -> JSONResult:
+    content: Dict[str, Any] = {}
+    content["cfilename"] = cfilename
+    content["output-parameter-candidates"] = results
+    return JSONResult("cfile_output_parameter_candidates", content, "ok")
+
+
+def cproject_output_parameters_to_json_result(
+        projectname: str, results: Dict[str, Any]) -> JSONResult:
+    content: Dict[str, Any] = {}
+    content["cfilename"] = projectname
+    content["output-parameter-candidates"] = results
+    return JSONResult("cfile_output_parameter_candidates", content, "ok")
