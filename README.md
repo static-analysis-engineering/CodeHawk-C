@@ -55,7 +55,7 @@ Interaction with the analyzer is primarily through the command-line interpreter
    ```
    > chkc c-file parse <filename>
    > chkc c-file analyze <filename>
-   > chkc c-file report-file <filename>
+   > chkc c-file report <filename>
    ```
    The first command preprocesses the file with `cc`; the preprocessed file (.i file)
    is then parsed with **parseFile** (a wrapper for goblint-cil,
