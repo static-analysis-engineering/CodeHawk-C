@@ -635,6 +635,10 @@ def parse() -> argparse.Namespace:
         help=("directory in which to store the analysis artifacts "
               + "(default: <cpath>)"))
     cfileparse.add_argument(
+        "--keep-system-includes",
+        action="store_true",
+        help="do not filter out functions from files with absolute file names")
+    cfileparse.add_argument(
         "--loglevel", "-log",
         choices=UL.LogLevel.options(),
         default="NONE",
@@ -721,6 +725,10 @@ def parse() -> argparse.Namespace:
         default=32,
         help="architecture wordsize in bits (16, 32, or 64)")
     cfileanalyze.add_argument(
+        "--keep-system-includes",
+        action="store_true",
+        help="do not filter out functions from files with absolute file names")
+    cfileanalyze.add_argument(
         "--verbose", "-v",
         action="store_true",
         help="print intermediate results")
@@ -794,6 +802,10 @@ def parse() -> argparse.Namespace:
     cfilerun.add_argument(
         "--tgtpath",
         help="directory to store the analysis results")
+    cfilerun.add_argument(
+        "--keep-system-includes",
+        action="store_true",
+        help="don't filter out functions from files with absolute filenames")
     cfilerun.add_argument(
         "--showcode",
         action="store_true",
@@ -1367,6 +1379,10 @@ def parse() -> argparse.Namespace:
     cprojectparse.add_argument(
         "--tgtpath", help="directory to save the results")
     cprojectparse.add_argument(
+        "--keep-system-includes",
+        action="store_true",
+        help="don't filter out functions from files with absolute filenames")
+    cprojectparse.add_argument(
         "--loglevel", "-log",
         choices=UL.LogLevel.options(),
         default="NONE",
@@ -1454,6 +1470,10 @@ def parse() -> argparse.Namespace:
         "tgtpath", help="directory that contains the analysis results")
     cprojectanalyze.add_argument(
         "projectname", help="name of the project")
+    cprojectanalyze.add_argument(
+        "--keep-system-includes",
+        action="store_true",
+        help="don't filter out functions from files with absolute filenames")
     cprojectanalyze.add_argument(
         "--maxprocesses",
         help="number of files to process in parallel",

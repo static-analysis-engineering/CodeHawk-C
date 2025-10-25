@@ -117,6 +117,7 @@ def cfile_parse_file(args: argparse.Namespace) -> NoReturn:
     # arguments
     pcfilename: str = os.path.abspath(args.filename)
     opttgtpath: Optional[str] = args.tgtpath
+    keep_system_includes: bool = args.keep_system_includes
     loglevel: str = args.loglevel
     logfilename: Optional[str] = args.logfilename
     logfilemode: str = args.logfilemode
@@ -154,7 +155,8 @@ def cfile_parse_file(args: argparse.Namespace) -> NoReturn:
 
     chklogger.logger.info("Target path: %s", targetpath)
 
-    parsemanager = ParseManager(projectpath, projectname, targetpath)
+    parsemanager = ParseManager(
+        projectpath, projectname, targetpath, keep_system_includes=keep_system_includes)
     parsemanager.remove_semantics()
     parsemanager.initialize_paths()
 
@@ -418,6 +420,7 @@ def cfile_analyze_file(args: argparse.Namespace) -> NoReturn:
     xcfilename: str = args.filename
     opttgtpath: Optional[str] = args.tgtpath
     wordsize: int = args.wordsize
+    keep_system_includes: bool = args.keep_system_includes
     verbose: bool = args.verbose
     loglevel: str = args.loglevel
     logfilename: Optional[str] = args.logfilename
@@ -468,12 +471,21 @@ def cfile_analyze_file(args: argparse.Namespace) -> NoReturn:
     contractpath = os.path.join(targetpath, "chc_contracts")
 
     capp = CApplication(
-        projectpath, projectname, targetpath, contractpath, singlefile=True)
+        projectpath,
+        projectname,
+        targetpath,
+        contractpath,
+        singlefile=True,
+        keep_system_includes=keep_system_includes)
 
     capp.initialize_single_file(cfilename)
     cfile = capp.get_cfile()
 
-    am = AnalysisManager(capp, verbose=verbose, wordsize=wordsize)
+    am = AnalysisManager(
+        capp,
+        verbose=verbose,
+        wordsize=wordsize,
+        keep_system_includes=keep_system_includes)
 
     am.create_file_primary_proofobligations(cfilename)
     am.reset_tables(cfile)
@@ -578,6 +590,7 @@ def cfile_run_file(args: argparse.Namespace) -> NoReturn:
     # arguments
     pcfilename: str = os.path.abspath(args.filename)
     opttgtpath: Optional[str] = args.tgtpath
+    keep_system_includes: bool = args.keep_system_includes
     cshowcode: bool = args.showcode
     copen: bool = args.open
     cshowinvariants: bool = args.showinvariants
@@ -622,7 +635,8 @@ def cfile_run_file(args: argparse.Namespace) -> NoReturn:
 
     chklogger.logger.info("Target path: %s", targetpath)
 
-    parsemanager = ParseManager(projectpath, projectname, targetpath)
+    parsemanager = ParseManager(
+        projectpath, projectname, targetpath, keep_system_includes=keep_system_includes)
     parsemanager.remove_semantics()
     parsemanager.initialize_paths()
 
@@ -672,7 +686,12 @@ def cfile_run_file(args: argparse.Namespace) -> NoReturn:
     contractpath = os.path.join(targetpath, "chc_contracts")
 
     capp = CApplication(
-        projectpath, projectname, targetpath, contractpath, singlefile=True)
+        projectpath,
+        projectname,
+        targetpath,
+        contractpath,
+        singlefile=True,
+        keep_system_includes=keep_system_includes)
 
     capp.initialize_single_file(cfilename)
     cfile = capp.get_cfile()
@@ -695,7 +714,12 @@ def cfile_run_file(args: argparse.Namespace) -> NoReturn:
     chklogger.logger.info("cfile analyze completed")
 
     capp = CApplication(
-        projectpath, projectname, targetpath, contractpath, singlefile=True)
+        projectpath,
+        projectname,
+        targetpath,
+        contractpath,
+        singlefile=True,
+        keep_system_includes=keep_system_includes)
     capp.initialize_single_file(cfilename)
     cfile = capp.get_cfile()
 

@@ -93,12 +93,14 @@ class CApplication(object):
             targetpath: str,
             contractpath: str,
             singlefile: bool = False,
+            keep_system_includes: bool = False,
             excludefiles: List[str] = []) -> None:
         self._projectpath = projectpath
         self._projectname = projectname
         self._targetpath = targetpath
         self._contractpath = contractpath
         self._singlefile = singlefile
+        self._keep_system_includes = keep_system_includes
         self._excludefiles = excludefiles
         self._indexmanager = IndexManager(singlefile)
         self._globalcontract: Optional[CGlobalContract] = None
@@ -137,6 +139,19 @@ class CApplication(object):
     @property
     def is_singlefile(self) -> bool:
         return self._singlefile
+
+    @property
+    def keep_system_includes(self) -> bool:
+        """Returns true if functions from the system path ('/') must be included
+
+        This property is false by default and must be enabled via a command-line
+        option.
+
+        It is intended to, by default, filter out functions defined in header
+        files, that would otherwise be included in every source file.
+        """
+
+        return self._keep_system_includes
 
     @property
     def excludefiles(self) -> List[str]:

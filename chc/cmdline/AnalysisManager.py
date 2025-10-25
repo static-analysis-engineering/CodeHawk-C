@@ -54,7 +54,7 @@ class AnalysisManager:
         wordsize: int = 0,
         unreachability: bool = False,
         thirdpartysummaries: List[str] = [],
-        nofilter: bool = True,
+        keep_system_includes: bool = False,
         verbose: bool = False,
     ) -> None:
         """Initialize the analyzer location and target file location.
@@ -72,13 +72,8 @@ class AnalysisManager:
         """
 
         self._capp = capp
-        # self.contractpath = capp.contractpath
         self._config = Config()
-        # self.chsummaries = self.config.summaries
-        # self.path = self.capp.path
-        # self.canalyzer = self.config.canalyzer
-        # self.gui = self.config.chc_gui
-        self.nofilter = nofilter
+        self._keep_system_includes = keep_system_includes
         self.wordsize = wordsize
         self.thirdpartysummaries = thirdpartysummaries
         self.unreachability = unreachability
@@ -87,6 +82,10 @@ class AnalysisManager:
     @property
     def capp(self) -> "CApplication":
         return self._capp
+
+    @property
+    def keep_system_includes(self) -> bool:
+        return self._keep_system_includes
 
     @property
     def contractpath(self) -> Optional[str]:
@@ -189,8 +188,8 @@ class AnalysisManager:
             cmd.extend(["-contractpath", self.contractpath])
         cmd.extend(["-projectname", self.capp.projectname])
 
-        if self.nofilter:
-            cmd.append("-nofilter")
+        if self.keep_system_includes:
+            cmd.append("-keep_system_includes")
         if self.wordsize > 0:
             cmd.extend(["-wordsize", str(self.wordsize)])
         cmd.append(self.targetpath)
@@ -283,8 +282,8 @@ class AnalysisManager:
         if not (self.contractpath is None):
             cmd.extend(["-contractpath", self.contractpath])
         cmd.extend(["-projectname", self.capp.projectname])
-        if self.nofilter:
-            cmd.append("-nofilter")
+        if self.keep_system_includes:
+            cmd.append("-keep_system_includes")
         if self.wordsize > 0:
             cmd.extend(["-wordsize", str(self.wordsize)])
         if self.unreachability:

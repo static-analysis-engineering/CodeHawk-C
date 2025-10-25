@@ -155,6 +155,10 @@ class CFile(object):
         return self._capp
 
     @property
+    def keep_system_includes(self) -> bool:
+        return self.capp.keep_system_includes
+
+    @property
     def targetpath(self) -> str:
         return self.capp.targetpath
 

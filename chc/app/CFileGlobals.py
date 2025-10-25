@@ -180,6 +180,10 @@ class CFileGlobals:
         return self._cfile
 
     @property
+    def keep_system_includes(self) -> bool:
+        return self.cfile.keep_system_includes
+
+    @property
     def declarations(self) -> "CFileDeclarations":
         return self.cfile.declarations
 
@@ -284,6 +288,16 @@ class CFileGlobals:
                     xiloc = xf.get("iloc")
                     if xivinfo is not None and xiloc is not None:
                         vinfo = self.declarations.get_varinfo(int(xivinfo))
+                        if (
+                                not self.keep_system_includes
+                                and vinfo.vdecl is not None
+                                and vinfo.vdecl.file.startswith("/")):
+                            chklogger.logger.info(
+                                "%s: Skip system function %s defined in %s",
+                                self.cfile.cfilename,
+                                vinfo.vname,
+                                vinfo.vdecl.file)
+                            continue
                         loc = self.declarations.get_location(int(xiloc))
                         gfun = CGFunction(loc, vinfo)
                         self._gfunctions[vinfo.vid] = gfun

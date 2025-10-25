@@ -72,7 +72,7 @@ class ParseManager(object):
             projectpath: str,
             projectname: str,
             targetpath: str,
-            filter: bool = False,
+            keep_system_includes: bool = False,
             posix: bool = False,
             verbose: bool = True,
             keepUnused: bool = False,
@@ -96,7 +96,7 @@ class ParseManager(object):
             self._targetpath, self._projectname)
         self._analysisresultspath = UF.get_analysisresults_path(
             self._targetpath, self._projectname)
-        self._filter = filter
+        self._keep_system_includes = keep_system_includes
         self._posix = posix
         self._keepUnused = keepUnused
         self._verbose = verbose
@@ -160,8 +160,8 @@ class ParseManager(object):
         return self._tgtplatform
 
     @property
-    def filter(self) -> bool:
-        return self._filter
+    def keep_system_includes(self) -> bool:
+        return self._keep_system_includes
 
     @property
     def posix(self) -> bool:
@@ -439,8 +439,8 @@ class ParseManager(object):
                 "-targetdirectory",
                 self.analysisresultspath
             ]
-            if not self.filter:
-                command.append("-nofilter")
+            if self.keep_system_includes:
+                command.append("-keep_system_includes")
             if self.keepUnused:
                 command.append("-keepUnused")
             command.append(ifilename)
@@ -533,8 +533,8 @@ class ParseManager(object):
             "-targetdirectory",
             self.analysisresultspath,
         ]
-        if not self.filter:
-            cmd.append("-nofilter")
+        if not self.keep_system_includes:
+            cmd.append("-keep_system_includes")
         if self.keepUnused:
             cmd.append("-keepUnused")
         cmd.append(ifilename)

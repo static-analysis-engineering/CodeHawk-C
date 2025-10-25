@@ -68,7 +68,7 @@ if TYPE_CHECKING:
 
 def print_error(m: str) -> None:
     sys.stderr.write(("*" * 80) + "\n")
-    sys.stderr.write(m + "\n")
+    sys.stderr.write("F:" + m + "\n")
     sys.stderr.write(("*" * 80) + "\n")
 
 
@@ -110,6 +110,7 @@ def cproject_parse_project(args: argparse.Namespace) -> NoReturn:
     projectpath: str = args.path
     projectname: str = args.projectname
     opttgtpath: Optional[str] = args.tgtpath
+    keep_system_includes: bool = args.keep_system_includes
     loglevel: str = args.loglevel
     logfilename: Optional[str] = args.logfilename
     logfilemode: str = args.logfilemode
@@ -156,7 +157,8 @@ def cproject_parse_project(args: argparse.Namespace) -> NoReturn:
         print_error("The compile_commands.json file was found empty")
         exit(1)
 
-    parsemanager = ParseManager(projectpath, projectname, targetpath)
+    parsemanager = ParseManager(
+        projectpath, projectname, targetpath, keep_system_includes=keep_system_includes)
     parsemanager.remove_semantics()
     parsemanager.initialize_paths()
     parsemanager.parse_with_ccommands(compilecommands, copyfiles=True)
@@ -423,6 +425,7 @@ def cproject_analyze_project(args: argparse.Namespace) -> NoReturn:
     # arguments
     tgtpath: str = args.tgtpath
     projectname: str = args.projectname
+    keep_system_includes: bool = args.keep_system_includes
     maxprocesses: int = args.maxprocesses
     loglevel: str = args.loglevel
     logfilename: Optional[str] = args.logfilename
@@ -458,6 +461,7 @@ def cproject_analyze_project(args: argparse.Namespace) -> NoReturn:
         projectname,
         targetpath,
         contractpath,
+        keep_system_includes=keep_system_includes,
         excludefiles=excludefiles)
 
     def save_xrefs(f: "CFile") -> None:
@@ -475,9 +479,10 @@ def cproject_analyze_project(args: argparse.Namespace) -> NoReturn:
         projectname,
         targetpath,
         contractpath,
+        keep_system_includes=keep_system_includes,
         excludefiles=excludefiles)
 
-    am = AnalysisManager(capp, verbose=True)
+    am = AnalysisManager(capp, verbose=True, keep_system_includes=keep_system_includes)
 
     with timing("analysis"):
 
@@ -490,13 +495,13 @@ def cproject_analyze_project(args: argparse.Namespace) -> NoReturn:
             exit(1)
 
         for i in range(1):
-            am.generate_and_check_app("llrvisp", processes=maxprocesses)
+            am.generate_and_check_app("visp", processes=maxprocesses)
             capp.reinitialize_tables()
             capp.update_spos()
 
         for i in range(5):
             capp.update_spos()
-            am.generate_and_check_app("llrvisp", processes=maxprocesses)
+            am.generate_and_check_app("visp", processes=maxprocesses)
             capp.reinitialize_tables()
 
     timestamp = os.stat(UF.get_cchpath(targetpath, projectname)).st_ctime
