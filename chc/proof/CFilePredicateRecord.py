@@ -4,7 +4,7 @@
 # ------------------------------------------------------------------------------
 # The MIT License (MIT)
 #
-# Copyright (c) 2023-2024  Aarno Labs LLC
+# Copyright (c) 2023-2025  Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -37,6 +37,7 @@ import chc.util.IndexedTable as IT
 if TYPE_CHECKING:
     from chc.app.CDictionary import CDictionary
     from chc.app.CFile import CFile
+    from chc.app.CFileDeclarations import CFileDeclarations
     from chc.proof.CFilePredicateDictionary import CFilePredicateDictionary
 
 
@@ -58,6 +59,10 @@ class CFilePredicateRecord(IT.IndexedTableValue):
     @property
     def cd(self) -> "CDictionary":
         return self.pd.dictionary
+
+    @property
+    def cdeclarations(self) -> "CFileDeclarations":
+        return self.cfile.declarations
 
     @property
     def cfile(self) -> "CFile":

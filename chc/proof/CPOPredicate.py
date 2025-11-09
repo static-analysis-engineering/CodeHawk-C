@@ -40,7 +40,9 @@ if TYPE_CHECKING:
     from chc.app.CExp import CExp, CExpLval
     from chc.app.CLHost import CLHostVar
     from chc.app.CLval import CLval
+    from chc.app.COffset import COffset
     from chc.app.CTyp import CTyp
+    from chc.app.CVarInfo import CVarInfo
     from chc.proof.CFilePredicateDictionary import CFilePredicateDictionary
 
 
@@ -71,12 +73,15 @@ po_predicate_names: Dict[str, str] = {
     'iu': 'int-underflow',
     'iub': 'index-upper-bound',
     'lb': 'lower-bound',
+    'li': 'locally-initialized',
     'nm': 'new-memory',
     'nn': 'not-null',
     'nneg': 'non-negative',
     'no': 'no-overlap',
     'nt': 'null-terminated',
     'null': 'null',
+    'opi': 'output_parameter-initialized',
+    'opu': 'output_parameter-unaltered',
     'pc': 'pointer-cast',
     'plb': 'ptr-lower-bound',
     'pre': 'precondition',
@@ -181,6 +186,10 @@ class CPOPredicate(CFilePredicateRecord):
         return False
 
     @property
+    def is_locally_initialized(self) -> bool:
+        return False
+
+    @property
     def is_initialized_range(self) -> bool:
         return False
 
@@ -222,6 +231,14 @@ class CPOPredicate(CFilePredicateRecord):
 
     @property
     def is_null_terminated(self) -> bool:
+        return False
+
+    @property
+    def is_output_parameter_initialized(self) -> bool:
+        return False
+
+    @property
+    def is_output_parameter_unaltered(self) -> bool:
         return False
 
     @property
@@ -960,6 +977,48 @@ class CPOInitialized(CPOPredicate):
 
     def __str__(self) -> str:
         return "initialized(" + str(self.lval) + ")"
+
+
+@pdregistry.register_tag("li", CPOPredicate)
+class CPOLocallyInitialized(CPOPredicate):
+    """locally initialized(lval): location initialized within the function.
+
+    - args[0]: index of lval in cdictionary
+    """
+
+    def __init__(
+            self, pd: "CFilePredicateDictionary", ixval: IT.IndexedTableValue
+            ) -> None:
+        CPOPredicate.__init__(self, pd, ixval)
+
+    @property
+    def varinfo(self) -> "CVarInfo":
+        return self.cdeclarations.get_varinfo(self.args[0])
+
+    @property
+    def lval(self) -> "CLval":
+        return self.cd.get_lval(self.args[1])
+
+    @property
+    def is_locally_initialized(self) -> bool:
+        return True
+
+    def has_variable(self, vid: int) -> bool:
+        return self.lval.has_variable(vid)
+
+    def has_variable_deref(self, vid: int) -> bool:
+        return self.lval.has_variable_deref(vid)
+
+    def has_ref_type(self) -> bool:
+        return self.lval.has_ref_type()
+
+    def __str__(self) -> str:
+        return (
+            "locally-initialized("
+            + str(self.varinfo.vname)
+            + ", "
+            + str(self.lval)
+            + ")")
 
 
 @pdregistry.register_tag("ir", CPOPredicate)
@@ -2162,3 +2221,73 @@ class CPOPreservedValue(CPOPredicate):
 
     def __str__(self) -> str:
         return "preserves-value(" + str(self.exp) + ")"
+
+
+@pdregistry.register_tag("opi", CPOPredicate)
+class CPOOutputParameterInitialized(CPOPredicate):
+    """
+
+    - args[0]: index of varinfo in cdecls
+    """
+    def __init__(
+            self, pd: "CFilePredicateDictionary", ixval: IT.IndexedTableValue
+    ) -> None:
+        CPOPredicate.__init__(self, pd, ixval)
+
+    @property
+    def varinfo(self) -> "CVarInfo":
+        return self.cdeclarations.get_varinfo(self.args[0])
+
+    @property
+    def offset(self) -> "COffset":
+        return self.cd.get_offset(self.args[1])
+
+    @property
+    def is_output_parameter_initialized(self) -> bool:
+        return True
+
+    def has_variable(self, vid: int) -> bool:
+        return self.varinfo.vid == vid
+
+    def __str__(self) -> str:
+        return (
+            "output_parameter-initialized("
+            + str(self.varinfo.vname)
+            + ", "
+            + str(self.offset)
+            + ")")
+
+
+@pdregistry.register_tag("opu", CPOPredicate)
+class CPOOutputParameterUnaltered(CPOPredicate):
+    """
+
+    - args[0]: index of varinfo in cdecls
+    """
+    def __init__(
+            self, pd: "CFilePredicateDictionary", ixval: IT.IndexedTableValue
+    ) -> None:
+        CPOPredicate.__init__(self, pd, ixval)
+
+    @property
+    def varinfo(self) -> "CVarInfo":
+        return self.cdeclarations.get_varinfo(self.args[0])
+
+    @property
+    def offset(self) -> "COffset":
+        return self.cd.get_offset(self.args[1])
+
+    @property
+    def is_output_parameter_unaltered(self) -> bool:
+        return True
+
+    def has_variable(self, vid: int) -> bool:
+        return self.varinfo.vid == vid
+
+    def __str__(self) -> str:
+        return (
+            "output_parameter-unaltered("
+            + str(self.varinfo.vname)
+            + ", "
+            + str(self.offset)
+            + ")")
