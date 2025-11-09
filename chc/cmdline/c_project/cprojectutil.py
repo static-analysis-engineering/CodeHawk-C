@@ -49,6 +49,8 @@ import chc.cmdline.jsonresultutil as JU
 
 from chc.linker.CLinker import CLinker
 
+from chc.proof.OutputParameterChecker import OutputParameterChecker
+
 import chc.reporting.ProofObligations as RP
 
 from chc.util.Config import Config
@@ -426,6 +428,9 @@ def cproject_analyze_project(args: argparse.Namespace) -> NoReturn:
     tgtpath: str = args.tgtpath
     projectname: str = args.projectname
     keep_system_includes: bool = args.keep_system_includes
+    analysis: str = args.analysis
+    analysisdomains: str = args.analysis_domains
+    collectdiagnostics: bool = args.collect_diagnostics
     maxprocesses: int = args.maxprocesses
     loglevel: str = args.loglevel
     logfilename: Optional[str] = args.logfilename
@@ -434,6 +439,8 @@ def cproject_analyze_project(args: argparse.Namespace) -> NoReturn:
 
     if excludefiles is None:
         excludefiles = []
+
+    po_cmd = analysis + "-primary"
 
     if not os.path.isdir(tgtpath):
         print_error(f"Target directory {tgtpath} not found")
@@ -482,12 +489,17 @@ def cproject_analyze_project(args: argparse.Namespace) -> NoReturn:
         keep_system_includes=keep_system_includes,
         excludefiles=excludefiles)
 
-    am = AnalysisManager(capp, verbose=True, keep_system_includes=keep_system_includes)
+    am = AnalysisManager(
+        capp,
+        verbose=True,
+        collectdiagnostics=collectdiagnostics,
+        keep_system_includes=keep_system_includes)
 
     with timing("analysis"):
 
         try:
-            am.create_app_primary_proofobligations(processes=maxprocesses)
+            am.create_app_primary_proofobligations(
+                po_cmd=po_cmd, processes=maxprocesses)
             capp.reinitialize_tables()
             capp.collect_post_assumes()
         except UF.CHError as e:
@@ -495,13 +507,13 @@ def cproject_analyze_project(args: argparse.Namespace) -> NoReturn:
             exit(1)
 
         for i in range(1):
-            am.generate_and_check_app("visp", processes=maxprocesses)
+            am.generate_and_check_app(analysisdomains, processes=maxprocesses)
             capp.reinitialize_tables()
             capp.update_spos()
 
         for i in range(5):
             capp.update_spos()
-            am.generate_and_check_app("visp", processes=maxprocesses)
+            am.generate_and_check_app(analysisdomains, processes=maxprocesses)
             capp.reinitialize_tables()
 
     timestamp = os.stat(UF.get_cchpath(targetpath, projectname)).st_ctime
@@ -563,6 +575,7 @@ def cproject_report_file(args: argparse.Namespace) -> NoReturn:
     tgtpath: str = args.tgtpath
     projectname: str = args.projectname
     filename: str = args.filename
+    canalysis: str = args.analysis
     showcode: bool = args.showcode
     showopen: bool = args.open
     showinvariants: bool = args.showinvariants
@@ -599,6 +612,15 @@ def cproject_report_file(args: argparse.Namespace) -> NoReturn:
             cfile, pofilter=pofilter, showinvs=showinvariants))
 
     print(RP.file_proofobligation_stats_tostring(cfile))
+
+    if canalysis == "outputparameters":
+        for cfun in cfile.functions.values():
+            try:
+                op_checker = OutputParameterChecker(cfun)
+                print(str(op_checker))
+            except UF.CHCError as e:
+                print("Skipping function " + cfun.name)
+                continue
 
     exit(0)
 

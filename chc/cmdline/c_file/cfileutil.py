@@ -66,6 +66,8 @@ import chc.cmdline.jsonresultutil as JU
 from chc.app.CApplication import CApplication
 from chc.app.CPrettyPrinter import CPrettyPrinter
 
+from chc.proof.OutputParameterChecker import OutputParameterChecker
+
 import chc.reporting.ProofObligations as RP
 
 from chc.util.Config import Config
@@ -421,7 +423,10 @@ def cfile_analyze_file(args: argparse.Namespace) -> NoReturn:
     opttgtpath: Optional[str] = args.tgtpath
     wordsize: int = args.wordsize
     keep_system_includes: bool = args.keep_system_includes
+    analysis: str = args.analysis
     verbose: bool = args.verbose
+    analysisdomains: str = args.analysis_domains
+    collectdiagnostics: bool = args.collect_diagnostics
     loglevel: str = args.loglevel
     logfilename: Optional[str] = args.logfilename
     logfilemode: str = args.logfilemode
@@ -432,6 +437,8 @@ def cfile_analyze_file(args: argparse.Namespace) -> NoReturn:
     cfilename_ext = os.path.basename(xcfilename)
     cfilename = cfilename_ext[:-2]
     projectname = cfilename
+
+    po_cmd = analysis + "-primary"
 
     set_logging(
         loglevel,
@@ -484,20 +491,21 @@ def cfile_analyze_file(args: argparse.Namespace) -> NoReturn:
     am = AnalysisManager(
         capp,
         verbose=verbose,
+        collectdiagnostics=collectdiagnostics,
         wordsize=wordsize,
         keep_system_includes=keep_system_includes)
 
-    am.create_file_primary_proofobligations(cfilename)
+    am.create_file_primary_proofobligations(cfilename, po_cmd=po_cmd)
     am.reset_tables(cfile)
     capp.collect_post_assumes()
 
-    am.generate_and_check_file(cfilename, None, "llrvisp")
+    am.generate_and_check_file(cfilename, None, analysisdomains)
     am.reset_tables(cfile)
     capp.collect_post_assumes()
 
     for k in range(5):
         capp.update_spos()
-        am.generate_and_check_file(cfilename, None, "llrvisp")
+        am.generate_and_check_file(cfilename, None, analysisdomains)
         am.reset_tables(cfile)
 
     chklogger.logger.info("cfile analyze completed")
@@ -518,6 +526,7 @@ def cfile_report_file(args: argparse.Namespace) -> NoReturn:
     # arguments
     xcfilename: str = args.filename
     opttgtpath: Optional[str] = args.tgtpath
+    canalysis: str = args.analysis
     cshowcode: bool = args.showcode
     cshowinvariants: bool = args.showinvariants
     cfunctions: Optional[List[str]] = args.functions
@@ -573,6 +582,16 @@ def cfile_report_file(args: argparse.Namespace) -> NoReturn:
                 cfile, pofilter=pofilter, showinvs=cshowinvariants))
 
         print(RP.file_proofobligation_stats_tostring(cfile))
+
+        if canalysis == "outputparameters":
+            for cfun in cfile.functions.values():
+                try:
+                    op_checker = OutputParameterChecker(cfun)
+                    print(str(op_checker))
+                except UF.CHCError as e:
+                    print("Skipping function " + cfun.name)
+                    continue
+
         exit(0)
 
     for fnname in cfunctions:
@@ -591,6 +610,9 @@ def cfile_run_file(args: argparse.Namespace) -> NoReturn:
     pcfilename: str = os.path.abspath(args.filename)
     opttgtpath: Optional[str] = args.tgtpath
     keep_system_includes: bool = args.keep_system_includes
+    analysis: str = args.analysis
+    analysisdomains: str = args.analysis_domains
+    collectdiagnostics: bool = args.collect_diagnostics
     cshowcode: bool = args.showcode
     copen: bool = args.open
     cshowinvariants: bool = args.showinvariants
@@ -621,6 +643,8 @@ def cfile_run_file(args: argparse.Namespace) -> NoReturn:
     cfilename_c = os.path.basename(pcfilename)
     cfilename = cfilename_c[:-2]
     projectname = cfilename
+
+    po_cmd = analysis + "-primary"
 
     if not os.path.isdir(targetpath):
         print_error("Target directory: " + targetpath + " does not exist")
@@ -696,19 +720,23 @@ def cfile_run_file(args: argparse.Namespace) -> NoReturn:
     capp.initialize_single_file(cfilename)
     cfile = capp.get_cfile()
 
-    am = AnalysisManager(capp, verbose=verbose)
+    am = AnalysisManager(
+        capp,
+        verbose=verbose,
+        collectdiagnostics=collectdiagnostics,
+        keep_system_includes=keep_system_includes)
 
-    am.create_file_primary_proofobligations(cfilename)
+    am.create_file_primary_proofobligations(cfilename, po_cmd=po_cmd)
     am.reset_tables(cfile)
     capp.collect_post_assumes()
 
-    am.generate_and_check_file(cfilename, None, "llrvisp")
+    am.generate_and_check_file(cfilename, None, analysisdomains)
     am.reset_tables(cfile)
     capp.collect_post_assumes()
 
     for k in range(5):
         capp.update_spos()
-        am.generate_and_check_file(cfilename, None, "llrvisp")
+        am.generate_and_check_file(cfilename, None, analysisdomains)
         am.reset_tables(cfile)
 
     chklogger.logger.info("cfile analyze completed")
@@ -745,6 +773,16 @@ def cfile_run_file(args: argparse.Namespace) -> NoReturn:
             cfile, pofilter=pofilter, showinvs=cshowinvariants))
 
     print(RP.file_proofobligation_stats_tostring(cfile))
+
+    if analysis == "outputparameters":
+        for cfun in cfile.functions.values():
+            try:
+                op_checker = OutputParameterChecker(cfun)
+                print(str(op_checker))
+            except UF.CHCError as e:
+                print("Skipping function " + cfun.name + ": " + str(e))
+                continue
+
     exit(0)
 
 

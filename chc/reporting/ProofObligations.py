@@ -300,6 +300,11 @@ class FunctionDisplay:
                 prefix = po.get_display_prefix()
                 lines.append(prefix + " " + str(po))
                 lines.append((" " * indent) + str(expl))
+                deps = po.dependencies.invs
+                lines.append(
+                    ("\n" + " " * indent).join(
+                        str(self.cfunction.invdictionary.get_invariant_fact(i)
+                            for i in deps)))
             else:
                 lines.append("\n<?> " + str(po))
                 if po.has_diagnostic():
@@ -382,6 +387,11 @@ class FunctionDisplay:
                 prefix = po.get_display_prefix()
                 lines.append(prefix + " " + str(po))
                 lines.append((" " * indent) + str(expl))
+                deps = po.dependencies.invs
+                lines.append(
+                    ("\n" + " " * indent).join(str(
+                        self.cfunction.invdictionary.get_invariant_fact(i))
+                                               for i in deps))
             else:
                 contexts.add(po.context)
                 lines.append("\n<?> " + str(po))

@@ -49,13 +49,14 @@ class AnalysisManager:
     """Provide the interface to the codehawk (ocaml) analyzer."""
 
     def __init__(
-        self,
-        capp: "CApplication",
-        wordsize: int = 0,
-        unreachability: bool = False,
-        thirdpartysummaries: List[str] = [],
-        keep_system_includes: bool = False,
-        verbose: bool = False,
+            self,
+            capp: "CApplication",
+            wordsize: int = 0,
+            unreachability: bool = False,
+            thirdpartysummaries: List[str] = [],
+            keep_system_includes: bool = False,
+            verbose: bool = False,
+            collectdiagnostics: bool = False
     ) -> None:
         """Initialize the analyzer location and target file location.
 
@@ -78,6 +79,7 @@ class AnalysisManager:
         self.thirdpartysummaries = thirdpartysummaries
         self.unreachability = unreachability
         self.verbose = verbose
+        self._collectdiagnostics = collectdiagnostics
 
     @property
     def capp(self) -> "CApplication":
@@ -86,6 +88,10 @@ class AnalysisManager:
     @property
     def keep_system_includes(self) -> bool:
         return self._keep_system_includes
+
+    @property
+    def collect_diagnostics(self) -> bool:
+        return self._collectdiagnostics
 
     @property
     def contractpath(self) -> Optional[str]:
@@ -178,9 +184,11 @@ class AnalysisManager:
             print(args)
             exit(1)
 
-    def _create_file_primary_proofobligations_cmd_partial(self) -> List[str]:
+    def _create_file_primary_proofobligations_cmd_partial(
+            self, po_cmd="undefined-behavior-primary"
+    ) -> List[str]:
         cmd: List[str] = [
-            self.canalyzer, "-summaries", self.chsummaries, "-command", "primary"]
+            self.canalyzer, "-summaries", self.chsummaries, "-command", po_cmd]
         if not (self.thirdpartysummaries is None):
             for s in self.thirdpartysummaries:
                 cmd.extend(["-summaries", s])
@@ -192,19 +200,26 @@ class AnalysisManager:
             cmd.append("-keep_system_includes")
         if self.wordsize > 0:
             cmd.extend(["-wordsize", str(self.wordsize)])
+        if self.collect_diagnostics:
+            cmd.append("-diagnostics")
         cmd.append(self.targetpath)
         cmd.append("-cfilename")
         return cmd
 
     def create_file_primary_proofobligations(
-            self, cfilename: str, cfilepath: Optional[str] = None) -> None:
+            self,
+            cfilename: str,
+            cfilepath: Optional[str] = None,
+            po_cmd: str = "undefined-behavior-primary"
+    ) -> None:
         """Call analyzer to create primary proof obligations for a single file."""
 
         chklogger.logger.info(
             "Create primiary proof obligations for file %s with path %s",
             cfilename, ("none" if cfilepath is None else cfilepath))
         try:
-            cmd = self._create_file_primary_proofobligations_cmd_partial()
+            cmd = self._create_file_primary_proofobligations_cmd_partial(
+                po_cmd=po_cmd)
             cmd.append(cfilename)
             if cfilepath is not None:
                 cmd.extend(["-cfilepath", cfilepath])
@@ -237,13 +252,17 @@ class AnalysisManager:
             print(args)
             exit(1)
 
-    def create_app_primary_proofobligations(self, processes: int = 1) -> None:
+    def create_app_primary_proofobligations(
+            self,
+            po_cmd: str = "undefined-behavior-primary",
+            processes: int = 1) -> None:
         """Call analyzer to create ppo's for all application files."""
 
         if processes > 1:
 
             def f(cfile: "CFile") -> None:
-                cmd = self._create_file_primary_proofobligations_cmd_partial()
+                cmd = self._create_file_primary_proofobligations_cmd_partial(
+                    po_cmd=po_cmd)
                 cmd.append(cfile.cfilename)
                 if cfile.cfilepath is not None:
                     cmd.extend(["-cfilepath", cfile.cfilepath])
@@ -290,6 +309,8 @@ class AnalysisManager:
             cmd.append("-unreachability")
         if self.verbose:
             cmd.append("-verbose")
+        if self.collect_diagnostics:
+            cmd.append("-diagnostics")
         cmd.append(self.targetpath)
         if cfilepath is not None:
             cmd.extend(["-cfilepath", cfilepath])
@@ -317,7 +338,7 @@ class AnalysisManager:
                 result = subprocess.call(
                     cmd,
                     cwd=self.targetpath,
-                    stdout=open(os.devnull, "w"),
+                    # stdout=open(os.devnull, "w"),
                     stderr=subprocess.STDOUT,
                 )
             if result != 0:
