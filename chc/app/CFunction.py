@@ -60,10 +60,91 @@ if TYPE_CHECKING:
     from chc.api.CFunctionContract import CFunctionContract
     from chc.api.InterfaceDictionary import InterfaceDictionary
     from chc.app.CApplication import CApplication
+    from chc.app.CDictionary import CDictionary
     from chc.app.CFile import CFile
     from chc.app.CFileDeclarations import CFileDeclarations
+    from chc.app.COffset import COffset
     from chc.app.CTyp import CTyp
     from chc.app.CVarInfo import CVarInfo
+
+
+class CandidateOutputParameter:
+
+    def __init__(
+            self,
+            cfun: "CFunction",
+            cvar: "CVarInfo",
+            offsets: List["COffset"]) -> None:
+        self._cfun = cfun
+        self._cvar = cvar
+        self._offsets = offsets
+
+    @property
+    def cfun(self) -> "CFunction":
+        return self._cfun
+
+    @property
+    def parameter(self) -> "CVarInfo":
+        return self._cvar
+
+    @property
+    def offsets(self) -> List["COffset"]:
+        return self._offsets
+
+    def __str__(self) -> str:
+        return (
+            self.parameter.vname + "[" + ", ".join(str(o) for o in self.offsets) + "]")
+
+
+class CAnalysisInfo:
+
+    def __init__(self, xnode: Optional[ET.Element], cfun: "CFunction") -> None:
+        self._xnode = xnode
+        self._cfun = cfun
+
+    @property
+    def cfun(self) -> "CFunction":
+        return self._cfun
+
+    @property
+    def cdictionary(self) -> "CDictionary":
+        return self.cfun.cdictionary
+
+    @property
+    def cfiledecls(self) -> "CFileDeclarations":
+        return self.cfun.cfiledecls
+
+    @property
+    def analysis(self) -> str:
+        if self._xnode is None:
+            return "undefined-behavior"
+        else:
+            return self._xnode.get("name", "unknown")
+
+    @property
+    def candidate_parameters(self) -> List[CandidateOutputParameter]:
+        result: List[CandidateOutputParameter] = []
+        if self._xnode is not None:
+            if self.analysis == "output-parameters":
+                xparams = self._xnode.find("candidate-parameters")
+                if xparams is not None:
+                    xparamlist = xparams.findall("vinfo")
+                    for xparam in xparamlist:
+                        xid = int(xparam.get("xid", "-1"))
+                        if xid > 0:
+                            vinfo = self.cfiledecls.get_varinfo(xid)
+                            xoffsets = xparam.get("offsets", "")
+                            if xoffsets is not None:
+                                offsets = list(
+                                    self.cdictionary.get_offset(int(i))
+                                    for i in xoffsets.split(","))
+
+                            result.append(CandidateOutputParameter(
+                                self.cfun, vinfo, offsets))
+        return result
+
+    def __str__(self) -> str:
+        return ", ".join(str(vinfo) for vinfo in self.candidate_parameters)
 
 
 class CFunction:
@@ -84,6 +165,7 @@ class CFunction:
         self._vard: Optional[CFunVarDictionary] = None
         self._invd: Optional[CFunInvDictionary] = None
         self._invarianttable: Optional[CFunInvariantTable] = None
+        self._analysisinfo: Optional[CAnalysisInfo] = None
 
     def xmsg(self, txt: str) -> str:
         return "Function " + self.name + ": " + txt
@@ -139,6 +221,10 @@ class CFunction:
     @property
     def cfiledecls(self) -> "CFileDeclarations":
         return self.cfile.declarations
+
+    @property
+    def cdictionary(self) -> "CDictionary":
+        return self.cfile.dictionary
 
     @property
     def interfacedictionary(self) -> "InterfaceDictionary":
@@ -314,6 +400,22 @@ class CFunction:
                 raise UF.CHCError(self.xmsg("_spo file has no spos element"))
             self._proofs = CFunctionProofs(self, xxpponode, xxsponode)
         return self._proofs
+
+    @property
+    def analysis_info(self) -> CAnalysisInfo:
+        if self._analysisinfo is None:
+            xpponode = UF.get_ppo_xnode(
+                self.targetpath,
+                self.projectname,
+                self.cfilepath,
+                self.cfilename,
+                self.name)
+            if xpponode is not None:
+                self._analysisinfo = (
+                    CAnalysisInfo(xpponode.find("analysis-info"), self))
+            else:
+                self._analysisinfo = CAnalysisInfo(None, self)
+        return self._analysisinfo
 
     def reinitialize_tables(self) -> None:
         self._api = None
