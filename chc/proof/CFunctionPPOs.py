@@ -34,7 +34,7 @@ from typing import Callable, Dict, List, Optional, TYPE_CHECKING
 
 from chc.proof.CFunctionPPO import CFunctionPPO
 from chc.proof.CProofDependencies import CProofDependencies
-from chc.proof.CProofDiagnostic import CProofDiagnostic
+from chc.proof.CProofDiagnostic import CProofDiagnostic, SituatedMsg
 
 import chc.util.fileutil as UF
 
@@ -90,12 +90,13 @@ class CFunctionPPOs:
                 id = ppotype.index
                 status = po_status[xp.get("s", "o")]
                 deps = CProofDependencies(self.cproofs, xp)
-                diagnostic = CProofDiagnostic(xp.find("d"))
+                diagnostic = CProofDiagnostic(self.cproofs, xp.find("d"))
 
                 # get explanation
                 enode = xp.find("e")
                 if enode is not None:
-                    expl: Optional[str] = enode.get("txt", "")
+                    expl: Optional[SituatedMsg] = SituatedMsg(
+                        self.cfun.cdictionary, enode)
                 else:
                     expl = None
 

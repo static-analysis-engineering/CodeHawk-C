@@ -311,8 +311,8 @@ class FunctionDisplay:
                     amsgs = po.diagnostic.argument_msgs
                     if len(amsgs) > 0:
                         for arg in sorted(amsgs):
-                            for s in sorted(amsgs[arg]):
-                                lines.append((" " * indent) + s)
+                            for amsg in amsgs[arg]:
+                                lines.append((" " * indent) + str(amsg))
                     kmsgs = po.diagnostic.keyword_msgs
                     if len(kmsgs) > 0:
                         for key in sorted(kmsgs):
@@ -321,7 +321,7 @@ class FunctionDisplay:
                     msgs = po.diagnostic.msgs
                     if len(msgs) > 0:
                         for m in msgs:
-                            lines.append((" " * indent) + m)
+                            lines.append((" " * indent) + str(m))
                     keys = po.diagnostic.argument_indices
                     for k in sorted(keys):
                         invids = po.diagnostic.get_invariant_ids(k)
@@ -399,8 +399,8 @@ class FunctionDisplay:
                     amsgs = po.diagnostic.argument_msgs
                     if len(amsgs) > 0:
                         for arg in sorted(amsgs):
-                            for s in sorted(amsgs[arg]):
-                                lines.append((" " * indent) + s)
+                            for amsg in amsgs[arg]:
+                                lines.append((" " * indent) + str(amsg))
                     kmsgs = po.diagnostic.keyword_msgs
                     if len(kmsgs) > 0:
                         for key in sorted(kmsgs):
@@ -409,7 +409,7 @@ class FunctionDisplay:
                     msgs = po.diagnostic.msgs
                     if len(msgs) > 0:
                         for m in msgs:
-                            lines.append((" " * indent) + m)
+                            lines.append((" " * indent) + str(m))
                     keys = po.diagnostic.argument_indices
                     for k in sorted(keys):
                         invids = po.diagnostic.get_invariant_ids(k)
@@ -811,13 +811,13 @@ def tag_file_function_pos_tostring(
                         amsgs = po.diagnostic.argument_msgs
                         if len(amsgs) > 0:
                             for arg in sorted(amsgs):
-                                for s in sorted(amsgs[arg]):
-                                    lines.append((" " * 14) + s)
+                                for amsg in amsgs[arg]:
+                                    lines.append((" " * 14) + str(amsg))
                         msgs = po.diagnostic.msgs
                         if len(msgs) > 0:
-                            lines.append((" " * 8) + " ---> " + msgs[0])
-                            for s in msgs[1:]:
-                                lines.append((" " * 14) + s)
+                            lines.append((" " * 8) + " ---> " + str(msgs[0]))
+                            for msg in msgs[1:]:
+                                lines.append((" " * 14) + str(msg))
                             lines.append(" ")
                         keys = po.diagnostic.argument_indices
                         for k in keys:

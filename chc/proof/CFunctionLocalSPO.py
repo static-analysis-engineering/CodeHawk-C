@@ -38,7 +38,7 @@ if TYPE_CHECKING:
     from chc.proof.CFunctionProofs import CFunctionProofs
     from chc.proof.CFunPODictionaryRecord import CFunPOType
     from chc.proof.CProofDependencies import CProofDependencies
-    from chc.proof.CProofDiagnostic import CProofDiagnostic
+    from chc.proof.CProofDiagnostic import CProofDiagnostic, SituatedMsg
 
 
 class CFunctionLocalSPO(CFunctionPO):
@@ -49,7 +49,7 @@ class CFunctionLocalSPO(CFunctionPO):
             potype: "CFunPOType",
             status: str = "open",
             deps: Optional["CProofDependencies"] = None,
-            expl: Optional[str] = None,
+            expl: Optional["SituatedMsg"] = None,
             diag: Optional["CProofDiagnostic"] = None) -> None:
         CFunctionPO.__init__(self, cproofs, potype, status, deps, expl, diag)
 
