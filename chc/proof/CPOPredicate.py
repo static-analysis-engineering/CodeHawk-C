@@ -94,6 +94,7 @@ po_predicate_names: Dict[str, str] = {
     'ub': 'upper-bound',
     'uio': 'uint-overflow',
     'uiu': 'uint-underflow',
+    'up': 'unique-pointer',
     'va': 'var-args',
     'vc': 'value-constraint',
     'vm': 'valid-mem',
@@ -295,6 +296,10 @@ class CPOPredicate(CFilePredicateRecord):
 
     @property
     def is_type_at_offset(self) -> bool:
+        return False
+
+    @property
+    def is_unique_pointer(self) -> bool:
         return False
 
     @property
@@ -2180,6 +2185,29 @@ class CPOValueConstraint(CPOPredicate):
 
     def __str__(self) -> str:
         return "value-constraint(" + str(self.exp) + ")"
+
+
+@pdregistry.register_tag("up", CPOPredicate)
+class CPOUniquePointer(CPOPredicate):
+
+    def __init__(
+            self, pd: "CFilePredicateDictionary", ixval: IT.IndexedTableValue
+    ) -> None:
+        CPOPredicate.__init__(self, pd, ixval)
+
+    @property
+    def exp(self) -> "CExp":
+        return self.cd.get_exp(self.args[0])
+
+    @property
+    def is_unique_pointer(self) -> bool:
+        return True
+
+    def has_variable(self, vid: int) -> bool:
+        return self.exp.has_variable(vid)
+
+    def __str__(self) -> str:
+        return "unique-pointer(" + str(self.exp) + ")"
 
 
 @pdregistry.register_tag("prm", CPOPredicate)
