@@ -6,7 +6,7 @@
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
 # Copyright (c) 2020-2022 Henny B. Sipma
-# Copyright (c) 2023-2024 Aarno Labs LLC
+# Copyright (c) 2023-2025 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -40,6 +40,7 @@ if TYPE_CHECKING:
     from chc.app.CFileDeclarations import CFileDeclarations
     from chc.app.CLocation import CLocation
     from chc.app.CTyp import CTyp
+    from chc.app.CVisitor import CVisitor
 
 
 class CFieldInfo(CDeclarationsRecord):
@@ -86,6 +87,9 @@ class CFieldInfo(CDeclarationsRecord):
         if self.args[3] >= 0:
             return self.dictionary.get_attributes(self.args[3])
         return None
+
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_fieldinfo(self)
 
     def __str__(self) -> str:
         return self.fname + ":" + str(self.ftype)

@@ -32,6 +32,7 @@ from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
 
 from chc.app.CDictionaryRecord import CDictionaryRecord, cdregistry
 
+import chc.util.fileutil as UF
 import chc.util.IndexedTable as IT
 
 if TYPE_CHECKING:
@@ -148,14 +149,14 @@ class CExp(CDictionaryRecord):
     def get_variable_uses(self, vid: int) -> int:
         return 0
 
-    def accept(self, visitor: "CVisitor") -> None:
-        raise Exception("CExp.accept: " + str(self))
-
     def to_dict(self) -> Dict[str, Any]:
         return {"base": "exp"}
 
     def to_idict(self) -> Dict[str, Any]:
         return {"t": self.tags, "a": self.args}
+
+    def accept(self, visitor: "CVisitor") -> None:
+        raise UF.CHCError("visitor not yet implemented for: " + str(self))
 
     def __str__(self) -> str:
         return "baseexp:" + self.tags[0]
@@ -223,6 +224,9 @@ class CExpLval(CExp):
     def to_dict(self) -> Dict[str, Any]:
         return {"base": "lval", "lval": self.lval.to_dict()}
 
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_explval(self)
+
     def __str__(self) -> str:
         return str(self.lval)
 
@@ -247,6 +251,9 @@ class CExpSizeOf(CExp):
 
     def to_dict(self) -> Dict[str, Any]:
         return {"base": "sizeof", "type": self.typ.to_dict()}
+
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_sizeof(self)
 
     def __str__(self) -> str:
         return "sizeof(" + str(self.typ) + ")"
@@ -279,6 +286,9 @@ class CExpSizeOfE(CExp):
     def to_dict(self) -> Dict[str, Any]:
         return {"base": "sizeofe", "exp": self.exp.to_dict()}
 
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_sizeofe(self)
+
     def __str__(self) -> str:
         return "sizeofe(" + str(self.exp) + ")"
 
@@ -307,6 +317,9 @@ class CExpSizeOfStr(CExp):
     def to_dict(self) -> Dict[str, Any]:
         return {"base": "sizeofstr", "string": self.stringvalue}
 
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_size_of_str(self)
+
     def __str__(self) -> str:
         return "sizeofstr(" + str(self.stringvalue) + ")"
 
@@ -331,6 +344,9 @@ class CExpAlignOf(CExp):
 
     def to_dict(self) -> Dict[str, Any]:
         return {"base": "alignof", "type": self.typ.to_dict()}
+
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_alignof(self)
 
     def __str__(self) -> str:
         return "alignof(" + str(self.typ) + ")"
@@ -365,6 +381,9 @@ class CExpAlignOfE(CExp):
 
     def to_dict(self) -> Dict[str, Any]:
         return {"base": "alignofe", "exp": self.exp.to_dict()}
+
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_alignofe(self)
 
     def __str__(self) -> str:
         return "alignofe(" + str(self.exp) + ")"
@@ -410,6 +429,9 @@ class CExpUnOp(CExp):
 
     def to_dict(self) -> Dict[str, Any]:
         return {"base": "unop", "op": self.op, "exp": self.exp.to_dict()}
+
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_unop(self)
 
     def __str__(self) -> str:
         return "(" + unoperatorstrings[self.op] + " " + str(self.exp) + ")"
@@ -473,6 +495,9 @@ class CExpBinOp(CExp):
             "exp1": self.exp1.to_dict(),
             "exp2": self.exp2.to_dict(),
         }
+
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_binop(self)
 
     def __str__(self) -> str:
         return (
@@ -549,6 +574,9 @@ class CExpQuestion(CExp):
             "type": self.typ.to_dict(),
         }
 
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_question(self)
+
     def __str__(self) -> str:
         return (
             "("
@@ -600,6 +628,9 @@ class CExpCastE(CExp):
             "type": self.typ.to_dict(),
         }
 
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_cast(self)
+
     def __str__(self) -> str:
         return "caste(" + str(self.typ) + "," + str(self.exp) + ")"
 
@@ -634,6 +665,9 @@ class CExpAddrOf(CExp):
     def to_dict(self) -> Dict[str, object]:
         return {"base": "addrof", "lval": self.lval.to_dict()}
 
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_addrof(self)
+
     def __str__(self) -> str:
         return "&(" + str(self.lval) + ")"
 
@@ -654,6 +688,9 @@ class CExpAddrOfLabel(CExp):
 
     def to_dict(self) -> Dict[str, object]:
         return {"base": "addroflabel", "label": self.label_sid}
+
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_addr_of_label(self)
 
     def __str__(self) -> str:
         return "addroflabel(" + str(self.label_sid) + ")"
@@ -689,6 +726,9 @@ class CExpStartOf(CExp):
     def to_dict(self) -> Dict[str, Any]:
         return {"base": "startof", "lval": self.lval.to_dict()}
 
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_startof(self)
+
     def __str__(self) -> str:
         return "&(" + str(self.lval) + ")"
 
@@ -721,6 +761,9 @@ class CExpFnApp(CExp):
 
     def has_variable(self, vid: int) -> bool:
         return any([a.has_variable(vid) for a in self.arguments if a])
+
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_fn_app(self)
 
     def __str__(self) -> str:
         return (
@@ -761,6 +804,9 @@ class CExpCnApp(CExp):
 
     def has_variable(self, vid: int) -> bool:
         return any([a.has_variable(vid) for a in self.arguments if a])
+
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_cn_app(self)
 
     def __str__(self) -> str:
         return (

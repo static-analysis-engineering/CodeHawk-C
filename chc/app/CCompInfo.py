@@ -6,7 +6,7 @@
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
 # Copyright (c) 2020-2022 Henny B. Sipma
-# Copyright (c) 2023-2024 Aarno Labs LLC
+# Copyright (c) 2023-2025 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -39,6 +39,7 @@ if TYPE_CHECKING:
     from chc.app.CDeclarations import CDeclarations
     from chc.app.CFieldInfo import CFieldInfo
     from chc.app.CGlobalDeclarations import CGlobalDeclarations
+    from chc.app.CVisitor import CVisitor
 
 
 class CCompInfo(CDeclarationsRecord):
@@ -99,6 +100,9 @@ class CCompInfo(CDeclarationsRecord):
     @property
     def field_strings(self) -> str:
         return ":".join([f.fname for f in self.fields])
+
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_compinfo(self)
 
     def __str__(self) -> str:
         lines = []

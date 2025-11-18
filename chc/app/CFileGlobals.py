@@ -50,6 +50,7 @@ if TYPE_CHECKING:
     from chc.app.CTyp import CTyp
     from chc.app.CTypeInfo import CTypeInfo
     from chc.app.CVarInfo import CVarInfo
+    from chc.app.CVisitor import CVisitor
 
 
 @dataclass
@@ -70,6 +71,9 @@ class CGCompTag:
     @property
     def is_struct(self) -> bool:
         return self.compinfo.is_struct
+
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_cgcomptag(self)
 
     def __str__(self) -> str:
         if self.is_struct:
@@ -121,6 +125,9 @@ class CGType:
     location: "CLocation"
     typeinfo: "CTypeInfo"
 
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_cgtype(self)
+
 
 @dataclass
 class CGVarDecl:
@@ -148,6 +155,9 @@ class CGVarDef:
 
     def has_initializer(self) -> bool:
         return self.initializer is not None
+
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_cgvardef(self)
 
     def __str__(self) -> str:
         if self.initializer is not None:

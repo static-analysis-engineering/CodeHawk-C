@@ -6,7 +6,7 @@
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
 # Copyright (c) 2020-2022 Henny B. Sipma
-# Copyright (c) 2023-2024 Aarno Labs LLC
+# Copyright (c) 2023-2025 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -39,6 +39,7 @@ import chc.util.IndexedTable as IT
 if TYPE_CHECKING:
     from chc.app.CDeclarations import CDeclarations
     from chc.app.CFileDeclarations import CFileDeclarations
+    from chc.app.CVisitor import CVisitor
 
 
 class CLocation(CDeclarationsRecord):
@@ -67,6 +68,9 @@ class CLocation(CDeclarationsRecord):
 
     def get_loc(self) -> Tuple[str, int, int]:
         return (self.file, self.line, self.byte)
+
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_location(self)
 
     def __ge__(self, loc: "CLocation") -> bool:
         return self.get_loc() >= loc.get_loc()

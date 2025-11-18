@@ -710,6 +710,34 @@ def parse() -> argparse.Namespace:
         help="file mode for log file: append (a, default), or write (w)")
     cfilemkheader.set_defaults(func=C.cfile_mk_headerfile)
 
+    # --- cil-source
+    cfilecilsource = cfileparsers.add_parser("cil-source")
+    cfilecilsource.add_argument(
+        "filename",
+        help="name of file to be printed as cil-source text")
+    cfilecilsource.add_argument(
+        "--tgtpath",
+        help="directory in which to store the analysis artifacts "
+        + "(default: <cpath>)")
+    cfilecilsource.add_argument(
+        "--output", "-o",
+        help=("basename of file to save output "
+              + "(without extension): a file with extension .cil.c will be created"))
+    cfilecilsource.add_argument(
+        "--loglevel", "-log",
+        choices=UL.LogLevel.options(),
+        default="NONE",
+        help="activate logging with given level (default to stderr)")
+    cfilecilsource.add_argument(
+        "--logfilename",
+        help="name of file to write log messages")
+    cfilecilsource.add_argument(
+        "--logfilemode",
+        choices=["a", "w"],
+        default="a",
+        help="file mode for log file: append (a, default), or write (w)")
+    cfilecilsource.set_defaults(func=C.cfile_cil_source)
+
     # --- analyze
     cfileanalyze = cfileparsers.add_parser("analyze")
     cfileanalyze.add_argument(

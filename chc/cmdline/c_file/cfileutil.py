@@ -400,6 +400,75 @@ def cfile_mk_headerfile(args: argparse.Namespace) -> NoReturn:
     exit(0)
 
 
+def cfile_cil_source(args: argparse.Namespace) -> NoReturn:
+    """Outputs a textual representation of the CIL AST. """
+
+    # arguments
+    xcfilename: str = args.filename
+    opttgtpath: Optional[str] = args.tgtpath
+    loglevel: str = args.loglevel
+    logfilename: Optional[str] = args.logfilename
+    logfilemode: str = args.logfilemode
+    xoutput: Optional[str] = args.output
+
+    projectpath = os.path.dirname(os.path.abspath(xcfilename))
+    targetpath = projectpath if opttgtpath is None else opttgtpath
+    targetpath = os.path.abspath(targetpath)
+    cfilename_ext = os.path.basename(xcfilename)
+    cfilename = cfilename_ext[:-2]
+    projectname = cfilename
+
+    set_logging(
+        loglevel,
+        targetpath,
+        logfilename=logfilename,
+        mode=logfilemode,
+        msg="Command cfile mk-headerfile was invoked")
+
+    chklogger.logger.info(
+        "Project path: %s; target path: %s", projectpath, targetpath)
+
+    parsearchive = UF.get_parse_archive(targetpath, projectname)
+
+    if not os.path.isfile(parsearchive):
+        print_error("Please run parser first on c file")
+        exit(1)
+
+    if os.path.isfile(parsearchive):
+        chklogger.logger.info("Directory is changed to %s", targetpath)
+        os.chdir(targetpath)
+        tarname = os.path.basename(parsearchive)
+        cmd = ["tar", "xfz", os.path.basename(tarname)]
+        chklogger.logger.info("Semantics is extracted from %s", tarname)
+        result = subprocess.call(cmd, cwd=targetpath, stderr=subprocess.STDOUT)
+        if result != 0:
+            print_error("Error in extracting " + tarname)
+            exit(1)
+        chklogger.logger.info(
+            "Semantics was successfully extracted from %s", tarname)
+
+    contractpath = os.path.join(targetpath, "chc_contracts")
+
+    capp = CApplication(
+        projectpath, projectname, targetpath, contractpath, singlefile=True)
+
+    capp.initialize_single_file(cfilename)
+    cfile = capp.get_cfile()
+
+    fcilsource = cfile.cil_source()
+
+    if xoutput is not None:
+        outputfilename = xoutput + ".cil.c"
+        with open(outputfilename, "w") as fp:
+            fp.write(fcilsource)
+        print("Cil source code written to " + outputfilename)
+
+    else:
+        print(fcilsource)
+
+    exit(0)
+
+
 def cfile_analyze_file(args: argparse.Namespace) -> NoReturn:
     """Analyzes a single c-file and saves the results in the .cch directory.
 

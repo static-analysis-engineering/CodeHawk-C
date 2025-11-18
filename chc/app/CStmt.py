@@ -6,7 +6,7 @@
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
 # Copyright (c) 2020-2022 Henny B. Sipma
-# Copyright (c) 2023-2024 Aarno Labs LLC
+# Copyright (c) 2023-2025 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -39,8 +39,11 @@ import chc.util.fileutil as UF
 if TYPE_CHECKING:
     from chc.app.CExp import CExp
     from chc.app.CFile import CFile
+    from chc.app.CFileDeclarations import CFileDeclarations
     from chc.app.CFileDictionary import CFileDictionary
     from chc.app.CFunction import CFunction
+    from chc.app.CLocation import CLocation
+    from chc.app.CVisitor import CVisitor
 
 
 stmt_constructors: Dict[str, Callable[["CStmt", ET.Element], "CStmt"]] = {
@@ -94,6 +97,10 @@ class CStmt:
         return self.cfun.cfile
 
     @property
+    def declarations(self) -> "CFileDeclarations":
+        return self.cfile.declarations
+
+    @property
     def cdictionary(self) -> "CFileDictionary":
         return self.cfile.dictionary
 
@@ -120,6 +127,14 @@ class CStmt:
             return xkind
         else:
             raise UF.CHCError("stag missing from stmt")
+
+    @property
+    def location(self) -> "CLocation":
+        xiloc = self.xskind.get("iloc")
+        if xiloc is not None:
+            return self.declarations.get_location(int(xiloc))
+        else:
+            raise UF.CHCError("No location found in statement " + str(self))
 
     @property
     def preds(self) -> List[int]:
@@ -190,6 +205,9 @@ class CStmt:
     def get_variable_uses(self, vid: int) -> int:
         return sum(s.get_variable_uses(vid) for s in self.stmts.values())
 
+    def accept(self, visitor: "CVisitor") -> None:
+        raise UF.CHCError("visitor not yet accepted on: " + str(self))
+
     def __str__(self) -> str:
         lines: List[str] = []
         predecessors = ",".join(str(p) for p in self.preds)
@@ -235,6 +253,9 @@ class CBlock(CStmt):
     def block_count(self) -> int:
         return sum(s.block_count for s in self.stmts.values()) + 1
 
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_block(self)
+
 
 class CFunctionBody(CBlock):
 
@@ -249,6 +270,9 @@ class CFunctionBody(CBlock):
     @property
     def is_function_body(self) -> bool:
         return self.parent is None
+
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_function_body(self)
 
 
 class CIfStmt(CStmt):
@@ -274,6 +298,22 @@ class CIfStmt(CStmt):
         return self._stmts
 
     @property
+    def ifstmt(self) -> Optional["CStmt"]:
+        xthen = self.xskind.find("thenblock")
+        if xthen is not None:
+            return CBlock(self, xthen)
+        else:
+            return None
+
+    @property
+    def elsestmt(self) -> Optional["CStmt"]:
+        xelse = self.xskind.find("elseblock")
+        if xelse is not None:
+            return CBlock(self, xelse)
+        else:
+            return None
+
+    @property
     def condition(self) -> "CExp":
         xiexp = self.xskind.get("iexp")
         if xiexp is not None:
@@ -293,6 +333,9 @@ class CIfStmt(CStmt):
     def get_variable_uses(self, vid: int) -> int:
         result: int = sum(s.get_variable_uses(vid) for s in self.stmts.values())
         return result + self.condition.get_variable_uses(vid)
+
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_if_stmt(self)
 
     def __str__(self) -> str:
         return CStmt.__str__(self) + ": " + str(self.condition)
@@ -317,6 +360,9 @@ class CLoopStmt(CStmt):
                 raise UF.CHCError("Loop stmt without nested block")
         return self._stmts
 
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_loop_stmt(self)
+
 
 class CSwitchStmt(CStmt):
 
@@ -337,11 +383,17 @@ class CSwitchStmt(CStmt):
                 raise UF.CHCError("Switch stmt without nested block")
         return self._stmts
 
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_switch_stmt(self)
+
 
 class CBreakStmt(CStmt):
 
     def __init__(self, parent: "CStmt", xnode: ET.Element) -> None:
         CStmt.__init__(self, parent, xnode)
+
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_break_stmt(self)
 
 
 class CContinueStmt(CStmt):
@@ -349,11 +401,17 @@ class CContinueStmt(CStmt):
     def __init__(self, parent: "CStmt", xnode: ET.Element) -> None:
         CStmt.__init__(self, parent, xnode)
 
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_continue_stmt(self)
+
 
 class CGotoStmt(CStmt):
 
     def __init__(self, parent: "CStmt", xnode: ET.Element) -> None:
         CStmt.__init__(self, parent, xnode)
+
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_goto_stmt(self)
 
 
 class CReturnStmt(CStmt):
@@ -361,6 +419,17 @@ class CReturnStmt(CStmt):
 
     def __init__(self, parent: "CStmt", xnode: ET.Element) -> None:
         CStmt.__init__(self, parent, xnode)
+
+    @property
+    def exp(self) -> Optional["CExp"]:
+        xreturnval = self.xskind.get("iexp")
+        if xreturnval is not None:
+            return self.cdictionary.get_exp(int(xreturnval))
+        else:
+            return None
+
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_return_stmt(self)
 
 
 class CInstrsStmt(CStmt):
@@ -402,6 +471,9 @@ class CInstrsStmt(CStmt):
             if i.is_call:
                 result.append(cast("CCallInstr", i))
         return result
+
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_instrs_stmt(self)
 
     def __str__(self) -> str:
         lines: List[str] = []
