@@ -88,6 +88,16 @@ class CContextDictionary:
     def get_program_context_map(self) -> Dict[int, IndexedTableValue]:
         return self.context_table.objectmap(self.get_program_context)
 
+    # ----------------- read_xml service ---------------------------------------
+
+    def read_xml_program_context(
+            self, node: ET.Element, tag: str = "ictxt") -> ProgramContext:
+        xtag = node.get(tag)
+        if xtag is not None:
+            return self.get_program_context(int(xtag))
+        else:
+            raise UF.CHCError(f"Xml element {node.tag} is missing attribute {tag}")
+
     # ----------------------- Printing -----------------------------------------
 
     def objectmap_to_string(self, name: str) -> str:

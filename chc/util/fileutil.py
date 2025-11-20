@@ -1285,6 +1285,17 @@ def get_ppo_filename(
     return os.path.join(fnpath, filename)
 
 
+def has_ppo_file(
+        targetpath: str,
+        projectname: str,
+        cfilepath: Optional[str],
+        cfilename: str,
+        fnname: str) -> bool:
+    filename = get_ppo_filename(
+        targetpath, projectname, cfilepath, cfilename, fnname)
+    return os.path.isfile(filename)
+
+
 def get_ppo_xnode(
         targetpath: str,
         projectname: str,
@@ -1959,6 +1970,13 @@ def xget_attr(p: ET.Element, tag: str, msg: str) -> str:
 def xget_int_attr(p: ET.Element, tag: str, msg: str) -> int:
     xdata = xget_attr(p, tag, msg)
     return int(xdata)
+
+
+def xget_int_attr_o(node: ET.Element, tag: str) -> Optional[int]:
+    xattrval = node.get(tag)
+    if xattrval is not None:
+        return int(xattrval)
+    return None
 
 
 if __name__ == "__main__":

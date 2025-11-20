@@ -35,9 +35,10 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, TYPE_CHECKING
 
 from chc.api.CFunctionApi import CFunctionApi
 
-from chc.app.CLocation import CLocation
 from chc.app.CFunDeclarations import CFunDeclarations
 from chc.app.CInstr import CCallInstr
+from chc.app.CFunctionReturnSite import CFunctionReturnSite
+from chc.app.CLocation import CLocation
 from chc.app.CStmt import CFunctionBody
 from chc.app.IndexManager import FileVarReference
 
@@ -159,6 +160,7 @@ class CFunction:
         self._formals: Dict[int, "CVarInfo"] = {}  # vid -> CVarInfo
         self._locals: Dict[int, "CVarInfo"] = {}  # vid -> CVarInfo
         self._sbody: Optional[CFunctionBody] = None
+        self._returnsites: Optional[List[CFunctionReturnSite]] = None
         self._podictionary: Optional[CFunPODictionary] = None
         self._api: Optional[CFunctionApi] = None
         self._proofs: Optional[CFunctionProofs] = None
@@ -374,6 +376,36 @@ class CFunction:
         return self._podictionary
 
     @property
+    def returnsites(self) -> List[CFunctionReturnSite]:
+        if self._returnsites is None:
+            self._returnsites = []
+            xsponode = UF.get_spo_xnode(
+                self.targetpath,
+                self.projectname,
+                self.cfilepath,
+                self.cfilename,
+                self.name)
+            if xsponode is None:
+                raise UF.CHCError(self.xmsg("spo file is missing"))
+            xxsponode = xsponode.find("spos")
+            if xxsponode is None:
+                raise UF.CHCError(self.xmsg("spo file has no spos element"))
+            xreturnsites = xxsponode.find("returnsites")
+            if xreturnsites is None:
+                raise UF.CHCError(
+                    self.xmsg("spo file has no returnsites element"))
+            for xreturnsite in xreturnsites.findall("rs"):
+                self._returnsites.append(CFunctionReturnSite(self, xreturnsite))
+        return self._returnsites
+
+    def get_returnsite(
+            self, ctxtid: int) -> Optional[CFunctionReturnSite]:
+        for rs in self.returnsites:
+            if rs.context.index == ctxtid:
+                return rs
+        return None
+
+    @property
     def proofs(self) -> CFunctionProofs:
         if self._proofs is None:
             xpponode = UF.get_ppo_xnode(
@@ -397,22 +429,30 @@ class CFunction:
                 raise UF.CHCError(self.xmsg("spo file is missing"))
             xxsponode = xsponode.find("spos")
             if xxsponode is None:
-                raise UF.CHCError(self.xmsg("_spo file has no spos element"))
+                raise UF.CHCError(self.xmsg("spo file has no spos element"))
             self._proofs = CFunctionProofs(self, xxpponode, xxsponode)
         return self._proofs
 
     @property
     def analysis_info(self) -> CAnalysisInfo:
         if self._analysisinfo is None:
-            xpponode = UF.get_ppo_xnode(
-                self.targetpath,
-                self.projectname,
-                self.cfilepath,
-                self.cfilename,
-                self.name)
-            if xpponode is not None:
-                self._analysisinfo = (
-                    CAnalysisInfo(xpponode.find("analysis-info"), self))
+            if UF.has_ppo_file(
+                    self.targetpath,
+                    self.projectname,
+                    self.cfilepath,
+                    self.cfilename,
+                    self.name):
+                xpponode = UF.get_ppo_xnode(
+                    self.targetpath,
+                    self.projectname,
+                    self.cfilepath,
+                    self.cfilename,
+                    self.name)
+                if xpponode is not None:
+                    self._analysisinfo = (
+                        CAnalysisInfo(xpponode.find("analysis-info"), self))
+                else:
+                    self._analysisinfo = CAnalysisInfo(None, self)
             else:
                 self._analysisinfo = CAnalysisInfo(None, self)
         return self._analysisinfo

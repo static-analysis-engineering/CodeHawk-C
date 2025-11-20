@@ -37,6 +37,7 @@ from typing import (
     List,
     Mapping,
     NoReturn,
+    Optional,
     Tuple,
     TYPE_CHECKING)
 import xml.etree.ElementTree as ET
@@ -90,6 +91,10 @@ def xget_attr(p: ET.Element, tag: str) -> str:
 
 def xget_int_attr(p: ET.Element, tag: str) -> int:
     return UF.xget_int_attr(p, tag, "CFileDeclarations")
+
+
+def xget_int_attr_o(node: ET.Element, tag: str) -> Optional[int]:
+    return UF.xget_int_attr_o(node, tag)
 
 
 class CFilename(CDeclarationsRecord):
@@ -265,6 +270,17 @@ class CFileDeclarations(CDeclarations):
             itv = IndexedTableValue(-1, [], args)
             return CLocation(self, itv)
         return self.get_location(index)
+
+    def read_xml_location_o(
+            self, xnode: ET.Element, tag: str = "iloc") -> Optional[CLocation]:
+        index = xget_int_attr_o(xnode, tag)
+        if index is not None:
+            if index == -1:
+                args = [-1, -1, -1]
+                itv = IndexedTableValue(-1, [], args)
+                return CLocation(self, itv)
+            return self.get_location(index)
+        return None
 
     # -------------------- Index items by category ---------------------------
 

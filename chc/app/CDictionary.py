@@ -268,6 +268,13 @@ class CDictionary(ABC):
         else:
             raise Exception('xml node was missing the tag "' + tag + '"')
 
+    def read_xml_exp_o(
+            self, node: ET.Element, tag: str = "iexp") -> Optional[CExp]:
+        xtag_o = node.get(tag)
+        if xtag_o is not None:
+            return self.get_exp(int(xtag_o))
+        return None
+
     def write_xml_exp_opt(
         self,
         node: ET.Element,

@@ -25,15 +25,110 @@
 # SOFTWARE.
 # ------------------------------------------------------------------------------
 
-from typing import List, Optional, TYPE_CHECKING
+from typing import Dict, List, Optional, Tuple, TYPE_CHECKING
 
 
 if TYPE_CHECKING:
+    from chc.app.CContext import ProgramContext
     from chc.app.CContextDictionary import CContextDictionary
+    from chc.app.CExp import CExp
     from chc.app.CFile import CFile
     from chc.app.CFunction import CFunction, CAnalysisInfo, CandidateOutputParameter
     from chc.app.CVarInfo import CVarInfo
     from chc.proof.CFunctionPO import CFunctionPO
+
+
+class OutputParameterResult:
+
+    def __init__(self, varinfo: "CVarInfo") -> None:
+        self._varinfo = varinfo
+        self._fail_locally_initialized: List["CFunctionPO"] = []
+        self._fail_all_or_nothing: Dict[int, List["CFunctionPO"]] = {}
+        self._returnsites: Dict[
+            int, List[Tuple["ProgramContext", bool, Optional["CExp"]]]] = {}
+
+    @property
+    def varinfo(self) -> "CVarInfo":
+        return self._varinfo
+
+    @property
+    def fail_locally_initialized(self) -> List["CFunctionPO"]:
+        return self._fail_locally_initialized
+
+    @property
+    def fail_all_or_nothing(self) -> Dict[int, List["CFunctionPO"]]:
+        return self._fail_all_or_nothing
+
+    @property
+    def returnsites(
+            self) -> Dict[int, List[Tuple["ProgramContext", bool, Optional["CExp"]]]]:
+        return self._returnsites
+
+    def is_failure(self) -> bool:
+        return (
+            (len(self.fail_locally_initialized) > 0)
+            or (len(self.fail_all_or_nothing) > 0))
+
+    def is_success(self) -> bool:
+        return (
+            (not self.is_failure())
+            and any(r[0] for r in self.returnsites.values()))
+
+    def add_locally_read(self, po_s: List["CFunctionPO"]) -> None:
+        self._fail_locally_initialized = po_s
+
+    def add_fail_all_or_nothing(
+            self, ctxtid: int, po_s: List["CFunctionPO"]) -> None:
+        self._fail_all_or_nothing[ctxtid] = po_s
+
+    def add_returnsite(
+            self,
+            ctxt: "ProgramContext",
+            byteloc: int,
+            allwritten: bool,
+            rv: Optional["CExp"]
+    ) -> None:
+        self._returnsites.setdefault(byteloc, [])
+        self._returnsites[byteloc].append((ctxt, allwritten, rv))
+
+    @property
+    def is_must_parameter(self) -> bool:
+        return all(r[0] for r in self.returnsites.values())
+
+    def success_str(self) -> str:
+        if not self.is_success:
+            return self.varinfo.vname + " is not an output parameter"
+
+        rvlines: List[str] = []
+        for (byteloc, contexts) in self.returnsites.items():
+            rvlines.append(f"  return site {byteloc}")
+            for (ctxt, allwritten, exp_o) in contexts:
+                pwritten = "all-written" if allwritten else "unaltered"
+                pexp = str(exp_o) if exp_o is not None else "no return value"
+                rvlines.append(
+                    pwritten.rjust(14) + ": " + str(pexp).rjust(5)
+                    + " (" + str(ctxt) + ")")
+        return (
+            str(self.varinfo.vtype) + " " + self.varinfo.vname + ": "
+            + ("must-output-parameter"
+               if self.is_must_parameter else "may-output-parameter")
+            + "\nReturn values:\n"
+            + "\n".join(rvlines))
+
+    def failure_str(self) -> str:
+        lines: List[str] = []
+        if len(self.fail_locally_initialized) > 0:
+            lines.append("Potential reads from the parameter: ")
+            for po in self.fail_locally_initialized:
+                lines.append(str(po))
+        if len(self.fail_all_or_nothing) > 0:
+            lines.append("Potential failures to write all or nothing: ")
+            for (ctxtid, po_s) in self.fail_all_or_nothing.items():
+                lines.append(str(ctxtid) + ": " + ", ".join(str(po) for po in po_s))
+        if not (any(r[0] for r in self.returnsites.values())):
+            lines.append("Unable to prove fully written on any returnsite")
+
+        return "\n".join(lines)
 
 
 class OutputParameterChecker:
@@ -82,7 +177,8 @@ class OutputParameterChecker:
 
         return self.cfun.proofs.get_output_parameter_ppos(candidate.vname)
 
-    def is_pure_output_parameter(self, candidate: "CVarInfo") -> Optional[str]:
+    def is_pure_output_parameter(
+            self, candidate: "CVarInfo") -> OutputParameterResult:
         """Evaluate the status of the proof obligations related to the parameter.
 
         An output parameter is pure (that is, it can be safely converted to
@@ -105,8 +201,16 @@ class OutputParameterChecker:
         ppos = self.candidate_ppos(candidate)
         ctxts = {ctxt.index for ctxt in [po.context for po in ppos]}
 
-        notread = all(
-            po.is_safe for po in ppos if po.predicate.is_locally_initialized)
+        result = OutputParameterResult(candidate)
+
+        locallyread = list(
+            po for po in ppos
+            if po.predicate.is_locally_initialized and not po.is_safe)
+
+        result.add_locally_read(locallyread)
+
+        if result.is_failure():
+            return result
 
         def allwritten(po_s: List["CFunctionPO"]) -> bool:
             return all(po.is_safe for po in po_s
@@ -116,31 +220,30 @@ class OutputParameterChecker:
             return all(po.is_safe for po in po_s
                        if po.predicate.is_output_parameter_unaltered)
 
-        writtenonce = False
-        must_parameter = True
-        all_or_nothing_written = True
         for ctxtid in ctxts:
+            returnsite_o = self.cfun.get_returnsite(ctxtid)
+            returnexp_o = (
+                returnsite_o.returnexp if returnsite_o is not None else None)
             ctxtppos = self.context_candidate_output_ppos(candidate, ctxtid)
-            if len(ctxtppos) > 0:
+            if len(ctxtppos) > 0 and returnsite_o is not None:
+                byteloc = ctxtppos[0].location.byte
+                ctxt = ctxtppos[0].context
                 ctxt_allwritten = allwritten(ctxtppos)
                 ctxt_allunaltered = allunaltered(ctxtppos)
                 if not (ctxt_allwritten or ctxt_allunaltered):
-                    all_or_nothing_written = False
+                    result.add_fail_all_or_nothing(ctxtid, ctxtppos)
                 elif ctxt_allunaltered:
-                    must_parameter = False
+                    result.add_returnsite(ctxt, byteloc, False, returnexp_o)
                 elif ctxt_allwritten:
-                    writtenonce = True
+                    result.add_returnsite(ctxt, byteloc, True, returnexp_o)
 
-        issafe = notread and all_or_nothing_written and writtenonce
+        return result
 
-        if issafe:
-            if must_parameter:
-                return "must-output-parameter"
-            else:
-                return "may-output-parameter"
-
-        else:
-            return None
+    def results(self) -> List[OutputParameterResult]:
+        opresults: List[OutputParameterResult] = []
+        for candidate in self.candidate_parameters:
+            opresults.append(self.is_pure_output_parameter(candidate.parameter))
+        return opresults
 
     def diagnostic(self, candidate: "CVarInfo") -> str:
         if self.is_pure_output_parameter(candidate):

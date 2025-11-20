@@ -653,14 +653,17 @@ def cfile_report_file(args: argparse.Namespace) -> NoReturn:
         print(RP.file_proofobligation_stats_tostring(cfile))
 
         if canalysis == "outputparameters":
+            print("\n\nOutput parameter analysis results:\n")
             for cfun in cfile.functions.values():
-                try:
-                    op_checker = OutputParameterChecker(cfun)
-                    print(str(op_checker))
-                except UF.CHCError as e:
-                    print("Skipping function " + cfun.name)
-                    continue
-
+                op_checker = OutputParameterChecker(cfun)
+                results = op_checker.results()
+                if len(results) > 0:
+                    print("\nFunction: " + cfun.name + ": ")
+                    for result in results:
+                        if result.is_success():
+                            print(result.success_str())
+                        else:
+                            print(result.failure_str())
         exit(0)
 
     for fnname in cfunctions:
