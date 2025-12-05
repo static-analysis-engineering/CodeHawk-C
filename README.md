@@ -4,33 +4,28 @@ Sound Static Analysis of C for Memory Safety (Undefined Behavior)
 ### Quick start
 
 The CodeHawk-C Analyzer consists of two parts:
-- A python front end (this repository) through which all user interaction
+- A Python front end (this repository) through which all user interaction
   is performed, and
-- An ocaml abstract-interpretation engine that powers the analysis.
+- An OCaml abstract-interpretation engine that powers the analysis.
 
-To use the CodeHawk-C Analyzer first clone or download the ocaml application
+To use the CodeHawk-C Analyzer first clone or download the OCaml application
 from
 ```
 https://github.com/static-analysis-engineering/codehawk
 ```
-and build according to the accompanying instructions given there.
-Then copy the following files from that build:
-```
-codehawk/CodeHawk/CHC/cchcil/parseFile
-codehawk/CodeHawk/CHC/cchcmdline/canalyzer
-```
-to the following location in this repository:
-```
-CodeHawk-C/chc/bin/linux/
-```
-or
-```
-CodeHawk-C/chc/bin/macOS
-```
-depending on the platform where the executables were built.
-Alternatively, you can edit the path to these two executables directly
-in chc/util/Config.py or chc/util/ConfigLocal.py, so there is no need
-to copy them or update them with each new version of the ocaml analyzer.
+and build with `dune` according to the accompanying instructions given there.
+
+You can either:
+- Copy `chc/util/ConfigLocal.template` to `chc/util/ConfigLocal.py`
+in this repository, and edit the latter file to set the paths for
+`config.canalyzer` and `config.cparser` to the `dune`-built binaries,
+which should be in `your-path-to-codehawk/CodeHawk/_build/install/default/bin/`.
+This allows CodeHawk-C to automatically use newly-built versions of the
+OCaml analyzer.
+- Or, you can copy the `canalyzer` and `parseFile` binaries from that location
+into `chc/bin/linux/` or `chc/bin/macOS` within this repository.
+To allow CodeHawk-C to use newly-built versions of the OCaml analyzer,
+you will have to re-copy the binaries after every build.
 
 Set the python path and path:
 ```
@@ -47,8 +42,8 @@ which should show something like:
 Analyzer configuration:
 -----------------------
   platform : linux
-  parser   : /home/user/codehawk/CodeHawk/CHC/cchcil/parseFile (found)
-  analyzer : /home/user/codehawk/CodeHawk/CHC/cchcmdline/canalyzer (found)
+  parser   : /home/user/codehawk/CodeHawk/_build/install/default/bin/parseFile (found)
+  analyzer : /home/user/codehawk/CodeHawk/_build/install/default/bin/canalyzer (found)
 
   summaries: /home/user/CodeHawk-C/chc/summaries/cchsummaries.jar (found)
 ```
@@ -60,9 +55,9 @@ Interaction with the analyzer is primarily through the command-line interpreter
    ```
    > chkc c-file parse <filename>
    > chkc c-file analyze <filename>
-   > chkc c-file report-file <filename>
+   > chkc c-file report <filename>
    ```
-   The first command preprocesses the file with gcc; the preprocessed file (.i file)
+   The first command preprocesses the file with `cc`; the preprocessed file (.i file)
    is then parsed with **parseFile** (a wrapper for goblint-cil,
    https://opam.ocaml.org/packages/goblint-cil/).
    The second command analyzes the parsed artifacts, and the third command (and

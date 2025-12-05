@@ -185,6 +185,10 @@ class CTyp(CDictionaryRecord):
         return False
 
     @property
+    def is_union(self) -> bool:
+        return False
+
+    @property
     def is_void(self) -> bool:
         return False
 
@@ -387,6 +391,10 @@ class CTypComp(CTyp):
     @property
     def is_struct(self) -> bool:
         return self.compinfo.is_struct
+
+    @property
+    def is_union(self) -> bool:
+        return not self.compinfo.is_struct
 
     def accept(self, visitor: "CVisitor") -> None:
         visitor.visit_comptyp(self)
