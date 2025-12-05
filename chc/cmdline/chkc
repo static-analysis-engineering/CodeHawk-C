@@ -855,7 +855,6 @@ def parse() -> argparse.Namespace:
         help="directory that holds the analysis results")
     cfilequeryinvs.set_defaults(func=C.cfile_query_invariants)
 
-
     # --- test libc summary
     cfiletestlibc = cfileparsers.add_parser("test-libc-summary")
     cfiletestlibc.add_argument(
@@ -1438,9 +1437,11 @@ def parse() -> argparse.Namespace:
         choices=["a", "w"],
         default="a",
         help="file mode for log file: append (a, default), or write (w)")
-    cprojectanalyze.add_argument("-x", "--exclude", action='append',
+    cprojectanalyze.add_argument(
+        "-x", "--exclude",
+        action='append',
         help="Exclude file from analysis. To exclude multiple files, use "
-             "this option for each file, e.g. -x dir1/f1.c, -x dir2/f2.c")
+        "this option for each file, e.g. -x dir1/f1.c, -x dir2/f2.c")
     cprojectanalyze.set_defaults(func=P.cproject_analyze_project)
 
     # --- report
@@ -1492,7 +1493,6 @@ def parse() -> argparse.Namespace:
         type=int,
         help="line number in the source code to show invariants")
     cprojectqueryinvs.set_defaults(func=P.cproject_query_invariants)
-
 
     # --- count-statements
     cprojectcountstmts = cprojectparsers.add_parser("count-statements")
