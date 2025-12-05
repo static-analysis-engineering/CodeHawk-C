@@ -31,7 +31,7 @@
 
 """
 
-from typing import List, TYPE_CHECKING
+from typing import Any, cast, List, TYPE_CHECKING
 
 import chc.util.fileutil as UF
 from chc.util.IndexedTable import IndexedTableValue
@@ -162,6 +162,14 @@ class ProgramContext(CContextDictionaryRecord):
     @property
     def exp_context(self) -> ExpContext:
         return self.cxd.get_exp_context(self.args[1])
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, ProgramContext):
+            return NotImplemented
+        return self.index == cast("ProgramContext", other).index
+
+    def __hash__(self) -> int:
+        return self.index
 
     def __str__(self) -> str:
         return "(" + str(self.cfg_context) + "," + str(self.exp_context) + ")"
