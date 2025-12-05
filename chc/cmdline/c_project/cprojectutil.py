@@ -59,6 +59,7 @@ if TYPE_CHECKING:
     from chc.app.CFunction import CFunction
     from chc.app.CInstr import CInstr
     from chc.app.CStmt import CInstrsStmt, CStmt
+    from chc.invariants.CInvariantFact import CInvariantNRVFact
     from chc.proof.CFunctionPO import CFunctionPO
 
 
@@ -406,6 +407,64 @@ def cproject_report_file(args: argparse.Namespace) -> NoReturn:
             cfile, pofilter=pofilter, showinvs=showinvariants))
 
     print(RP.file_proofobligation_stats_tostring(cfile))
+
+    exit(0)
+
+
+def cproject_query_invariants(args: argparse.Namespace) -> NoReturn:
+
+    # arguments
+    tgtpath: str = args.tgtpath
+    projectname: str = args.projectname
+    filename: str = args.filename
+    xfunction: str = args.function
+    xline: int = args.line
+
+    targetpath = os.path.abspath(tgtpath)
+    projectpath = targetpath
+    cfilename_c = os.path.basename(filename)
+    cfilename = cfilename_c[:-2]
+    cfilepath = os.path.dirname(filename)
+
+    if not UF.has_analysisresults_path(targetpath, projectname):
+        print_error(
+            f"No analysis results found for {projectname} in {targetpath}")
+        exit(1)
+
+    contractpath = os.path.join(targetpath, "chc_contracts")
+    capp = CApplication(
+        projectpath, projectname, targetpath, contractpath)
+
+    if capp.has_file(filename[:-2]):
+        cfile = capp.get_file(filename[:-2])
+    else:
+        print_error(f"File {filename} not found")
+        exit(1)
+
+    if not cfile.has_function_by_name(xfunction):
+        print_error("No function found with name " + xfunction)
+        exit(1)
+
+    cfun = cfile.get_function_by_name(xfunction)
+    ppos = cfun.get_ppos()
+    contexts = {ppo.context for ppo in ppos if ppo.line == xline}
+
+    print("Invariants for function " + xfunction + ", line " + str(xline))
+    if len(contexts) == 0:
+        print("\nNo ast positions found with invariants on line " + str(xline) + ".")
+        exit(0)
+
+    for ctxt in contexts:
+        print("\nAST position: " + str(ctxt))
+        print("-" * (len(str(ctxt)) + 14))
+        invs = cfun.invarianttable.get_sorted_invariants(ctxt)
+        nrvfacts: List[str] = []
+        for inv in invs:
+            if inv.is_nrv_fact:
+                inv = cast("CInvariantNRVFact", inv)
+                if not inv.variable.is_check_variable:
+                    nrvfacts.append(str(inv))
+        print("\n".join(nrvfacts))
 
     exit(0)
 
