@@ -6,7 +6,7 @@
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
 # Copyright (c) 2020-2022 Henny B. Sipma
-# Copyright (c) 2023-2024 Aarno Labs LLC
+# Copyright (c) 2023-2025 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -1329,6 +1329,30 @@ def get_spo_xnode(
         targetpath, projectname, cfilepath, cfilename, fnname)
     return get_xnode(
         filename, "function", "Secondary proof obligations file", show=False)
+
+
+def get_adg_filename(
+        targetpath: str,
+        projectname: str,
+        cfilepath: Optional[str],
+        cfilename: str,
+        fnname: str) -> str:
+    fnpath = get_cfile_fnpath(
+        targetpath, projectname, cfilepath, cfilename, fnname)
+    filename = get_fn_composite(cfilename, fnname, "adg")
+    return os.path.join(fnpath, filename)
+
+
+def get_adg_xnode(
+        targetpath: str,
+        projectname: str,
+        cfilepath: Optional[str],
+        cfilename: str,
+        fnname: str) -> Optional[ET.Element]:
+    filename = get_adg_filename(
+        targetpath, projectname, cfilepath, cfilename, fnname)
+    return get_xnode(
+        filename, "function", "Analysis digests file", show=False)
 
 
 def save_spo_file(
