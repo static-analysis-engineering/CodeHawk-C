@@ -1584,6 +1584,14 @@ def parse() -> argparse.Namespace:
         "tgtpath", help="directory that contains the analysis results")
     cprojectreport.add_argument(
         "projectname", help="name of the project")
+    cprojectreport.add_argument(
+        "--analysis",
+        default="undefined-behavior",
+        choices=["undefined-behavior", "outputparameters"],
+        help="choose analysis for reporting results")
+    cprojectreport.add_argument(
+        "--verbose", "-v",
+        action="store_true")
     cprojectreport.set_defaults(func=P.cproject_report)
 
     # --- report-file

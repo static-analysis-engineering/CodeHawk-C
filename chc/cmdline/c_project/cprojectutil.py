@@ -49,8 +49,6 @@ import chc.cmdline.jsonresultutil as JU
 
 from chc.linker.CLinker import CLinker
 
-from chc.proof.OutputParameterChecker import OutputParameterChecker
-
 import chc.reporting.ProofObligations as RP
 
 from chc.util.Config import Config
@@ -61,7 +59,7 @@ if TYPE_CHECKING:
     from chc.app.CAttributes import CAttributes
     from chc.app.CFile import CFile
     from chc.app.CFunction import CFunction
-    from chc.app.CInstr import CInstr
+    from chc.app.CInstr import CInstr, CCallInstr
     from chc.app.CStmt import CInstrsStmt, CStmt
     from chc.app.CTyp import (
         CTypComp, CTypFloat, CTypFun, CTypInt, CTypPtr)
@@ -533,14 +531,17 @@ def cproject_report(args: argparse.Namespace) -> NoReturn:
     # arguments
     tgtpath: str = args.tgtpath
     projectname: str = args.projectname
+    canalysis: str = args.analysis
+    verbose: bool = args.verbose
 
     targetpath = os.path.abspath(tgtpath)
     projectpath = targetpath
 
-    result = UF.read_project_summary_results(targetpath, projectname)
-    if result is not None:
-        print(RP.project_proofobligation_stats_dict_to_string(result))
-        exit(0)
+    statsresult = UF.read_project_summary_results(targetpath, projectname)
+    if statsresult is not None:
+        print(RP.project_proofobligation_stats_dict_to_string(statsresult))
+        if canalysis == "undefinedbehavior":
+            exit(0)
 
     if not UF.has_analysisresults_path(targetpath, projectname):
         print_error(
@@ -558,12 +559,20 @@ def cproject_report(args: argparse.Namespace) -> NoReturn:
     UF.save_project_summary_results(targetpath, projectname, fresult)
     UF.save_project_summary_results_as_xml(targetpath, projectname, fresult)
 
-    result = UF.read_project_summary_results(targetpath, projectname)
-    if result is not None:
-        print(RP.project_proofobligation_stats_dict_to_string(result))
+    statsresult = UF.read_project_summary_results(targetpath, projectname)
+    if statsresult is not None:
+        print(RP.project_proofobligation_stats_dict_to_string(statsresult))
     else:
         print_error("Results were not readable")
         exit(1)
+
+    if canalysis == "outputparameters":
+
+        for cfile in capp.files.values():
+            print("\nFile: " + cfile.name)
+            for cfun in cfile.functions.values():
+                print("\nFunction: " + cfun.name)
+                print(str(cfun.analysis_digests))
 
     exit(0)
 
@@ -613,14 +622,17 @@ def cproject_report_file(args: argparse.Namespace) -> NoReturn:
 
     print(RP.file_proofobligation_stats_tostring(cfile))
 
+    def callsite_str(instr: "CCallInstr") -> str:
+        return (
+            instr.parent.cfile.name + ".c:"
+            + instr.parent.cfun.name + ":"
+            + str(instr.location.line)
+        )
+
     if canalysis == "outputparameters":
         for cfun in cfile.functions.values():
-            try:
-                op_checker = OutputParameterChecker(cfun)
-                print(str(op_checker))
-            except UF.CHCError as e:
-                print("Skipping function " + cfun.name)
-                continue
+            print("\nFunction: " + cfun.name)
+            print(str(cfun.analysis_digests))
 
     exit(0)
 

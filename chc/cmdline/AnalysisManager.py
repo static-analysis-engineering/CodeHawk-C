@@ -56,6 +56,7 @@ class AnalysisManager:
             thirdpartysummaries: List[str] = [],
             keep_system_includes: bool = False,
             verbose: bool = False,
+            disable_timing: bool = False,
             collectdiagnostics: bool = False
     ) -> None:
         """Initialize the analyzer location and target file location.
@@ -79,6 +80,7 @@ class AnalysisManager:
         self.thirdpartysummaries = thirdpartysummaries
         self.unreachability = unreachability
         self.verbose = verbose
+        self.disable_timing = disable_timing
         self._collectdiagnostics = collectdiagnostics
 
     @property
@@ -309,6 +311,8 @@ class AnalysisManager:
             cmd.append("-unreachability")
         if self.verbose:
             cmd.append("-verbose")
+        if self.disable_timing:
+            cmd.append("-disable_timing")
         if self.collect_diagnostics:
             cmd.append("-diagnostics")
         cmd.append(self.targetpath)

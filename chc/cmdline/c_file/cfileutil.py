@@ -66,8 +66,6 @@ import chc.cmdline.jsonresultutil as JU
 from chc.app.CApplication import CApplication
 from chc.app.CPrettyPrinter import CPrettyPrinter
 
-from chc.proof.OutputParameterChecker import OutputParameterChecker
-
 import chc.reporting.ProofObligations as RP
 
 from chc.util.Config import Config
@@ -76,6 +74,7 @@ from chc.util.loggingutil import chklogger, LogLevel
 
 if TYPE_CHECKING:
     from chc.app.CAttributes import CAttributes
+    from chc.app.CInstr import CCallInstr
     from chc.app.CTyp import (
         CTypComp, CTypFloat, CTypFun, CTypInt, CTypPtr)
     from chc.proof.CFunctionPO import CFunctionPO
@@ -652,18 +651,18 @@ def cfile_report_file(args: argparse.Namespace) -> NoReturn:
 
         print(RP.file_proofobligation_stats_tostring(cfile))
 
+        def callsite_str(instr: "CCallInstr") -> str:
+            return (
+                instr.parent.cfile.name + ".c:"
+                + instr.parent.cfun.name + ":"
+                + str(instr.location.line)
+            )
+
         if canalysis == "outputparameters":
-            print("\n\nOutput parameter analysis results:\n")
             for cfun in cfile.functions.values():
-                op_checker = OutputParameterChecker(cfun)
-                results = op_checker.results()
-                if len(results) > 0:
-                    print("\nFunction: " + cfun.name + ": ")
-                    for result in results:
-                        if result.is_success():
-                            print(result.success_str())
-                        else:
-                            print(result.failure_str())
+                print("\nFunction: " + cfun.name)
+                print(str(cfun.analysis_digests))
+
         exit(0)
 
     for fnname in cfunctions:
@@ -848,12 +847,8 @@ def cfile_run_file(args: argparse.Namespace) -> NoReturn:
 
     if analysis == "outputparameters":
         for cfun in cfile.functions.values():
-            try:
-                op_checker = OutputParameterChecker(cfun)
-                print(str(op_checker))
-            except UF.CHCError as e:
-                print("Skipping function " + cfun.name + ": " + str(e))
-                continue
+            print("\nFunction: " + cfun.name)
+            print(str(cfun.analysis_digests))
 
     exit(0)
 

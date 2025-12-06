@@ -345,7 +345,8 @@ class TestManager:
                 )
                 cfilename = creffilename_c[:-2]
                 capp.initialize_single_file(cfilename)
-                am = AnalysisManager(capp, verbose=self.verbose)
+                am = AnalysisManager(
+                    capp, verbose=self.verbose, disable_timing=True)
                 am.create_file_primary_proofobligations(cfilename)
                 cfile = capp.get_cfile()
                 capp.collect_post_assumes()
@@ -588,7 +589,8 @@ class TestManager:
             # only generate invariants if required
             if creffile.has_domains():
                 for d in creffile.domains:
-                    am = AnalysisManager(capp, verbose=self.verbose)
+                    am = AnalysisManager(
+                        capp, verbose=self.verbose, disable_timing=True)
                     am.generate_and_check_file(cfilename, None, d)
             cfile.reinitialize_tables()
             ppos = cfile.get_ppos()
@@ -668,7 +670,8 @@ class TestManager:
             cappfile = capp.get_cfile()
             if creffile.has_domains():
                 for d in creffile.domains:
-                    am = AnalysisManager(capp, verbose=self.verbose)
+                    am = AnalysisManager(
+                        capp, verbose=self.verbose, disable_timing=True)
                     am.generate_and_check_file(cfilename, None, d)
             cappfile.reinitialize_tables()
             spos = cappfile.get_spos()
