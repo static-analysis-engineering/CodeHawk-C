@@ -39,6 +39,7 @@ if TYPE_CHECKING:
     from chc.app.CFile import CFile
     from chc.app.CFileDictionary import CFileDictionary
     from chc.app.CFunction import CFunction
+    from chc.app.CLocation import CLocation
     from chc.app.CLval import CLval
     from chc.app.CStmt import CStmt
     from chc.app.CVisitor import CVisitor
@@ -62,6 +63,10 @@ class CInstr:
     @property
     def cdictionary(self) -> "CFileDictionary":
         return self.parent.cdictionary
+
+    @property
+    def location(self) -> "CLocation":
+        return self.cfun.cfiledecls.read_xml_location(self.xnode)
 
     @property
     def is_assign(self) -> bool:
