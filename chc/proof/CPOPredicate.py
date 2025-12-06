@@ -6,7 +6,7 @@
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
 # Copyright (c) 2020-2022 Henny B. Sipma
-# Copyright (c) 2023-2024 Aarno Labs LLC
+# Copyright (c) 2023-2025 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -80,7 +80,10 @@ po_predicate_names: Dict[str, str] = {
     'no': 'no-overlap',
     'nt': 'null-terminated',
     'null': 'null',
+    "opa": "output_parameter-argument",
     'opi': 'output_parameter-initialized',
+    "opne": "output_parameter-no-escape",
+    "ops": "output_parameter-scalar",
     'opu': 'output_parameter-unaltered',
     'pc': 'pointer-cast',
     'plb': 'ptr-lower-bound',
@@ -2319,3 +2322,65 @@ class CPOOutputParameterUnaltered(CPOPredicate):
             + ", "
             + str(self.offset)
             + ")")
+
+
+@pdregistry.register_tag("opa", CPOPredicate)
+class CPOOutputParameterArgument(CPOPredicate):
+
+    def __init__(
+            self, pd: "CFilePredicateDictionary", ixval: IT.IndexedTableValue
+    ) -> None:
+        CPOPredicate.__init__(self, pd, ixval)
+
+    @property
+    def exp(self) -> "CExp":
+        return self.cd.get_exp(self.args[0])
+
+    def __str__(self) -> str:
+        return "output-parameter-argument(" + str(self.exp) + ")"
+
+
+@pdregistry.register_tag("ops", CPOPredicate)
+class CPOOutputParameterScalar(CPOPredicate):
+
+    def __init__(
+            self, pd: "CFilePredicateDictionary", ixval: IT.IndexedTableValue
+    ) -> None:
+        CPOPredicate.__init__(self, pd, ixval)
+
+    @property
+    def varinfo(self) -> "CVarInfo":
+        return self.cdeclarations.get_varinfo(self.args[0])
+
+    @property
+    def exp(self) -> "CExp":
+        return self.cd.get_exp(self.args[1])
+
+    def __str__(self) -> str:
+        return (
+            "output-parameter-scalar("
+            + str(self.varinfo) + ", "
+            + str(self.exp) + ")")
+
+
+@pdregistry.register_tag("opne", CPOPredicate)
+class CPOOutputParameterNoEscape(CPOPredicate):
+
+    def __init__(
+            self, pd: "CFilePredicateDictionary", ixval: IT.IndexedTableValue
+    ) -> None:
+        CPOPredicate.__init__(self, pd, ixval)
+
+    @property
+    def varinfo(self) -> "CVarInfo":
+        return self.cdeclarations.get_varinfo(self.args[0])
+
+    @property
+    def exp(self) -> "CExp":
+        return self.cd.get_exp(self.args[1])
+
+    def __str__(self) -> str:
+        return (
+            "output-parameter-no-escape("
+            + str(self.varinfo) + ", "
+            + str(self.exp) + ")")
