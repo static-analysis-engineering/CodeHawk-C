@@ -460,6 +460,8 @@ class CInstrsStmt(CStmt):
                     self._instrs.append(CAssignInstr(self, xinode))
                 elif xitag == "asm":
                     self._instrs.append(CAsmInstr(self, xinode))
+                elif xitag == "vardecl":
+                    pass
                 else:
                     raise UF.CHCError("unknown instruction tag: " + xitag)
         return self._instrs

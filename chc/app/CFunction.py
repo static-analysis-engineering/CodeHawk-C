@@ -47,12 +47,13 @@ from chc.invariants.CFunInvDictionary import CFunInvDictionary
 from chc.invariants.CFunInvariantTable import CFunInvariantTable
 from chc.invariants.CInvariantFact import CInvariantFact
 
-from chc.proof.CFunPODictionary import CFunPODictionary
+from chc.proof.CFunctionAnalysisDigest import CFunctionAnalysisDigests
 from chc.proof.CFunctionCallsiteSPOs import CFunctionCallsiteSPOs
 from chc.proof.CFunctionPO import CFunctionPO
 from chc.proof.CFunctionPPO import CFunctionPPO
 from chc.proof.CFunctionProofs import CFunctionProofs
 from chc.proof.CFunctionSPOs import CFunctionSPOs
+from chc.proof.CFunPODictionary import CFunPODictionary
 
 import chc.util.fileutil as UF
 from chc.util.loggingutil import chklogger
@@ -67,85 +68,6 @@ if TYPE_CHECKING:
     from chc.app.COffset import COffset
     from chc.app.CTyp import CTyp
     from chc.app.CVarInfo import CVarInfo
-
-
-class CandidateOutputParameter:
-
-    def __init__(
-            self,
-            cfun: "CFunction",
-            cvar: "CVarInfo",
-            offsets: List["COffset"]) -> None:
-        self._cfun = cfun
-        self._cvar = cvar
-        self._offsets = offsets
-
-    @property
-    def cfun(self) -> "CFunction":
-        return self._cfun
-
-    @property
-    def parameter(self) -> "CVarInfo":
-        return self._cvar
-
-    @property
-    def offsets(self) -> List["COffset"]:
-        return self._offsets
-
-    def __str__(self) -> str:
-        return (
-            self.parameter.vname + "[" + ", ".join(str(o) for o in self.offsets) + "]")
-
-
-class CAnalysisInfo:
-
-    def __init__(self, xnode: Optional[ET.Element], cfun: "CFunction") -> None:
-        self._xnode = xnode
-        self._cfun = cfun
-
-    @property
-    def cfun(self) -> "CFunction":
-        return self._cfun
-
-    @property
-    def cdictionary(self) -> "CDictionary":
-        return self.cfun.cdictionary
-
-    @property
-    def cfiledecls(self) -> "CFileDeclarations":
-        return self.cfun.cfiledecls
-
-    @property
-    def analysis(self) -> str:
-        if self._xnode is None:
-            return "undefined-behavior"
-        else:
-            return self._xnode.get("name", "unknown")
-
-    @property
-    def candidate_parameters(self) -> List[CandidateOutputParameter]:
-        result: List[CandidateOutputParameter] = []
-        if self._xnode is not None:
-            if self.analysis == "output-parameters":
-                xparams = self._xnode.find("candidate-parameters")
-                if xparams is not None:
-                    xparamlist = xparams.findall("vinfo")
-                    for xparam in xparamlist:
-                        xid = int(xparam.get("xid", "-1"))
-                        if xid > 0:
-                            vinfo = self.cfiledecls.get_varinfo(xid)
-                            xoffsets = xparam.get("offsets", "")
-                            if xoffsets is not None:
-                                offsets = list(
-                                    self.cdictionary.get_offset(int(i))
-                                    for i in xoffsets.split(","))
-
-                            result.append(CandidateOutputParameter(
-                                self.cfun, vinfo, offsets))
-        return result
-
-    def __str__(self) -> str:
-        return ", ".join(str(vinfo) for vinfo in self.candidate_parameters)
 
 
 class CFunction:
@@ -167,7 +89,7 @@ class CFunction:
         self._vard: Optional[CFunVarDictionary] = None
         self._invd: Optional[CFunInvDictionary] = None
         self._invarianttable: Optional[CFunInvariantTable] = None
-        self._analysisinfo: Optional[CAnalysisInfo] = None
+        self._analysis_digests: Optional[CFunctionAnalysisDigests] = None
 
     def xmsg(self, txt: str) -> str:
         return "Function " + self.name + ": " + txt
@@ -376,6 +298,32 @@ class CFunction:
         return self._podictionary
 
     @property
+    def analysis_digests(self) -> CFunctionAnalysisDigests:
+        if self._analysis_digests is None:
+            adnode = UF.get_adg_xnode(
+                self.targetpath,
+                self.projectname,
+                self.cfilepath,
+                self.cfilename,
+                self.name)
+            if adnode is None:
+                print("DEBUG: No adg file found")
+                adgnode = None
+                # raise UF.CHCError(self.xmsg("adg file not found"))
+            else:
+                adgnode = adnode.find("analysis-digests")
+            self._analysis_digests = CFunctionAnalysisDigests(self, adgnode)
+        return self._analysis_digests
+
+    def callsites(self) -> List[CCallInstr]:
+        callinstrs = self.capp.get_callinstrs()
+        result: List[CCallInstr] = []
+        for instr in callinstrs:
+            if str(instr.callee) == self.name:
+                result.append(instr)
+        return result
+
+    @property
     def returnsites(self) -> List[CFunctionReturnSite]:
         if self._returnsites is None:
             self._returnsites = []
@@ -432,30 +380,6 @@ class CFunction:
                 raise UF.CHCError(self.xmsg("spo file has no spos element"))
             self._proofs = CFunctionProofs(self, xxpponode, xxsponode)
         return self._proofs
-
-    @property
-    def analysis_info(self) -> CAnalysisInfo:
-        if self._analysisinfo is None:
-            if UF.has_ppo_file(
-                    self.targetpath,
-                    self.projectname,
-                    self.cfilepath,
-                    self.cfilename,
-                    self.name):
-                xpponode = UF.get_ppo_xnode(
-                    self.targetpath,
-                    self.projectname,
-                    self.cfilepath,
-                    self.cfilename,
-                    self.name)
-                if xpponode is not None:
-                    self._analysisinfo = (
-                        CAnalysisInfo(xpponode.find("analysis-info"), self))
-                else:
-                    self._analysisinfo = CAnalysisInfo(None, self)
-            else:
-                self._analysisinfo = CAnalysisInfo(None, self)
-        return self._analysisinfo
 
     def reinitialize_tables(self) -> None:
         self._api = None
@@ -547,7 +471,7 @@ class CFunction:
     def has_line_number(self) -> bool:
         if self.has_source_code_file():
             srcfile = self.get_source_code_file()
-            return self.cfile.cfilename + ".c" == srcfile
+            return self.cfile.name + ".c" == srcfile
         else:
             return False
 
