@@ -604,7 +604,9 @@ class CGlobalDeclarations(CDeclarations):
             return self.mk_compound_init_index(init.tags, args)
 
         else:
-            raise Exception("InitInfo not recognized")
+            # raise Exception("InitInfo not recognized: " + str(init))
+            print("InitInfo not recognized: " + str(init))
+            return -1
 
     def index_offset_init(self, oinit: COffsetInitInfo, fid: int = -1) -> int:
         args: List[int] = [
