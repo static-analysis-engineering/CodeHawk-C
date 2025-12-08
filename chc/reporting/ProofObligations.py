@@ -32,6 +32,8 @@ import time
 from typing import (
     Any, Callable, cast, Dict, List, Sequence, Set, Tuple, TYPE_CHECKING)
 
+import chc.util.fileutil as UF
+
 if TYPE_CHECKING:
     from chc.app.CApplication import CApplication
     from chc.app.CFile import CFile
@@ -802,7 +804,6 @@ def tag_file_function_pos_tostring(
             for ff in sorted(fundict[f]):
                 lines.append("    Function: " + ff)
                 for po in sorted(fundict[f][ff], key=lambda po: po.line):
-                    invd = po.cfun.invdictionary
                     lines.append((" " * 6) + str(po))
                     if po.is_closed:
                         lines.append((" " * 14) + str(po.explanation))
@@ -820,18 +821,22 @@ def tag_file_function_pos_tostring(
                                 lines.append((" " * 14) + str(msg))
                             lines.append(" ")
                         keys = po.diagnostic.argument_indices
-                        for k in keys:
-                            invids = po.diagnostic.get_invariant_ids(k)
-                            for id in invids:
-                                inv = invd.get_invariant_fact(id)
-                                if inv.is_nrv_fact:
-                                    inv = cast("CInvariantNRVFact", inv)
-                                    nrv = inv.non_relational_value
-                                    lines.append(
-                                        (" " * 14)
-                                        + str(k)
-                                        + ": "
-                                        + str(nrv))
+                        try:
+                            invd = po.cfun.invdictionary
+                            for k in keys:
+                                invids = po.diagnostic.get_invariant_ids(k)
+                                for id in invids:
+                                    inv = invd.get_invariant_fact(id)
+                                    if inv.is_nrv_fact:
+                                        inv = cast("CInvariantNRVFact", inv)
+                                        nrv = inv.non_relational_value
+                                        lines.append(
+                                            (" " * 14)
+                                            + str(k)
+                                            + ": "
+                                            + str(nrv))
+                        except UF.CHCError:
+                            pass
 
                         lines.append(" ")
 

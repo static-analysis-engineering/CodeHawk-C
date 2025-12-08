@@ -581,16 +581,28 @@ class CFunction:
         return self.proofs.spolist
 
     def get_open_ppos(self) -> List[CFunctionPO]:
-        return self.proofs.open_ppos
+        try:
+            return self.proofs.open_ppos
+        except UF.CHCFileNotFoundError:
+            return []
 
     def get_open_spos(self) -> List[CFunctionPO]:
         return self.proofs.open_spos
 
     def get_ppos_violated(self) -> List[CFunctionPO]:
-        return self.proofs.ppos_violated
+        try:
+            return self.proofs.ppos_violated
+        except UF.CHCFileNotFoundError:
+            return []
 
     def get_spo_violations(self) -> List[CFunctionPO]:
-        return self.proofs.get_spo_violations()
+        try:
+            return self.proofs.get_spo_violations()
+        except UF.CHCFileNotFoundError:
+            return []
 
     def get_ppos_delegated(self) -> List[CFunctionPO]:
-        return self.proofs.ppos_delegated
+        try:
+            return self.proofs.ppos_delegated
+        except UF.CHCFileNotFoundError:
+            return []
