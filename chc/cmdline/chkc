@@ -1621,6 +1621,18 @@ def parse() -> argparse.Namespace:
         help="show location invariants on the code")
     cprojectreportfile.set_defaults(func=P.cproject_report_file)
 
+    # --- investigate
+    cprojectinvestigate = cprojectparsers.add_parser("investigate")
+    cprojectinvestigate.add_argument(
+        "tgtpath", help="directory that contains the analysis results")
+    cprojectinvestigate.add_argument(
+        "projectname", help="name of the project")
+    cprojectinvestigate.add_argument(
+        "--predicates",
+        nargs="*",
+        help="names of predicates of interest, e.g., not-null (default: all")
+    cprojectinvestigate.set_defaults(func=P.cproject_investigate)
+
     # --- count-statements
     cprojectcountstmts = cprojectparsers.add_parser("count-statements")
     cprojectcountstmts.add_argument(

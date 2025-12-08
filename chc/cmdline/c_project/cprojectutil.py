@@ -540,7 +540,7 @@ def cproject_report(args: argparse.Namespace) -> NoReturn:
     statsresult = UF.read_project_summary_results(targetpath, projectname)
     if statsresult is not None:
         print(RP.project_proofobligation_stats_dict_to_string(statsresult))
-        if canalysis == "undefinedbehavior":
+        if canalysis == "undefined-behavior":
             exit(0)
 
     if not UF.has_analysisresults_path(targetpath, projectname):
@@ -633,6 +633,64 @@ def cproject_report_file(args: argparse.Namespace) -> NoReturn:
         for cfun in cfile.functions.values():
             print("\nFunction: " + cfun.name)
             print(str(cfun.analysis_digests))
+
+    exit(0)
+
+
+def cproject_investigate(args: argparse.Namespace) -> NoReturn:
+
+    # arguments
+    tgtpath: str = args.tgtpath
+    projectname: str = args.projectname
+    predicates: Optional[List[str]] = args.predicates
+
+    targetpath = os.path.abspath(tgtpath)
+    projectpath = targetpath
+    contractpath = os.path.join(targetpath, "chc_contracts")
+
+    if not UF.has_analysisresults_path(targetpath, projectname):
+        print_error(
+            f"No analysis results found for {projectname} in {targetpath}")
+        exit(1)
+
+    capp = CApplication(
+        projectpath, projectname, targetpath, contractpath)
+
+    def pofilter(po: "CFunctionPO") -> bool:
+        if predicates is not None:
+            return po.predicate_name in predicates
+        else:
+            return True
+
+    def header(s: str) -> str:
+        return (s + ":\n" + ("=" * 80))
+
+    lines: List[str] = []
+
+    for cfile in capp.cfiles:
+        openppos = cfile.get_open_ppos()
+        violations = cfile.get_ppos_violated()
+        delegated = cfile.get_ppos_delegated()
+
+        if len(openppos) + len(violations) + len(delegated) > 0:
+            lines.append("=" * 80)
+            lines.append(cfile.name)
+            lines.append("=" * 80)
+
+        if len(openppos) > 0:
+            lines.append(header("Open primary proof obligations obligations"))
+            lines.append(RP.tag_file_function_pos_tostring(openppos, pofilter=pofilter))
+
+        if len(violations) > 0:
+            lines.append(header("Primary proof obligations violated"))
+            lines.append(RP.tag_file_function_pos_tostring(
+                violations, pofilter=pofilter))
+
+        if len(delegated) > 0:
+            lines.append(header("Primary proof obligations delegated"))
+            lines.append(RP.tag_file_function_pos_tostring(delegated, pofilter=pofilter))
+
+    print("\n".join(lines))
 
     exit(0)
 
