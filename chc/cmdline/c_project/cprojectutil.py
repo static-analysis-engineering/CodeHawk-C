@@ -420,6 +420,55 @@ def cproject_mk_headerfile(args: argparse.Namespace) -> NoReturn:
     exit(0)
 
 
+def cproject_cil_source(args: argparse.Namespace) -> NoReturn:
+    """Outputs a textual representation of the CIL AST."""
+
+    #arguments
+    tgtpath: str = args.tgtpath
+    projectname: str = args.projectname
+    filename: str = args.filename
+    loglevel: str = args.loglevel
+    logfilename: Optional[str] = args.logfilename
+    logfilemode: str = args.logfilemode
+
+    targetpath = os.path.abspath(tgtpath)
+    projectpath = targetpath
+    cfilename_c = os.path.basename(filename)
+    cfilename = cfilename_c[:-2]
+    cfilepath = os.path.dirname(filename)
+
+    set_logging(
+        loglevel,
+        targetpath,
+        logfilename=logfilename,
+        mode=logfilemode,
+        msg="Command cfile mk-headerfile was invoked")
+
+    if not UF.has_analysisresults_path(targetpath, projectname):
+        print_error(
+            f"No analysis results found for {projectname} in {targetpath}")
+        exit(1)
+
+    contractpath = os.path.join(targetpath, "chc_contracts")
+    capp = CApplication(
+        projectpath, projectname, targetpath, contractpath)
+
+    if capp.has_file(filename[:-2]):
+        cfile = capp.get_file(filename[:-2])
+    else:
+        print_error(f"File {filename} not found")
+        exit(1)
+
+    fcilsource = cfile.cil_source()
+
+    outputfilename = cfile.cfilename + ".cil.c"
+    with open(outputfilename, "w") as fp:
+        fp.write(fcilsource)
+    print("Cil source code written to " + outputfilename)
+
+    exit(0)
+
+
 def cproject_analyze_project(args: argparse.Namespace) -> NoReturn:
 
     # arguments

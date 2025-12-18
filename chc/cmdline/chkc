@@ -1527,6 +1527,29 @@ def parse() -> argparse.Namespace:
         help="file mode for log file: append (a, default), or write (w)")
     cprojectmkheader.set_defaults(func=P.cproject_mk_headerfile)
 
+    # --- cil-source
+    cprojectcilsource = cprojectparsers.add_parser("cil-source")
+    cprojectcilsource.add_argument(
+        "tgtpath", help="directory that contains the analysis results")
+    cprojectcilsource.add_argument(
+        "projectname", help="name of the project")
+    cprojectcilsource.add_argument(
+        "filename", help="filename with relative path wrt the project")
+    cprojectcilsource.add_argument(
+        "--loglevel", "-log",
+        choices=UL.LogLevel.options(),
+        default="NONE",
+        help="activate logging with given level (default to stderr)")
+    cprojectcilsource.add_argument(
+        "--logfilename",
+        help="name of file to write log messages")
+    cprojectcilsource.add_argument(
+        "--logfilemode",
+        choices=["a", "w"],
+        default="a",
+        help="file mode for log file: append (a, default), or write (w)")
+    cprojectcilsource.set_defaults(func=P.cproject_cil_source)
+
     # --- analyze
     cprojectanalyze = cprojectparsers.add_parser("analyze")
     cprojectanalyze.add_argument(
