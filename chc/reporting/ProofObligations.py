@@ -663,16 +663,20 @@ def project_proofobligation_stats_dict_to_string(
     pporesults = stats_dict["fileresults"]["ppos"]
     sporesults = stats_dict["fileresults"]["spos"]
 
-    rhlen = max([len(x) for x in pporesults])
-    lines.append(
-        proofobligation_stats_tostring(
-            pporesults, sporesults, rhlen=rhlen, header1="c files"))
+    if len(pporesults) > 0:
+        rhlen = max([len(x) for x in pporesults])
+        lines.append(
+            proofobligation_stats_tostring(
+                pporesults, sporesults, rhlen=rhlen, header1="c files"))
 
-    lines.append("\n\nProof Obligation Statistics")
+        lines.append("\n\nProof Obligation Statistics")
 
-    tagpporesults = stats_dict["tagresults"]["ppos"]
-    tagsporesults = stats_dict["tagresults"]["spos"]
-    lines.append(proofobligation_stats_tostring(tagpporesults, tagsporesults))
+        tagpporesults = stats_dict["tagresults"]["ppos"]
+        tagsporesults = stats_dict["tagresults"]["spos"]
+        lines.append(proofobligation_stats_tostring(tagpporesults, tagsporesults))
+
+    else:
+        lines.append("Zero primary proof obligations")
 
     return "\n".join(lines)
 

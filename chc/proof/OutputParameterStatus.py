@@ -36,6 +36,7 @@ from chc.util.IndexedTable import IndexedTableValue
 if TYPE_CHECKING:
     from chc.app.CDictionary import CDictionary
     from chc.proof.CFunPODictionary import CFunPODictionary
+    from chc.proof.OutputParameterRejectionReason import OutputParameterRejectionReason
 
 
 class OutputParameterStatus(CFunPODictionaryRecord):
@@ -103,11 +104,11 @@ class OutputParameterStatusRejected(OutputParameterStatus):
         return True
 
     @property
-    def reason(self) -> List[str]:
-        return [self.cdictionary.get_string(arg) for arg in self.args]
+    def reasons(self) -> List["OutputParameterRejectionReason"]:
+        return [self.pod.get_output_parameter_rejection_reason(arg) for arg in self.args]
 
     def __str__(self) -> str:
-        return "Rejected: " + "; ".join(self.reason)
+        return "Rejected: " + "; ".join(str(reason) for reason in self.reasons)
 
 
 @podregistry.register_tag("w", OutputParameterStatus)
@@ -119,7 +120,7 @@ class OutputParameterStatusWritten(OutputParameterStatus):
         OutputParameterStatus.__init__(self, pod, ixval)
 
     @property
-    def is_viable(self) -> bool:
+    def is_written(self) -> bool:
         return True
 
     def __str__(self) -> str:

@@ -32,6 +32,7 @@ from typing import List, Optional, TYPE_CHECKING
 from chc.proof.CandidateOutputParameter import CandidateOutputParameter
 from chc.proof.OutputParameterCalleeCallsite import OutputParameterCalleeCallsite
 
+from chc.util.loggingutil import chklogger
 
 if TYPE_CHECKING:
     from chc.app.CFile import CFile
@@ -119,7 +120,7 @@ class CFunctionAnalysisDigests:
                             self.cfun, xdigest)
                         self._digests.append(digest)
             else:
-                print("DEBUG: xnode is none")
+                chklogger.logger.warning("Adg xnode is None")
         return self._digests
 
     def __str__(self) -> str:

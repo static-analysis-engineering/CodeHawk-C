@@ -533,9 +533,19 @@ def cproject_report(args: argparse.Namespace) -> NoReturn:
     projectname: str = args.projectname
     canalysis: str = args.analysis
     verbose: bool = args.verbose
+    loglevel: str = args.loglevel
+    logfilename: Optional[str] = args.logfilename
+    logfilemode: str = args.logfilemode
 
     targetpath = os.path.abspath(tgtpath)
     projectpath = targetpath
+
+    set_logging(
+        loglevel,
+        targetpath,
+        logfilename=logfilename,
+        mode=logfilemode,
+        msg="c-project report invoked")
 
     statsresult = UF.read_project_summary_results(targetpath, projectname)
     if statsresult is not None:

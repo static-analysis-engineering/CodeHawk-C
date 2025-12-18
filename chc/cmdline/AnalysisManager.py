@@ -282,7 +282,7 @@ class AnalysisManager:
 
             def f(cfile: "CFile") -> None:
                 self.create_file_primary_proofobligations(
-                    cfile.cfilename, cfile.cfilepath)
+                    cfile.cfilename, cfile.cfilepath, po_cmd=po_cmd)
 
             self.capp.iter_files(f)
 

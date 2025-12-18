@@ -307,7 +307,8 @@ class CFunction:
                 self.cfilename,
                 self.name)
             if adnode is None:
-                print("DEBUG: No adg file found")
+                chklogger.logger.warning(
+                    "No adg file encountered for function %s", self.name)
                 adgnode = None
                 # raise UF.CHCError(self.xmsg("adg file not found"))
             else:
