@@ -34,12 +34,13 @@ The config object passed to getLocals is the universal Config, you can update
 any of that config's variables here if you want to use a value other than the default.
 """
 
-import os
+from typing import TYPE_CHECKING
 
-import chc.util.Config
+if TYPE_CHECKING:
+    from chc.util.Config import Config
 
 
-def getLocals(config: chc.util.Config.Config) -> None:
+def getLocals(config: Config) -> None:
     '''Set local configuration variables here if they differ from the defaults in Config.py
 
     Example :
