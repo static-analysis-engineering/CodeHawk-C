@@ -30,6 +30,8 @@ import xml.etree.ElementTree as ET
 from typing import List, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from chc.app.CContext import ProgramContext
+    from chc.app.CContextDictionary import CContextDictionary
     from chc.app.CExp import CExp
     from chc.app.CFile import CFile
     from chc.app.CFileDictionary import CFileDictionary
@@ -43,6 +45,74 @@ if TYPE_CHECKING:
     from chc.proof.OutputParameterStatus import OutputParameterStatus
 
 
+class OutputParameterCalleeCallsiteArg:
+
+    def __init__(
+            self, opcallsite: "OutputParameterCalleeCallsite", xnode: ET.Element
+    ) -> None:
+        self._opcallsite = opcallsite
+        self.xnode = xnode
+
+    @property
+    def opcallsite(self) -> "OutputParameterCalleeCallsite":
+        return self._opcallsite
+
+    @property
+    def adg(self) -> "CFunctionOutputParameterAnalysisDigest":
+        return self.opcallsite.adg
+
+    @property
+    def cfun(self) -> "CFunction":
+        return self.adg.cfun
+
+    @property
+    def cfile(self) -> "CFile":
+        return self.adg.cfile
+
+    @property
+    def cdictionary(self) -> "CFileDictionary":
+        return self.cfile.dictionary
+
+    @property
+    def podictionary(self) -> "CFunPODictionary":
+        return self.cfun.podictionary
+
+    @property
+    def contextdictionary(self) -> "CContextDictionary":
+        return self.cfile.contextdictionary
+
+    @property
+    def fdecls(self) -> "CFileDeclarations":
+        return self.cfile.declarations
+
+    @property
+    def status(self) -> "OutputParameterStatus":
+        return self.podictionary.read_xml_output_parameter_status(self.xnode)
+
+    @property
+    def argument(self) -> "CExp":
+        return self.cdictionary.read_xml_exp(self.xnode)
+
+    @property
+    def context(self) -> "ProgramContext":
+        return self.contextdictionary.read_xml_context(self.xnode)
+
+    @property
+    def arg_index(self) -> int:
+        expctxt = self.context.exp_context
+        lastnode = expctxt.nodes[-1]
+        if str(lastnode).startswith("arg:"):
+            index = int(str(lastnode)[4:])
+            return index
+        else:
+            return -1
+
+    def __str__(self) -> str:
+        return (
+            str(self.status)
+            + " " + str(self.argument) + " (argindex: " + str(self.arg_index))
+
+
 class OutputParameterCalleeCallsite:
 
     def __init__(
@@ -50,6 +120,7 @@ class OutputParameterCalleeCallsite:
     ) -> None:
         self._adg = adg
         self.xnode = xnode
+        self._callargs: Optional[List[OutputParameterCalleeCallsiteArg]] = None
 
     @property
     def adg(self) -> "CFunctionOutputParameterAnalysisDigest":
@@ -76,6 +147,17 @@ class OutputParameterCalleeCallsite:
         return self.cfile.declarations
 
     @property
+    def callargs(self) -> List[OutputParameterCalleeCallsiteArg]:
+        if self._callargs is None:
+            self._callargs = []
+            xcallargs = self.xnode.find("callee-callsite-args")
+            if xcallargs is not None:
+                for xcallarg in xcallargs.findall("callarg"):
+                    callarg = OutputParameterCalleeCallsiteArg(self, xcallarg)
+                    self._callargs.append(callarg)
+        return self._callargs
+
+    @property
     def status(self) -> "OutputParameterStatus":
         return self.podictionary.read_xml_output_parameter_status(self.xnode)
 
@@ -88,9 +170,12 @@ class OutputParameterCalleeCallsite:
         return self.cdictionary.read_xml_exp(self.xnode)
 
     def __str__(self) -> str:
-        return (
+        lines: List[str] = []
+        lines.append(
             str(self.location.line)
             + ": "
-            + str(self.status)
             + "; callee: "
             + str(self.callee))
+        for callarg in self.callargs:
+            lines.append("    " + str(callarg))
+        return "\n".join(lines)

@@ -55,6 +55,14 @@ class OutputParameterStatus(CFunPODictionaryRecord):
         return False
 
     @property
+    def is_written(self) -> bool:
+        return False
+
+    @property
+    def is_unaltered(self) -> bool:
+        return False
+
+    @property
     def is_viable(self) -> bool:
         return False
 
@@ -136,7 +144,7 @@ class OutputParameterStatusUnaltered(OutputParameterStatus):
         OutputParameterStatus.__init__(self, pod, ixval)
 
     @property
-    def is_viable(self) -> bool:
+    def is_unaltered(self) -> bool:
         return True
 
     def __str__(self) -> str:

@@ -38,6 +38,9 @@ if TYPE_CHECKING:
     from chc.proof.CFunPODictionary import CFunPODictionary
     from chc.proof.CFunctionAnalysisDigest import (
         CFunctionOutputParameterAnalysisDigest)
+    from chc.proof.OutputParameterCalleeCallsite import (
+        OutputParameterCalleeCallsiteArg,
+        OutputParameterCalleeCallsite)
     from chc.proof.OutputParameterStatus import OutputParameterStatus
 
 
@@ -75,6 +78,9 @@ class COpParamReturnsite:
     def status(self) -> "OutputParameterStatus":
         return self.podictionary.read_xml_output_parameter_status(self.xnode)
 
+    def is_viable(self) -> bool:
+        return self.status.is_written or self.status.is_unaltered
+
     def __str__(self) -> str:
         return str(self.location.line) + ": " + str(self.status)
 
@@ -87,6 +93,7 @@ class CandidateOutputParameter:
         self._adg = adg
         self.xnode = xnode    # param node
         self._returnsites: Optional[List[COpParamReturnsite]] = None
+        self._caller_callsite_args: Optional[List["OutputParameterCalleeCallsiteArg"]] = None
         # self._calldeps: Optional[List[CopParamCallDependency]] = None
 
     @property
@@ -114,6 +121,11 @@ class CandidateOutputParameter:
         return self.fdecls.read_xml_varinfo(self.xnode)
 
     @property
+    def parameter_index(self) -> int:
+        """1-based index."""
+        return int(self.xnode.get("paramindex", -1))
+
+    @property
     def status(self) -> "OutputParameterStatus":
         return self.podictionary.read_xml_output_parameter_status(self.xnode)
 
@@ -128,11 +140,34 @@ class CandidateOutputParameter:
                     self._returnsites.append(returnsite)
         return self._returnsites
 
+    @property
+    def caller_callsite_args(self) -> List["OutputParameterCalleeCallsiteArg"]:
+        if self._caller_callsite_args is None:
+            self._caller_callsite_args = []
+            callsites = self.adg.caller_callsites
+            for callsite in callsites:
+                for callarg in callsite.callargs:
+                    if callarg.arg_index == self.parameter_index:
+                        self._caller_callsite_args.append(callarg)
+        return self._caller_callsite_args
+
+    def is_viable(self) -> bool:
+        if self.status.is_rejected:
+            return False
+        returns_viable = (
+            all(returnsite.is_viable() for returnsite in self.returnsites))
+        callers_viable = (
+            all(callarg.status.is_viable for callarg in self.caller_callsite_args))
+        return returns_viable and callers_viable
+
     def __str__(self) -> str:
         lines: List[str] = []
         lines.append(str(self.parameter) + ": " + str(self.status))
         if not self.status.is_rejected:
-            lines.append("Return sites")
+            lines.append("   Return sites")
             for returnsite in self.returnsites:
-                lines.append("  " + str(returnsite))
+                lines.append("       " + str(returnsite))
+            lines.append("   Call arguments")
+            for callsite_arg in self.caller_callsite_args:
+                lines.append("       " + str(callsite_arg))
         return "\n".join(lines)

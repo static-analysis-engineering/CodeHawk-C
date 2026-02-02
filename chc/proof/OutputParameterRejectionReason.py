@@ -77,7 +77,7 @@ class OutputParameterRejectionReasonArrayType(OutputParameterRejectionReason):
         return self.cdictionary.get_typ(self.args[0])
 
     def __str__(self) -> str:
-        return "rray type: " + str(self.typ)
+        return "array type: " + str(self.typ)
 
 
 @podregistry.register_tag("c", OutputParameterRejectionReason)

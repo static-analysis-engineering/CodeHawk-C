@@ -27,7 +27,7 @@
 
 import xml.etree.ElementTree as ET
 
-from typing import List, Optional, TYPE_CHECKING
+from typing import cast, List, Optional, TYPE_CHECKING
 
 from chc.proof.CandidateOutputParameter import CandidateOutputParameter
 from chc.proof.OutputParameterCalleeCallsite import OutputParameterCalleeCallsite
@@ -35,11 +35,13 @@ from chc.proof.OutputParameterCalleeCallsite import OutputParameterCalleeCallsit
 from chc.util.loggingutil import chklogger
 
 if TYPE_CHECKING:
+    from chc.app.CApplication import CApplication
     from chc.app.CFile import CFile
     from chc.app.CFileDeclarations import CFileDeclarations
     from chc.app.CFunction import CFunction
     from chc.app.CVarInfo import CVarInfo
     from chc.proof.CFunPODictionary import CFunPODictionary
+    from chc.proof.OutputParameterStatus import OutputParameterStatusRejected
 
 
 class CFunctionAnalysisDigest:
@@ -56,6 +58,23 @@ class CFunctionAnalysisDigest:
     def cfile(self) -> "CFile":
         return self.cfun.cfile
 
+    @property
+    def is_active(self) -> bool:
+        return True
+
+    @property
+    def capp(self) -> "CApplication":
+        return self.cfile.capp
+
+    def viable_parameters(self) -> List[CandidateOutputParameter]:
+        return []
+
+    def outputparameters(self) -> List[CandidateOutputParameter]:
+        return []
+
+    def maybe_parameters(self) -> List[CandidateOutputParameter]:
+        return []
+
 
 class CFunctionOutputParameterAnalysisDigest(CFunctionAnalysisDigest):
 
@@ -63,6 +82,7 @@ class CFunctionOutputParameterAnalysisDigest(CFunctionAnalysisDigest):
         CFunctionAnalysisDigest.__init__(self, cfun, xnode)
         self._candidate_parameters: Optional[List[CandidateOutputParameter]] = None
         self._callee_callsites: Optional[List[OutputParameterCalleeCallsite]] = None
+        self._caller_callsites: Optional[List[OutputParameterCalleeCallsite]] = None
 
     @property
     def parameters(self) -> List[CandidateOutputParameter]:
@@ -75,6 +95,9 @@ class CFunctionOutputParameterAnalysisDigest(CFunctionAnalysisDigest):
                     self._candidate_parameters.append(cparam)
         return self._candidate_parameters
 
+    def has_parameters(self) -> bool:
+        return len(self.parameters) > 0
+
     @property
     def callee_callsites(self) -> List[OutputParameterCalleeCallsite]:
         if self._callee_callsites is None:
@@ -86,14 +109,63 @@ class CFunctionOutputParameterAnalysisDigest(CFunctionAnalysisDigest):
                     self._callee_callsites.append(ccsite)
         return self._callee_callsites
 
+    @property
+    def caller_callsites(self) -> List[OutputParameterCalleeCallsite]:
+        if self._caller_callsites is None:
+            self._caller_callsites = []
+            callinstrs = self.capp.get_callinstrs()
+            for callinstr in callinstrs:
+                if str(callinstr.callee) == self.cfun.name:
+                    caller = callinstr.cfun
+                    cfunadgs = caller.analysis_digests
+                    if len(cfunadgs.digests) == 1:
+                        cfunadg = cfunadgs.digests[0]
+                        cfunadg = cast(
+                            "CFunctionOutputParameterAnalysisDigest", cfunadg)
+                        callsites = cfunadg.callee_callsites
+                        callsites = [
+                            callsite for callsite in callsites
+                            if str(callsite.callee) == self.cfun.name]
+                        self._caller_callsites = callsites
+        return self._caller_callsites
+
+    @property
+    def is_active(self) -> bool:
+        if self.has_parameters():
+            if all(p.status.is_rejected for p in self.parameters):
+                return False
+            else:
+                return True
+        else:
+            return False
+
+    def outputparameters(self) -> List[CandidateOutputParameter]:
+        return self.parameters
+
+    def viable_parameters(self) -> List[CandidateOutputParameter]:
+        return [p for p in self.parameters if p.is_viable()]
+
+    def maybe_parameters(self) -> List[CandidateOutputParameter]:
+        return [p for p in self.parameters if not (p.status.is_rejected or p.is_viable())]
+
     def __str__(self) -> str:
         lines: List[str] = []
         for p in self.parameters:
-            lines.append(str(p))
-        if len(self.callee_callsites) > 0:
-            lines.append("\nCallee-callsites:")
-            for ccs in self.callee_callsites:
-                lines.append("  " + str(ccs))
+            if p.status.is_rejected:
+                pstatus = cast("OutputParameterStatusRejected", p.status)
+                lines.append(
+                    " X " + str(p.parameter_index) + " " + str(p.parameter))
+                lines.append(
+                    "Reasons: " + "\n".join(str(r) for r in pstatus.reasons))
+            elif p.is_viable():
+                lines.append(" v " + str(p.parameter_index) + " " + str(p))
+            else:
+                lines.append(" ? " + str(p.parameter_index) + " " + str(p))
+        if any(p.is_viable() for p in self.parameters):
+            if len(self.caller_callsites) > 0:
+                lines.append("\nCaller-callsites:")
+                for ccs in self.caller_callsites:
+                    lines.append("  " + str(ccs))
         return "\n".join(lines)
 
 
@@ -122,6 +194,30 @@ class CFunctionAnalysisDigests:
             else:
                 chklogger.logger.warning("Adg xnode is None")
         return self._digests
+
+    def outputparameters(self) -> List[CandidateOutputParameter]:
+        result: List[CandidateOutputParameter] = []
+        for d in self.digests:
+            result.extend(d.outputparameters())
+        return result
+
+    def viable_outputparameters(self) -> List[CandidateOutputParameter]:
+        result: List[CandidateOutputParameter] = []
+        for d in self.digests:
+            result.extend(d.viable_parameters())
+        return result
+
+    def maybe_outputparameters(self) -> List[CandidateOutputParameter]:
+        result: List[CandidateOutputParameter] = []
+        for d in self.digests:
+            result.extend(d.maybe_parameters())
+        return result
+
+    @property
+    def is_active(self) -> bool:
+        if len(self.digests) == 1:
+            return self.digests[0].is_active
+        return False
 
     def __str__(self) -> str:
         lines: List[str] = []
