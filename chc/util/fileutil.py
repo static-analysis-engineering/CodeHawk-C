@@ -939,6 +939,16 @@ def get_cfile_predicate_dictionaryname(
     return os.path.join(filepath, cfilename + "_prd.xml")
 
 
+def check_analysis_results_files(
+        targetpath: str,
+        projectname: str,
+        cfilepath: Optional[str],
+        cfilename: str) -> bool:
+    filename = get_cfile_predicate_dictionaryname(
+        targetpath, projectname, cfilepath, cfilename)
+    return os.path.isfile(filename)
+
+
 def get_cfile_predicate_dictionary_xnode(
         targetpath: str,
         projectname: str,

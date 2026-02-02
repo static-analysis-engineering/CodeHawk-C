@@ -75,6 +75,13 @@ class CXVariable(CFunXprDictionaryRecord):
         else:
             raise UF.CHCError("Variable does not have a denotation")
 
+    @property
+    def is_check_variable(self) -> bool:
+        if self.has_denotation():
+            return self.vd.get_c_variable_denotation(self.seqnr).is_check_variable
+        else:
+            return False
+
     def has_denotation(self) -> bool:
         return self.seqnr > 0
 

@@ -306,17 +306,20 @@ class CFile(object):
         if self._functions is None:
             self._functions = {}
             for (vid, gf) in self.gfunctions.items():
-                fnname = gf.vname
-                xnode = UF.get_cfun_xnode(
-                    self.targetpath,
-                    self.projectname,
-                    self.cfilepath,
-                    self.cfilename,
-                    fnname)
-                if xnode is not None:
-                    cfunction = CFunction(self, xnode, fnname)
-                    self._functions[vid] = cfunction
-                else:
+                try:
+                    fnname = gf.vname
+                    xnode = UF.get_cfun_xnode(
+                        self.targetpath,
+                        self.projectname,
+                        self.cfilepath,
+                        self.cfilename,
+                        fnname)
+                    if xnode is not None:
+                        cfunction = CFunction(self, xnode, fnname)
+                        self._functions[vid] = cfunction
+                    else:
+                        chklogger.logger.warning("Function {fnname} not found")
+                except Exception as e:
                     chklogger.logger.warning("Function {fnname} not found")
         return self._functions
 

@@ -58,6 +58,10 @@ class CInvariantFact(CFunInvDictionaryRecord):
     def is_unreachable_fact(self) -> bool:
         return False
 
+    @property
+    def is_parameter_constraint(self) -> bool:
+        return False
+
     def __str__(self) -> str:
         return "invariant-fact:" + self.tags[0]
 
@@ -99,6 +103,10 @@ class CParameterConstraint(CInvariantFact):
     @property
     def xpr(self) -> "CXXpr":
         return self.xd.get_xpr(self.args[0])
+
+    @property
+    def is_parameter_constraint(self) -> bool:
+        return True
 
     def __str__(self) -> str:
         return str(self.xpr)

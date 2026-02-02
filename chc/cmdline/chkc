@@ -937,6 +937,27 @@ def parse() -> argparse.Namespace:
         help="file mode for log file: append (a, default), or write (w)")
     cfileinvestigate.set_defaults(func=C.cfile_investigate_file)
 
+    # --- query
+    cfilequery = cfileparsers.add_parser("query")
+    cfilequeryparsers = cfilequery.add_subparsers(title="show options")
+
+    # -- query invariants --
+    cfilequeryinvs = cfilequeryparsers.add_parser("invariants")
+    cfilequeryinvs.add_argument(
+        "filename",
+        help="name of file analyzed ((<cpath/>)<cfilename>)")
+    cfilequeryinvs.add_argument(
+        "function",
+        help="name of function")
+    cfilequeryinvs.add_argument(
+        "line",
+        type=int,
+        help="line number in the code for which to show invariants")
+    cfilequeryinvs.add_argument(
+        "--tgtpath",
+        help="directory that holds the analysis results")
+    cfilequeryinvs.set_defaults(func=C.cfile_query_invariants)
+
     # --- test libc summary
     cfiletestlibc = cfileparsers.add_parser("test-libc-summary")
     cfiletestlibc.add_argument(
@@ -1673,6 +1694,25 @@ def parse() -> argparse.Namespace:
         nargs="*",
         help="names of predicates of interest, e.g., not-null (default: all")
     cprojectinvestigate.set_defaults(func=P.cproject_investigate)
+    # --- query
+    cprojectquery = cprojectparsers.add_parser("query")
+    cprojectqueryparsers = cprojectquery.add_subparsers(title="show options")
+
+    # --- query invariants
+    cprojectqueryinvs = cprojectqueryparsers.add_parser("invariants")
+    cprojectqueryinvs.add_argument(
+        "tgtpath", help="directory that contains the analysis results")
+    cprojectqueryinvs.add_argument(
+        "projectname", help="name of the project")
+    cprojectqueryinvs.add_argument(
+        "filename", help="filename with relative path wrt the project")
+    cprojectqueryinvs.add_argument(
+        "function", help="name of function")
+    cprojectqueryinvs.add_argument(
+        "line",
+        type=int,
+        help="line number in the source code to show invariants")
+    cprojectqueryinvs.set_defaults(func=P.cproject_query_invariants)
 
     # --- count-statements
     cprojectcountstmts = cprojectparsers.add_parser("count-statements")
