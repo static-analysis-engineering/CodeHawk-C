@@ -594,7 +594,7 @@ class CGlobalDeclarations(CDeclarations):
             args = [self.dictionary.index_exp(init.exp, fid=fid)]
             return self.mk_single_init_index(init.tags, args)
 
-        if init.is_compound:
+        elif init.is_compound:
             init = cast("CCompoundInitInfo", init)
             gtype = self.dictionary.index_typ(init.typ)
             oinits: List[int] = [
@@ -604,9 +604,9 @@ class CGlobalDeclarations(CDeclarations):
             return self.mk_compound_init_index(init.tags, args)
 
         else:
-            # raise Exception("InitInfo not recognized: " + str(init))
-            print("InitInfo not recognized: " + str(init))
-            return -1
+            init = cast("COffsetInitInfo", init)
+            args = [self.dictionary.index_offset(init.offset, fid=fid)]
+            return self.mk_offset_init_index(init.tags, args)
 
     def index_offset_init(self, oinit: COffsetInitInfo, fid: int = -1) -> int:
         args: List[int] = [
