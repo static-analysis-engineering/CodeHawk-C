@@ -57,6 +57,10 @@ class CInitInfo(CDeclarationsRecord):
     def is_compound(self) -> bool:
         return False
 
+    @property
+    def is_offset(self) -> bool:
+        return False
+
     def accept(self, visitor: "CVisitor") -> None:
         raise UF.CHCError("visitor not yet implemented for " + str(self))
 
@@ -99,6 +103,10 @@ class CCompoundInitInfo(CInitInfo):
         return self.dictionary.get_typ(self.args[0])
 
     @property
+    def is_compound(self) -> bool:
+        return True
+
+    @property
     def offset_initializers(self) -> List["COffsetInitInfo"]:
         return [self.decls.get_offset_init(x) for x in self.args[1:]]
 
@@ -117,7 +125,7 @@ class CCompoundInitInfo(CInitInfo):
         return "\n".join([str(x) for x in self.offset_initializers])
 
 
-class COffsetInitInfo(CDeclarationsRecord):
+class COffsetInitInfo(CInitInfo):
     """Component of a compound initializer.
 
     - args[0]: index of offset expression in cdictionary
@@ -130,6 +138,10 @@ class COffsetInitInfo(CDeclarationsRecord):
     @property
     def offset(self) -> "COffset":
         return self.dictionary.get_offset(self.args[0])
+
+    @property
+    def is_offset(self) -> bool:
+        return True
 
     @property
     def initializer(self) -> CInitInfo:
