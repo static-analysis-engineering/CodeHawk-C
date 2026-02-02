@@ -419,8 +419,10 @@ class ParseManager(object):
     def parse_with_ccommands(
             self,
             compilecommands: List[Dict[str, Any]],
-            copyfiles: bool = True) -> None:
+            copyfiles: bool = True) -> int:
         """Preprocess and call C parser to produce xml semantics files."""
+
+        exitcode = 0
 
         cfiles: Dict[str, int] = {}
         targetfiles = TargetFiles()
@@ -459,6 +461,7 @@ class ParseManager(object):
                 print("\n" + ("*" * 80))
                 print("Parsing error in " + cfilename)
                 print("*" * 80)
+                exitcode = 1
                 break
 
         if self.verbose:
@@ -481,6 +484,7 @@ class ParseManager(object):
             )
         os.chdir(self.projectpath)
         shutil.copy("compile_commands.json", self.savedsourcepath)
+        return exitcode
 
     def parse_ifiles(self, copyfiles: bool = True) -> None:
         """Run the CodeHawk C parser on all .i files in the directory."""

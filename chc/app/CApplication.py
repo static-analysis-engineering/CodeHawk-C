@@ -54,6 +54,7 @@ from chc.util.loggingutil import chklogger
 if TYPE_CHECKING:
     from chc.app.CFunction import CFunction
     from chc.app.CInstr import CCallInstr
+    from chc.proof.CandidateOutputParameter import CandidateOutputParameter
     from chc.proof.CFunctionCallsiteSPOs import CFunctionCallsiteSPOs
     from chc.proof.CFunctionPO import CFunctionPO
 
@@ -314,6 +315,34 @@ class CApplication(object):
             fi.iter_functions(f)
 
         self.iter_files_parallel(g, maxprocesses)
+
+    def check_digests(self) -> bool:
+        for cfile in list(self.cfiles):
+            for cfun in cfile.get_functions():
+                if cfun.analysis_digests.is_active:
+                    return True
+        return False
+
+    def outputparameters(self) -> Dict[str, List["CandidateOutputParameter"]]:
+        result: Dict[str, List["CandidateOutputParameter"]] = {}
+        for cfile in list(self.cfiles):
+            for cfun in cfile.get_functions():
+                result[cfun.name] = cfun.analysis_digests.outputparameters()
+        return result
+
+    def viable_outputparameters(self) -> Dict[str, List["CandidateOutputParameter"]]:
+        result: Dict[str, List["CandidateOutputParameter"]] = {}
+        for cfile in list(self.cfiles):
+            for cfun in cfile.get_functions():
+                result[cfun.name] = cfun.analysis_digests.viable_outputparameters()
+        return result
+
+    def maybe_outputparameters(self) -> Dict[str, List["CandidateOutputParameter"]]:
+        result: Dict[str, List["CandidateOutputParameter"]] = {}
+        for cfile in list(self.cfiles):
+            for cfun in cfile.get_functions():
+                result[cfun.name] = cfun.analysis_digests.maybe_outputparameters()
+        return result
 
     def resolve_vid_function(
             self, filevar: FileVarReference) -> Optional["CFunction"]:

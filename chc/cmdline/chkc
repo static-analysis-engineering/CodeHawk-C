@@ -1561,6 +1561,10 @@ def parse() -> argparse.Namespace:
         action="store_true",
         help="don't filter out functions from files with absolute filenames")
     cprojectanalyze.add_argument(
+        "--verbose", "-v",
+        action="store_true",
+        help="print analyzer status updates of invariant generation process")
+    cprojectanalyze.add_argument(
         "--analysis",
         default="undefined-behavior",
         choices=["undefined-behavior", "outputparameters"],

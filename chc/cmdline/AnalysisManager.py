@@ -32,6 +32,7 @@ import multiprocessing
 import subprocess
 import os
 import shutil
+import sys
 
 from typing import List, Optional, Tuple, TYPE_CHECKING
 
@@ -43,6 +44,10 @@ from chc.util.loggingutil import chklogger
 if TYPE_CHECKING:
     from chc.app.CApplication import CApplication
     from chc.app.CFile import CFile
+
+
+def print_status(m: str) -> None:
+    sys.stderr.write(m + "\n")
 
 
 class AnalysisManager:
@@ -178,7 +183,7 @@ class AnalysisManager:
 
     def _execute_cmd(self, CMD: List[str]) -> None:
         try:
-            print(CMD)
+            print_status(", ".join(CMD))
             result = subprocess.check_output(CMD)
             print(result.decode("utf-8"))
         except subprocess.CalledProcessError as args:
@@ -228,7 +233,7 @@ class AnalysisManager:
             chklogger.logger.info(
                 "Ocaml analyzer is called with %s", str(cmd))
             if self.verbose:
-                print(str(cmd))
+                print_status(str(cmd))
                 result = subprocess.call(
                     cmd, cwd=self.targetpath, stderr=subprocess.STDOUT)
                 print("\nResult: " + str(result))
@@ -342,9 +347,10 @@ class AnalysisManager:
                 result = subprocess.call(
                     cmd,
                     cwd=self.targetpath,
-                    # stdout=open(os.devnull, "w"),
+                    stdout=open(os.devnull, "w"),
                     stderr=subprocess.STDOUT,
                 )
+                print("\nResult: " + str(result))
             if result != 0:
                 chklogger.logger.error(
                     "Error in generating invariants for %s", cfilename)

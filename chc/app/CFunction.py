@@ -386,6 +386,7 @@ class CFunction:
         self._api = None
         self._podictionary = None
         self._vardictionary = None
+        self._analysis_digests = None
         self._proofs = None
 
     def get_formal_vid(self, name: str) -> int:

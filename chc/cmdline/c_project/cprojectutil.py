@@ -72,6 +72,10 @@ def print_error(m: str) -> None:
     sys.stderr.write(("*" * 80) + "\n")
 
 
+def print_status_update(m: str) -> None:
+    sys.stderr.write("[chkc] " + m + "\n")
+
+
 def set_logging(
         level: str,
         path: str,
@@ -158,13 +162,18 @@ def cproject_parse_project(args: argparse.Namespace) -> NoReturn:
         exit(1)
 
     parsemanager = ParseManager(
-        projectpath, projectname, targetpath, keep_system_includes=keep_system_includes)
+        projectpath,
+        projectname,
+        targetpath,
+        keep_system_includes=keep_system_includes)
     parsemanager.remove_semantics()
     parsemanager.initialize_paths()
-    parsemanager.parse_with_ccommands(compilecommands, copyfiles=True)
-    parsemanager.save_semantics()
+    exitcode = parsemanager.parse_with_ccommands(compilecommands, copyfiles=True)
+    if exitcode == 0:
+        parsemanager.save_semantics()
 
-    exit(0)
+    print_status_update("exitcode: " + str(exitcode))
+    exit(exitcode)
 
 
 def cproject_scan_op(args: argparse.Namespace) -> NoReturn:
@@ -423,7 +432,8 @@ def cproject_mk_headerfile(args: argparse.Namespace) -> NoReturn:
 def cproject_cil_source(args: argparse.Namespace) -> NoReturn:
     """Outputs a textual representation of the CIL AST."""
 
-    #arguments
+    # arguments
+
     tgtpath: str = args.tgtpath
     projectname: str = args.projectname
     filename: str = args.filename
@@ -479,6 +489,7 @@ def cproject_analyze_project(args: argparse.Namespace) -> NoReturn:
     analysisdomains: str = args.analysis_domains
     collectdiagnostics: bool = args.collect_diagnostics
     maxprocesses: int = args.maxprocesses
+    verbose: bool = args.verbose
     loglevel: str = args.loglevel
     logfilename: Optional[str] = args.logfilename
     logfilemode: str = args.logfilemode
@@ -538,9 +549,17 @@ def cproject_analyze_project(args: argparse.Namespace) -> NoReturn:
 
     am = AnalysisManager(
         capp,
-        verbose=True,
+        verbose=verbose,
         collectdiagnostics=collectdiagnostics,
         keep_system_includes=keep_system_includes)
+
+    exitcode = 0
+
+    def check_continuation() -> int:
+        if analysis == "outputparameters":
+            if not capp.check_digests():
+                return 166
+        return 0
 
     with timing("analysis"):
 
@@ -553,15 +572,46 @@ def cproject_analyze_project(args: argparse.Namespace) -> NoReturn:
             print(str(e.wrap()))
             exit(1)
 
-        for i in range(1):
-            am.generate_and_check_app(analysisdomains, processes=maxprocesses)
-            capp.reinitialize_tables()
-            capp.update_spos()
+        exitcode = check_continuation()
 
-        for i in range(5):
-            capp.update_spos()
-            am.generate_and_check_app(analysisdomains, processes=maxprocesses)
-            capp.reinitialize_tables()
+        if exitcode == 0:
+            for i in range(1):
+                am.generate_and_check_app(analysisdomains, processes=maxprocesses)
+                capp.reinitialize_tables()
+                capp.update_spos()
+
+            exitcode = check_continuation()
+
+        if exitcode == 0:
+            for i in range(5):
+                capp.update_spos()
+                am.generate_and_check_app(analysisdomains, processes=maxprocesses)
+                capp.reinitialize_tables()
+
+                exitcode = check_continuation()
+                if exitcode > 0:
+                    break
+
+    if analysis == "outputparameters":
+        presult = capp.outputparameters()
+        vresult = capp.viable_outputparameters()
+        mresult = capp.maybe_outputparameters()
+        viable = sum(len(f) for f in vresult.values())
+        maybe = sum(len(f) for f in mresult.values())
+        opp = sum(len(f) for f in presult.values())
+        print("Functions analyzed     : " + str(len(vresult)))
+        print("Outputparameters       : " + str(opp))
+        print("Maybe outputparameters : " + str(maybe))
+        print("Viable outputparameters: " + str(viable))
+        for (fname, pl) in vresult.items():
+            if len(pl) > 0:
+                print("  function: " + fname)
+                for p in pl:
+                    print("    " + str(p.parameter))
+        if viable > 0:
+            exitcode = 0
+        elif maybe > 0:
+            exitcode = 167
 
     timestamp = os.stat(UF.get_cchpath(targetpath, projectname)).st_ctime
 
@@ -571,7 +621,8 @@ def cproject_analyze_project(args: argparse.Namespace) -> NoReturn:
     UF.save_project_summary_results(targetpath, projectname, result)
     UF.save_project_summary_results_as_xml(targetpath, projectname, result)
 
-    exit(0)
+    print_status_update("exitcode: " + str(exitcode))
+    exit(exitcode)
 
 
 def cproject_report(args: argparse.Namespace) -> NoReturn:
@@ -596,27 +647,32 @@ def cproject_report(args: argparse.Namespace) -> NoReturn:
         mode=logfilemode,
         msg="c-project report invoked")
 
-    statsresult = UF.read_project_summary_results(targetpath, projectname)
-    if statsresult is not None:
-        print(RP.project_proofobligation_stats_dict_to_string(statsresult))
-        if canalysis == "undefined-behavior":
+    if canalysis == "undefined-behavior":
+        statsresult = UF.read_project_summary_results(targetpath, projectname)
+        if statsresult is not None:
+            print(RP.project_proofobligation_stats_dict_to_string(statsresult))
             exit(0)
 
-    if not UF.has_analysisresults_path(targetpath, projectname):
-        print_error(
-            f"No analysis results found for {projectname} in {targetpath}")
-        exit(1)
+        if not UF.has_analysisresults_path(targetpath, projectname):
+            print_error(
+                f"No analysis results found for {projectname} in {targetpath}")
+            exit(1)
+
+        contractpath = os.path.join(targetpath, "chc_contracts")
+        capp = CApplication(
+            projectpath, projectname, targetpath, contractpath)
+
+        timestamp = os.stat(UF.get_cchpath(targetpath, projectname)).st_ctime
+        fresult = RP.project_proofobligation_stats_to_dict(capp)
+        fresult["timestamp"] = timestamp
+        fresult["project"] = projectpath
+        UF.save_project_summary_results(targetpath, projectname, fresult)
+        UF.save_project_summary_results_as_xml(targetpath, projectname, fresult)
+        exit(0)
 
     contractpath = os.path.join(targetpath, "chc_contracts")
     capp = CApplication(
         projectpath, projectname, targetpath, contractpath)
-
-    timestamp = os.stat(UF.get_cchpath(targetpath, projectname)).st_ctime
-    fresult = RP.project_proofobligation_stats_to_dict(capp)
-    fresult["timestamp"] = timestamp
-    fresult["project"] = projectpath
-    UF.save_project_summary_results(targetpath, projectname, fresult)
-    UF.save_project_summary_results_as_xml(targetpath, projectname, fresult)
 
     statsresult = UF.read_project_summary_results(targetpath, projectname)
     if statsresult is not None:
@@ -627,9 +683,18 @@ def cproject_report(args: argparse.Namespace) -> NoReturn:
 
     if canalysis == "outputparameters":
 
+        print("\n\nOutput-parameter analysis results")
         for cfile in capp.files.values():
             print("\nFile: " + cfile.name)
             for cfun in cfile.functions.values():
+                '''
+                if len(cfun.analysis_digests.digests) == 0:
+                    print(
+                        "\nFunction: "
+                        + cfun.name
+                        + ": No candidate output parameters")
+                else:
+                '''
                 print("\nFunction: " + cfun.name)
                 print(str(cfun.analysis_digests))
 
