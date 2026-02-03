@@ -6,7 +6,7 @@
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
 # Copyright (c) 2020-2022 Henny Sipma
-# Copyright (c) 2023-2024 Aarno Labs LLC
+# Copyright (c) 2023-2026 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -350,7 +350,7 @@ class AnalysisManager:
                     stdout=open(os.devnull, "w"),
                     stderr=subprocess.STDOUT,
                 )
-                print("\nResult: " + str(result))
+                print_status("\nGenerate-and-check: result: " + str(result))
             if result != 0:
                 chklogger.logger.error(
                     "Error in generating invariants for %s", cfilename)
