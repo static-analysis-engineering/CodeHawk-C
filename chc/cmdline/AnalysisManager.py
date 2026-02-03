@@ -32,6 +32,7 @@ import multiprocessing
 import subprocess
 import os
 import shutil
+import sys
 
 from typing import List, Optional, Tuple, TYPE_CHECKING
 
@@ -45,17 +46,23 @@ if TYPE_CHECKING:
     from chc.app.CFile import CFile
 
 
+def print_status(m: str) -> None:
+    sys.stderr.write(m + "\n")
+
+
 class AnalysisManager:
     """Provide the interface to the codehawk (ocaml) analyzer."""
 
     def __init__(
-        self,
-        capp: "CApplication",
-        wordsize: int = 0,
-        unreachability: bool = False,
-        thirdpartysummaries: List[str] = [],
-        nofilter: bool = True,
-        verbose: bool = False,
+            self,
+            capp: "CApplication",
+            wordsize: int = 0,
+            unreachability: bool = False,
+            thirdpartysummaries: List[str] = [],
+            keep_system_includes: bool = False,
+            verbose: bool = False,
+            disable_timing: bool = False,
+            collectdiagnostics: bool = False
     ) -> None:
         """Initialize the analyzer location and target file location.
 
@@ -72,21 +79,26 @@ class AnalysisManager:
         """
 
         self._capp = capp
-        # self.contractpath = capp.contractpath
         self._config = Config()
-        # self.chsummaries = self.config.summaries
-        # self.path = self.capp.path
-        # self.canalyzer = self.config.canalyzer
-        # self.gui = self.config.chc_gui
-        self.nofilter = nofilter
+        self._keep_system_includes = keep_system_includes
         self.wordsize = wordsize
         self.thirdpartysummaries = thirdpartysummaries
         self.unreachability = unreachability
         self.verbose = verbose
+        self.disable_timing = disable_timing
+        self._collectdiagnostics = collectdiagnostics
 
     @property
     def capp(self) -> "CApplication":
         return self._capp
+
+    @property
+    def keep_system_includes(self) -> bool:
+        return self._keep_system_includes
+
+    @property
+    def collect_diagnostics(self) -> bool:
+        return self._collectdiagnostics
 
     @property
     def contractpath(self) -> Optional[str]:
@@ -171,7 +183,7 @@ class AnalysisManager:
 
     def _execute_cmd(self, CMD: List[str]) -> None:
         try:
-            print(CMD)
+            print_status(", ".join(CMD))
             result = subprocess.check_output(CMD)
             print(result.decode("utf-8"))
         except subprocess.CalledProcessError as args:
@@ -179,9 +191,11 @@ class AnalysisManager:
             print(args)
             exit(1)
 
-    def _create_file_primary_proofobligations_cmd_partial(self) -> List[str]:
+    def _create_file_primary_proofobligations_cmd_partial(
+            self, po_cmd="undefined-behavior-primary"
+    ) -> List[str]:
         cmd: List[str] = [
-            self.canalyzer, "-summaries", self.chsummaries, "-command", "primary"]
+            self.canalyzer, "-summaries", self.chsummaries, "-command", po_cmd]
         if not (self.thirdpartysummaries is None):
             for s in self.thirdpartysummaries:
                 cmd.extend(["-summaries", s])
@@ -189,30 +203,37 @@ class AnalysisManager:
             cmd.extend(["-contractpath", self.contractpath])
         cmd.extend(["-projectname", self.capp.projectname])
 
-        if self.nofilter:
-            cmd.append("-nofilter")
+        if self.keep_system_includes:
+            cmd.append("-keep_system_includes")
         if self.wordsize > 0:
             cmd.extend(["-wordsize", str(self.wordsize)])
+        if self.collect_diagnostics:
+            cmd.append("-diagnostics")
         cmd.append(self.targetpath)
         cmd.append("-cfilename")
         return cmd
 
     def create_file_primary_proofobligations(
-            self, cfilename: str, cfilepath: Optional[str] = None) -> None:
+            self,
+            cfilename: str,
+            cfilepath: Optional[str] = None,
+            po_cmd: str = "undefined-behavior-primary"
+    ) -> None:
         """Call analyzer to create primary proof obligations for a single file."""
 
         chklogger.logger.info(
             "Create primiary proof obligations for file %s with path %s",
             cfilename, ("none" if cfilepath is None else cfilepath))
         try:
-            cmd = self._create_file_primary_proofobligations_cmd_partial()
+            cmd = self._create_file_primary_proofobligations_cmd_partial(
+                po_cmd=po_cmd)
             cmd.append(cfilename)
             if cfilepath is not None:
                 cmd.extend(["-cfilepath", cfilepath])
             chklogger.logger.info(
                 "Ocaml analyzer is called with %s", str(cmd))
             if self.verbose:
-                print(str(cmd))
+                print_status(str(cmd))
                 result = subprocess.call(
                     cmd, cwd=self.targetpath, stderr=subprocess.STDOUT)
                 print("\nResult: " + str(result))
@@ -238,13 +259,17 @@ class AnalysisManager:
             print(args)
             exit(1)
 
-    def create_app_primary_proofobligations(self, processes: int = 1) -> None:
+    def create_app_primary_proofobligations(
+            self,
+            po_cmd: str = "undefined-behavior-primary",
+            processes: int = 1) -> None:
         """Call analyzer to create ppo's for all application files."""
 
         if processes > 1:
 
             def f(cfile: "CFile") -> None:
-                cmd = self._create_file_primary_proofobligations_cmd_partial()
+                cmd = self._create_file_primary_proofobligations_cmd_partial(
+                    po_cmd=po_cmd)
                 cmd.append(cfile.cfilename)
                 if cfile.cfilepath is not None:
                     cmd.extend(["-cfilepath", cfile.cfilepath])
@@ -262,7 +287,7 @@ class AnalysisManager:
 
             def f(cfile: "CFile") -> None:
                 self.create_file_primary_proofobligations(
-                    cfile.cfilename, cfile.cfilepath)
+                    cfile.cfilename, cfile.cfilepath, po_cmd=po_cmd)
 
             self.capp.iter_files(f)
 
@@ -283,14 +308,18 @@ class AnalysisManager:
         if not (self.contractpath is None):
             cmd.extend(["-contractpath", self.contractpath])
         cmd.extend(["-projectname", self.capp.projectname])
-        if self.nofilter:
-            cmd.append("-nofilter")
+        if self.keep_system_includes:
+            cmd.append("-keep_system_includes")
         if self.wordsize > 0:
             cmd.extend(["-wordsize", str(self.wordsize)])
         if self.unreachability:
             cmd.append("-unreachability")
         if self.verbose:
             cmd.append("-verbose")
+        if self.disable_timing:
+            cmd.append("-disable_timing")
+        if self.collect_diagnostics:
+            cmd.append("-diagnostics")
         cmd.append(self.targetpath)
         if cfilepath is not None:
             cmd.extend(["-cfilepath", cfilepath])
@@ -321,6 +350,7 @@ class AnalysisManager:
                     stdout=open(os.devnull, "w"),
                     stderr=subprocess.STDOUT,
                 )
+                print("\nResult: " + str(result))
             if result != 0:
                 chklogger.logger.error(
                     "Error in generating invariants for %s", cfilename)

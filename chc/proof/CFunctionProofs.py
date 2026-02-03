@@ -30,7 +30,7 @@
 
 import xml.etree.ElementTree as ET
 
-from typing import Callable, List, Optional, TYPE_CHECKING
+from typing import Callable, cast, List, Optional, TYPE_CHECKING
 
 from chc.proof.CFunctionCallsiteSPOs import CFunctionCallsiteSPOs
 from chc.proof.CFunctionPO import CFunctionPO
@@ -44,6 +44,10 @@ if TYPE_CHECKING:
     from chc.app.CApplication import CApplication
     from chc.app.CFile import CFile
     from chc.app.CFunction import CFunction
+    from chc.proof.CPOPredicate import (
+        CPOLocallyInitialized,
+        CPOOutputParameterInitialized,
+        CPOOutputParameterUnaltered)
 
 
 class CFunctionProofs:
@@ -239,6 +243,23 @@ class CFunctionProofs:
                     + " in file "
                     + self.cfile.name
                 )
+
+    def get_output_parameter_ppos(self, vname: str) -> List[CFunctionPO]:
+        result: List[CFunctionPO] = []
+        for ppo in self.ppolist:
+            if ppo.predicate.is_locally_initialized:
+                vinfo = cast("CPOLocallyInitialized", ppo.predicate).varinfo
+                if vinfo.vname == vname:
+                    result.append(ppo)
+            elif ppo.predicate.is_output_parameter_initialized:
+                vinfo = cast("CPOOutputParameterInitialized", ppo.predicate).varinfo
+                if vinfo.vname == vname:
+                    result.append(ppo)
+            elif ppo.predicate.is_output_parameter_unaltered:
+                vinfo = cast("CPOOutputParameterUnaltered", ppo.predicate).varinfo
+                if vinfo.vname == vname:
+                    result.append(ppo)
+        return result
 
     def _save_spos(self, cnode: ET.Element) -> None:
         UF.save_spo_file(

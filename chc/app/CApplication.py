@@ -54,6 +54,7 @@ from chc.util.loggingutil import chklogger
 if TYPE_CHECKING:
     from chc.app.CFunction import CFunction
     from chc.app.CInstr import CCallInstr
+    from chc.proof.CandidateOutputParameter import CandidateOutputParameter
     from chc.proof.CFunctionCallsiteSPOs import CFunctionCallsiteSPOs
     from chc.proof.CFunctionPO import CFunctionPO
 
@@ -93,12 +94,14 @@ class CApplication(object):
             targetpath: str,
             contractpath: str,
             singlefile: bool = False,
+            keep_system_includes: bool = False,
             excludefiles: List[str] = []) -> None:
         self._projectpath = projectpath
         self._projectname = projectname
         self._targetpath = targetpath
         self._contractpath = contractpath
         self._singlefile = singlefile
+        self._keep_system_includes = keep_system_includes
         self._excludefiles = excludefiles
         self._indexmanager = IndexManager(singlefile)
         self._globalcontract: Optional[CGlobalContract] = None
@@ -137,6 +140,19 @@ class CApplication(object):
     @property
     def is_singlefile(self) -> bool:
         return self._singlefile
+
+    @property
+    def keep_system_includes(self) -> bool:
+        """Returns true if functions from the system path ('/') must be included
+
+        This property is false by default and must be enabled via a command-line
+        option.
+
+        It is intended to, by default, filter out functions defined in header
+        files, that would otherwise be included in every source file.
+        """
+
+        return self._keep_system_includes
 
     @property
     def excludefiles(self) -> List[str]:
@@ -299,6 +315,34 @@ class CApplication(object):
             fi.iter_functions(f)
 
         self.iter_files_parallel(g, maxprocesses)
+
+    def check_digests(self) -> bool:
+        for cfile in list(self.cfiles):
+            for cfun in cfile.get_functions():
+                if cfun.analysis_digests.is_active:
+                    return True
+        return False
+
+    def outputparameters(self) -> Dict[str, List["CandidateOutputParameter"]]:
+        result: Dict[str, List["CandidateOutputParameter"]] = {}
+        for cfile in list(self.cfiles):
+            for cfun in cfile.get_functions():
+                result[cfun.name] = cfun.analysis_digests.outputparameters()
+        return result
+
+    def viable_outputparameters(self) -> Dict[str, List["CandidateOutputParameter"]]:
+        result: Dict[str, List["CandidateOutputParameter"]] = {}
+        for cfile in list(self.cfiles):
+            for cfun in cfile.get_functions():
+                result[cfun.name] = cfun.analysis_digests.viable_outputparameters()
+        return result
+
+    def maybe_outputparameters(self) -> Dict[str, List["CandidateOutputParameter"]]:
+        result: Dict[str, List["CandidateOutputParameter"]] = {}
+        for cfile in list(self.cfiles):
+            for cfun in cfile.get_functions():
+                result[cfun.name] = cfun.analysis_digests.maybe_outputparameters()
+        return result
 
     def resolve_vid_function(
             self, filevar: FileVarReference) -> Optional["CFunction"]:

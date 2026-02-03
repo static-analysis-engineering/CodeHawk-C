@@ -185,7 +185,7 @@ def testppo_calls_tostring(ppo: "CFunctionPO", capp: "CApplication") -> str:
                 if sev is None:
                     sevtxt = "?"
                 else:
-                    sevtxt = spo.get_display_prefix() + "  " + sev
+                    sevtxt = spo.get_display_prefix() + "  " + str(sev)
                 lines.append(
                     "     C:"
                     + str(spo.line).rjust(3)
@@ -213,7 +213,7 @@ def testppo_results_tostring(
                 if ev is None:
                     evstr = "?"
                 else:
-                    evstr = ppo.get_display_prefix() + "  " + ev
+                    evstr = ppo.get_display_prefix() + "  " + str(ev)
                 lines.append(
                     "    "
                     + str(ppo.line).rjust(3)

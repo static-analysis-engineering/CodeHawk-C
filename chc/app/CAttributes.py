@@ -113,6 +113,9 @@ class CAttr(CDictionaryRecord):
     def is_question(self) -> bool:
         return False
 
+    def accept(self, visitor: "CVisitor") -> None:
+        raise UF.CHCError("visitor not yet implemented for " + str(self))
+
     def __str__(self) -> str:
         return "attrparam:" + self.tags[0]
 
@@ -135,6 +138,9 @@ class CAttrInt(CAttr):
     def is_int(self) -> bool:
         return True
 
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_attr_int(self)
+
     def __str__(self) -> str:
         return "aint(" + str(self.intvalue) + ")"
 
@@ -156,6 +162,9 @@ class CAttrStr(CAttr):
     @property
     def is_str(self) -> bool:
         return True
+
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_attr_str(self)
 
     def __str__(self) -> str:
         return "astr(" + str(self.stringvalue) + ")"
@@ -184,6 +193,9 @@ class CAttrCons(CAttr):
     def is_cons(self) -> bool:
         return True
 
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_attr_cons(self)
+
     def __str__(self) -> str:
         return "acons(" + str(self.name) + ")"
 
@@ -205,6 +217,9 @@ class CAttrSizeOf(CAttr):
     @property
     def is_sizeof(self) -> bool:
         return True
+
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_attr_sizeof(self)
 
     def __str__(self) -> str:
         return "asizeof(" + str(self.typ) + ")"
@@ -228,6 +243,9 @@ class CAttrSizeOfE(CAttr):
     def is_sizeofe(self) -> bool:
         return True
 
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_attr_sizeofe(self)
+
     def __str__(self) -> str:
         return "asizeofe(" + str(self.param) + ")"
 
@@ -249,6 +267,9 @@ class CAttrSizeOfS(CAttr):
     @property
     def is_sizeofs(self) -> bool:
         return True
+
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_attr_sizeofs(self)
 
     def __str__(self) -> str:
         return "asizeofs(" + str(self.typsig) + ")"
@@ -272,6 +293,9 @@ class CAttrAlignOf(CAttr):
     def is_alignof(self) -> bool:
         return True
 
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_attr_alignof(self)
+
     def __str__(self) -> str:
         return "aalignof(" + str(self.typ) + ")"
 
@@ -294,6 +318,9 @@ class CAttrAlignOfE(CAttr):
     def is_alignofe(self) -> bool:
         return True
 
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_attr_alignofe(self)
+
     def __str__(self) -> str:
         return "aalignofe(" + str(self.param) + ")"
 
@@ -315,6 +342,9 @@ class CAttrAlignOfS(CAttr):
     @property
     def is_alignofs(self) -> bool:
         return True
+
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_attr_alignofs(self)
 
     def __str__(self) -> str:
         return "aalignofs(" + str(self.typsig) + ")"
@@ -342,6 +372,9 @@ class CAttrUnOp(CAttr):
     @property
     def is_unop(self) -> bool:
         return True
+
+    def acecpt(self, visitor: "CVisitor") -> None:
+        visitor.visit_attr_unop(self)
 
     def __str__(self) -> str:
         return "aunop(" + self.op + "," + str(self.param) + ")"
@@ -374,6 +407,9 @@ class CAttrBinOp(CAttr):
     @property
     def is_binop(self) -> bool:
         return True
+
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_attr_binop(self)
 
     def __str__(self) -> str:
         return (
@@ -410,6 +446,9 @@ class CAttrDot(CAttr):
     def is_dot(self) -> bool:
         return True
 
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_attr_dot(self)
+
     def __str__(self) -> str:
         return "adot(" + str(self.param) + "." + self.suffix + ")"
 
@@ -436,6 +475,9 @@ class CAttrStar(CAttr):
     def is_star(self) -> bool:
         return True
 
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_attr_star(self)
+
     def __str__(self) -> str:
         if self.index == self.args[0]:
             return "astar()"
@@ -460,6 +502,9 @@ class CAttrAddrOf(CAttr):
     @property
     def is_addrof(self) -> bool:
         return True
+
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_attr_addrof(self)
 
     def __str__(self) -> str:
         return "aaddrof(" + str(self.param) + ")"
@@ -487,6 +532,9 @@ class CAttrIndex(CAttr):
     @property
     def is_index(self) -> bool:
         return True
+
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_attr_index(self)
 
     def __str__(self) -> str:
         return "aindex(" + str(self.param1) + "," + str(self.param2) + ")"
@@ -516,6 +564,9 @@ class CAttrQuestion(CAttr):
     def param3(self) -> CAttr:
         return self.cd.get_attrparam(int(self.args[2]))
 
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_attr_question(self)
+
     def __str__(self) -> str:
         return (
             "aquestion("
@@ -540,6 +591,9 @@ class CAttribute(CDictionaryRecord):
     @property
     def params(self) -> List[CAttr]:
         return [self.cd.get_attrparam(int(i)) for i in self.args]
+
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_attribute(self)
 
     def __str__(self) -> str:
         return self.name + ": " + ",".join([str(p) for p in self.params])

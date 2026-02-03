@@ -6,7 +6,7 @@
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
 # Copyright (c) 2020-2022 Henny B. Sipma
-# Copyright (c) 2023-2024 Aarno Labs LLC
+# Copyright (c) 2023-2025 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -32,11 +32,13 @@ from typing import Dict, List, Tuple, TYPE_CHECKING
 
 from chc.app.CDictionaryRecord import CDictionaryRecord, cdregistry
 
+import chc.util.fileutil as UF
 import chc.util.IndexedTable as IT
 
 if TYPE_CHECKING:
     from chc.app.CDictionary import CDictionary
     from chc.app.CExp import CExp
+    from chc.app.CVisitor import CVisitor
 
 
 class COffset(CDictionaryRecord):
@@ -69,6 +71,9 @@ class COffset(CDictionaryRecord):
     def to_dict(self) -> Dict[str, object]:
         return {"base": "offset"}
 
+    def accept(self, visitor: "CVisitor") -> None:
+        raise UF.CHCError("visitor not implemented for: " + str(self))
+
     def __str__(self) -> str:
         return "offsetbase:" + self.tags[0]
 
@@ -88,6 +93,9 @@ class CNoOffset(COffset):
 
     def to_dict(self) -> Dict[str, object]:
         return {"base": "no-offset"}
+
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_nooffset(self)
 
     def __str__(self) -> str:
         return ""
@@ -129,6 +137,9 @@ class CFieldOffset(COffset):
             result["offset"] = self.offset.to_dict()
         return result
 
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_fieldoffset(self)
+
     def __str__(self) -> str:
         offset = str(self.offset) if self.has_offset() else ""
         return "." + self.fieldname + offset
@@ -168,6 +179,9 @@ class CIndexOffset(COffset):
         if self.offset.has_offset():
             result["offset"] = self.offset.to_dict()
         return result
+
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_indexoffset(self)
 
     def __str__(self) -> str:
         offset = str(self.offset) if self.has_offset() else ""

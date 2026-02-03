@@ -6,7 +6,7 @@
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
 # Copyright (c) 2020-2022 Henny B. Sipma
-# Copyright (c) 2023-2024 Aarno Labs LLC
+# Copyright (c) 2023-2025 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -38,6 +38,7 @@ if TYPE_CHECKING:
     from chc.app.CDictionary import CDictionary
     from chc.app.CLHost import CLHost
     from chc.app.COffset import COffset
+    from chc.app.CVisitor import CVisitor
 
 
 class CLval(CDictionaryRecord):
@@ -77,6 +78,9 @@ class CLval(CDictionaryRecord):
     def has_ref_type(self) -> bool:
         return self.lhost.has_ref_type()
 
+    def is_var(self) -> bool:
+        return self.lhost.is_var
+
     def to_dict(self) -> Dict[str, object]:
         return {
             "lhost": self.lhost.to_dict(),
@@ -85,6 +89,9 @@ class CLval(CDictionaryRecord):
 
     def to_idict(self) -> Dict[str, object]:
         return {"t": self.tags, "a": self.args}
+
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_lval(self)
 
     def __str__(self) -> str:
         return str(self.lhost) + str(self.offset)

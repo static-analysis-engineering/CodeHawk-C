@@ -155,6 +155,10 @@ class CFile(object):
         return self._capp
 
     @property
+    def keep_system_includes(self) -> bool:
+        return self.capp.keep_system_includes
+
+    @property
     def targetpath(self) -> str:
         return self.capp.targetpath
 
@@ -212,7 +216,39 @@ class CFile(object):
             fndecl = pp.function_declaration_str(
                 fn.varinfo, srcloc=srcfilename, binloc=binloc)
             lines.append(fndecl)
+
         return "\n".join(lines)
+
+    def cil_source(self) -> str:
+        lines: List[str] = []
+        srcfilename = self.name + ".cil.c"
+        lines.append("// " + srcfilename + "\n")
+        gtypes = self.gtypes.values()
+        gcompdefs = self.gcomptagdefs.values()
+        gcompdecls = self.gcomptagdecls.values()
+        genumdefs = self.genumtagdefs.values()
+        genumdecls = self.genumtagdecls.values()
+        gvardefs = self.gvardefs.values()
+        gvardecls = self.gvardecls.values()
+        if len(gtypes) > 0:
+            lines.append("// type definitions")
+        for gtype in gtypes:
+            pp = CPrettyPrinter()
+            lines.append(pp.cgtypedef_str(gtype))
+        if len(gcompdefs) > 0:
+            lines.append("// struct definitions")
+        for gcompdef in gcompdefs:
+            pp = CPrettyPrinter()
+            lines.append(pp.cgcomptag_str(gcompdef))
+        if len(gvardefs) > 0:
+            lines.append("// static and global variable definitions\n")
+        for gvar in gvardefs:
+            pp = CPrettyPrinter()
+            lines.append(pp.cgvardef_str(gvar))
+        for fn in self.functions.values():
+            pp = CPrettyPrinter()
+            lines.append(pp.function_definition_to_string(fn))
+        return "\n\n".join(lines)
 
     @property
     def functioncount(self) -> int:

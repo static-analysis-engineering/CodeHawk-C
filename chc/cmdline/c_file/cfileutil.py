@@ -76,6 +76,7 @@ from chc.util.loggingutil import chklogger, LogLevel
 if TYPE_CHECKING:
     from chc.invariants.CInvariantFact import CInvariantNRVFact
     from chc.app.CAttributes import CAttributes
+    from chc.app.CInstr import CCallInstr
     from chc.app.CTyp import (
         CTypComp, CTypFloat, CTypFun, CTypInt, CTypPtr)
     from chc.proof.CFunctionPO import CFunctionPO
@@ -119,6 +120,7 @@ def cfile_parse_file(args: argparse.Namespace) -> NoReturn:
     # arguments
     pcfilename: str = os.path.abspath(args.filename)
     opttgtpath: Optional[str] = args.tgtpath
+    keep_system_includes: bool = args.keep_system_includes
     loglevel: str = args.loglevel
     logfilename: Optional[str] = args.logfilename
     logfilemode: str = args.logfilemode
@@ -156,7 +158,8 @@ def cfile_parse_file(args: argparse.Namespace) -> NoReturn:
 
     chklogger.logger.info("Target path: %s", targetpath)
 
-    parsemanager = ParseManager(projectpath, projectname, targetpath)
+    parsemanager = ParseManager(
+        projectpath, projectname, targetpath, keep_system_includes=keep_system_includes)
     parsemanager.remove_semantics()
     parsemanager.initialize_paths()
 
@@ -398,6 +401,75 @@ def cfile_mk_headerfile(args: argparse.Namespace) -> NoReturn:
     exit(0)
 
 
+def cfile_cil_source(args: argparse.Namespace) -> NoReturn:
+    """Outputs a textual representation of the CIL AST. """
+
+    # arguments
+    xcfilename: str = args.filename
+    opttgtpath: Optional[str] = args.tgtpath
+    loglevel: str = args.loglevel
+    logfilename: Optional[str] = args.logfilename
+    logfilemode: str = args.logfilemode
+    xoutput: Optional[str] = args.output
+
+    projectpath = os.path.dirname(os.path.abspath(xcfilename))
+    targetpath = projectpath if opttgtpath is None else opttgtpath
+    targetpath = os.path.abspath(targetpath)
+    cfilename_ext = os.path.basename(xcfilename)
+    cfilename = cfilename_ext[:-2]
+    projectname = cfilename
+
+    set_logging(
+        loglevel,
+        targetpath,
+        logfilename=logfilename,
+        mode=logfilemode,
+        msg="Command cfile mk-headerfile was invoked")
+
+    chklogger.logger.info(
+        "Project path: %s; target path: %s", projectpath, targetpath)
+
+    parsearchive = UF.get_parse_archive(targetpath, projectname)
+
+    if not os.path.isfile(parsearchive):
+        print_error("Please run parser first on c file")
+        exit(1)
+
+    if os.path.isfile(parsearchive):
+        chklogger.logger.info("Directory is changed to %s", targetpath)
+        os.chdir(targetpath)
+        tarname = os.path.basename(parsearchive)
+        cmd = ["tar", "xfz", os.path.basename(tarname)]
+        chklogger.logger.info("Semantics is extracted from %s", tarname)
+        result = subprocess.call(cmd, cwd=targetpath, stderr=subprocess.STDOUT)
+        if result != 0:
+            print_error("Error in extracting " + tarname)
+            exit(1)
+        chklogger.logger.info(
+            "Semantics was successfully extracted from %s", tarname)
+
+    contractpath = os.path.join(targetpath, "chc_contracts")
+
+    capp = CApplication(
+        projectpath, projectname, targetpath, contractpath, singlefile=True)
+
+    capp.initialize_single_file(cfilename)
+    cfile = capp.get_cfile()
+
+    fcilsource = cfile.cil_source()
+
+    if xoutput is not None:
+        outputfilename = xoutput + ".cil.c"
+        with open(outputfilename, "w") as fp:
+            fp.write(fcilsource)
+        print("Cil source code written to " + outputfilename)
+
+    else:
+        print(fcilsource)
+
+    exit(0)
+
+
 def cfile_analyze_file(args: argparse.Namespace) -> NoReturn:
     """Analyzes a single c-file and saves the results in the .cch directory.
 
@@ -420,7 +492,11 @@ def cfile_analyze_file(args: argparse.Namespace) -> NoReturn:
     xcfilename: str = args.filename
     opttgtpath: Optional[str] = args.tgtpath
     wordsize: int = args.wordsize
+    keep_system_includes: bool = args.keep_system_includes
+    analysis: str = args.analysis
     verbose: bool = args.verbose
+    analysisdomains: str = args.analysis_domains
+    collectdiagnostics: bool = args.collect_diagnostics
     loglevel: str = args.loglevel
     logfilename: Optional[str] = args.logfilename
     logfilemode: str = args.logfilemode
@@ -431,6 +507,8 @@ def cfile_analyze_file(args: argparse.Namespace) -> NoReturn:
     cfilename_ext = os.path.basename(xcfilename)
     cfilename = cfilename_ext[:-2]
     projectname = cfilename
+
+    po_cmd = analysis + "-primary"
 
     set_logging(
         loglevel,
@@ -470,24 +548,34 @@ def cfile_analyze_file(args: argparse.Namespace) -> NoReturn:
     contractpath = os.path.join(targetpath, "chc_contracts")
 
     capp = CApplication(
-        projectpath, projectname, targetpath, contractpath, singlefile=True)
+        projectpath,
+        projectname,
+        targetpath,
+        contractpath,
+        singlefile=True,
+        keep_system_includes=keep_system_includes)
 
     capp.initialize_single_file(cfilename)
     cfile = capp.get_cfile()
 
-    am = AnalysisManager(capp, verbose=verbose, wordsize=wordsize)
+    am = AnalysisManager(
+        capp,
+        verbose=verbose,
+        collectdiagnostics=collectdiagnostics,
+        wordsize=wordsize,
+        keep_system_includes=keep_system_includes)
 
-    am.create_file_primary_proofobligations(cfilename)
+    am.create_file_primary_proofobligations(cfilename, po_cmd=po_cmd)
     am.reset_tables(cfile)
     capp.collect_post_assumes()
 
-    am.generate_and_check_file(cfilename, None, "llrvisp")
+    am.generate_and_check_file(cfilename, None, analysisdomains)
     am.reset_tables(cfile)
     capp.collect_post_assumes()
 
     for k in range(5):
         capp.update_spos()
-        am.generate_and_check_file(cfilename, None, "llrvisp")
+        am.generate_and_check_file(cfilename, None, analysisdomains)
         am.reset_tables(cfile)
 
     chklogger.logger.info("cfile analyze completed")
@@ -508,6 +596,7 @@ def cfile_report_file(args: argparse.Namespace) -> NoReturn:
     # arguments
     xcfilename: str = args.filename
     opttgtpath: Optional[str] = args.tgtpath
+    canalysis: str = args.analysis
     cshowcode: bool = args.showcode
     cshowinvariants: bool = args.showinvariants
     cfunctions: Optional[List[str]] = args.functions
@@ -563,6 +652,19 @@ def cfile_report_file(args: argparse.Namespace) -> NoReturn:
                 cfile, pofilter=pofilter, showinvs=cshowinvariants))
 
         print(RP.file_proofobligation_stats_tostring(cfile))
+
+        def callsite_str(instr: "CCallInstr") -> str:
+            return (
+                instr.parent.cfile.name + ".c:"
+                + instr.parent.cfun.name + ":"
+                + str(instr.location.line)
+            )
+
+        if canalysis == "outputparameters":
+            for cfun in cfile.functions.values():
+                print("\nFunction: " + cfun.name)
+                print(str(cfun.analysis_digests))
+
         exit(0)
 
     for fnname in cfunctions:
@@ -580,6 +682,10 @@ def cfile_run_file(args: argparse.Namespace) -> NoReturn:
     # arguments
     pcfilename: str = os.path.abspath(args.filename)
     opttgtpath: Optional[str] = args.tgtpath
+    keep_system_includes: bool = args.keep_system_includes
+    analysis: str = args.analysis
+    analysisdomains: str = args.analysis_domains
+    collectdiagnostics: bool = args.collect_diagnostics
     cshowcode: bool = args.showcode
     copen: bool = args.open
     cshowinvariants: bool = args.showinvariants
@@ -611,6 +717,8 @@ def cfile_run_file(args: argparse.Namespace) -> NoReturn:
     cfilename = cfilename_c[:-2]
     projectname = cfilename
 
+    po_cmd = analysis + "-primary"
+
     if not os.path.isdir(targetpath):
         print_error("Target directory: " + targetpath + " does not exist")
         exit(1)
@@ -624,7 +732,8 @@ def cfile_run_file(args: argparse.Namespace) -> NoReturn:
 
     chklogger.logger.info("Target path: %s", targetpath)
 
-    parsemanager = ParseManager(projectpath, projectname, targetpath)
+    parsemanager = ParseManager(
+        projectpath, projectname, targetpath, keep_system_includes=keep_system_includes)
     parsemanager.remove_semantics()
     parsemanager.initialize_paths()
 
@@ -674,30 +783,44 @@ def cfile_run_file(args: argparse.Namespace) -> NoReturn:
     contractpath = os.path.join(targetpath, "chc_contracts")
 
     capp = CApplication(
-        projectpath, projectname, targetpath, contractpath, singlefile=True)
+        projectpath,
+        projectname,
+        targetpath,
+        contractpath,
+        singlefile=True,
+        keep_system_includes=keep_system_includes)
 
     capp.initialize_single_file(cfilename)
     cfile = capp.get_cfile()
 
-    am = AnalysisManager(capp, verbose=verbose)
+    am = AnalysisManager(
+        capp,
+        verbose=verbose,
+        collectdiagnostics=collectdiagnostics,
+        keep_system_includes=keep_system_includes)
 
-    am.create_file_primary_proofobligations(cfilename)
+    am.create_file_primary_proofobligations(cfilename, po_cmd=po_cmd)
     am.reset_tables(cfile)
     capp.collect_post_assumes()
 
-    am.generate_and_check_file(cfilename, None, "llrvisp")
+    am.generate_and_check_file(cfilename, None, analysisdomains)
     am.reset_tables(cfile)
     capp.collect_post_assumes()
 
     for k in range(5):
         capp.update_spos()
-        am.generate_and_check_file(cfilename, None, "llrvisp")
+        am.generate_and_check_file(cfilename, None, analysisdomains)
         am.reset_tables(cfile)
 
     chklogger.logger.info("cfile analyze completed")
 
     capp = CApplication(
-        projectpath, projectname, targetpath, contractpath, singlefile=True)
+        projectpath,
+        projectname,
+        targetpath,
+        contractpath,
+        singlefile=True,
+        keep_system_includes=keep_system_includes)
     capp.initialize_single_file(cfilename)
     cfile = capp.get_cfile()
 
@@ -723,6 +846,12 @@ def cfile_run_file(args: argparse.Namespace) -> NoReturn:
             cfile, pofilter=pofilter, showinvs=cshowinvariants))
 
     print(RP.file_proofobligation_stats_tostring(cfile))
+
+    if analysis == "outputparameters":
+        for cfun in cfile.functions.values():
+            print("\nFunction: " + cfun.name)
+            print(str(cfun.analysis_digests))
+
     exit(0)
 
 

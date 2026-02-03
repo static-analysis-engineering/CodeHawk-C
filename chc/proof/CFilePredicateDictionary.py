@@ -194,6 +194,10 @@ class CFilePredicateDictionary(object):
             p = cast(PO.CPOInitialized, p)
             args = [self.dictionary.index_lval(p.lval, subst=subst)]
 
+        elif p.is_locally_initialized:
+            p = cast(PO.CPOLocallyInitialized, p)
+            args = [self.dictionary.index_lval(p.lval, subst=subst)]
+
         elif p.is_initialized_range:
             p = cast(PO.CPOInitializedRange, p)
             args = [

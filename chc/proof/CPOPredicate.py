@@ -6,7 +6,7 @@
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
 # Copyright (c) 2020-2022 Henny B. Sipma
-# Copyright (c) 2023-2024 Aarno Labs LLC
+# Copyright (c) 2023-2025 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -40,7 +40,9 @@ if TYPE_CHECKING:
     from chc.app.CExp import CExp, CExpLval
     from chc.app.CLHost import CLHostVar
     from chc.app.CLval import CLval
+    from chc.app.COffset import COffset
     from chc.app.CTyp import CTyp
+    from chc.app.CVarInfo import CVarInfo
     from chc.proof.CFilePredicateDictionary import CFilePredicateDictionary
 
 
@@ -71,12 +73,18 @@ po_predicate_names: Dict[str, str] = {
     'iu': 'int-underflow',
     'iub': 'index-upper-bound',
     'lb': 'lower-bound',
+    'li': 'locally-initialized',
     'nm': 'new-memory',
     'nn': 'not-null',
     'nneg': 'non-negative',
     'no': 'no-overlap',
     'nt': 'null-terminated',
     'null': 'null',
+    "opa": "output_parameter-argument",
+    'opi': 'output_parameter-initialized',
+    "opne": "output_parameter-no-escape",
+    "ops": "output_parameter-scalar",
+    'opu': 'output_parameter-unaltered',
     'pc': 'pointer-cast',
     'plb': 'ptr-lower-bound',
     'pre': 'precondition',
@@ -89,6 +97,7 @@ po_predicate_names: Dict[str, str] = {
     'ub': 'upper-bound',
     'uio': 'uint-overflow',
     'uiu': 'uint-underflow',
+    'up': 'unique-pointer',
     'va': 'var-args',
     'vc': 'value-constraint',
     'vm': 'valid-mem',
@@ -181,6 +190,10 @@ class CPOPredicate(CFilePredicateRecord):
         return False
 
     @property
+    def is_locally_initialized(self) -> bool:
+        return False
+
+    @property
     def is_initialized_range(self) -> bool:
         return False
 
@@ -222,6 +235,14 @@ class CPOPredicate(CFilePredicateRecord):
 
     @property
     def is_null_terminated(self) -> bool:
+        return False
+
+    @property
+    def is_output_parameter_initialized(self) -> bool:
+        return False
+
+    @property
+    def is_output_parameter_unaltered(self) -> bool:
         return False
 
     @property
@@ -278,6 +299,10 @@ class CPOPredicate(CFilePredicateRecord):
 
     @property
     def is_type_at_offset(self) -> bool:
+        return False
+
+    @property
+    def is_unique_pointer(self) -> bool:
         return False
 
     @property
@@ -960,6 +985,48 @@ class CPOInitialized(CPOPredicate):
 
     def __str__(self) -> str:
         return "initialized(" + str(self.lval) + ")"
+
+
+@pdregistry.register_tag("li", CPOPredicate)
+class CPOLocallyInitialized(CPOPredicate):
+    """locally initialized(lval): location initialized within the function.
+
+    - args[0]: index of lval in cdictionary
+    """
+
+    def __init__(
+            self, pd: "CFilePredicateDictionary", ixval: IT.IndexedTableValue
+            ) -> None:
+        CPOPredicate.__init__(self, pd, ixval)
+
+    @property
+    def varinfo(self) -> "CVarInfo":
+        return self.cdeclarations.get_varinfo(self.args[0])
+
+    @property
+    def lval(self) -> "CLval":
+        return self.cd.get_lval(self.args[1])
+
+    @property
+    def is_locally_initialized(self) -> bool:
+        return True
+
+    def has_variable(self, vid: int) -> bool:
+        return self.lval.has_variable(vid)
+
+    def has_variable_deref(self, vid: int) -> bool:
+        return self.lval.has_variable_deref(vid)
+
+    def has_ref_type(self) -> bool:
+        return self.lval.has_ref_type()
+
+    def __str__(self) -> str:
+        return (
+            "locally-initialized("
+            + str(self.varinfo.vname)
+            + ", "
+            + str(self.lval)
+            + ")")
 
 
 @pdregistry.register_tag("ir", CPOPredicate)
@@ -2123,6 +2190,29 @@ class CPOValueConstraint(CPOPredicate):
         return "value-constraint(" + str(self.exp) + ")"
 
 
+@pdregistry.register_tag("up", CPOPredicate)
+class CPOUniquePointer(CPOPredicate):
+
+    def __init__(
+            self, pd: "CFilePredicateDictionary", ixval: IT.IndexedTableValue
+    ) -> None:
+        CPOPredicate.__init__(self, pd, ixval)
+
+    @property
+    def exp(self) -> "CExp":
+        return self.cd.get_exp(self.args[0])
+
+    @property
+    def is_unique_pointer(self) -> bool:
+        return True
+
+    def has_variable(self, vid: int) -> bool:
+        return self.exp.has_variable(vid)
+
+    def __str__(self) -> str:
+        return "unique-pointer(" + str(self.exp) + ")"
+
+
 @pdregistry.register_tag("prm", CPOPredicate)
 class CPOPreservedAllMemory(CPOPredicate):
     """preserves-all-memory(): true of a function that does not free any memory.
@@ -2162,3 +2252,135 @@ class CPOPreservedValue(CPOPredicate):
 
     def __str__(self) -> str:
         return "preserves-value(" + str(self.exp) + ")"
+
+
+@pdregistry.register_tag("opi", CPOPredicate)
+class CPOOutputParameterInitialized(CPOPredicate):
+    """
+
+    - args[0]: index of varinfo in cdecls
+    """
+    def __init__(
+            self, pd: "CFilePredicateDictionary", ixval: IT.IndexedTableValue
+    ) -> None:
+        CPOPredicate.__init__(self, pd, ixval)
+
+    @property
+    def varinfo(self) -> "CVarInfo":
+        return self.cdeclarations.get_varinfo(self.args[0])
+
+    @property
+    def offset(self) -> "COffset":
+        return self.cd.get_offset(self.args[1])
+
+    @property
+    def is_output_parameter_initialized(self) -> bool:
+        return True
+
+    def has_variable(self, vid: int) -> bool:
+        return self.varinfo.vid == vid
+
+    def __str__(self) -> str:
+        return (
+            "output_parameter-initialized("
+            + str(self.varinfo.vname)
+            + ", "
+            + str(self.offset)
+            + ")")
+
+
+@pdregistry.register_tag("opu", CPOPredicate)
+class CPOOutputParameterUnaltered(CPOPredicate):
+    """
+
+    - args[0]: index of varinfo in cdecls
+    """
+    def __init__(
+            self, pd: "CFilePredicateDictionary", ixval: IT.IndexedTableValue
+    ) -> None:
+        CPOPredicate.__init__(self, pd, ixval)
+
+    @property
+    def varinfo(self) -> "CVarInfo":
+        return self.cdeclarations.get_varinfo(self.args[0])
+
+    @property
+    def offset(self) -> "COffset":
+        return self.cd.get_offset(self.args[1])
+
+    @property
+    def is_output_parameter_unaltered(self) -> bool:
+        return True
+
+    def has_variable(self, vid: int) -> bool:
+        return self.varinfo.vid == vid
+
+    def __str__(self) -> str:
+        return (
+            "output_parameter-unaltered("
+            + str(self.varinfo.vname)
+            + ", "
+            + str(self.offset)
+            + ")")
+
+
+@pdregistry.register_tag("opa", CPOPredicate)
+class CPOOutputParameterArgument(CPOPredicate):
+
+    def __init__(
+            self, pd: "CFilePredicateDictionary", ixval: IT.IndexedTableValue
+    ) -> None:
+        CPOPredicate.__init__(self, pd, ixval)
+
+    @property
+    def exp(self) -> "CExp":
+        return self.cd.get_exp(self.args[0])
+
+    def __str__(self) -> str:
+        return "output-parameter-argument(" + str(self.exp) + ")"
+
+
+@pdregistry.register_tag("ops", CPOPredicate)
+class CPOOutputParameterScalar(CPOPredicate):
+
+    def __init__(
+            self, pd: "CFilePredicateDictionary", ixval: IT.IndexedTableValue
+    ) -> None:
+        CPOPredicate.__init__(self, pd, ixval)
+
+    @property
+    def varinfo(self) -> "CVarInfo":
+        return self.cdeclarations.get_varinfo(self.args[0])
+
+    @property
+    def exp(self) -> "CExp":
+        return self.cd.get_exp(self.args[1])
+
+    def __str__(self) -> str:
+        return (
+            "output-parameter-scalar("
+            + str(self.varinfo) + ", "
+            + str(self.exp) + ")")
+
+
+@pdregistry.register_tag("opne", CPOPredicate)
+class CPOOutputParameterNoEscape(CPOPredicate):
+
+    def __init__(
+            self, pd: "CFilePredicateDictionary", ixval: IT.IndexedTableValue
+    ) -> None:
+        CPOPredicate.__init__(self, pd, ixval)
+
+    @property
+    def varinfo(self) -> "CVarInfo":
+        return self.cdeclarations.get_varinfo(self.args[0])
+
+    @property
+    def exp(self) -> "CExp":
+        return self.cd.get_exp(self.args[1])
+
+    def __str__(self) -> str:
+        return (
+            "output-parameter-no-escape("
+            + str(self.varinfo) + ", "
+            + str(self.exp) + ")")

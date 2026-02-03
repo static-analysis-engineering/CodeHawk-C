@@ -47,7 +47,7 @@ if TYPE_CHECKING:
     from chc.proof.CFunPODictionary import CFunPODictionary
     from chc.proof.CPOPredicate import CPOPredicate
     from chc.proof.CProofDependencies import CProofDependencies
-    from chc.proof.CProofDiagnostic import CProofDiagnostic
+    from chc.proof.CProofDiagnostic import CProofDiagnostic, SituatedMsg
     from chc.proof.SPOType import SPOType
 
 
@@ -72,7 +72,7 @@ class CFunctionPO:
             potype: CFunPOType,
             status: str = "open",
             deps: Optional["CProofDependencies"] = None,
-            expl: Optional[str] = None,
+            expl: Optional["SituatedMsg"] = None,
             diag: Optional["CProofDiagnostic"] = None) -> None:
         self._cproofs = cproofs
         self._potype = potype
@@ -182,7 +182,7 @@ class CFunctionPO:
         return self._dependencies is not None
 
     @property
-    def explanation(self) -> Optional[str]:
+    def explanation(self) -> Optional["SituatedMsg"]:
         return self._explanation
 
     def has_explanation(self) -> bool:
@@ -364,7 +364,7 @@ class CFunctionPO:
             self.dependencies.write_xml(cnode)
         if self.explanation is not None:
             enode = ET.Element("e")
-            enode.set("txt", self.explanation)
+            enode.set("txt", self.explanation.msg)
             cnode.append(enode)
         if self.has_diagnostic():
             dnode = ET.Element("d")

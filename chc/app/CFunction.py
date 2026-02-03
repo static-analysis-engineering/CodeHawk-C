@@ -35,9 +35,10 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, TYPE_CHECKING
 
 from chc.api.CFunctionApi import CFunctionApi
 
-from chc.app.CLocation import CLocation
 from chc.app.CFunDeclarations import CFunDeclarations
 from chc.app.CInstr import CCallInstr
+from chc.app.CFunctionReturnSite import CFunctionReturnSite
+from chc.app.CLocation import CLocation
 from chc.app.CStmt import CFunctionBody
 from chc.app.IndexManager import FileVarReference
 
@@ -46,12 +47,13 @@ from chc.invariants.CFunInvDictionary import CFunInvDictionary
 from chc.invariants.CFunInvariantTable import CFunInvariantTable
 from chc.invariants.CInvariantFact import CInvariantFact
 
-from chc.proof.CFunPODictionary import CFunPODictionary
+from chc.proof.CFunctionAnalysisDigest import CFunctionAnalysisDigests
 from chc.proof.CFunctionCallsiteSPOs import CFunctionCallsiteSPOs
 from chc.proof.CFunctionPO import CFunctionPO
 from chc.proof.CFunctionPPO import CFunctionPPO
 from chc.proof.CFunctionProofs import CFunctionProofs
 from chc.proof.CFunctionSPOs import CFunctionSPOs
+from chc.proof.CFunPODictionary import CFunPODictionary
 
 import chc.util.fileutil as UF
 from chc.util.loggingutil import chklogger
@@ -60,8 +62,10 @@ if TYPE_CHECKING:
     from chc.api.CFunctionContract import CFunctionContract
     from chc.api.InterfaceDictionary import InterfaceDictionary
     from chc.app.CApplication import CApplication
+    from chc.app.CDictionary import CDictionary
     from chc.app.CFile import CFile
     from chc.app.CFileDeclarations import CFileDeclarations
+    from chc.app.COffset import COffset
     from chc.app.CTyp import CTyp
     from chc.app.CVarInfo import CVarInfo
 
@@ -78,12 +82,14 @@ class CFunction:
         self._formals: Dict[int, "CVarInfo"] = {}  # vid -> CVarInfo
         self._locals: Dict[int, "CVarInfo"] = {}  # vid -> CVarInfo
         self._sbody: Optional[CFunctionBody] = None
+        self._returnsites: Optional[List[CFunctionReturnSite]] = None
         self._podictionary: Optional[CFunPODictionary] = None
         self._api: Optional[CFunctionApi] = None
         self._proofs: Optional[CFunctionProofs] = None
         self._vard: Optional[CFunVarDictionary] = None
         self._invd: Optional[CFunInvDictionary] = None
         self._invarianttable: Optional[CFunInvariantTable] = None
+        self._analysis_digests: Optional[CFunctionAnalysisDigests] = None
 
     def xmsg(self, txt: str) -> str:
         return "Function " + self.name + ": " + txt
@@ -139,6 +145,10 @@ class CFunction:
     @property
     def cfiledecls(self) -> "CFileDeclarations":
         return self.cfile.declarations
+
+    @property
+    def cdictionary(self) -> "CDictionary":
+        return self.cfile.dictionary
 
     @property
     def interfacedictionary(self) -> "InterfaceDictionary":
@@ -288,6 +298,63 @@ class CFunction:
         return self._podictionary
 
     @property
+    def analysis_digests(self) -> CFunctionAnalysisDigests:
+        if self._analysis_digests is None:
+            adnode = UF.get_adg_xnode(
+                self.targetpath,
+                self.projectname,
+                self.cfilepath,
+                self.cfilename,
+                self.name)
+            if adnode is None:
+                chklogger.logger.warning(
+                    "No adg file encountered for function %s", self.name)
+                adgnode = None
+                # raise UF.CHCError(self.xmsg("adg file not found"))
+            else:
+                adgnode = adnode.find("analysis-digests")
+            self._analysis_digests = CFunctionAnalysisDigests(self, adgnode)
+        return self._analysis_digests
+
+    def callsites(self) -> List[CCallInstr]:
+        callinstrs = self.capp.get_callinstrs()
+        result: List[CCallInstr] = []
+        for instr in callinstrs:
+            if str(instr.callee) == self.name:
+                result.append(instr)
+        return result
+
+    @property
+    def returnsites(self) -> List[CFunctionReturnSite]:
+        if self._returnsites is None:
+            self._returnsites = []
+            xsponode = UF.get_spo_xnode(
+                self.targetpath,
+                self.projectname,
+                self.cfilepath,
+                self.cfilename,
+                self.name)
+            if xsponode is None:
+                raise UF.CHCError(self.xmsg("spo file is missing"))
+            xxsponode = xsponode.find("spos")
+            if xxsponode is None:
+                raise UF.CHCError(self.xmsg("spo file has no spos element"))
+            xreturnsites = xxsponode.find("returnsites")
+            if xreturnsites is None:
+                raise UF.CHCError(
+                    self.xmsg("spo file has no returnsites element"))
+            for xreturnsite in xreturnsites.findall("rs"):
+                self._returnsites.append(CFunctionReturnSite(self, xreturnsite))
+        return self._returnsites
+
+    def get_returnsite(
+            self, ctxtid: int) -> Optional[CFunctionReturnSite]:
+        for rs in self.returnsites:
+            if rs.context.index == ctxtid:
+                return rs
+        return None
+
+    @property
     def proofs(self) -> CFunctionProofs:
         if self._proofs is None:
             xpponode = UF.get_ppo_xnode(
@@ -311,7 +378,7 @@ class CFunction:
                 raise UF.CHCError(self.xmsg("spo file is missing"))
             xxsponode = xsponode.find("spos")
             if xxsponode is None:
-                raise UF.CHCError(self.xmsg("_spo file has no spos element"))
+                raise UF.CHCError(self.xmsg("spo file has no spos element"))
             self._proofs = CFunctionProofs(self, xxpponode, xxsponode)
         return self._proofs
 
@@ -319,6 +386,7 @@ class CFunction:
         self._api = None
         self._podictionary = None
         self._vardictionary = None
+        self._analysis_digests = None
         self._proofs = None
 
     def get_formal_vid(self, name: str) -> int:
@@ -405,7 +473,7 @@ class CFunction:
     def has_line_number(self) -> bool:
         if self.has_source_code_file():
             srcfile = self.get_source_code_file()
-            return self.cfile.cfilename + ".c" == srcfile
+            return self.cfile.name + ".c" == srcfile
         else:
             return False
 
@@ -515,16 +583,28 @@ class CFunction:
         return self.proofs.spolist
 
     def get_open_ppos(self) -> List[CFunctionPO]:
-        return self.proofs.open_ppos
+        try:
+            return self.proofs.open_ppos
+        except UF.CHCFileNotFoundError:
+            return []
 
     def get_open_spos(self) -> List[CFunctionPO]:
         return self.proofs.open_spos
 
     def get_ppos_violated(self) -> List[CFunctionPO]:
-        return self.proofs.ppos_violated
+        try:
+            return self.proofs.ppos_violated
+        except UF.CHCFileNotFoundError:
+            return []
 
     def get_spo_violations(self) -> List[CFunctionPO]:
-        return self.proofs.get_spo_violations()
+        try:
+            return self.proofs.get_spo_violations()
+        except UF.CHCFileNotFoundError:
+            return []
 
     def get_ppos_delegated(self) -> List[CFunctionPO]:
-        return self.proofs.ppos_delegated
+        try:
+            return self.proofs.ppos_delegated
+        except UF.CHCFileNotFoundError:
+            return []

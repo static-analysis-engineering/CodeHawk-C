@@ -36,6 +36,7 @@ if TYPE_CHECKING:
     from chc.app.CApplication import CApplication
     from chc.app.CContext import ProgramContext
     from chc.app.CContextDictionary import CContextDictionary
+    from chc.app.CDictionary import CDictionary
     from chc.app.CFile import CFile
     from chc.app.CFileDeclarations import CFileDeclarations
     from chc.app.CFunction import CFunction
@@ -74,6 +75,10 @@ class CFunPODictionaryRecord(IndexedTableValue):
     @property
     def cdecls(self) -> "CFileDeclarations":
         return self.cfile.declarations
+
+    @property
+    def cdictionary(self) -> "CDictionary":
+        return self.cfile.dictionary
 
     @property
     def cxd(self) -> "CContextDictionary":

@@ -40,7 +40,7 @@ from chc.proof.CFunctionLocalSPO import CFunctionLocalSPO
 from chc.proof.CFunctionPO import CFunctionPO
 from chc.proof.CFunctionPO import po_status
 from chc.proof.CProofDependencies import CProofDependencies
-from chc.proof.CProofDiagnostic import CProofDiagnostic
+from chc.proof.CProofDiagnostic import CProofDiagnostic, SituatedMsg
 
 from chc.util.loggingutil import chklogger
 
@@ -103,9 +103,11 @@ class CFunctionSPOs:
                 for xpo in xlspos.findall("po"):
                     spotype = self.podictionary.read_xml_spo_type(xpo)
                     xexpl = xpo.find("e")
-                    expl = None if xexpl is None else xexpl.get("txt")
+                    expl = (
+                        None if xexpl is None
+                        else SituatedMsg(self.cfun.cdictionary, xexpl))
                     deps = CProofDependencies(self.cproofs, xpo)
-                    diagnostic = CProofDiagnostic(xpo.find("d"))
+                    diagnostic = CProofDiagnostic(self.cproofs, xpo.find("d"))
                     status = po_status[xpo.get("s", "o")]
                     self._localspos[spotype.po_index] = CFunctionLocalSPO(
                         self.cproofs, spotype, status, deps, expl, diagnostic)

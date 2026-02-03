@@ -43,7 +43,7 @@ from chc.app.IndexManager import FileVarReference
 from chc.proof.CFunctionCallsiteSPO import CFunctionCallsiteSPO
 from chc.proof.CFunctionPO import po_status
 from chc.proof.CProofDependencies import CProofDependencies
-from chc.proof.CProofDiagnostic import CProofDiagnostic
+from chc.proof.CProofDiagnostic import CProofDiagnostic, SituatedMsg
 
 import chc.util.fileutil as UF
 from chc.util.loggingutil import chklogger
@@ -233,8 +233,10 @@ class CFunctionCallsiteSPOs:
                             deps = CProofDependencies(self.cproofs, xpo)
                             status = po_status[xpo.get("s", "o")]
                             xexpl = xpo.find("e")
-                            expl = None if xexpl is None else xexpl.get("txt")
-                            diagnostic = CProofDiagnostic(xpo.find("d"))
+                            expl = (
+                                None if xexpl is None
+                                else SituatedMsg(self.cfun.cdictionary, xexpl))
+                            diagnostic = CProofDiagnostic(self.cproofs, xpo.find("d"))
                             self._spos[int(xapid)].append(
                                 CFunctionCallsiteSPO(
                                     self.cproofs,

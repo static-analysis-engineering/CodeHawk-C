@@ -635,6 +635,10 @@ def parse() -> argparse.Namespace:
         help=("directory in which to store the analysis artifacts "
               + "(default: <cpath>)"))
     cfileparse.add_argument(
+        "--keep-system-includes",
+        action="store_true",
+        help="do not filter out functions from files with absolute file names")
+    cfileparse.add_argument(
         "--loglevel", "-log",
         choices=UL.LogLevel.options(),
         default="NONE",
@@ -706,6 +710,34 @@ def parse() -> argparse.Namespace:
         help="file mode for log file: append (a, default), or write (w)")
     cfilemkheader.set_defaults(func=C.cfile_mk_headerfile)
 
+    # --- cil-source
+    cfilecilsource = cfileparsers.add_parser("cil-source")
+    cfilecilsource.add_argument(
+        "filename",
+        help="name of file to be printed as cil-source text")
+    cfilecilsource.add_argument(
+        "--tgtpath",
+        help="directory in which to store the analysis artifacts "
+        + "(default: <cpath>)")
+    cfilecilsource.add_argument(
+        "--output", "-o",
+        help=("basename of file to save output "
+              + "(without extension): a file with extension .cil.c will be created"))
+    cfilecilsource.add_argument(
+        "--loglevel", "-log",
+        choices=UL.LogLevel.options(),
+        default="NONE",
+        help="activate logging with given level (default to stderr)")
+    cfilecilsource.add_argument(
+        "--logfilename",
+        help="name of file to write log messages")
+    cfilecilsource.add_argument(
+        "--logfilemode",
+        choices=["a", "w"],
+        default="a",
+        help="file mode for log file: append (a, default), or write (w)")
+    cfilecilsource.set_defaults(func=C.cfile_cil_source)
+
     # --- analyze
     cfileanalyze = cfileparsers.add_parser("analyze")
     cfileanalyze.add_argument(
@@ -720,6 +752,25 @@ def parse() -> argparse.Namespace:
         type=int,
         default=32,
         help="architecture wordsize in bits (16, 32, or 64)")
+    cfileanalyze.add_argument(
+        "--keep-system-includes",
+        action="store_true",
+        help="do not filter out functions from files with absolute file names")
+    cfileanalyze.add_argument(
+        "--analysis",
+        default="undefined-behavior",
+        choices=["undefined-behavior", "outputparameters"],
+        help="choose analysis for creating primary proof obligations")
+    cfileanalyze.add_argument(
+        "--collect-diagnostics",
+        action="store_true",
+        help="save diagnostics in a separate diagnostics log file")
+    cfileanalyze.add_argument(
+        "--analysis-domains",
+        default="llrvisp",
+        help=("choose analysis domains to be used (l: linear equalities"
+              ", r: pepr, v: value sets, i: intervals, s: symbolic sets"
+              ", p: pointer sets)"))
     cfileanalyze.add_argument(
         "--verbose", "-v",
         action="store_true",
@@ -755,6 +806,11 @@ def parse() -> argparse.Namespace:
         "--functions",
         nargs="*",
         help="restrict output to function names listed (defualt: all)")
+    cfilereport.add_argument(
+        "--analysis",
+        default="undefined-behavior",
+        choices=["undefined-behavior", "outputparameters"],
+        help="choose analysis for reporting results")
     cfilereport.add_argument(
         "--open",
         action="store_true",
@@ -794,6 +850,25 @@ def parse() -> argparse.Namespace:
     cfilerun.add_argument(
         "--tgtpath",
         help="directory to store the analysis results")
+    cfilerun.add_argument(
+        "--keep-system-includes",
+        action="store_true",
+        help="don't filter out functions from files with absolute filenames")
+    cfilerun.add_argument(
+        "--analysis",
+        default="undefined-behavior",
+        choices=["undefined-behavior", "outputparameters"],
+        help="choose analysis for creating primary proof obligations")
+    cfilerun.add_argument(
+        "--collect-diagnostics",
+        action="store_true",
+        help="save diagnostics in a separate diagnostics log file")
+    cfilerun.add_argument(
+        "--analysis-domains",
+        default="llrvisp",
+        help=("choose analysis domains to be used (l: linear equalities"
+              ", r: pepr, v: value sets, i: intervals, s: symbolic sets"
+              ", p: pointer sets)"))
     cfilerun.add_argument(
         "--showcode",
         action="store_true",
@@ -1388,6 +1463,10 @@ def parse() -> argparse.Namespace:
     cprojectparse.add_argument(
         "--tgtpath", help="directory to save the results")
     cprojectparse.add_argument(
+        "--keep-system-includes",
+        action="store_true",
+        help="don't filter out functions from files with absolute filenames")
+    cprojectparse.add_argument(
         "--loglevel", "-log",
         choices=UL.LogLevel.options(),
         default="NONE",
@@ -1469,12 +1548,58 @@ def parse() -> argparse.Namespace:
         help="file mode for log file: append (a, default), or write (w)")
     cprojectmkheader.set_defaults(func=P.cproject_mk_headerfile)
 
+    # --- cil-source
+    cprojectcilsource = cprojectparsers.add_parser("cil-source")
+    cprojectcilsource.add_argument(
+        "tgtpath", help="directory that contains the analysis results")
+    cprojectcilsource.add_argument(
+        "projectname", help="name of the project")
+    cprojectcilsource.add_argument(
+        "filename", help="filename with relative path wrt the project")
+    cprojectcilsource.add_argument(
+        "--loglevel", "-log",
+        choices=UL.LogLevel.options(),
+        default="NONE",
+        help="activate logging with given level (default to stderr)")
+    cprojectcilsource.add_argument(
+        "--logfilename",
+        help="name of file to write log messages")
+    cprojectcilsource.add_argument(
+        "--logfilemode",
+        choices=["a", "w"],
+        default="a",
+        help="file mode for log file: append (a, default), or write (w)")
+    cprojectcilsource.set_defaults(func=P.cproject_cil_source)
+
     # --- analyze
     cprojectanalyze = cprojectparsers.add_parser("analyze")
     cprojectanalyze.add_argument(
         "tgtpath", help="directory that contains the analysis results")
     cprojectanalyze.add_argument(
         "projectname", help="name of the project")
+    cprojectanalyze.add_argument(
+        "--keep-system-includes",
+        action="store_true",
+        help="don't filter out functions from files with absolute filenames")
+    cprojectanalyze.add_argument(
+        "--verbose", "-v",
+        action="store_true",
+        help="print analyzer status updates of invariant generation process")
+    cprojectanalyze.add_argument(
+        "--analysis",
+        default="undefined-behavior",
+        choices=["undefined-behavior", "outputparameters"],
+        help="choose analysis for creating primary proof obligations")
+    cprojectanalyze.add_argument(
+        "--collect-diagnostics",
+        action="store_true",
+        help="save diagnostics in a separate diagnostics log file")
+    cprojectanalyze.add_argument(
+        "--analysis-domains",
+        default="llrvisp",
+        help=("choose analysis domains to be used (l: linear equalities"
+              ", r: pepr, v: value sets, i: intervals, s: symbolic sets"
+              ", p: pointer sets)"))
     cprojectanalyze.add_argument(
         "--maxprocesses",
         help="number of files to process in parallel",
@@ -1507,6 +1632,28 @@ def parse() -> argparse.Namespace:
         "tgtpath", help="directory that contains the analysis results")
     cprojectreport.add_argument(
         "projectname", help="name of the project")
+    cprojectreport.add_argument(
+        "--analysis",
+        default="undefined-behavior",
+        choices=["undefined-behavior", "outputparameters"],
+        help="choose analysis for reporting results")
+    cprojectreport.add_argument(
+        "--verbose", "-v",
+        action="store_true")
+    cprojectreport.add_argument(
+        "--loglevel", "-log",
+        choices=UL.LogLevel.options(),
+        default="NONE",
+        help="activate logging with given level (default to stderr)")
+    cprojectreport.add_argument(
+        "--logfilename",
+        help="name of file to write log messages")
+    cprojectreport.add_argument(
+        "--logfilemode",
+        choices=["a", "w"],
+        default="a",
+        help="file mode for log file: append (a, default), or write (w)")
+
     cprojectreport.set_defaults(func=P.cproject_report)
 
     # --- report-file
@@ -1517,6 +1664,11 @@ def parse() -> argparse.Namespace:
         "projectname", help="name of the project")
     cprojectreportfile.add_argument(
         "filename", help="filename with relative path wrt the project")
+    cprojectreportfile.add_argument(
+        "--analysis",
+        default="undefined-behavior",
+        choices=["undefined-behavior", "outputparameters"],
+        help="choose analysis for reporting results")
     cprojectreportfile.add_argument(
         "--showcode",
         action="store_true",
@@ -1531,6 +1683,17 @@ def parse() -> argparse.Namespace:
         help="show location invariants on the code")
     cprojectreportfile.set_defaults(func=P.cproject_report_file)
 
+    # --- investigate
+    cprojectinvestigate = cprojectparsers.add_parser("investigate")
+    cprojectinvestigate.add_argument(
+        "tgtpath", help="directory that contains the analysis results")
+    cprojectinvestigate.add_argument(
+        "projectname", help="name of the project")
+    cprojectinvestigate.add_argument(
+        "--predicates",
+        nargs="*",
+        help="names of predicates of interest, e.g., not-null (default: all")
+    cprojectinvestigate.set_defaults(func=P.cproject_investigate)
     # --- query
     cprojectquery = cprojectparsers.add_parser("query")
     cprojectqueryparsers = cprojectquery.add_subparsers(title="show options")

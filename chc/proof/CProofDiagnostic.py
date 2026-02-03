@@ -32,15 +32,88 @@ import xml.etree.ElementTree as ET
 
 from typing import Dict, List, Optional, TYPE_CHECKING
 
+if TYPE_CHECKING:
+    from chc.app.CDictionary import CDictionary
+    from chc.app.CFunction import CFunction
+    from chc.proof.CFunctionProofs import CFunctionProofs
+
+
+class SituatedMsg:
+
+    def __init__(self, cd: "CDictionary", xnode: ET.Element) -> None:
+        self._cd = cd
+        self._xnode = xnode
+
+    @property
+    def cd(self) -> "CDictionary":
+        return self._cd
+
+    @property
+    def msg(self) -> str:
+        result = self._xnode.get("t")
+        if result is None:
+            return self._xnode.get("txt", "?")
+        else:
+            return result
+
+    @property
+    def file(self) -> Optional[str]:
+        xfile = self._xnode.get("file")
+        if xfile is not None:
+            return self.cd.get_string(int(xfile))
+        return None
+
+    @property
+    def line(self) -> Optional[int]:
+        xline = self._xnode.get("line")
+        if xline is not None:
+            return int(xline)
+        return None
+
+    @property
+    def detail(self) -> Optional[str]:
+        xdetail = self._xnode.get("detail")
+        if xdetail is not None:
+            return self.cd.get_string(int(xdetail))
+        return None
+
+    @property
+    def is_situated(self) -> bool:
+        return (
+            self.file is not None
+            and self.line is not None
+            and self.detail is not None)
+
+    def __str__(self) -> str:
+        if self.is_situated:
+            return self.msg + " (" + str(self.line) + ": " + str(self.detail) + ")"
+        else:
+            return self.msg
+
 
 class CProofDiagnostic:
 
-    def __init__(self, xnode: Optional[ET.Element]) -> None:
+    def __init__(
+            self, cproofs: "CFunctionProofs", xnode: Optional[ET.Element]
+    ) -> None:
+        self._cproofs = cproofs
         self._xnode = xnode
         self._invsmap: Optional[Dict[int, List[int]]] = None
-        self._amsgs: Optional[Dict[int, List[str]]] = None
+        self._amsgs: Optional[Dict[int, List[SituatedMsg]]] = None
         self._kmsgs: Optional[Dict[str, List[str]]] = None
-        self._msgs: Optional[List[str]] = None
+        self._msgs: Optional[List[SituatedMsg]] = None
+
+    @property
+    def cproofs(self) -> "CFunctionProofs":
+        return self._cproofs
+
+    @property
+    def cfun(self) -> "CFunction":
+        return self.cproofs.cfun
+
+    @property
+    def cd(self) -> "CDictionary":
+        return self.cfun.cdictionary
 
     @property
     def invsmap(self) -> Dict[int, List[int]]:
@@ -63,7 +136,7 @@ class CProofDiagnostic:
         return self._invsmap
 
     @property
-    def msgs(self) -> List[str]:
+    def msgs(self) -> List[SituatedMsg]:
         """Returns general diagnostics pertaining to the proof obligation."""
 
         if self._msgs is None:
@@ -71,11 +144,12 @@ class CProofDiagnostic:
             if self._xnode is not None:
                 mnode = self._xnode.find("msgs")
                 if mnode is not None:
-                    self._msgs = [x.get("t", "") for x in mnode.findall("msg")]
+                    self._msgs = [
+                        SituatedMsg(self.cd, x) for x in mnode.findall("msg")]
         return self._msgs
 
     @property
-    def argument_msgs(self) -> Dict[int, List[str]]:
+    def argument_msgs(self) -> Dict[int, List[SituatedMsg]]:
         """Returns argument-specific diagnostic messages.
 
         Note: argument index starts at 1.
@@ -89,7 +163,8 @@ class CProofDiagnostic:
                     for n in anode.findall("arg"):
                         xargindex = n.get("a")
                         if xargindex is not None:
-                            msgs = [x.get("t", "") for x in n.findall("msg")]
+                            msgs = [
+                                SituatedMsg(self.cd, x) for x in n.findall("msg")]
                             self._amsgs[int(xargindex)] = msgs
         return self._amsgs
 
@@ -132,9 +207,9 @@ class CProofDiagnostic:
         for arg in self.argument_msgs:
             anode = ET.Element("arg")
             anode.set("a", str(arg))
-            for t in self.argument_msgs[arg]:
+            for msg in self.argument_msgs[arg]:
                 tnode = ET.Element("msg")
-                tnode.set("t", t)
+                tnode.set("t", msg.msg)
                 anode.append(tnode)
             aanode.append(anode)
         for key in self.keyword_msgs:
@@ -145,13 +220,13 @@ class CProofDiagnostic:
                 tnode.set("t", t)
                 knode.append(tnode)
             kknode.append(knode)
-        for t in self.msgs:
+        for msg in self.msgs:
             mnode = ET.Element("msg")
-            mnode.set("t", t)
+            mnode.set("t", msg.msg)
             mmnode.append(mnode)
         dnode.extend([inode, mmnode, aanode, kknode])
 
     def __str__(self) -> str:
         if len(self.msgs) == 0:
             return "no diagnostic messages"
-        return "\n".join(self.msgs)
+        return "\n".join(str(m) for m in self.msgs)

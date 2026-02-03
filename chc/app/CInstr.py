@@ -6,7 +6,7 @@
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
 # Copyright (c) 2020-2022 Henny B. Sipma
-# Copyright (c) 2023-2024 Aarno Labs LLC
+# Copyright (c) 2023-2025 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -39,8 +39,10 @@ if TYPE_CHECKING:
     from chc.app.CFile import CFile
     from chc.app.CFileDictionary import CFileDictionary
     from chc.app.CFunction import CFunction
+    from chc.app.CLocation import CLocation
     from chc.app.CLval import CLval
     from chc.app.CStmt import CStmt
+    from chc.app.CVisitor import CVisitor
 
 
 class CInstr:
@@ -63,6 +65,10 @@ class CInstr:
         return self.parent.cdictionary
 
     @property
+    def location(self) -> "CLocation":
+        return self.cfun.cfiledecls.read_xml_location(self.xnode)
+
+    @property
     def is_assign(self) -> bool:
         return False
 
@@ -81,13 +87,15 @@ class CInstr:
     def get_variable_uses(self, vid: int) -> int:
         return 0
 
+    def accept(self, visitor: "CVisitor") -> None:
+        raise UF.CHCError("visitor not yet accepted on: " + str(self))
+
 
 class CCallInstr(CInstr):
     """Call instruction."""
 
     def __init__(self, parent: "CStmt", xnode: ET.Element) -> None:
         CInstr.__init__(self, parent, xnode)
-        self._lhs: Optional["CLval"] = None
         self._callee: Optional["CExp"] = None
         self._callargs: Optional[List["CExp"]] = None
 
@@ -96,14 +104,12 @@ class CCallInstr(CInstr):
         return True
 
     @property
-    def lhs(self) -> "CLval":
-        if self._lhs is None:
-            xlval = self.xnode.get("ilval")
-            if xlval is not None:
-                self._lhs = self.cdictionary.get_lval(int(xlval))
-            else:
-                raise UF.CHCError("call instruction does not have an lval")
-        return self._lhs
+    def lhs(self) -> Optional["CLval"]:
+        xlval = self.xnode.get("ilval")
+        if xlval is not None:
+            return self.cdictionary.get_lval(int(xlval))
+        else:
+            return None
 
     @property
     def callee(self) -> "CExp":
@@ -141,10 +147,16 @@ class CCallInstr(CInstr):
         return "ilval" in self.xnode.attrib
 
     def get_variable_uses(self, vid: int) -> int:
-        lhsuse = self.lhs.get_variable_uses(vid) if self.has_lhs() else 0
-        arguse = sum([a.get_variable_uses(vid) for a in self.callargs])
-        calleeuse = self.callee.get_variable_uses(vid)
-        return lhsuse + arguse + calleeuse
+        if self.lhs is not None:
+            lhsuse = self.lhs.get_variable_uses(vid) if self.has_lhs() else 0
+            arguse = sum([a.get_variable_uses(vid) for a in self.callargs])
+            calleeuse = self.callee.get_variable_uses(vid)
+            return lhsuse + arguse + calleeuse
+        else:
+            return 0
+
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_call_instr(self)
 
     def __str__(self) -> str:
         return "      call " + str(self.callee)
@@ -192,6 +204,9 @@ class CAssignInstr(CInstr):
         lhsuse = self.lhs.get_variable_uses(vid)
         rhsuse = self.rhs.get_variable_uses(vid)
         return lhsuse + rhsuse
+
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_assign_instr(self)
 
     def __str__(self) -> str:
         return "     assign: " + str(self.lhs) + " := " + str(self.rhs)
@@ -243,6 +258,9 @@ class CAsmInstr(CInstr):
                         self._templates.append(ts)
         return self._templates
 
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_asm_instr(self)
+
     def __str__(self) -> str:
         lines: List[str] = []
         for s in self.templates:
@@ -279,6 +297,9 @@ class CAsmOutput:
     def constraint(self) -> str:
         return self.xnode.get("constraint", "none")
 
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_asm_output(self)
+
     def __str__(self) -> str:
         return self.constraint + "; lval: " + str(self.lhs)
 
@@ -307,6 +328,9 @@ class CAsmInput:
     @property
     def constraint(self) -> str:
         return self.xnode.get("constraint", "none")
+
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_asm_input(self)
 
     def __str__(self) -> str:
         return self.constraint + "; exp: " + str(self.exp)

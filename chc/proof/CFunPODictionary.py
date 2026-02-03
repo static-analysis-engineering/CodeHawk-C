@@ -6,7 +6,7 @@
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
 # Copyright (c) 2020-2022 Henny B. Sipma
-# Copyright (c) 2023-2024 Aarno Labs LLC
+# Copyright (c) 2023-2025 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -36,6 +36,8 @@ import xml.etree.ElementTree as ET
 from typing import Callable, Dict, List, Mapping, TYPE_CHECKING
 
 from chc.proof.AssumptionType import AssumptionType
+from chc.proof.OutputParameterRejectionReason import OutputParameterRejectionReason
+from chc.proof.OutputParameterStatus import OutputParameterStatus
 from chc.proof.CFunPODictionaryRecord import podregistry
 from chc.proof.PPOType import PPOType
 from chc.proof.SPOType import SPOType
@@ -66,10 +68,16 @@ class CFunPODictionary(object):
             cfun: "CFunction",
             xnode: ET.Element) -> None:
         self._cfun = cfun
+        self.output_parameter_rejection_reason_table = IndexedTable(
+            "output-parameter-rejection-reason-table")
+        self.output_parameter_status_table = IndexedTable(
+            "output-parameter-status-table")
         self.assumption_type_table = IndexedTable("assumption-table")
         self.ppo_type_table = IndexedTable("ppo-type-table")
         self.spo_type_table = IndexedTable("spo-type-table")
         self.tables = [
+            self.output_parameter_rejection_reason_table,
+            self.output_parameter_status_table,
             self.assumption_type_table,
             self.ppo_type_table,
             self.spo_type_table]
@@ -102,6 +110,19 @@ class CFunPODictionary(object):
 
     # ------------------------ Retrieve items from dictionary ----------------
 
+    def get_output_parameter_rejection_reason(
+            self, ix: int) -> OutputParameterRejectionReason:
+        return podregistry.mk_instance(
+            self,
+            self.output_parameter_rejection_reason_table.retrieve(ix),
+            OutputParameterRejectionReason)
+
+    def get_output_parameter_status(self, ix: int) -> OutputParameterStatus:
+        return podregistry.mk_instance(
+            self,
+            self.output_parameter_status_table.retrieve(ix),
+            OutputParameterStatus)
+
     def get_assumption_type(self, ix: int) -> AssumptionType:
         return podregistry.mk_instance(
             self, self.assumption_type_table.retrieve(ix), AssumptionType)
@@ -124,6 +145,14 @@ class CFunPODictionary(object):
         return self.spo_type_table.objectmap(self.get_spo_type)
 
     # ------------------------- Provide read/write xml service ---------------
+
+    def read_xml_output_parameter_status(
+            self, txnode: ET.Element, tag: str = "icops") -> OutputParameterStatus:
+        optix = txnode.get(tag)
+        if optix is not None:
+            return self.get_output_parameter_status(int(optix))
+        else:
+            raise UF.CHCError("Error in reading output-parameter-status")
 
     def read_xml_assumption_type(
             self, txnode: ET.Element, tag: str = "iast") -> AssumptionType:

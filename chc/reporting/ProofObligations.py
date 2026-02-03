@@ -32,6 +32,8 @@ import time
 from typing import (
     Any, Callable, cast, Dict, List, Sequence, Set, Tuple, TYPE_CHECKING)
 
+import chc.util.fileutil as UF
+
 if TYPE_CHECKING:
     from chc.app.CApplication import CApplication
     from chc.app.CFile import CFile
@@ -300,14 +302,19 @@ class FunctionDisplay:
                 prefix = po.get_display_prefix()
                 lines.append(prefix + " " + str(po))
                 lines.append((" " * indent) + str(expl))
+                deps = po.dependencies.invs
+                lines.append(
+                    ("\n" + " " * indent).join(
+                        str(self.cfunction.invdictionary.get_invariant_fact(i)
+                            for i in deps)))
             else:
                 lines.append("\n<?> " + str(po))
                 if po.has_diagnostic():
                     amsgs = po.diagnostic.argument_msgs
                     if len(amsgs) > 0:
                         for arg in sorted(amsgs):
-                            for s in sorted(amsgs[arg]):
-                                lines.append((" " * indent) + s)
+                            for amsg in amsgs[arg]:
+                                lines.append((" " * indent) + str(amsg))
                     kmsgs = po.diagnostic.keyword_msgs
                     if len(kmsgs) > 0:
                         for key in sorted(kmsgs):
@@ -316,7 +323,7 @@ class FunctionDisplay:
                     msgs = po.diagnostic.msgs
                     if len(msgs) > 0:
                         for m in msgs:
-                            lines.append((" " * indent) + m)
+                            lines.append((" " * indent) + str(m))
                     keys = po.diagnostic.argument_indices
                     for k in sorted(keys):
                         invids = po.diagnostic.get_invariant_ids(k)
@@ -382,6 +389,11 @@ class FunctionDisplay:
                 prefix = po.get_display_prefix()
                 lines.append(prefix + " " + str(po))
                 lines.append((" " * indent) + str(expl))
+                deps = po.dependencies.invs
+                lines.append(
+                    ("\n" + " " * indent).join(str(
+                        self.cfunction.invdictionary.get_invariant_fact(i))
+                                               for i in deps))
             else:
                 contexts.add(po.context)
                 lines.append("\n<?> " + str(po))
@@ -389,8 +401,8 @@ class FunctionDisplay:
                     amsgs = po.diagnostic.argument_msgs
                     if len(amsgs) > 0:
                         for arg in sorted(amsgs):
-                            for s in sorted(amsgs[arg]):
-                                lines.append((" " * indent) + s)
+                            for amsg in amsgs[arg]:
+                                lines.append((" " * indent) + str(amsg))
                     kmsgs = po.diagnostic.keyword_msgs
                     if len(kmsgs) > 0:
                         for key in sorted(kmsgs):
@@ -399,7 +411,7 @@ class FunctionDisplay:
                     msgs = po.diagnostic.msgs
                     if len(msgs) > 0:
                         for m in msgs:
-                            lines.append((" " * indent) + m)
+                            lines.append((" " * indent) + str(m))
                     keys = po.diagnostic.argument_indices
                     for k in sorted(keys):
                         invids = po.diagnostic.get_invariant_ids(k)
@@ -651,16 +663,20 @@ def project_proofobligation_stats_dict_to_string(
     pporesults = stats_dict["fileresults"]["ppos"]
     sporesults = stats_dict["fileresults"]["spos"]
 
-    rhlen = max([len(x) for x in pporesults])
-    lines.append(
-        proofobligation_stats_tostring(
-            pporesults, sporesults, rhlen=rhlen, header1="c files"))
+    if len(pporesults) > 0:
+        rhlen = max([len(x) for x in pporesults])
+        lines.append(
+            proofobligation_stats_tostring(
+                pporesults, sporesults, rhlen=rhlen, header1="c files"))
 
-    lines.append("\n\nProof Obligation Statistics")
+        lines.append("\n\nProof Obligation Statistics")
 
-    tagpporesults = stats_dict["tagresults"]["ppos"]
-    tagsporesults = stats_dict["tagresults"]["spos"]
-    lines.append(proofobligation_stats_tostring(tagpporesults, tagsporesults))
+        tagpporesults = stats_dict["tagresults"]["ppos"]
+        tagsporesults = stats_dict["tagresults"]["spos"]
+        lines.append(proofobligation_stats_tostring(tagpporesults, tagsporesults))
+
+    else:
+        lines.append("Zero primary proof obligations")
 
     return "\n".join(lines)
 
@@ -792,7 +808,6 @@ def tag_file_function_pos_tostring(
             for ff in sorted(fundict[f]):
                 lines.append("    Function: " + ff)
                 for po in sorted(fundict[f][ff], key=lambda po: po.line):
-                    invd = po.cfun.invdictionary
                     lines.append((" " * 6) + str(po))
                     if po.is_closed:
                         lines.append((" " * 14) + str(po.explanation))
@@ -801,27 +816,31 @@ def tag_file_function_pos_tostring(
                         amsgs = po.diagnostic.argument_msgs
                         if len(amsgs) > 0:
                             for arg in sorted(amsgs):
-                                for s in sorted(amsgs[arg]):
-                                    lines.append((" " * 14) + s)
+                                for amsg in amsgs[arg]:
+                                    lines.append((" " * 14) + str(amsg))
                         msgs = po.diagnostic.msgs
                         if len(msgs) > 0:
-                            lines.append((" " * 8) + " ---> " + msgs[0])
-                            for s in msgs[1:]:
-                                lines.append((" " * 14) + s)
+                            lines.append((" " * 8) + " ---> " + str(msgs[0]))
+                            for msg in msgs[1:]:
+                                lines.append((" " * 14) + str(msg))
                             lines.append(" ")
                         keys = po.diagnostic.argument_indices
-                        for k in keys:
-                            invids = po.diagnostic.get_invariant_ids(k)
-                            for id in invids:
-                                inv = invd.get_invariant_fact(id)
-                                if inv.is_nrv_fact:
-                                    inv = cast("CInvariantNRVFact", inv)
-                                    nrv = inv.non_relational_value
-                                    lines.append(
-                                        (" " * 14)
-                                        + str(k)
-                                        + ": "
-                                        + str(nrv))
+                        try:
+                            invd = po.cfun.invdictionary
+                            for k in keys:
+                                invids = po.diagnostic.get_invariant_ids(k)
+                                for id in invids:
+                                    inv = invd.get_invariant_fact(id)
+                                    if inv.is_nrv_fact:
+                                        inv = cast("CInvariantNRVFact", inv)
+                                        nrv = inv.non_relational_value
+                                        lines.append(
+                                            (" " * 14)
+                                            + str(k)
+                                            + ": "
+                                            + str(nrv))
+                        except UF.CHCError:
+                            pass
 
                         lines.append(" ")
 

@@ -39,7 +39,7 @@ from chc.app.CLocation import CLocation
 
 from chc.proof.CFunctionReturnsiteSPO import CFunctionReturnsiteSPO
 from chc.proof.CProofDependencies import CProofDependencies
-from chc.proof.CProofDiagnostic import CProofDiagnostic
+from chc.proof.CProofDiagnostic import CProofDiagnostic, SituatedMsg
 
 import chc.util.fileutil as UF
 
@@ -107,8 +107,10 @@ class CFunctionReturnsiteSPOs:
                         deps = CProofDependencies(self.cproofs, xpo)
                         status = po_status[xpo.get("s", "o")]
                         xexpl = xpo.find("e")
-                        expl = None if xexpl is None else xexpl.get("txt")
-                        diagnostic = CProofDiagnostic(xpo.find("d"))
+                        expl = (
+                            None if xexpl is None
+                            else SituatedMsg(self.cfun.cdictionary, xexpl))
+                        diagnostic = CProofDiagnostic(self.cproofs, xpo.find("d"))
                         self._spos[ipc].append(
                             CFunctionReturnsiteSPO(
                                 self, spotype, status, deps, expl, diagnostic))

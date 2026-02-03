@@ -6,7 +6,7 @@
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
 # Copyright (c) 2020-2022 Henny B. Sipma
-# Copyright (c) 2023-2024 Aarno Labs LLC
+# Copyright (c) 2023-2025 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +32,7 @@ from typing import List, TYPE_CHECKING
 
 from chc.app.CDictionaryRecord import CDeclarationsRecord
 
+import chc.util.fileutil as UF
 import chc.util.IndexedTable as IT
 
 if TYPE_CHECKING:
@@ -39,6 +40,7 @@ if TYPE_CHECKING:
     from chc.app.CTyp import CTyp
     from chc.app.CDeclarations import CDeclarations
     from chc.app.COffset import COffset
+    from chc.app.CVisitor import CVisitor
 
 
 class CInitInfo(CDeclarationsRecord):
@@ -54,6 +56,13 @@ class CInitInfo(CDeclarationsRecord):
     @property
     def is_compound(self) -> bool:
         return False
+
+    @property
+    def is_offset(self) -> bool:
+        return False
+
+    def accept(self, visitor: "CVisitor") -> None:
+        raise UF.CHCError("visitor not yet implemented for " + str(self))
 
 
 class CSingleInitInfo(CInitInfo):
@@ -73,6 +82,9 @@ class CSingleInitInfo(CInitInfo):
     def is_single(self) -> bool:
         return True
 
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_single_initinfo(self)
+
     def __str__(self) -> str:
         return str(self.exp)
 
@@ -91,18 +103,29 @@ class CCompoundInitInfo(CInitInfo):
         return self.dictionary.get_typ(self.args[0])
 
     @property
+    def is_compound(self) -> bool:
+        return True
+
+    @property
     def offset_initializers(self) -> List["COffsetInitInfo"]:
         return [self.decls.get_offset_init(x) for x in self.args[1:]]
 
     @property
-    def is_compound(self) -> bool:
-        return True
+    def is_struct(self) -> bool:
+        return self.typ.is_struct
+
+    @property
+    def is_union(self) -> bool:
+        return self.typ.is_union
+
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_compound_initinfo(self)
 
     def __str__(self) -> str:
         return "\n".join([str(x) for x in self.offset_initializers])
 
 
-class COffsetInitInfo(CDeclarationsRecord):
+class COffsetInitInfo(CInitInfo):
     """Component of a compound initializer.
 
     - args[0]: index of offset expression in cdictionary
@@ -117,8 +140,15 @@ class COffsetInitInfo(CDeclarationsRecord):
         return self.dictionary.get_offset(self.args[0])
 
     @property
+    def is_offset(self) -> bool:
+        return True
+
+    @property
     def initializer(self) -> CInitInfo:
         return self.decls.get_initinfo(self.args[1])
+
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_offset_initinfo(self)
 
     def __str__(self) -> str:
         return str(self.offset) + ":=" + str(self.initializer)

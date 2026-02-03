@@ -6,7 +6,7 @@
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
 # Copyright (c) 2020-2022 Henny B. Sipma
-# Copyright (c) 2023-2024 Aarno Labs LLC
+# Copyright (c) 2023-2025 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -32,11 +32,13 @@ from typing import Dict, List, Tuple, TYPE_CHECKING
 
 from chc.app.CDictionaryRecord import CDictionaryRecord, cdregistry
 
+import chc.util.fileutil as UF
 import chc.util.IndexedTable as IT
 
 if TYPE_CHECKING:
     from chc.app.CDictionary import CDictionary
     from chc.app.CExp import CExp
+    from chc.app.CVisitor import CVisitor
 
 
 class CLHost(CDictionaryRecord):
@@ -74,6 +76,9 @@ class CLHost(CDictionaryRecord):
 
     def to_dict(self) -> Dict[str, object]:
         return {"base": "lhost"}
+
+    def accept(self, visitor: "CVisitor") -> None:
+        raise UF.CHCError("visitor not implemented for: " + str(self))
 
     def __str__(self) -> str:
         return "lhostbase:" + self.tags[0]
@@ -115,6 +120,9 @@ class CLHostVar(CLHost):
     def to_dict(self) -> Dict[str, object]:
         return {"base": "var", "var": self.name}
 
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_lhostvar(self)
+
     def __str__(self) -> str:
         return self.name
 
@@ -151,6 +159,9 @@ class CLHostMem(CLHost):
 
     def to_dict(self) -> Dict[str, object]:
         return {"base": "mem", "exp": self.exp.to_dict()}
+
+    def accept(self, visitor: "CVisitor") -> None:
+        visitor.visit_lhostmem(self)
 
     def __str__(self) -> str:
         return "(*" + str(self.exp) + ")"
