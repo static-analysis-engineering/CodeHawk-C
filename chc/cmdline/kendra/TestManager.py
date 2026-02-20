@@ -6,7 +6,7 @@
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
 # Copyright (c) 2020-2022 Henny B. Sipma
-# Copyright (c) 2023-2024 Aarno Labs LLC
+# Copyright (c) 2023-2026 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -591,7 +591,7 @@ class TestManager:
                 for d in creffile.domains:
                     am = AnalysisManager(
                         capp, verbose=self.verbose, disable_timing=True)
-                    am.generate_and_check_file(cfilename, None, d)
+                    am.generate_and_check_file(cfilename, None, d, 0)
             cfile.reinitialize_tables()
             ppos = cfile.get_ppos()
             if delaytest:
@@ -672,7 +672,7 @@ class TestManager:
                 for d in creffile.domains:
                     am = AnalysisManager(
                         capp, verbose=self.verbose, disable_timing=True)
-                    am.generate_and_check_file(cfilename, None, d)
+                    am.generate_and_check_file(cfilename, None, d, 0)
             cappfile.reinitialize_tables()
             spos = cappfile.get_spos()
             if delaytest:
