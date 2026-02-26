@@ -6,7 +6,7 @@
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
 # Copyright (c) 2020-2022 Henny B. Sipma
-# Copyright (c) 2023-2025 Aarno Labs LLC
+# Copyright (c) 2023-2026 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -28,7 +28,7 @@
 # ------------------------------------------------------------------------------
 """Left-hand side value."""
 
-from typing import Dict, List, Tuple, TYPE_CHECKING
+from typing import cast, Dict, List, Tuple, TYPE_CHECKING
 
 from chc.app.CDictionaryRecord import CDictionaryRecord
 
@@ -36,7 +36,7 @@ import chc.util.IndexedTable as IT
 
 if TYPE_CHECKING:
     from chc.app.CDictionary import CDictionary
-    from chc.app.CLHost import CLHost
+    from chc.app.CLHost import CLHost, CLHostMem
     from chc.app.COffset import COffset
     from chc.app.CVisitor import CVisitor
 
@@ -94,4 +94,11 @@ class CLval(CDictionaryRecord):
         visitor.visit_lval(self)
 
     def __str__(self) -> str:
-        return str(self.lhost) + str(self.offset)
+        if self.lhost.is_mem:
+            if self.offset.is_no_offset or self.offset.is_field:
+                return str(self.lhost) + str(self.offset)
+            else:
+                lhost = cast("CLHostMem", self.lhost)
+                return "(" + str(lhost.exp) + ")" + str(self.offset)
+        else:
+            return str(self.lhost) + str(self.offset)

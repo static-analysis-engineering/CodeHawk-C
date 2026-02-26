@@ -4,7 +4,7 @@
 # ------------------------------------------------------------------------------
 # The MIT License (MIT)
 #
-# Copyright (c) 2024-2025  Aarno Labs, LLC
+# Copyright (c) 2024-2026  Aarno Labs, LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -577,7 +577,7 @@ def cproject_analyze_project(args: argparse.Namespace) -> NoReturn:
 
         if exitcode == 0:
             for i in range(1):
-                am.generate_and_check_app(analysisdomains, processes=maxprocesses)
+                am.generate_and_check_app(analysisdomains, 0, processes=maxprocesses)
                 capp.reinitialize_tables()
                 capp.update_spos()
 
@@ -586,7 +586,7 @@ def cproject_analyze_project(args: argparse.Namespace) -> NoReturn:
         if exitcode == 0:
             for i in range(5):
                 capp.update_spos()
-                am.generate_and_check_app(analysisdomains, processes=maxprocesses)
+                am.generate_and_check_app(analysisdomains, i + 1, processes=maxprocesses)
                 capp.reinitialize_tables()
 
                 exitcode = check_continuation()
