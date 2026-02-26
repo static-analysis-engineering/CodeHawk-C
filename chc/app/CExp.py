@@ -730,7 +730,7 @@ class CExpStartOf(CExp):
         visitor.visit_startof(self)
 
     def __str__(self) -> str:
-        return "&(" + str(self.lval) + ")"
+        return "&s(" + str(self.lval) + ")"
 
 
 @cdregistry.register_tag("fnapp", CExp)

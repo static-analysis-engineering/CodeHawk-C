@@ -236,7 +236,7 @@ class AnalysisManager:
                 print_status(str(cmd))
                 result = subprocess.call(
                     cmd, cwd=self.targetpath, stderr=subprocess.STDOUT)
-                print("\nResult: " + str(result))
+                print_status("\nResult: " + str(result))
             else:
                 result = subprocess.call(
                     cmd,
@@ -292,7 +292,7 @@ class AnalysisManager:
             self.capp.iter_files(f)
 
     def _generate_and_check_file_cmd_partial(
-            self, cfilepath: Optional[str], domains: str) -> List[str]:
+            self, cfilepath: Optional[str], domains: str, iteration: int) -> List[str]:
         cmd: List[str] = [
             self.canalyzer,
             "-summaries",
@@ -308,6 +308,7 @@ class AnalysisManager:
         if not (self.contractpath is None):
             cmd.extend(["-contractpath", self.contractpath])
         cmd.extend(["-projectname", self.capp.projectname])
+        cmd.extend(["-iteration", str(iteration)])
         if self.keep_system_includes:
             cmd.append("-keep_system_includes")
         if self.wordsize > 0:
@@ -330,11 +331,12 @@ class AnalysisManager:
             self,
             cfilename: str,
             cfilepath: Optional[str],
-            domains: str) -> None:
+            domains: str,
+            iteration: int) -> None:
         """Generate invariants and check proof obligations for a single file."""
 
         try:
-            cmd = self._generate_and_check_file_cmd_partial(cfilepath, domains)
+            cmd = self._generate_and_check_file_cmd_partial(cfilepath, domains, iteration)
             cmd.append(cfilename)
             chklogger.logger.info(
                 "Calling AI to generate invariants: %s",
@@ -342,7 +344,7 @@ class AnalysisManager:
             if self.verbose:
                 result = subprocess.call(
                     cmd, cwd=self.targetpath, stderr=subprocess.STDOUT)
-                print("\nResult: " + str(result))
+                print_status("\nResult: " + str(result))
             else:
                 result = subprocess.call(
                     cmd,
@@ -360,14 +362,14 @@ class AnalysisManager:
             print(args)
             exit(1)
 
-    def generate_and_check_app(self, domains: str, processes: int = 1) -> None:
+    def generate_and_check_app(self, domains: str, iteration: int, processes: int = 1) -> None:
         """Generate invariants and check proof obligations for application."""
 
         if processes > 1:
 
             def f(cfile: "CFile") -> None:
                 cmd = self._generate_and_check_file_cmd_partial(
-                    cfile.cfilepath, domains)
+                    cfile.cfilepath, domains, iteration)
                 cmd.append(cfile.cfilename)
                 self._execute_cmd(cmd)
 
@@ -376,7 +378,7 @@ class AnalysisManager:
 
             def f(cfile: "CFile") -> None:
                 self.generate_and_check_file(
-                    cfile.cfilename, cfile.cfilepath, domains)
+                    cfile.cfilename, cfile.cfilepath, domains, iteration)
 
             self.capp.iter_files(f)
         self.capp.iter_files(self.reset_tables)
