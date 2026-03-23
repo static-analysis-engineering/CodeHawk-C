@@ -61,6 +61,7 @@ po_predicate_names: Dict[str, str] = {
     'cus': 'unsigned-to-signed-cast',
     'cuu': 'unsigned-to-unsigned-cast',
     'dr': 'distinct-region',
+    'ew': 'errno-must-written',
     'fc': 'format-cast',
     'ft': 'format-string',
     'ga': 'global-address',
@@ -2230,6 +2231,22 @@ class CPOPreservedAllMemory(CPOPredicate):
     def __str__(self) -> str:
         return "preserves-all-memory()"
 
+@pdregistry.register_tag("ew", CPOPredicate)
+class CPOErrnoMustBeWritten(CPOPredicate):
+    """errno-must-written(): true if errno must have been written locally.
+    """
+
+    def __init__(
+            self, pd: "CFilePredicateDictionary", ixval: IT.IndexedTableValue
+    ) -> None:
+        CPOPredicate.__init__(self, pd, ixval)
+
+    @property
+    def is_errno_must_written(self) -> bool:
+        return True
+
+    def __str__(self) -> str:
+        return "errno-must-written()"
 
 @pdregistry.register_tag("pv", CPOPredicate)
 class CPOPreservedValue(CPOPredicate):
