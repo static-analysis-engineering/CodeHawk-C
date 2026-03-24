@@ -1588,7 +1588,7 @@ def parse() -> argparse.Namespace:
     cprojectanalyze.add_argument(
         "--analysis",
         default="undefined-behavior",
-        choices=["undefined-behavior", "outputparameters"],
+        choices=["undefined-behavior", "outputparameters", "errno"],
         help="choose analysis for creating primary proof obligations")
     cprojectanalyze.add_argument(
         "--collect-diagnostics",
