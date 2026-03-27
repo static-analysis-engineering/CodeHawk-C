@@ -4,7 +4,7 @@
 # ------------------------------------------------------------------------------
 # The MIT License (MIT)
 #
-# Copyright (c) 2024  Aarno Labs LLC
+# Copyright (c) 2024-2026  Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -203,12 +203,12 @@ def ppo_to_json_result(po: "CFunctionPO") -> JSONResult:
     content["predicate"] = str(po.predicate)
     content["context"] = programcontext_to_json_result(po.context).content
     if po.is_closed:
-        content["expl"] = po.explanation
+        content["expl"] = po.explanation_txt
     else:
         if po.has_diagnostic():
-            content["argdiagnostics"] = po.diagnostic.argument_msgs
+            content["argdiagnostics"] = po.diagnostic.argument_msgs_txt
             content["keydiagnostics"] = po.diagnostic.keyword_msgs
-            content["msgdiagnostics"] = po.diagnostic.msgs
+            content["msgdiagnostics"] = po.diagnostic.msgs_txt
     return JSONResult("ppo", content, "ok")
 
 

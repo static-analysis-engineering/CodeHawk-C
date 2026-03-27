@@ -6,7 +6,7 @@
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
 # Copyright (c) 2020-2022 Henny B. Sipma
-# Copyright (c) 2023-2024 Aarno Labs LLC
+# Copyright (c) 2023-2026 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -184,6 +184,16 @@ class CFunctionPO:
     @property
     def explanation(self) -> Optional["SituatedMsg"]:
         return self._explanation
+
+    @property
+    def explanation_txt(self) -> Optional[str]:
+        """Returns the text of the explanation message without the additional
+        details."""
+
+        if self.explanation is not None:
+            return self.explanation.msg
+        else:
+            return None
 
     def has_explanation(self) -> bool:
         return self._explanation is not None

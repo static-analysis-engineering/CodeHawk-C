@@ -4,7 +4,7 @@
 # ------------------------------------------------------------------------------
 # The MIT License (MIT)
 #
-# Copyright (c) 2024  Aarno Labs, LLC
+# Copyright (c) 2024-2026  Aarno Labs, LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -381,13 +381,13 @@ def juliet_analyze(args: argparse.Namespace) -> NoReturn:
         exit(1)
 
     for i in range(1):
-        am.generate_and_check_app("llrvisp", processes=jmaxproc)
+        am.generate_and_check_app("llrvisp", 0, processes=jmaxproc)
         capp.reinitialize_tables()
         capp.update_spos()
 
     for i in range(5):
         capp.update_spos()
-        am.generate_and_check_app("llrvisp", processes=jmaxproc)
+        am.generate_and_check_app("llrvisp", i + 1, processes=jmaxproc)
         capp.reinitialize_tables()
 
     def filefilter(filename: str) -> bool:

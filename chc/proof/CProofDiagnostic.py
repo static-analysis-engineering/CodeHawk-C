@@ -6,7 +6,7 @@
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
 # Copyright (c) 2020-2022 Henny B. Sipma
-# Copyright (c) 2023-2024 Aarno Labs LLC
+# Copyright (c) 2023-2026 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -149,6 +149,13 @@ class CProofDiagnostic:
         return self._msgs
 
     @property
+    def msgs_txt(self) -> List[str]:
+        """Returns the ext of the situated msgs without the additional
+        details."""
+
+        return [smsg.msg for smsg in self.msgs]
+
+    @property
     def argument_msgs(self) -> Dict[int, List[SituatedMsg]]:
         """Returns argument-specific diagnostic messages.
 
@@ -167,6 +174,16 @@ class CProofDiagnostic:
                                 SituatedMsg(self.cd, x) for x in n.findall("msg")]
                             self._amsgs[int(xargindex)] = msgs
         return self._amsgs
+
+    @property
+    def argument_msgs_txt(self) -> Dict[int, List[str]]:
+        """Returns the texts of the situated msgs without the additional
+        details."""
+
+        result: Dict[int, List[str]] = {}
+        for (index, smsgs) in self.argument_msgs.items():
+            result[index] = [smsg.msg for smsg in smsgs]
+        return result
 
     @property
     def keyword_msgs(self) -> Dict[str, List[str]]:
