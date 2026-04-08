@@ -231,10 +231,9 @@ class AnalysisManager:
             if cfilepath is not None:
                 cmd.extend(["-cfilepath", cfilepath])
             chklogger.logger.info(
-                "Ocaml analyzer is called with %s", str(" ".join(cmd)))
+                "Ocaml analyzer is called with %s", str(cmd))
             if self.verbose:
-                print_status(str(" ".join(cmd)))
-                print_status(self.targetpath)
+                print_status(str(cmd))
                 result = subprocess.call(
                     cmd, cwd=self.targetpath, stderr=subprocess.STDOUT)
                 print_status("\nResult: " + str(result))
