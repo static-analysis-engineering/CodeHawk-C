@@ -1231,3 +1231,17 @@ class XValidMem(XPredicate):
 
     def __str__(self) -> str:
         return "valid-mem(" + str(self.term) + ")"
+
+
+@ifdregistry.register_tag("ew", XPredicate)
+class XWritesErrno(XPredicate):
+    """errno must have been written locally.
+    """
+
+    def __init__(
+            self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+    ) -> None:
+        XPredicate.__init__(self, ifd, ixval)
+
+    def __str__(self) -> str:
+        return "errno-must-written()"
