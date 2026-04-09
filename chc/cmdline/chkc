@@ -759,7 +759,7 @@ def parse() -> argparse.Namespace:
     cfileanalyze.add_argument(
         "--analysis",
         default="undefined-behavior",
-        choices=["undefined-behavior", "outputparameters"],
+        choices=["undefined-behavior", "outputparameters", "errno"],
         help="choose analysis for creating primary proof obligations")
     cfileanalyze.add_argument(
         "--collect-diagnostics",
@@ -809,7 +809,7 @@ def parse() -> argparse.Namespace:
     cfilereport.add_argument(
         "--analysis",
         default="undefined-behavior",
-        choices=["undefined-behavior", "outputparameters"],
+        choices=["undefined-behavior", "outputparameters", "errno"],
         help="choose analysis for reporting results")
     cfilereport.add_argument(
         "--open",
@@ -857,7 +857,7 @@ def parse() -> argparse.Namespace:
     cfilerun.add_argument(
         "--analysis",
         default="undefined-behavior",
-        choices=["undefined-behavior", "outputparameters"],
+        choices=["undefined-behavior", "outputparameters", "errno"],
         help="choose analysis for creating primary proof obligations")
     cfilerun.add_argument(
         "--collect-diagnostics",
@@ -1588,7 +1588,7 @@ def parse() -> argparse.Namespace:
     cprojectanalyze.add_argument(
         "--analysis",
         default="undefined-behavior",
-        choices=["undefined-behavior", "outputparameters"],
+        choices=["undefined-behavior", "outputparameters", "errno"],
         help="choose analysis for creating primary proof obligations")
     cprojectanalyze.add_argument(
         "--collect-diagnostics",
@@ -1635,7 +1635,7 @@ def parse() -> argparse.Namespace:
     cprojectreport.add_argument(
         "--analysis",
         default="undefined-behavior",
-        choices=["undefined-behavior", "outputparameters"],
+        choices=["undefined-behavior", "outputparameters", "errno"],
         help="choose analysis for reporting results")
     cprojectreport.add_argument(
         "--verbose", "-v",
@@ -1667,7 +1667,7 @@ def parse() -> argparse.Namespace:
     cprojectreportfile.add_argument(
         "--analysis",
         default="undefined-behavior",
-        choices=["undefined-behavior", "outputparameters"],
+        choices=["undefined-behavior", "outputparameters", "errno"],
         help="choose analysis for reporting results")
     cprojectreportfile.add_argument(
         "--showcode",
