@@ -217,9 +217,18 @@ class AnalysisManager:
             self,
             cfilename: str,
             cfilepath: Optional[str] = None,
-            po_cmd: str = "undefined-behavior-primary"
-    ) -> None:
-        """Call analyzer to create primary proof obligations for a single file."""
+            po_cmd: str = "undefined-behavior-primary",
+            return_status: bool = False,
+            chloglevel: str = "WARNING"
+    ) -> int:
+        """Call analyzer to create primary proof obligations for a single file.
+
+        If return_status is False this method exits with 1 if the call to the
+        ocaml analyzer fails. If return_status is True this method always returns
+        the return status of the ocaml analyzer to the caller. The latter is
+        typically used for the regression tests, such that subsequent tests will
+        still be run.
+        """
 
         chklogger.logger.info(
             "Create primiary proof obligations for file %s with path %s",
@@ -230,6 +239,7 @@ class AnalysisManager:
             cmd.append(cfilename)
             if cfilepath is not None:
                 cmd.extend(["-cfilepath", cfilepath])
+            cmd.extend(["-loglevel", chloglevel])
             chklogger.logger.info(
                 "Ocaml analyzer is called with %s", str(cmd))
             if self.verbose:
@@ -246,6 +256,8 @@ class AnalysisManager:
                 )
             if result != 0:
                 print("Error in creating primary proof obligations")
+                if return_status:
+                    return 1
                 exit(1)
             pcfilename = (
                 cfilename if cfilepath is None
@@ -255,9 +267,13 @@ class AnalysisManager:
             cfile.reload_ppos()
             cfile.reload_spos()
         except subprocess.CalledProcessError as args:
+            if return_status:
+                return 1
             print(args.output)
             print(args)
             exit(1)
+
+        return 0
 
     def create_app_primary_proofobligations(
             self,
@@ -332,12 +348,22 @@ class AnalysisManager:
             cfilename: str,
             cfilepath: Optional[str],
             domains: str,
-            iteration: int) -> None:
-        """Generate invariants and check proof obligations for a single file."""
+            iteration: int,
+            return_status=False,
+            chloglevel: str = "WARNING") -> int:
+        """Generate invariants and check proof obligations for a single file.
+
+        If return_status is False this method exits with 1 if the call to the
+        ocaml analyzer fails. If return_status is True this method always returns
+        the return status of the ocaml analyzer to the caller. The latter is
+        typically used for the regression tests, such that subsequent tests will
+        still be run.
+"""
 
         try:
             cmd = self._generate_and_check_file_cmd_partial(cfilepath, domains, iteration)
             cmd.append(cfilename)
+            cmd.extend(["-loglevel", chloglevel])
             chklogger.logger.info(
                 "Calling AI to generate invariants: %s",
                 " ".join(cmd))
@@ -354,13 +380,19 @@ class AnalysisManager:
                 )
                 print_status("\nGenerate-and-check: result: " + str(result))
             if result != 0:
+                if return_status:
+                    return 1
                 chklogger.logger.error(
                     "Error in generating invariants for %s", cfilename)
                 exit(1)
         except subprocess.CalledProcessError as args:
+            if return_status:
+                return 1
             print(args.output)
             print(args)
             exit(1)
+
+        return 0
 
     def generate_and_check_app(self, domains: str, iteration: int, processes: int = 1) -> None:
         """Generate invariants and check proof obligations for application."""

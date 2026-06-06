@@ -5,7 +5,7 @@
 # ------------------------------------------------------------------------------
 # The MIT License (MIT)
 #
-# Copyright (c) 2023-2025  Aarno Labs, LLC
+# Copyright (c) 2023-2026  Aarno Labs, LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -64,6 +64,7 @@ import chc.cmdline.c_file.cfiletableutil as CT
 import chc.cmdline.c_project.cprojectutil as P
 import chc.cmdline.juliet.julietutil as J
 import chc.cmdline.kendra.kendrautil as K
+import chc.cmdline.regression.regressionutil as R
 
 from chc.util.Config import Config
 import chc.util.loggingutil as UL
@@ -417,6 +418,30 @@ def parse() -> argparse.Namespace:
         "tablename",
         help="name of table")
     kendrashowfunctiontable.set_defaults(func=K.kendra_show_function_table)
+
+    # ----------------------------------------------------- regression tests ---
+
+    regressioncmd = subparsers.add_parser("regression")
+    regressionparsers = regressioncmd.add_subparsers(title="show options")
+
+    # --- regression list
+    regressionlist = regressionparsers.add_parser("list")
+    regressionlist.set_defaults(func=R.regression_list)
+
+    # --- regression test-file
+    regressiontestfile = regressionparsers.add_parser("test-file")
+    regressiontestfile.add_argument(
+        "cfilename", help="name of testfile to run (e.g., bool_integer_promotion.c)")
+    regressiontestfile.set_defaults(func=R.regression_test_file)
+
+    # --- regressions run-tests
+    regressionruntests = regressionparsers.add_parser("run-tests")
+    regressionruntests.add_argument(
+        "--loglevel", "-log",
+        choices=UL.LogLevel.options(),
+        default="WARNING",
+        help="activate logging in CHC with given level")
+    regressionruntests.set_defaults(func=R.regression_run_tests)
 
     # --------------------------------------------------------------- juliet ---
 
