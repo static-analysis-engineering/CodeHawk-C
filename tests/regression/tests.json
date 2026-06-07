@@ -1,0 +1,31 @@
+{
+    "date": "2026-06-05",
+    "tests": [
+        {
+            "filename": "bool_integer_promotion.c",
+            "expected": {
+                "safe": 10
+            }
+        },
+        {
+            "filename": "enum_integer_promotion.c",
+            "expected": {
+                "safe": 8
+            }
+        },
+        {
+            "filename": "imagick-float-arithmetic-po.c",
+            "expected": {
+                "safe": 37
+            }
+        },
+        {
+            "filename": "test_POCheckInitialized.c",
+            "expected": {
+                "safe": 42,
+                "open": 5
+            },
+            "goal": "improve"
+        }
+    ]
+}
