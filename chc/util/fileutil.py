@@ -1573,6 +1573,23 @@ def get_kendra_cpath(cfilename: str) -> str:
         raise CHCFileNotFoundError(cfilename)
 
 
+# --------------------------------------------------------- regression tests ---
+
+def get_regression_test_path() -> str:
+    return Config().regressiondir
+
+
+def get_regression_testfile_path(filename: str) -> str:
+    cfilename = os.path.join(get_regression_test_path(), filename)
+    if os.path.isfile(cfilename):
+        return cfilename
+    raise CHCFileNotFoundError(cfilename)
+
+
+def get_regression_tests_json_file() -> str:
+    return os.path.join(get_regression_test_path(), "tests.json")
+
+
 # --------------------------------------------------------libc summary tests ---
 
 

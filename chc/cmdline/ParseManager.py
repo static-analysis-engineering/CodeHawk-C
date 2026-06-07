@@ -225,7 +225,9 @@ class ParseManager(object):
             self,
             cfilename: str,
             copyfiles: bool = True,
-            moreoptions: List[str] = []) -> str:
+            moreoptions: List[str] = [],
+            chloglevel: str = "WARNING"
+    ) -> str:
         """Invoke C preprocessor on c source file.
 
         Args:
@@ -518,7 +520,7 @@ class ParseManager(object):
                     targetfiles.add_file(self.normalize_filename(fname))
         targetfiles.save_xml_file(self.analysisresultspath)
 
-    def parse_ifile(self, ifilename: str) -> int:
+    def parse_ifile(self, ifilename: str, chloglevel: str = "WARNING") -> int:
         """Invoke the CodeHawk C parser frontend on preprocessed source file
 
         Args:
@@ -539,6 +541,7 @@ class ParseManager(object):
         ]
         if not self.keep_system_includes:
             cmd.append("-keep_system_includes")
+        cmd.extend(["-loglevel", chloglevel])
         if self.keepUnused:
             cmd.append("-keepUnused")
         cmd.append(ifilename)
