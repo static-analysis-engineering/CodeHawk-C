@@ -20,6 +20,14 @@
             }
         },
         {
+            "filename": "my_regexec_pointer_diff_cast.c",
+            "expected": {
+                "safe": 106,
+                "open": 9
+            },
+            "goal": "improve"
+        },
+        {
             "filename": "test_POCheckInitialized.c",
             "expected": {
                 "safe": 42,
