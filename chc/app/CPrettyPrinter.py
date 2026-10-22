@@ -4,7 +4,7 @@
 # ------------------------------------------------------------------------------
 # The MIT License (MIT)
 #
-# Copyright (c) 2025  Aarno Labs LLC
+# Copyright (c) 2025-2026  Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -38,6 +38,9 @@ import chc.app.CTyp as CT
 from chc.app.CVarInfo import CVarInfo
 
 from chc.app.CVisitor import CVisitor
+
+import chc.util.fileutil as UF
+from chc.util.loggingutil import chklogger
 
 if TYPE_CHECKING:
     from chc.app.CFileGlobals import CGCompTag, CGType, CGVarDef
@@ -195,15 +198,22 @@ class CPrettyPrinter(CVisitor):
         self.ccode.newline()
         self.ccode.write("}")
 
-    def visit_cgvardef(self, cgvardef: "CGVarDef") -> None:
-        cgvardef.location.accept(self)
-        self.ccode.newline(indent=0)
-        cgvardef.varinfo.vtype.accept(self)
-        self.ccode.write(" ")
-        self.ccode.write(cgvardef.vname)
-        if cgvardef.initializer is not None:
-            self.ccode.write(" = ")
-            cgvardef.initializer.accept(self)
+    def visit_cgvardef(self, gvardef: "CGVarDef") -> None:
+        gvardef.location.accept(self)
+
+        # 1. Capture storage specifiers safely (e.g., static, extern)
+        storage = ""
+        if gvardef.varinfo.vstorage == "static":
+            storage = "static "
+        elif gvardef.varinfo.vstorage == "extern":
+            storage = "extern "
+
+        # 2. Convert the entire type and variable name atomically
+        # This prevents sequential chunk printing like "char [8] weak_keys[16]"
+        full_declaration = self.type_to_string(gvardef.varinfo.vtype, gvardef.varinfo.vname)
+
+        # 3. Write it out cleanly as a single unit
+        self.ccode.write(f"{storage}{full_declaration};")
 
     def visit_typeinfo(self, typeinfo: "CTypeInfo") -> None:
         self.ccode.newline(indent=0)
@@ -287,12 +297,7 @@ class CPrettyPrinter(CVisitor):
         self.ccode.write(" *")
 
     def visit_arraytyp(self, t: CT.CTypArray) -> None:
-        t.array_basetype.accept(self)
-        self.ccode.write("[")
-        if t.array_size_expr is not None:
-            # self.ccode.write("?")
-            t.array_size_expr.accept(self)
-        self.ccode.write("]")
+        self.ccode.write(self.type_to_string(t))
 
     def visit_funtyp(self, t: CT.CTypFun) -> None:
         """Emits a function type without name."""
@@ -329,34 +334,15 @@ class CPrettyPrinter(CVisitor):
         if vinfo.vtype.is_function:
             return "error"
 
-        if vinfo.vtype.is_array:
-            sizexps: List[Optional[CE.CExp]] = []
-            self.ccode.newline()
-            atype = cast(CT.CTypArray, vinfo.vtype)
-            sizexps.append(atype.array_size_expr)
-            basetype = atype.array_basetype
-            while basetype.is_array:
-                atype = cast(CT.CTypArray, basetype)
-                sizexps.append(atype.array_size_expr)
-                basetype = atype.array_basetype
-            basetype.accept(self)
-            self.ccode.write(" ")
-            self.ccode.write(vinfo.vname)
-            for s in sizexps:
-                self.ccode.write("[")
-                if s:
-                    s.accept(self)
-                self.ccode.write("]")
-            self.ccode.write(";")
-            self.ccode.newline()
-            return str(self.ccode)
+        storage = ""
+        if vinfo.vstorage == "static":
+            storage = "static "
+        elif vinfo.vstorage == "extern":
+            storage = "extern "
 
         self.ccode.newline()
-        vinfo.vtype.accept(self)
-        self.ccode.write(" ")
-        self.ccode.write(vinfo.vname)
-        if srcloc is not None:
-            self.write_chkx_srcloc_attribute(srcloc, vinfo.line, binloc)
+        full_declaration = self.type_to_string(vinfo.vtype, vinfo.vname)
+        self.ccode.write(f"{storage}{full_declaration}")
         self.ccode.write(";")
         self.ccode.newline()
         return str(self.ccode)
@@ -369,6 +355,7 @@ class CPrettyPrinter(CVisitor):
         if not vinfo.vtype.is_function:
             return "error"
 
+        self.ccode.newline()
         self.write_function_signature(vinfo, srcloc=srcloc, binloc=binloc)
         self.ccode.write(";")
         return str(self.ccode)
@@ -379,32 +366,11 @@ class CPrettyPrinter(CVisitor):
             srcloc: Optional[str] = None,
             binloc: Optional[str] = None) -> None:
         self.ccode.newline()
-        ftype = cast(CT.CTypFun, vinfo.vtype)
-        if ftype.return_type.is_function_pointer:
-            returntyp = cast(CT.CTypPtr, ftype.return_type)
-            retfntyp = cast(CT.CTypFun, returntyp.pointedto_type)
-            retfntyp.return_type.accept(self)
-            self.ccode.write(" (*")
-            self.ccode.write(vinfo.vname)
-            self.ccode.write("(")
-            if ftype.funargs is not None:
-                ftype.funargs.accept(self)
-            self.ccode.write("))(")
-            if retfntyp.funargs is not None:
-                retfntyp.funargs.accept(self)
-            self.ccode.write(")")
-            if srcloc is not None:
-                self.write_chkx_srcloc_attribute(srcloc, vinfo.line, binloc)
-        else:
-            ftype.return_type.accept(self)
-            self.ccode.write(" ")
-            self.ccode.write(vinfo.vname)
-        self.ccode.write("(")
-        if ftype.funargs is not None:
-            ftype.funargs.accept(self)
-        if ftype.is_vararg:
-            self.ccode.write(", ...")
-        self.ccode.write(")")
+
+        # Build the entire type signature starting at the core function name identifier
+        signature_str = self.type_to_string(vinfo.vtype, vinfo.vname)
+        self.ccode.write(signature_str)
+
         if srcloc is not None:
             self.write_chkx_srcloc_attribute(srcloc, vinfo.line, binloc)
 
@@ -427,7 +393,6 @@ class CPrettyPrinter(CVisitor):
             self.ccode.write(")")
         else:
             t.return_type.accept(self)
-            self.ccode.write(" (*")
             self.ccode.write(name)
             self.ccode.write(")(")
             if t.funargs is not None:
@@ -444,33 +409,125 @@ class CPrettyPrinter(CVisitor):
                 self.ccode.write(", ")
             args[-1].accept(self)
 
+    def type_to_string(self, t: CT.CTyp, inner_str: str = "") -> str:
+        """
+        Helper method to generate explicit, C types recursively from the inside
+        out, expanding all typedef aliases and maintaining const correctness.
+        """
+        is_const = False
+
+        # --- Pre-processing Phase: Force Structural Unrolling ---
+        while t.is_named_type:
+            if hasattr(t, 'attributes') and t.attributes is not None:
+                attr_names = [attr.name for attr in t.attributes.attributes]
+                if any(name in attr_names for name in ["const", "pconst"]):
+                    is_const = True
+            t = cast(CT.CTypNamed, t).expand()
+
+        # Capture const markers at this recursive layer before doing anything else
+        if hasattr(t, 'attributes') and t.attributes is not None:
+            attr_names = [attr.name for attr in t.attributes.attributes]
+            if any(name in attr_names for name in ["const", "pconst"]):
+                is_const = True
+
+        # Forced parenthetical grouping for function pointers
+        if t.is_pointer:
+            ptr_t = cast(CT.CTypPtr, t)
+            if ptr_t.pointedto_type.expand().is_function:
+                inner_str = f"(*{inner_str})"
+                if is_const:
+                    inner_str = f"const {inner_str}"
+                return self.type_to_string(ptr_t.pointedto_type, inner_str)
+
+        # --- Standard Structural Match Rules ---
+        if t.is_void:
+            base = "void"
+            return (f"const {base} {inner_str}".strip()
+                    if is_const else f"{base} {inner_str}".strip())
+
+        elif t.is_int:
+            base = integernames[cast(CT.CTypInt, t).ikind]
+            return (f"const {base} {inner_str}".strip()
+                    if is_const else f"{base} {inner_str}".strip())
+
+        elif t.is_float:
+            base = str(t)
+            return (f"const {base} {inner_str}".strip()
+                    if is_const else f"{base} {inner_str}".strip())
+        elif t.is_comp:
+            comp_t = cast(CT.CTypComp, t)
+            prefix = "struct " if comp_t.is_comp else "union "
+            base = f"{prefix}{self.de_anon_name(comp_t.name)}"
+            return (f"const {base} {inner_str}".strip()
+                    if is_const else f"{base} {inner_str}".strip())
+
+        elif t.is_enum:
+            base = f"enum {cast(CT.CTypEnum, t).name}"
+            return (f"const {base} {inner_str}".strip()
+                    if is_const else f"{base} {inner_str}".strip())
+
+        elif t.is_pointer:
+            ptr_t = cast(CT.CTypPtr, t)
+            basetype = (ptr_t.pointedto_type.expand()
+                        if ptr_t.pointedto_type.is_named_type
+                        else ptr_t.pointedto_type)
+
+            # Note: In C, "const Type *var" attaches the const attribute to the
+            # 'pointedto_type' target layer, while "Type *const var" attaches
+            # it to the pointer shell layer itself.
+            # Here, 'is_const' is treated at the pointer shell layer as a constant
+            # pointer wrapper descriptor.
+            ptr_modifier = " *const " if is_const else " *"
+
+            if basetype.is_function or basetype.is_array:
+                return self.type_to_string(
+                    basetype, f"({ptr_modifier.strip()}{inner_str})")
+            else:
+                # Recurse straight down into the pointed-to type.
+                # When the recursion checks the attributes of 'ptr_t.pointedto_type',
+                # it will automatically find the 'const' marker if the target
+                # data structure is constant.
+                return self.type_to_string(
+                    ptr_t.pointedto_type,
+                    f"{ptr_modifier}{inner_str}".replace("  ", " "))
+
+        elif t.is_array:
+            arr_t = cast(CT.CTypArray, t)
+            size_str = ""
+            if arr_t.array_size_expr is not None:
+                temp_pp = CPrettyPrinter()
+                temp_pp.ccode.newline(indent=0)
+                arr_t.array_size_expr.accept(temp_pp)
+                size_str = str(temp_pp.ccode).strip()
+
+            new_inner = f"{inner_str}[{size_str}]" if inner_str else f"[{size_str}]"
+            return self.type_to_string(arr_t.array_basetype, new_inner)
+
+        elif t.is_function:
+            fun_t = cast(CT.CTypFun, t)
+
+            if fun_t.funargs is None or len(fun_t.funargs.arguments) == 0:
+                args_str = "void"
+            else:
+                arg_list = []
+                for arg in fun_t.funargs.arguments:
+                    arg_list.append(self.type_to_string(arg.typ, arg.name))
+                args_str = ", ".join(arg_list)
+
+            if fun_t.is_vararg:
+                args_str += ", ..."
+
+            return self.type_to_string(fun_t.return_type, f"{inner_str}({args_str})")
+
+        elif t.is_builtin_vaargs:
+            return f"va_list {inner_str}".strip()
+
+        return f"[[unknown type]] {inner_str}".strip()
+
     def visit_funarg(self, funarg: CT.CFunArg) -> None:
-        if funarg.typ.is_function_pointer:
-            argtyp = cast(CT.CTypPtr, funarg.typ)
-            fnptr = cast(CT.CTypFun, argtyp.pointedto_type)
-            self.funtypptr_with_name(fnptr, funarg.name)
-            return
 
-        if funarg.typ.is_pointer:
-            argtyp = cast(CT.CTypPtr, funarg.typ)
-            ptargtyp = argtyp.pointedto_type
-            if ptargtyp.is_named_type:
-                ptx = cast(CT.CTypNamed, ptargtyp).expand()
-                if ptx.is_function:
-                    ptx = cast(CT.CTypFun, ptx)
-                    self.funtypptr_with_name(ptx, funarg.name)
-                    return
-
-            # if (
-            #        argtyp.attributes.length > 0
-            #         and argtyp.attributes.attributes[0].name == "arraylen"):
-            #    self.ptrarg_with_attribute_length(
-            #        ptargtyp, argtyp.attributes.attributes[0], funarg.name)
-            #    return
-
-        funarg.typ.accept(self)
-        self.ccode.write(" ")
-        self.ccode.write(funarg.name)
+        arg_str = self.type_to_string(funarg.typ, funarg.name)
+        self.ccode.write(arg_str)
 
     def ptrarg_with_attribute_length(
             self, t: CT.CTyp, a: CA.CAttribute, name: str) -> None:
@@ -503,18 +560,6 @@ class CPrettyPrinter(CVisitor):
         self.ccode.write("[")
         self.ccode.write(str(aparam.intvalue))
         self.ccode.write("]")
-
-    '''
-    def visit_attributes(self, a: CA.CAttributes) -> None:
-        if a.length == 0:
-            return
-        if a.attributes[0].name in ["const", "pconst"]:
-            self.ccode.write("const ")
-        elif a.attributes[0].name == "volatile":
-            self.ccode.write("volatile ")
-        else:
-            self.ccode.write("[[" + a.attributes[0].name + " not yet supported]]")
-    '''
 
     def visit_constexp(self, e: CE.CExpConst) -> None:
         self.ccode.write(str(e))
@@ -699,7 +744,8 @@ class CPrettyPrinter(CVisitor):
             self.ccode.write(a.name)
             self.ccode.write(" ")
         else:
-            self.ccode.write("attribute not yet supported " + str(a))
+            chklogger.logger.warning(
+                "attribute not yet supported %s", str(a))
 
     def visit_attr_int(self, a: CA.CAttrInt) -> None:
         pass

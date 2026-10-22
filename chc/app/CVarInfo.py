@@ -80,6 +80,10 @@ class CVarInfo(CDeclarationsRecord):
         return self.vglob
 
     @property
+    def is_static(self) -> bool:
+        return self.is_global and self.vstorage == "s"
+
+    @property
     def vglob(self) -> bool:
         return self.args[3] == 1
 

@@ -49,6 +49,7 @@ import chc.cmdline.jsonresultutil as JU
 
 from chc.linker.CLinker import CLinker
 
+from chc.reporting.BinCheckData import BinCheckData
 import chc.reporting.ProofObligations as RP
 
 from chc.util.Config import Config
@@ -57,6 +58,7 @@ from chc.util.loggingutil import chklogger, LogLevel
 
 if TYPE_CHECKING:
     from chc.app.CAttributes import CAttributes
+    from chc.app.CCompInfo import CCompInfo
     from chc.app.CFile import CFile
     from chc.app.CFunction import CFunction
     from chc.app.CInstr import CInstr, CCallInstr
@@ -346,6 +348,47 @@ def cproject_scan_op(args: argparse.Namespace) -> NoReturn:
         else:
             resultstring = json.dumps(jsonok, indent=2)
             print(resultstring)
+
+    exit(0)
+
+
+def cproject_save_local_buffers(args: argparse.Namespace) -> NoReturn:
+
+    # arguments
+    tgtpath: str = args.tgtpath
+    projectname: str = args.projectname
+    outputfilename: str = args.outputfilename
+    loglevel: str = args.loglevel
+    logfilename: Optional[str] = args.logfilename
+    logfilemode: str = args.logfilemode
+
+    if not os.path.isdir(tgtpath):
+        print_error(f"Target directory {tgtpath} not found")
+        exit(1)
+
+    targetpath = os.path.abspath(tgtpath)
+    projectpath = targetpath
+    contractpath = os.path.join(projectpath, "cch_contracts")
+
+    if not UF.has_analysisresults_path(targetpath, projectname):
+        print_error(
+            f"No analysis results found for {projectname} in {targetpath}")
+        exit(1)
+
+    set_logging(
+        loglevel,
+        targetpath,
+        logfilename=logfilename,
+        mode=logfilemode,
+        msg="c-project save-local-buffers invoked")
+
+    capp = CApplication(
+        projectpath, projectname, targetpath, contractpath)
+
+    jsonresult = BinCheckData(capp).to_json_result()
+    jsonok = JU.jsonok("save_bincheck_data", jsonresult.content)
+    with open(outputfilename, "w") as fp:
+        json.dump(jsonok, fp, indent=2)
 
     exit(0)
 
