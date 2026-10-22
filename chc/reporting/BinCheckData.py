@@ -105,7 +105,7 @@ class BinCheckTypeCompound(BinCheckTypeClassification):
 
     def __init__(self, ctype: "CTypComp") -> None:
         BinCheckTypeClassification.__init__(self, ctype)
-        if not ctype.ckey in self.compinfokeys:
+        if ctype.ckey not in self.compinfokeys:
             self.compinfos.setdefault(ctype.ckey, ctype.compinfo)
 
     @property
@@ -170,10 +170,10 @@ class BinCheckTypeClassificationFactory:
         elif ctype.is_pointer:
             return BinCheckTypePointer(ctype)
         elif ctype.is_array:
-            actype = cast ("CTypArray", ctype)
+            actype = cast("CTypArray", ctype)
             return BinCheckTypeArray(actype)
         elif ctype.is_comp:
-            cctype = cast ("CTypComp", ctype)
+            cctype = cast("CTypComp", ctype)
             return BinCheckTypeCompound(cctype)
         else:
             return BinCheckTypeOther(ctype)

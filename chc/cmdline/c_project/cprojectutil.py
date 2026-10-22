@@ -360,7 +360,7 @@ def cproject_save_local_buffers(args: argparse.Namespace) -> NoReturn:
     outputfilename: str = args.outputfilename
     loglevel: str = args.loglevel
     logfilename: Optional[str] = args.logfilename
-    logfilemode: str = args.logfilemode    
+    logfilemode: str = args.logfilemode
 
     if not os.path.isdir(tgtpath):
         print_error(f"Target directory {tgtpath} not found")
@@ -380,7 +380,7 @@ def cproject_save_local_buffers(args: argparse.Namespace) -> NoReturn:
         targetpath,
         logfilename=logfilename,
         mode=logfilemode,
-        msg="c-project save-local-buffers invoked")        
+        msg="c-project save-local-buffers invoked")
 
     capp = CApplication(
         projectpath, projectname, targetpath, contractpath)

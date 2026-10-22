@@ -1594,7 +1594,7 @@ def parse() -> argparse.Namespace:
         "--logfilemode",
         choices=["a", "w"],
         default="a",
-        help="file mode for log file: append (a, default), or write (w)")    
+        help="file mode for log file: append (a, default), or write (w)")
     cprojectlocalbuffers.set_defaults(func=P.cproject_save_local_buffers)
 
     # --- cil-source
