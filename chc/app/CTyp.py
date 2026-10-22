@@ -6,7 +6,7 @@
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
 # Copyright (c) 2020-2022 Henny B. Sipma
-# Copyright (c) 2023-2025 Aarno Labs LLC
+# Copyright (c) 2023-2026 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -561,6 +561,9 @@ class CTypArray(CTyp):
 
     def has_array_size_expr(self) -> bool:
         return self.args[1] >= 0
+
+    def has_array_constant_size(self) -> bool:
+        return not (self.size < 0)
 
     @property
     def size(self) -> int:

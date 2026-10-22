@@ -1573,6 +1573,30 @@ def parse() -> argparse.Namespace:
         help="file mode for log file: append (a, default), or write (w)")
     cprojectmkheader.set_defaults(func=P.cproject_mk_headerfile)
 
+    # --- save-local-buffers
+    cprojectlocalbuffers = cprojectparsers.add_parser("save-local-buffers")
+    cprojectlocalbuffers.add_argument(
+        "tgtpath", help="directory that contains the parse/analysis results")
+    cprojectlocalbuffers.add_argument(
+        "projectname", help="name of the project")
+    cprojectlocalbuffers.add_argument(
+        "--outputfilename", "-o", required=True,
+        help="name of json output file")
+    cprojectlocalbuffers.add_argument(
+        "--loglevel", "-log",
+        choices=UL.LogLevel.options(),
+        default="NONE",
+        help="activate logging with given level (default to stderr)")
+    cprojectlocalbuffers.add_argument(
+        "--logfilename",
+        help="name of file to write log messages")
+    cprojectlocalbuffers.add_argument(
+        "--logfilemode",
+        choices=["a", "w"],
+        default="a",
+        help="file mode for log file: append (a, default), or write (w)")    
+    cprojectlocalbuffers.set_defaults(func=P.cproject_save_local_buffers)
+
     # --- cil-source
     cprojectcilsource = cprojectparsers.add_parser("cil-source")
     cprojectcilsource.add_argument(
