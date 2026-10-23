@@ -118,6 +118,7 @@ def cproject_parse_project(args: argparse.Namespace) -> NoReturn:
     projectname: str = args.projectname
     opttgtpath: Optional[str] = args.tgtpath
     keep_system_includes: bool = args.keep_system_includes
+    tgtplatform: str = args.target_platform
     loglevel: str = args.loglevel
     logfilename: Optional[str] = args.logfilename
     logfilemode: str = args.logfilemode
@@ -168,7 +169,8 @@ def cproject_parse_project(args: argparse.Namespace) -> NoReturn:
         projectpath,
         projectname,
         targetpath,
-        keep_system_includes=keep_system_includes)
+        keep_system_includes=keep_system_includes,
+        tgtplatform=tgtplatform)
     parsemanager.remove_semantics()
     parsemanager.initialize_paths()
     exitcode = parsemanager.parse_with_ccommands(compilecommands, copyfiles=True)

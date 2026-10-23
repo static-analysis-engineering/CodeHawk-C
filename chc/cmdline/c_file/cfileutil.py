@@ -121,6 +121,7 @@ def cfile_parse_file(args: argparse.Namespace) -> NoReturn:
     pcfilename: str = os.path.abspath(args.filename)
     opttgtpath: Optional[str] = args.tgtpath
     keep_system_includes: bool = args.keep_system_includes
+    tgtplatform: str = args.target_platform
     loglevel: str = args.loglevel
     logfilename: Optional[str] = args.logfilename
     logfilemode: str = args.logfilemode
@@ -159,7 +160,11 @@ def cfile_parse_file(args: argparse.Namespace) -> NoReturn:
     chklogger.logger.info("Target path: %s", targetpath)
 
     parsemanager = ParseManager(
-        projectpath, projectname, targetpath, keep_system_includes=keep_system_includes)
+        projectpath,
+        projectname,
+        targetpath,
+        keep_system_includes=keep_system_includes,
+        tgtplatform=tgtplatform)
     parsemanager.remove_semantics()
     parsemanager.initialize_paths()
 

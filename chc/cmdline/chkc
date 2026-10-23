@@ -663,6 +663,10 @@ def parse() -> argparse.Namespace:
         "--keep-system-includes",
         action="store_true",
         help="do not filter out functions from files with absolute file names")
+    cprojectparse.add_argument(
+        "--target-platform",
+        default="-m64",
+        help="target platform argument for build system")
     cfileparse.add_argument(
         "--loglevel", "-log",
         choices=UL.LogLevel.options(),
@@ -1491,6 +1495,10 @@ def parse() -> argparse.Namespace:
         "--keep-system-includes",
         action="store_true",
         help="don't filter out functions from files with absolute filenames")
+    cprojectparse.add_argument(
+        "--target-platform",
+        default="-m64",
+        help="target platform argument for build system")
     cprojectparse.add_argument(
         "--loglevel", "-log",
         choices=UL.LogLevel.options(),
