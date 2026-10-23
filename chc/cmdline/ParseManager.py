@@ -102,7 +102,7 @@ class ParseManager(object):
         self._verbose = verbose
         # compile to 32 bit or 64 bit platform (default 64 bit)
         self._tgtplatform = tgtplatform
-        if not (self.tgtplatform in ["-m64", "-m32"]):
+        if not (self.tgtplatform in ["", "-m64", "-m32"]):
             print(
                 "Warning: invalid target platform: "
                 + self.tgtplatform
@@ -252,8 +252,11 @@ class ParseManager(object):
             "-fno-inline",
             "-fno-builtin",
             "-E",
-            "-g",
-            self.tgtplatform,
+            "-g"
+        ]
+        if self.tgtplatform:
+            cmd.append(self.tgtplatform)
+        cmd += [
             "-o",
             ifilename,
             cfilename,
@@ -317,6 +320,8 @@ class ParseManager(object):
             return -1
 
     def set_platform(self, cmd: List[str]) -> None:
+        if not self.tgtplatform:
+            return
         index = self.get_platform_index(cmd)
         if index >= 0:
             platform = cmd[index]
