@@ -663,7 +663,7 @@ def parse() -> argparse.Namespace:
         "--keep-system-includes",
         action="store_true",
         help="do not filter out functions from files with absolute file names")
-    cprojectparse.add_argument(
+    cfileparse.add_argument(
         "--target-platform",
         default="-m64",
         help="target platform argument for build system")
