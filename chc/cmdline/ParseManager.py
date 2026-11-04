@@ -257,6 +257,7 @@ class ParseManager(object):
             "-fno-builtin",
             "-E",
             "-g",
+            self.tgtplatform,
             "-o",
             ifilename,
             cfilename,
@@ -334,7 +335,6 @@ class ParseManager(object):
             return -1
 
     def set_platform(self, cmd: List[str]) -> None:
-        return None
         index = self.get_platform_index(cmd)
         if index >= 0:
             platform = cmd[index]

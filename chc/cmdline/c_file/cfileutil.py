@@ -161,7 +161,7 @@ def cfile_parse_file(args: argparse.Namespace) -> NoReturn:
 
     parsemanager = ParseManager(
         projectpath, projectname, targetpath, keep_system_includes=keep_system_includes,
-        preprocessedpath=preprocessed_path)
+        preprocessed_path=preprocessed_path)
     parsemanager.remove_semantics()
     parsemanager.initialize_paths()
 
