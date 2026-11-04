@@ -664,6 +664,9 @@ def parse() -> argparse.Namespace:
         action="store_true",
         help="do not filter out functions from files with absolute file names")
     cfileparse.add_argument(
+        "--preprocessed-path",
+        help="directory that contains preprocessed source files")
+    cfileparse.add_argument(
         "--loglevel", "-log",
         choices=UL.LogLevel.options(),
         default="NONE",
@@ -1491,6 +1494,9 @@ def parse() -> argparse.Namespace:
         "--keep-system-includes",
         action="store_true",
         help="don't filter out functions from files with absolute filenames")
+    cprojectparse.add_argument(
+        "--preprocessed-path",
+        help="directory that contains preprocessed source files")
     cprojectparse.add_argument(
         "--loglevel", "-log",
         choices=UL.LogLevel.options(),
