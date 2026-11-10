@@ -225,6 +225,35 @@ class ParseManager(object):
             )
         os.chdir(cwd)
 
+    def lookup_preprocess_file(
+            self,
+            cfilename: str,
+            copyfiles: bool = True
+    ) -> Optional[str]:
+        """Lookup the specified c file in the preprocessed_path directory."""
+        if not self._preprocessed_path:
+            return None
+        ifilename = cfilename[:-1] + "i"
+        path = Path(self._preprocessed_path) / ifilename
+        path = path.resolve()
+        if not path.is_file():
+            return None
+        if copyfiles:
+            tgtcfilename = os.path.join(
+                self.savedsourcepath, self.normalize_filename(cfilename)
+            )
+            tgtifilename = os.path.join(
+                self.savedsourcepath, self.normalize_filename(ifilename)
+            )
+            tgtcdir = os.path.dirname(tgtcfilename)
+            if not os.path.isdir(tgtcdir):
+                os.makedirs(tgtcdir)
+            os.chdir(self.projectpath)
+            if os.path.normpath(cfilename) != os.path.normpath(tgtcfilename):
+                shutil.copy(cfilename, tgtcfilename)
+                shutil.copy(ifilename, tgtifilename)
+        return str(path)
+
     def preprocess_file_with_cc(
             self,
             cfilename: str,
@@ -244,6 +273,9 @@ class ParseManager(object):
             copies the original source file and the generated .i file to the
             tgtpath/sourcefiles directory.
         """
+        saved_ifilename = self.lookup_preprocess_file(cfilename, copyfiles)
+        if saved_ifilename:
+            return saved_ifilename
 
         chklogger.logger.info("Preprocess file with cc: %s", cfilename)
         cwd = os.getcwd()
@@ -265,36 +297,22 @@ class ParseManager(object):
         if mac:
             cmd = cmd[:1] + macoptions + cmd[1:]
         cmd = cmd[:1] + moreoptions + cmd[1:]
-
-        real_ifile = None
-        if self._preprocessed_path:
-            path = Path(self._preprocessed_path) / ifilename
-            path = path.resolve()
-            if path.is_file():
-                real_ifile = path
-
         chklogger.logger.info("Changing directory to %s", self.projectpath)
         os.chdir(self.projectpath)
-        if real_ifile:
-            try:
-                shutil.copy(real_ifile, ifilename)
-            except shutil.SameFileError:
-                pass
+        if self.verbose:
+            chklogger.logger.info("Preprocess file: " + str(cmd))
+            p = subprocess.call(
+                cmd, cwd=self.projectpath, stderr=subprocess.STDOUT)
+            if p != 0:
+                chklogger.logger.warning("Result of preprocessing: " + str(p))
         else:
-            if self.verbose:
-                chklogger.logger.info("Preprocess file: " + str(cmd))
-                p = subprocess.call(
-                    cmd, cwd=self.projectpath, stderr=subprocess.STDOUT)
-                if p != 0:
-                    chklogger.logger.warning("Result of preprocessing: " + str(p))
-            else:
-                chklogger.logger.info("Preprocess file: " + str(cmd))
-                subprocess.call(
-                    cmd,
-                    cwd=self.projectpath,
-                    stdout=open(os.devnull, "w"),
-                    stderr=subprocess.STDOUT,
-                )
+            chklogger.logger.info("Preprocess file: " + str(cmd))
+            subprocess.call(
+                cmd,
+                cwd=self.projectpath,
+                stdout=open(os.devnull, "w"),
+                stderr=subprocess.STDOUT,
+            )
         if copyfiles:
             tgtcfilename = os.path.join(self.savedsourcepath, cfilename)
             tgtifilename = os.path.join(self.savedsourcepath, ifilename)
@@ -366,6 +384,10 @@ class ParseManager(object):
         ecommand = command[:]
         cfilename: str = os.path.join(ccommand["directory"], ccommand["file"])
         if cfilename.endswith(".c"):
+            saved_ifilename = self.lookup_preprocess_file(cfilename, copyfiles)
+            if saved_ifilename:
+                return (cfilename, saved_ifilename)
+
             ifilename = cfilename[:-1] + "i"
             try:
                 outputflagindex = command.index("-o")
@@ -385,50 +407,37 @@ class ParseManager(object):
             ecommand.append("-fno-asm")
             self.set_platform(ecommand)
 
-            real_ifile = None
-            if self._preprocessed_path:
-                path = Path(self._preprocessed_path) / ifilename
-                path = path.resolve()
-                if path.is_file():
-                    real_ifile = path
-
-            if real_ifile:
-                try:
-                    shutil.copy(real_ifile, ifilename)
-                except shutil.SameFileError:
-                    pass
+            # issue modified command to produce i files
+            if self.verbose:
+                print("\nIssue command: " + str(ecommand) + "\n")
+                resultcode = subprocess.call(
+                    ecommand,
+                    cwd=ccommand["directory"],
+                    stderr=subprocess.STDOUT
+                )
+                print("result: " + str(resultcode))
             else:
-                # issue modified command to produce i files
-                if self.verbose:
-                    print("\nIssue command: " + str(ecommand) + "\n")
-                    resultcode = subprocess.call(
-                        ecommand,
-                        cwd=ccommand["directory"],
-                        stderr=subprocess.STDOUT
-                    )
-                    print("result: " + str(resultcode))
-                else:
-                    subprocess.call(
-                        ecommand,
-                        cwd=ccommand["directory"],
-                        stdout=open(os.devnull, "w"),
-                        stderr=subprocess.STDOUT,
-                    )
+                subprocess.call(
+                    ecommand,
+                    cwd=ccommand["directory"],
+                    stdout=open(os.devnull, "w"),
+                    stderr=subprocess.STDOUT,
+                )
 
-                # issue original command
-                if self.verbose:
-                    print("\nIssue original command: " + str(command) + "\n")
-                    resultcode = subprocess.call(
-                        command, cwd=ccommand["directory"], stderr=subprocess.STDOUT
-                    )
-                    print("result: " + str(resultcode))
-                else:
-                    subprocess.call(
-                        command,
-                        cwd=ccommand["directory"],
-                        stdout=open(os.devnull, "w"),
-                        stderr=subprocess.STDOUT,
-                    )
+            # issue original command
+            if self.verbose:
+                print("\nIssue original command: " + str(command) + "\n")
+                resultcode = subprocess.call(
+                    command, cwd=ccommand["directory"], stderr=subprocess.STDOUT
+                )
+                print("result: " + str(resultcode))
+            else:
+                subprocess.call(
+                    command,
+                    cwd=ccommand["directory"],
+                    stdout=open(os.devnull, "w"),
+                    stderr=subprocess.STDOUT,
+                )
 
             if copyfiles:
                 tgtcfilename = os.path.join(
