@@ -225,7 +225,7 @@ class ParseManager(object):
             )
         os.chdir(cwd)
 
-    def lookup_preprocess_file(
+    def lookup_preprocessed_file(
             self,
             cfilename: str,
             copyfiles: bool = True
@@ -233,7 +233,7 @@ class ParseManager(object):
         """Lookup the specified c file in the preprocessed_path directory."""
         if not self._preprocessed_path:
             return None
-        ifilename = cfilename[:-1] + "i"
+        ifilename = str(Path(cfilename).with_suffix('.i'))
         path = Path(self._preprocessed_path) / ifilename
         path = path.resolve()
         if not path.is_file():
@@ -273,7 +273,7 @@ class ParseManager(object):
             copies the original source file and the generated .i file to the
             tgtpath/sourcefiles directory.
         """
-        saved_ifilename = self.lookup_preprocess_file(cfilename, copyfiles)
+        saved_ifilename = self.lookup_preprocessed_file(cfilename, copyfiles)
         if saved_ifilename:
             return saved_ifilename
 
@@ -384,7 +384,7 @@ class ParseManager(object):
         ecommand = command[:]
         cfilename: str = os.path.join(ccommand["directory"], ccommand["file"])
         if cfilename.endswith(".c"):
-            saved_ifilename = self.lookup_preprocess_file(cfilename, copyfiles)
+            saved_ifilename = self.lookup_preprocessed_file(cfilename, copyfiles)
             if saved_ifilename:
                 return (cfilename, saved_ifilename)
 
