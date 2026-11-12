@@ -33,6 +33,8 @@ import subprocess
 import shlex
 import shutil
 
+from pathlib import Path
+
 import xml.etree.ElementTree as ET
 
 from typing import Any, Dict, List, Optional, Tuple
@@ -77,6 +79,7 @@ class ParseManager(object):
             verbose: bool = True,
             keepUnused: bool = False,
             tgtplatform: str = "-m64",
+            preprocessed_path: str = "",
     ) -> None:
         """Initialize paths to code, results, and parser executable.
 
@@ -109,6 +112,7 @@ class ParseManager(object):
                 + ". Target platform is set to -m64"
             )
             self._tgtplatform = "-m64"
+        self._preprocessed_path = preprocessed_path
         self.config = Config()
 
     @property
@@ -221,6 +225,35 @@ class ParseManager(object):
             )
         os.chdir(cwd)
 
+    def lookup_preprocessed_file(
+            self,
+            cfilename: str,
+            copyfiles: bool = True
+    ) -> Optional[str]:
+        """Lookup the specified c file in the preprocessed_path directory."""
+        if not self._preprocessed_path:
+            return None
+        ifilename = str(Path(cfilename).with_suffix('.i'))
+        path = Path(self._preprocessed_path) / ifilename
+        path = path.resolve()
+        if not path.is_file():
+            return None
+        if copyfiles:
+            tgtcfilename = os.path.join(
+                self.savedsourcepath, self.normalize_filename(cfilename)
+            )
+            tgtifilename = os.path.join(
+                self.savedsourcepath, self.normalize_filename(ifilename)
+            )
+            tgtcdir = os.path.dirname(tgtcfilename)
+            if not os.path.isdir(tgtcdir):
+                os.makedirs(tgtcdir)
+            os.chdir(self.projectpath)
+            if os.path.normpath(cfilename) != os.path.normpath(tgtcfilename):
+                shutil.copy(cfilename, tgtcfilename)
+                shutil.copy(ifilename, tgtifilename)
+        return str(path)
+
     def preprocess_file_with_cc(
             self,
             cfilename: str,
@@ -240,6 +273,9 @@ class ParseManager(object):
             copies the original source file and the generated .i file to the
             tgtpath/sourcefiles directory.
         """
+        saved_ifilename = self.lookup_preprocessed_file(cfilename, copyfiles)
+        if saved_ifilename:
+            return saved_ifilename
 
         chklogger.logger.info("Preprocess file with cc: %s", cfilename)
         cwd = os.getcwd()
@@ -348,6 +384,10 @@ class ParseManager(object):
         ecommand = command[:]
         cfilename: str = os.path.join(ccommand["directory"], ccommand["file"])
         if cfilename.endswith(".c"):
+            saved_ifilename = self.lookup_preprocessed_file(cfilename, copyfiles)
+            if saved_ifilename:
+                return (cfilename, saved_ifilename)
+
             ifilename = cfilename[:-1] + "i"
             try:
                 outputflagindex = command.index("-o")

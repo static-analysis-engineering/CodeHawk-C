@@ -124,6 +124,7 @@ def cfile_parse_file(args: argparse.Namespace) -> NoReturn:
     loglevel: str = args.loglevel
     logfilename: Optional[str] = args.logfilename
     logfilemode: str = args.logfilemode
+    preprocessed_path: str = args.preprocessed_path
 
     try:
         UF.check_parser()
@@ -159,7 +160,8 @@ def cfile_parse_file(args: argparse.Namespace) -> NoReturn:
     chklogger.logger.info("Target path: %s", targetpath)
 
     parsemanager = ParseManager(
-        projectpath, projectname, targetpath, keep_system_includes=keep_system_includes)
+        projectpath, projectname, targetpath, keep_system_includes=keep_system_includes,
+        preprocessed_path=preprocessed_path)
     parsemanager.remove_semantics()
     parsemanager.initialize_paths()
 

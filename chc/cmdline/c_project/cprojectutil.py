@@ -121,6 +121,7 @@ def cproject_parse_project(args: argparse.Namespace) -> NoReturn:
     loglevel: str = args.loglevel
     logfilename: Optional[str] = args.logfilename
     logfilemode: str = args.logfilemode
+    preprocessed_path: str = args.preprocessed_path
 
     try:
         UF.check_parser()
@@ -168,7 +169,8 @@ def cproject_parse_project(args: argparse.Namespace) -> NoReturn:
         projectpath,
         projectname,
         targetpath,
-        keep_system_includes=keep_system_includes)
+        keep_system_includes=keep_system_includes,
+        preprocessed_path=preprocessed_path)
     parsemanager.remove_semantics()
     parsemanager.initialize_paths()
     exitcode = parsemanager.parse_with_ccommands(compilecommands, copyfiles=True)
