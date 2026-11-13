@@ -50,13 +50,74 @@ def print_status(m: str) -> None:
     sys.stderr.write(m + "\n")
 
 
+def run_analyzer_quiet(cmd: List[str], cwd: str) -> int:
+    """Run the ocaml analyzer without showing its output, except on failure.
+
+    On failure the last lines of the output are shown: they contain the
+    reason (e.g., a wordsize that does not match the parse).
+    """
+    p = subprocess.run(
+        cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    if p.returncode != 0:
+        output = p.stdout.decode("utf-8", errors="replace").rstrip()
+        tail = output.splitlines()[-5:]
+        if tail:
+            print_status("\n".join(tail))
+    return p.returncode
+
+
+VALID_WORDSIZES = [16, 32, 64]
+
+# Parse results without a target_platform.json record were produced by a
+# parser that always preprocessed with -m64.
+LEGACY_PARSE_WORDSIZE = 64
+
+
+def resolve_wordsize(capp: "CApplication", wordsize: Optional[int]) -> int:
+    """Return the wordsize to pass to the analyzer.
+
+    The analyzer must use the machine model the source was parsed for:
+    sizeof values and type layouts are fixed by the parser, and a smaller
+    wordsize in the analyzer yields type ranges (e.g., for unsigned long or
+    size_t) that are too narrow, which is unsound.
+    """
+    if wordsize == 0:
+        wordsize = None
+    if wordsize is not None and wordsize not in VALID_WORDSIZES:
+        raise UF.CHCError(
+            "Invalid wordsize: " + str(wordsize)
+            + " (expected one of "
+            + ", ".join(str(w) for w in VALID_WORDSIZES) + ")")
+    recorded = capp.target_wordsize
+    if recorded is None:
+        if wordsize is None:
+            chklogger.logger.warning(
+                "No target platform recorded at parse time; "
+                + "using wordsize %d (parse default)", LEGACY_PARSE_WORDSIZE)
+            return LEGACY_PARSE_WORDSIZE
+        if wordsize != LEGACY_PARSE_WORDSIZE:
+            chklogger.logger.warning(
+                "No target platform recorded at parse time; wordsize %d "
+                + "may not match the parse (default -m64)", wordsize)
+        return wordsize
+    if wordsize is not None and wordsize != recorded:
+        raise UF.CHCError(
+            "Wordsize "
+            + str(wordsize)
+            + " does not match the wordsize "
+            + str(recorded)
+            + " the source was parsed for; reparse with the intended "
+            + "target platform")
+    return recorded
+
+
 class AnalysisManager:
     """Provide the interface to the codehawk (ocaml) analyzer."""
 
     def __init__(
             self,
             capp: "CApplication",
-            wordsize: int = 0,
+            wordsize: Optional[int] = None,
             unreachability: bool = False,
             thirdpartysummaries: List[str] = [],
             keep_system_includes: bool = False,
@@ -70,7 +131,9 @@ class AnalysisManager:
             capp (CApplication): application entry point
 
         Keyword args:
-            wordsize (int): architecture wordsize (0,16,32,64) (default 0 (unspecified))
+            wordsize (int): architecture wordsize (16, 32, 64); must agree with
+                            the wordsize recorded at parse time (default:
+                            the recorded wordsize)
             unreachability (bool): use unreachability as justification to discharge
                                    (default False)
             thirdpartysummaries (string list): names of function summary jars
@@ -81,7 +144,7 @@ class AnalysisManager:
         self._capp = capp
         self._config = Config()
         self._keep_system_includes = keep_system_includes
-        self.wordsize = wordsize
+        self.wordsize = resolve_wordsize(capp, wordsize)
         self.thirdpartysummaries = thirdpartysummaries
         self.unreachability = unreachability
         self.verbose = verbose
@@ -205,8 +268,7 @@ class AnalysisManager:
 
         if self.keep_system_includes:
             cmd.append("-keep_system_includes")
-        if self.wordsize > 0:
-            cmd.extend(["-wordsize", str(self.wordsize)])
+        cmd.extend(["-wordsize", str(self.wordsize)])
         if self.collect_diagnostics:
             cmd.append("-diagnostics")
         cmd.append(self.targetpath)
@@ -248,12 +310,7 @@ class AnalysisManager:
                     cmd, cwd=self.targetpath, stderr=subprocess.STDOUT)
                 print_status("\nResult: " + str(result))
             else:
-                result = subprocess.call(
-                    cmd,
-                    cwd=self.targetpath,
-                    stdout=open(os.devnull, "w"),
-                    stderr=subprocess.STDOUT,
-                )
+                result = run_analyzer_quiet(cmd, self.targetpath)
             if result != 0:
                 print("Error in creating primary proof obligations")
                 if return_status:
@@ -327,8 +384,7 @@ class AnalysisManager:
         cmd.extend(["-iteration", str(iteration)])
         if self.keep_system_includes:
             cmd.append("-keep_system_includes")
-        if self.wordsize > 0:
-            cmd.extend(["-wordsize", str(self.wordsize)])
+        cmd.extend(["-wordsize", str(self.wordsize)])
         if self.unreachability:
             cmd.append("-unreachability")
         if self.verbose:
@@ -372,12 +428,7 @@ class AnalysisManager:
                     cmd, cwd=self.targetpath, stderr=subprocess.STDOUT)
                 print_status("\nResult: " + str(result))
             else:
-                result = subprocess.call(
-                    cmd,
-                    cwd=self.targetpath,
-                    stdout=open(os.devnull, "w"),
-                    stderr=subprocess.STDOUT,
-                )
+                result = run_analyzer_quiet(cmd, self.targetpath)
                 print_status("\nGenerate-and-check: result: " + str(result))
             if result != 0:
                 if return_status:

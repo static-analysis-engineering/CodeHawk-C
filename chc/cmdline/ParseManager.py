@@ -6,7 +6,7 @@
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
 # Copyright (c) 2020-2022 Henny B. Sipma
-# Copyright (c) 2023-2025 Aarno Labs LLC
+# Copyright (c) 2023-2026 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -78,7 +78,7 @@ class ParseManager(object):
             posix: bool = False,
             verbose: bool = True,
             keepUnused: bool = False,
-            tgtplatform: str = "-m64",
+            tgtplatform: Optional[str] = None,
             preprocessed_path: str = "",
     ) -> None:
         """Initialize paths to code, results, and parser executable.
@@ -103,15 +103,24 @@ class ParseManager(object):
         self._posix = posix
         self._keepUnused = keepUnused
         self._verbose = verbose
-        # compile to 32 bit or 64 bit platform (default 64 bit)
-        self._tgtplatform = tgtplatform
-        if not (self.tgtplatform in ["-m64", "-m32"]):
-            print(
-                "Warning: invalid target platform: "
-                + self.tgtplatform
-                + ". Target platform is set to -m64"
-            )
-            self._tgtplatform = "-m64"
+        # compile to 32 bit or 64 bit platform. If not given explicitly, the
+        # platform is taken from the compile commands (if present), or
+        # defaults to 64 bit. The platform used is recorded in
+        # target_platform.json, from which the analyzer takes its wordsize.
+        # accept the command-line form (m32, m64) as well as the compiler flag
+        if tgtplatform is not None and not tgtplatform.startswith("-"):
+            tgtplatform = "-" + tgtplatform
+        if tgtplatform is not None and tgtplatform not in UF.PLATFORM_WORDSIZES:
+            raise UF.CHCError(
+                "Invalid target platform: "
+                + tgtplatform
+                + " (expected one of "
+                + ", ".join(UF.PLATFORM_WORDSIZES)
+                + ")")
+        self._tgtplatform_explicit = tgtplatform is not None
+        self._tgtplatform = "-m64" if tgtplatform is None else tgtplatform
+        self._tgtplatform_source = (
+            "command-line" if self._tgtplatform_explicit else "default")
         self._preprocessed_path = preprocessed_path
         self.config = Config()
 
@@ -162,6 +171,12 @@ class ParseManager(object):
     @property
     def tgtplatform(self) -> str:
         return self._tgtplatform
+
+    @property
+    def wordsize(self) -> int:
+        """Word size of the target platform; also selects the parser's (CIL)
+        machine model, so that sizeof and layouts match the preprocessing."""
+        return UF.PLATFORM_WORDSIZES[self.tgtplatform]
 
     @property
     def keep_system_includes(self) -> bool:
@@ -352,6 +367,57 @@ class ParseManager(object):
         else:
             return -1
 
+    def command_tokens(self, ccommand: Dict[str, Any]) -> List[str]:
+        if "arguments" in ccommand:
+            return ccommand["arguments"]
+        return shlex.split(ccommand["command"], self.posix)
+
+    def determine_platform(
+            self, compilecommands: List[Dict[str, Any]]) -> None:
+        """Set the target platform from the compile commands.
+
+        An explicitly given platform takes precedence (commands with a
+        different flag are overridden, as before). Otherwise, the commands
+        must agree: either all specify the same -m32/-m64 flag, or none
+        does (in which case the default -m64 is used). A mix is an error,
+        because a single machine model is used for the whole analysis.
+        """
+        found: Dict[str, int] = {}
+        for c in compilecommands:
+            cmd = self.command_tokens(c)
+            index = self.get_platform_index(cmd)
+            key = cmd[index] if index >= 0 else "none"
+            found[key] = found.get(key, 0) + 1
+
+        summary = ", ".join(k + ": " + str(v) for (k, v) in sorted(found.items()))
+        chklogger.logger.info("Platform flags in compile commands: %s", summary)
+
+        if self._tgtplatform_explicit:
+            if any(k != self.tgtplatform for k in found):
+                chklogger.logger.warning(
+                    "Target platform %s overrides compile commands (%s)",
+                    self.tgtplatform, summary)
+            return
+
+        if len(found) > 1:
+            raise UF.CHCError(
+                "Compile commands use inconsistent target platforms ("
+                + summary
+                + "); specify the target platform explicitly")
+
+        if len(found) == 1:
+            key = next(iter(found))
+            if key != "none":
+                self._tgtplatform = key
+                self._tgtplatform_source = "compile_commands"
+
+    def save_target_platform(self) -> None:
+        UF.save_target_platform(
+            self.targetpath,
+            self.projectname,
+            self.tgtplatform,
+            self._tgtplatform_source)
+
     def set_platform(self, cmd: List[str]) -> None:
         index = self.get_platform_index(cmd)
         if index >= 0:
@@ -466,6 +532,9 @@ class ParseManager(object):
 
         exitcode = 0
 
+        self.determine_platform(compilecommands)
+        self.save_target_platform()
+
         cfiles: Dict[str, int] = {}
         targetfiles = TargetFiles()
         for c in compilecommands:
@@ -481,7 +550,9 @@ class ParseManager(object):
                 "-projectpath",
                 self.projectpath,
                 "-targetdirectory",
-                self.analysisresultspath
+                self.analysisresultspath,
+                "-wordsize",
+                str(self.wordsize)
             ]
             if self.keep_system_includes:
                 command.append("-keep_system_includes")
@@ -572,12 +643,15 @@ class ParseManager(object):
         """
 
         ifilename = os.path.join(self.projectpath, ifilename)
+        self.save_target_platform()
         cmd = [
             self.config.cparser,
             "-projectpath",
             self.projectpath,
             "-targetdirectory",
             self.analysisresultspath,
+            "-wordsize",
+            str(self.wordsize),
         ]
         if not self.keep_system_includes:
             cmd.append("-keep_system_includes")

@@ -159,6 +159,16 @@ class CApplication(object):
         return self._excludefiles
 
     @property
+    def target_wordsize(self) -> Optional[int]:
+        """Returns the wordsize recorded at parse time (None if not recorded).
+
+        Parse results produced before the platform was recorded have no
+        target_platform.json file.
+        """
+        d = UF.load_target_platform(self.targetpath, self.projectname)
+        return None if d is None else int(d["wordsize"])
+
+    @property
     def files(self) -> Dict[int, CFile]:
         """Returns a map from file-indexes to CFile objects."""
 

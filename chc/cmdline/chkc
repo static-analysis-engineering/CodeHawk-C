@@ -484,9 +484,11 @@ def parse() -> argparse.Namespace:
         default=5)
     julietanalyze.add_argument(
         "--wordsize",
-        help="architecture word size in bits",
         type=int,
-        default=64)
+        choices=[16, 32, 64],
+        default=None,
+        help=("architecture wordsize in bits (default: the wordsize recorded "
+              + "at parse time; an error if it differs from that wordsize)"))
     julietanalyze.add_argument(
         "--contractpath",
         help="path to save the contracts file",
@@ -664,6 +666,13 @@ def parse() -> argparse.Namespace:
         action="store_true",
         help="do not filter out functions from files with absolute file names")
     cfileparse.add_argument(
+        "--tgtplatform",
+        choices=["m32", "m64"],
+        default=None,
+        help=("target platform for preprocessing and parsing; recorded with "
+              + "the parse results and used to set the analyzer wordsize "
+              + "(default: m64)"))
+    cfileparse.add_argument(
         "--preprocessed-path",
         help="directory that contains preprocessed source files")
     cfileparse.add_argument(
@@ -778,8 +787,10 @@ def parse() -> argparse.Namespace:
     cfileanalyze.add_argument(
         "--wordsize",
         type=int,
-        default=32,
-        help="architecture wordsize in bits (16, 32, or 64)")
+        choices=[16, 32, 64],
+        default=None,
+        help=("architecture wordsize in bits (default: the wordsize recorded "
+              + "at parse time; an error if it differs from that wordsize)"))
     cfileanalyze.add_argument(
         "--keep-system-includes",
         action="store_true",
@@ -878,6 +889,13 @@ def parse() -> argparse.Namespace:
     cfilerun.add_argument(
         "--tgtpath",
         help="directory to store the analysis results")
+    cfilerun.add_argument(
+        "--tgtplatform",
+        choices=["m32", "m64"],
+        default=None,
+        help=("target platform for preprocessing and parsing; recorded with "
+              + "the parse results and used to set the analyzer wordsize "
+              + "(default: m64)"))
     cfilerun.add_argument(
         "--keep-system-includes",
         action="store_true",
@@ -1495,6 +1513,14 @@ def parse() -> argparse.Namespace:
         action="store_true",
         help="don't filter out functions from files with absolute filenames")
     cprojectparse.add_argument(
+        "--tgtplatform",
+        choices=["m32", "m64"],
+        default=None,
+        help=("target platform for preprocessing and parsing; recorded with "
+              + "the parse results and used to set the analyzer wordsize "
+              + "(default: the -m32/-m64 flag in the compile commands, "
+              + "if they agree; else m64)"))
+    cprojectparse.add_argument(
         "--preprocessed-path",
         help="directory that contains preprocessed source files")
     cprojectparse.add_argument(
@@ -1636,6 +1662,13 @@ def parse() -> argparse.Namespace:
         "--keep-system-includes",
         action="store_true",
         help="don't filter out functions from files with absolute filenames")
+    cprojectanalyze.add_argument(
+        "--wordsize",
+        type=int,
+        choices=[16, 32, 64],
+        default=None,
+        help=("architecture wordsize in bits (default: the wordsize recorded "
+              + "at parse time; an error if it differs from that wordsize)"))
     cprojectanalyze.add_argument(
         "--verbose", "-v",
         action="store_true",

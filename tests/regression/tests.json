@@ -1,5 +1,5 @@
 {
-    "date": "2026-06-05",
+    "last-updated": "2026-11-12",
     "tests": [
         {
             "filename": "bool_integer_promotion.c",
@@ -132,6 +132,25 @@
                 "violation": 2
             },
             "goal": "improve"
+        },
+        {
+            "filename": "wordsize_lp64.c",
+            "tgtplatform": "m64",
+            "description": "Analyzer and parser (CIL) word size taken from the parse platform (-m64, LP64): memcpy of 8 bytes into uint64_t, unsigned long, and char[sizeof(long)] is safe; unsigned long -> unsigned int cast stays open (no type-range proof); 3 open initialized-range on {0}-initialized local buffers",
+            "expected": {
+                "safe": 79,
+                "open": 4
+            }
+        },
+        {
+            "filename": "wordsize_ilp32.c",
+            "tgtplatform": "m32",
+            "description": "Same source parsed with -m32 (ILP32): memcpy of 8 bytes into unsigned long (4 bytes) and into char[sizeof(long)] (CIL folds sizeof(long) = 4 with the 32-bit machine model) are ptr-upper-bound violations; uint64_t copy stays safe",
+            "expected": {
+                "safe": 77,
+                "open": 4,
+                "violation": 2
+            }
         }
     ]
 }

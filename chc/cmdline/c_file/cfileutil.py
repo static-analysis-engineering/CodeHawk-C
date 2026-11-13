@@ -4,7 +4,7 @@
 # ------------------------------------------------------------------------------
 # The MIT License (MIT)
 #
-# Copyright (c) 2023-2025  Aarno Labs, LLC
+# Copyright (c) 2023-2026  Aarno Labs, LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -125,6 +125,7 @@ def cfile_parse_file(args: argparse.Namespace) -> NoReturn:
     logfilename: Optional[str] = args.logfilename
     logfilemode: str = args.logfilemode
     preprocessed_path: str = args.preprocessed_path
+    tgtplatform: Optional[str] = args.tgtplatform
 
     try:
         UF.check_parser()
@@ -161,7 +162,7 @@ def cfile_parse_file(args: argparse.Namespace) -> NoReturn:
 
     parsemanager = ParseManager(
         projectpath, projectname, targetpath, keep_system_includes=keep_system_includes,
-        preprocessed_path=preprocessed_path)
+        preprocessed_path=preprocessed_path, tgtplatform=tgtplatform)
     parsemanager.remove_semantics()
     parsemanager.initialize_paths()
 
@@ -493,7 +494,7 @@ def cfile_analyze_file(args: argparse.Namespace) -> NoReturn:
     # arguments
     xcfilename: str = args.filename
     opttgtpath: Optional[str] = args.tgtpath
-    wordsize: int = args.wordsize
+    wordsize: Optional[int] = args.wordsize
     keep_system_includes: bool = args.keep_system_includes
     analysis: str = args.analysis
     verbose: bool = args.verbose
@@ -560,12 +561,16 @@ def cfile_analyze_file(args: argparse.Namespace) -> NoReturn:
     capp.initialize_single_file(cfilename)
     cfile = capp.get_cfile()
 
-    am = AnalysisManager(
-        capp,
-        verbose=verbose,
-        collectdiagnostics=collectdiagnostics,
-        wordsize=wordsize,
-        keep_system_includes=keep_system_includes)
+    try:
+        am = AnalysisManager(
+            capp,
+            verbose=verbose,
+            collectdiagnostics=collectdiagnostics,
+            wordsize=wordsize,
+            keep_system_includes=keep_system_includes)
+    except UF.CHCError as e:
+        print(str(e.wrap()))
+        exit(1)
 
     am.create_file_primary_proofobligations(cfilename, po_cmd=po_cmd)
     am.reset_tables(cfile)
@@ -688,6 +693,7 @@ def cfile_run_file(args: argparse.Namespace) -> NoReturn:
     analysis: str = args.analysis
     analysisdomains: str = args.analysis_domains
     collectdiagnostics: bool = args.collect_diagnostics
+    tgtplatform: Optional[str] = args.tgtplatform
     cshowcode: bool = args.showcode
     copen: bool = args.open
     cshowinvariants: bool = args.showinvariants
@@ -735,7 +741,8 @@ def cfile_run_file(args: argparse.Namespace) -> NoReturn:
     chklogger.logger.info("Target path: %s", targetpath)
 
     parsemanager = ParseManager(
-        projectpath, projectname, targetpath, keep_system_includes=keep_system_includes)
+        projectpath, projectname, targetpath, keep_system_includes=keep_system_includes,
+        tgtplatform=tgtplatform)
     parsemanager.remove_semantics()
     parsemanager.initialize_paths()
 
@@ -1069,7 +1076,7 @@ def cfile_testlibc_summary(args: argparse.Namespace) -> NoReturn:
     capp.initialize_single_file(cfilename)
     cfile = capp.get_cfile()
 
-    am = AnalysisManager(capp, verbose=False, wordsize=32)
+    am = AnalysisManager(capp, verbose=False)
 
     am.create_file_primary_proofobligations(cfilename)
     am.reset_tables(cfile)
