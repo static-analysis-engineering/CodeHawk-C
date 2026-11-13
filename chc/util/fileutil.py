@@ -650,6 +650,47 @@ def get_targetfiles_filename(targetpath: str, projectname: str) -> str:
     return os.path.join(path, "target_files.xml")
 
 
+PLATFORM_WORDSIZES: Dict[str, int] = {"-m32": 32, "-m64": 64}
+
+
+def get_target_platform_filename(targetpath: str, projectname: str) -> str:
+    path = get_analysisresults_path(targetpath, projectname)
+    return os.path.join(path, "target_platform.json")
+
+
+def save_target_platform(
+        targetpath: str, projectname: str, tgtplatform: str, source: str) -> None:
+    """Record the platform the source was preprocessed and parsed for.
+
+    This is the single source of truth for the target word size: the analyzer
+    must use the same machine model (sizeof, type ranges) as the parser.
+    """
+    if tgtplatform not in PLATFORM_WORDSIZES:
+        raise CHCError("Invalid target platform: " + tgtplatform)
+    filename = get_target_platform_filename(targetpath, projectname)
+    d = {
+        "tgtplatform": tgtplatform,
+        "wordsize": PLATFORM_WORDSIZES[tgtplatform],
+        "source": source}
+    with open(filename, "w") as fp:
+        json.dump(d, fp, indent=2)
+
+
+def load_target_platform(
+        targetpath: str, projectname: str) -> Optional[Dict[str, Any]]:
+    """Return the recorded target platform, or None for older parse results."""
+    filename = get_target_platform_filename(targetpath, projectname)
+    if not os.path.isfile(filename):
+        return None
+    with open(filename, "r") as fp:
+        d = json.load(fp)
+    tgtplatform = d.get("tgtplatform")
+    if (tgtplatform not in PLATFORM_WORDSIZES
+            or d.get("wordsize") != PLATFORM_WORDSIZES[tgtplatform]):
+        raise CHCError("Inconsistent target platform record in " + filename)
+    return d
+
+
 def get_functionindex_filename(targetpath: str, projectname: str) -> str:
     path = get_analysisresults_path(targetpath, projectname)
     return os.path.join(path, "functionindex.json")

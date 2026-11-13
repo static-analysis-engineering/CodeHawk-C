@@ -261,9 +261,10 @@ def juliet_convert(args: argparse.Namespace) -> NoReturn:
         os.mkdir(analysisresultspath)
 
     # copy parse results files
-    targetfiles = os.path.join(projectparsepath, "target_files.xml")
-    if os.path.isfile(targetfiles):
-        shutil.copy(targetfiles, os.path.join(analysisresultspath, "target_files.xml"))
+    for parsefile in ["target_files.xml", "target_platform.json"]:
+        srcfile = os.path.join(projectparsepath, parsefile)
+        if os.path.isfile(srcfile):
+            shutil.copy(srcfile, os.path.join(analysisresultspath, parsefile))
     for fdir in os.listdir(projectparsepath):
         absdir = os.path.join(projectparsepath, fdir)
         if os.path.isdir(absdir):
@@ -306,7 +307,7 @@ def juliet_analyze(args: argparse.Namespace) -> NoReturn:
     jtest: str = args.test
     jmaxproc: int = args.maxprocesses
     jrounds: int = args.analysisrounds
-    jwordsize: int = args.wordsize
+    jwordsize: Optional[int] = args.wordsize
     jcontractpath: Optional[str] = args.contractpath
     verbose = args.verbose
     loglevel: str = args.loglevel

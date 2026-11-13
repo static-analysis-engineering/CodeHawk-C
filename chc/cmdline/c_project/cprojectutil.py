@@ -122,6 +122,7 @@ def cproject_parse_project(args: argparse.Namespace) -> NoReturn:
     logfilename: Optional[str] = args.logfilename
     logfilemode: str = args.logfilemode
     preprocessed_path: str = args.preprocessed_path
+    tgtplatform: Optional[str] = args.tgtplatform
 
     try:
         UF.check_parser()
@@ -170,10 +171,16 @@ def cproject_parse_project(args: argparse.Namespace) -> NoReturn:
         projectname,
         targetpath,
         keep_system_includes=keep_system_includes,
-        preprocessed_path=preprocessed_path)
+        preprocessed_path=preprocessed_path,
+        tgtplatform=tgtplatform)
     parsemanager.remove_semantics()
     parsemanager.initialize_paths()
-    exitcode = parsemanager.parse_with_ccommands(compilecommands, copyfiles=True)
+    try:
+        exitcode = parsemanager.parse_with_ccommands(
+            compilecommands, copyfiles=True)
+    except UF.CHCError as e:
+        print(str(e.wrap()))
+        exit(1)
     if exitcode == 0:
         parsemanager.save_semantics()
 
@@ -531,6 +538,7 @@ def cproject_analyze_project(args: argparse.Namespace) -> NoReturn:
     tgtpath: str = args.tgtpath
     projectname: str = args.projectname
     keep_system_includes: bool = args.keep_system_includes
+    wordsize: Optional[int] = args.wordsize
     analysis: str = args.analysis
     analysisdomains: str = args.analysis_domains
     collectdiagnostics: bool = args.collect_diagnostics
@@ -593,11 +601,16 @@ def cproject_analyze_project(args: argparse.Namespace) -> NoReturn:
         keep_system_includes=keep_system_includes,
         excludefiles=excludefiles)
 
-    am = AnalysisManager(
-        capp,
-        verbose=verbose,
-        collectdiagnostics=collectdiagnostics,
-        keep_system_includes=keep_system_includes)
+    try:
+        am = AnalysisManager(
+            capp,
+            verbose=verbose,
+            collectdiagnostics=collectdiagnostics,
+            wordsize=wordsize,
+            keep_system_includes=keep_system_includes)
+    except UF.CHCError as e:
+        print(str(e.wrap()))
+        exit(1)
 
     exitcode = 0
 

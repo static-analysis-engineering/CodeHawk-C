@@ -108,7 +108,11 @@ def run_regression_test_file(
     po_cmd = "undefined-behavior-primary"
     analysisdomains = "llrvisp"
 
-    parsemanager = ParseManager(projectpath, projectname, targetpath)
+    parsemanager = ParseManager(
+        projectpath,
+        projectname,
+        targetpath,
+        tgtplatform=testspec.get("tgtplatform"))
     parsemanager.remove_semantics()
     parsemanager.initialize_paths()
 
