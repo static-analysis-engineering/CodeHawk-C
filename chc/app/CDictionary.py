@@ -784,7 +784,10 @@ class CDictionary(ABC):
         if t.is_array:
             t = cast("CTypArray", t)
             if t.has_array_size_expr():
-                ixsize = self.index_exp(t.array_size_expr)
+                try:
+                    ixsize = self.index_exp(t.array_size_expr)
+                except Exception:
+                    ixsize = -1
             else:
                 ixsize = -1
             args = (
