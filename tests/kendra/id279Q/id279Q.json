@@ -806,8 +806,8 @@
                             "expctxt": "2op:2_2op:1_mem_lhs",
                             "line": 58,
                             "predicate": "int-overflow",
-                            "status": "open",
-                            "tgtstatus": "open"
+                            "status": "safe",
+                            "tgtstatus": "safe"
                         }
                     ]
                 }
