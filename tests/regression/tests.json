@@ -1,5 +1,5 @@
 {
-    "last-updated": "2026-11-12",
+    "last-updated": "2026-11-13",
     "tests": [
         {
             "filename": "bool_integer_promotion.c",
@@ -70,19 +70,19 @@
         },
         {
             "filename": "uint16_swap_intermediate_cast.c",
-            "description": "False-positive signed-to-unsigned-cast-ub: caste(uint16_t, X) where X > 65535 is not modelled as modular truncation; the un-truncated int value propagates into the OR and exceeds uint16_t max; byte_swap_lo (val=31) is correctly safe because 31<<8=7936 fits in uint16_t without truncation",
+            "description": "False-positive signed-to-unsigned-cast-ub: caste(uint16_t, X) where X > 65535 is not modelled as modular truncation; the un-truncated int value propagates into the OR and exceeds uint16_t max; byte_swap_lo (val=31) is correctly safe because 31<<8=7936 fits in uint16_t without truncation (safe 52 -> 58: issue 29 adds non-negative(E1) and int-overflow(E1, E2, op:shiftlt) for the signed (promoted) shifts, all safe)",
             "expected": {
-                "safe": 52,
+                "safe": 58,
                 "violation": 2
             },
             "goal": "improve"
         },
         {
             "filename": "fold_search_index_upper_bound.c",
-            "description": "Binary search index-upper-bound precision gap: interval widening overestimates k's range (buggy j=N gives k in [0,6]; fixed j=N-1 gives k in [0,5]); both produce open POs because the relational invariant i<=j cannot be expressed in the interval domain; violation only detectable via direct constant OOB access (fold_search_oob_step)",
+            "description": "Binary search index-upper-bound precision gap: interval widening overestimates k's range (buggy j=N gives k in [0,6]; fixed j=N-1 gives k in [0,5]); both produce open POs because the relational invariant i<=j cannot be expressed in the interval domain; violation only detectable via direct constant OOB access (fold_search_oob_step); safe 63 -> 65, open 4 -> 2: the interval quotient bound used numerical ceiling, which returned n + 1 for an integer n ((0 + 8) / 2 gave [0, 5]); the fixed search (j = N-1) now has k in [0, 4] and its index-upper-bound POs are safe",
             "expected": {
-                "safe": 63,
-                "open": 4,
+                "safe": 65,
+                "open": 2,
                 "violation": 1
             },
             "goal": "improve"
@@ -147,8 +147,87 @@
             "tgtplatform": "m32",
             "description": "Same source parsed with -m32 (ILP32): memcpy of 8 bytes into unsigned long (4 bytes) and into char[sizeof(long)] (CIL folds sizeof(long) = 4 with the 32-bit machine model) are ptr-upper-bound violations; uint64_t copy stays safe",
             "expected": {
-                "safe": 77,
+                "safe": 78,
+                "open": 3,
+                "violation": 2
+            }
+        },
+        {
+            "filename": "uint64_max_constant.c",
+            "description": "Unsigned 64-bit constants >= 2^63 (0xffffffffffffffffUL, 0x8000000000000000UL) are stored as negative int64 with an unsigned ikind; the analyzer must read them as 2^64 - 1 and 2^63, so that arr[x] is an index-upper-bound violation (previously proven safe with x = -1)",
+            "expected": {
+                "safe": 7,
+                "violation": 2
+            }
+        },
+        {
+            "filename": "may_negative_bound.c",
+            "description": "Issue 22: a violation requires the property to fail on every execution or a witness; interval bounds that violate the property need not be attained. (char)ch, memset with int n, x / d with unsigned d, and an i <= 10 loop index are open or delegated (previously violations once parameter type ranges are known); n == -1 in always_negative is a real violation (2)",
+            "expected": {
+                "safe": 49,
+                "open": 1,
+                "violation": 2
+            }
+        },
+        {
+            "filename": "integer_conversion.c",
+            "description": "Issue 21: integer conversions are reduced modulo 2^N (unsigned targets; GCC semantics for out-of-range signed targets), _Bool conversion gives 0/1; (uint16_t)-1 indexes out of bounds (violation), (int)(2^32+3) == 3 and (_Bool)2 == 1 index in bounds (safe); (int32_t)0xc400000aU is folded to -1006632950, so the s >= 0 branch is unreachable: index-upper-bound(s) is safe, but index-lower-bound(s) is reported as a violation in that dead code (issue 25: unreachability not used by default; expected to become open/unreachable when 25 is fixed); the cast POs themselves remain violations until the analysis levels (issue 15, Part A)",
+            "expected": {
+                "safe": 25,
+                "open": 1,
+                "violation": 5
+            }
+        },
+        {
+            "filename": "unsigned_wrap_nested.c",
+            "description": "Issue 21: unsigned +, -, *, unary - and integer conversions nested in expressions, conditions and PO arguments are reduced modulo 2^N; index_wrap, rhs_wrap, neg_wrap are index-upper-bound violations (previously safe with index -1), mult_wrap has b == 0 (previously two false violations with b == 2^32), nowrap stays safe, param_index_wrap is safe relative to the delegated uint-underflow precondition",
+            "expected": {
+                "safe": 53,
+                "open": 2,
+                "violation": 9
+            }
+        },
+        {
+            "filename": "unsigned_shift.c",
+            "description": "Issue 29: unsigned << is reduced modulo 2^N (C11 6.5.7p4); 0xF0000000u << 4 == 0 and 2^63 << 1 == 0 (64-bit) give not-zero violations (previously safe with v == 2^36 * 15), shl_nowrap stays safe, shl_maywrap and shl_var are open, 2^61 << 2 == 2^63 is folded exactly (xsimplify previously overflowed the OCaml int)",
+            "expected": {
+                "safe": 38,
                 "open": 4,
+                "violation": 3
+            }
+        },
+        {
+            "filename": "signed_shift.c",
+            "description": "Issue 29: signed E1 << E2 (C11 6.5.7p4) gets non-negative(E1) and int-overflow(E1, E2, op:shiftlt); 1 << 31, k << 1 with k == 2^30 are int-overflow violations, -1 << 1 and k << 2 with k == -3 are non-negative(E1) violations (non-negative checker now reports a universal violation when the upper bound is negative); bounded operands (k < 1000, uint8_t b < 128 promoted, variable shift amount, 64-bit) are safe; unbounded operands are delegated, and the call deleg(1 << 29) violates the delegated condition (SPO); unsigned << gets no int-overflow PO; (int)p[0] << 8 for uint8_t *p without invariant is safe by the range of uint8_t (open: initialized(p[0]), initialized(p[1]))",
+            "expected": {
+                "safe": 116,
+                "open": 4,
+                "violation": 4
+            }
+        },
+        {
+            "filename": "shift_right.c",
+            "description": "Issue 29: e1 >> k (constant k, 0 <= k < N) is floor(e1 / 2^k) (C11 6.5.7p5; GCC arithmetic shift for negative signed e1), translated as e1 DIV 2^k for e1 >= 0 and (e1 - (2^k - 1)) DIV 2^k for e1 < 0; previously only k <= 4 was translated and numerical ceiling of an integer was one too high; u >> 5 with u >= 32 is not-zero safe, -9 >> 3 == -2 gives a not-zero violation, s >> 2 for s in [-100, -1] is not-zero safe; shr_bound_ceil (interval division rounds the upper bound up) and the variable shift amount are open",
+            "expected": {
+                "safe": 71,
+                "open": 2,
+                "violation": 1
+            }
+        },
+        {
+            "filename": "uint_underflow_may_bound.c",
+            "description": "Universal uint-underflow violation of e1 - e2 requires UB(e1) - LB(e2) < 0 (the checker used UB(e2)): a in [10, 20], b in [0, 100] is delegated to the api (previously a violation); a <= 20, b >= 30 is a violation",
+            "expected": {
+                "safe": 13,
+                "violation": 1
+            }
+        },
+        {
+            "filename": "signed_div_mod.c",
+            "description": "Issue 32: C / truncates toward zero and % has the sign of the dividend (C11 6.5.5p6); -7 / 2 == -3 and -7 % 4 == -3 give not-zero violations (previously folded Euclidean: -4 and 1, safe); x % 4 for x in [-10, 10] is in [-3, 3]: index-lower-bound open (previously [0, 3], safe); x % 10 for x in [0, 100], x in [-100, -1] (+ 9), unsigned u % 10, and x % 1000 for x in [0, 5] index safely; x / 4 >= 0 iff x >= -3 (previously rewritten to x >= 0): not-zero(x + 1) open; x / 4 < 0 iff x <= -4: not-zero(x + 2) safe; x / 4 <= 0 and x / 4 > 0 index safely; int-overflow(x, c, op:mod) with a constant c > 0 is safe (C11 6.5.5p6: a % b is undefined iff a / b is; previously no CheckValid case for Mod); the r += ... accumulations in the loops are open",
+            "expected": {
+                "safe": 93,
+                "open": 5,
                 "violation": 2
             }
         }
