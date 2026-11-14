@@ -60,8 +60,8 @@
                             "expctxt": "index_var_lhs",
                             "line": 58,
                             "predicate": "int-overflow",
-                            "status": "open",
-                            "tgtstatus": "open"
+                            "status": "safe",
+                            "tgtstatus": "safe"
                         }
                     ]
                 }
@@ -127,8 +127,8 @@
                             "expctxt": "index_var_lhs",
                             "line": 58,
                             "predicate": "int-overflow",
-                            "status": "open",
-                            "tgtstatus": "open"
+                            "status": "safe",
+                            "tgtstatus": "safe"
                         }
                     ]
                 }
@@ -194,8 +194,8 @@
                             "expctxt": "index_var_lhs",
                             "line": 58,
                             "predicate": "int-overflow",
-                            "status": "open",
-                            "tgtstatus": "open"
+                            "status": "safe",
+                            "tgtstatus": "safe"
                         }
                     ]
                 }
@@ -261,8 +261,8 @@
                             "expctxt": "index_var_lhs",
                             "line": 58,
                             "predicate": "int-overflow",
-                            "status": "open",
-                            "tgtstatus": "open"
+                            "status": "safe",
+                            "tgtstatus": "safe"
                         }
                     ]
                 }

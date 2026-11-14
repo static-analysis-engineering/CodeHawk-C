@@ -276,8 +276,8 @@
                             "expctxt": "cast_arg:3",
                             "line": 62,
                             "predicate": "int-overflow",
-                            "status": "open",
-                            "tgtstatus": "open"
+                            "status": "safe",
+                            "tgtstatus": "safe"
                         }
                     ]
                 }
@@ -551,8 +551,8 @@
                             "expctxt": "cast_arg:3",
                             "line": 62,
                             "predicate": "int-overflow",
-                            "status": "open",
-                            "tgtstatus": "open"
+                            "status": "safe",
+                            "tgtstatus": "safe"
                         },
                         {
                             "cfgctxt": "instr:3_stmt:1",
@@ -842,8 +842,8 @@
                             "expctxt": "cast_arg:3",
                             "line": 62,
                             "predicate": "int-overflow",
-                            "status": "open",
-                            "tgtstatus": "open"
+                            "status": "safe",
+                            "tgtstatus": "safe"
                         }
                     ]
                 }
@@ -1125,8 +1125,8 @@
                             "expctxt": "cast_arg:3",
                             "line": 62,
                             "predicate": "int-overflow",
-                            "status": "open",
-                            "tgtstatus": "open"
+                            "status": "safe",
+                            "tgtstatus": "safe"
                         }
                     ]
                 }
