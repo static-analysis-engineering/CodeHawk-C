@@ -207,10 +207,10 @@
         },
         {
             "filename": "shift_right.c",
-            "description": "Issue 29: e1 >> k (constant k, 0 <= k < N) is floor(e1 / 2^k) (C11 6.5.7p5; GCC arithmetic shift for negative signed e1), translated as e1 DIV 2^k for e1 >= 0 and (e1 - (2^k - 1)) DIV 2^k for e1 < 0; previously only k <= 4 was translated and numerical ceiling of an integer was one too high; u >> 5 with u >= 32 is not-zero safe, -9 >> 3 == -2 gives a not-zero violation, s >> 2 for s in [-100, -1] is not-zero safe; shr_bound_ceil (interval division rounds the upper bound up) and the variable shift amount are open",
+            "description": "Issue 29: e1 >> k (constant k, 0 <= k < N) is floor(e1 / 2^k) (C11 6.5.7p5; GCC arithmetic shift for negative signed e1), translated as e1 DIV 2^k for e1 >= 0 and (e1 - (2^k - 1)) DIV 2^k for e1 < 0; previously only k <= 4 was translated and numerical ceiling of an integer was one too high; u >> 5 with u >= 32 is not-zero safe, -9 >> 3 == -2 gives a not-zero violation, s >> 2 for s in [-100, -1] is not-zero safe; shr_bound_ceil is index safe since interval DIV truncates (issue 31b, was open); the variable shift amount is open",
             "expected": {
-                "safe": 71,
-                "open": 2,
+                "safe": 72,
+                "open": 1,
                 "violation": 1
             }
         },
@@ -229,6 +229,15 @@
                 "safe": 93,
                 "open": 5,
                 "violation": 2
+            }
+        },
+        {
+            "filename": "div_interval_trunc.c",
+            "description": "Issue 31b: interval DIV is truncating division (C11 6.5.5p6), exact at the corners for a divisor interval excluding zero (previously floor/ceiling); x / 2 and x / d for x in [-7, 9], d in [2, 3] are in [-3, 4], x / d for x in [-9, 7], d in [-3, -2] is in [-3, 4], u / 16 for u <= 100 is <= 6: all index POs safe (previously open); x / 16 for x in [-15, -1] is 0: not-zero violation (previously open); x / 16 for x in [-16, -1] is in [-1, 0]: not-zero open; int-overflow(x, d, op:div) with a variable divisor is open (issue 34: div_checker is a stub)",
+            "expected": {
+                "safe": 55,
+                "open": 3,
+                "violation": 1
             }
         }
     ]
