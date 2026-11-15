@@ -4,12 +4,12 @@
    translated as E1 DIV 2^k for E1 >= 0 and (E1 - (2^k - 1)) DIV 2^k for
    E1 < 0, DIV being C division (truncation). Previously only k <= 4 was
    translated (as E1 / 2^k, also for negative E1), other constant shifts
-   were unconstrained, and the interval ceiling of an exact quotient was
-   one too high (ceiling(4) == 5). */
+   were unconstrained, and interval DIV rounded bounds outward (issues 31a,
+   31b: now truncating, exact). */
 
 int arr[8];
 
-/* u <= 95: u >> 4 <= 5 (interval: ceiling(95/16) == 6), index safe */
+/* u <= 95: u >> 4 <= 5 (interval DIV was ceiling(95/16) == 6), index safe */
 void shr_bound(unsigned int u) {
   if (u <= 95) {
     unsigned int v = u >> 4;
@@ -25,8 +25,8 @@ void shr_bound_exact(unsigned int u) {
   }
 }
 
-/* u <= 100: u >> 4 <= 6, but the interval division gives ceiling(100/16)
-   == 7: index-upper-bound open */
+/* u <= 100: u >> 4 <= 6 (interval DIV was ceiling(100/16) == 7, issue
+   31b): index safe */
 void shr_bound_ceil(unsigned int u) {
   if (u <= 100) {
     unsigned int v = u >> 4;
@@ -43,7 +43,7 @@ int shr_nonzero(unsigned int u) {
   return 0;
 }
 
-/* u >> 30 <= 3 for a 32-bit u (interval: 4), index safe */
+/* u >> 30 <= 3 for a 32-bit u (interval DIV was 4), index safe */
 void shr_top(unsigned int u) {
   arr[u >> 30] = 1;
 }
@@ -55,7 +55,7 @@ int shr_neg_const(void) {
   return 10 / (b + 2);
 }
 
-/* s in [-100, -1]: s >> 2 in [-25, -1] (interval: [-26, -1]), never 0
+/* s in [-100, -1]: s >> 2 in [-25, -1] (interval DIV was [-26, -1]), never 0
    (truncation would give 0 for s in [-3, -1]): not-zero safe */
 int shr_neg_var(int s) {
   if (s >= -100 && s <= -1) {
