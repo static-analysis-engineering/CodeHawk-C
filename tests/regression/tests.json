@@ -9,8 +9,9 @@
         },
         {
             "filename": "enum_integer_promotion.c",
+            "description": "Issue 28: the casts of the enum operands to unsigned int (the enum's compatible type, CIL ekind) are conversions between identical integer kinds and get no proof obligation (previously two cast POs proven by the enumeration-membership rule, 8 safe)",
             "expected": {
-                "safe": 8
+                "safe": 6
             }
         },
         {
@@ -238,6 +239,23 @@
                 "safe": 55,
                 "open": 3,
                 "violation": 1
+            }
+        },
+        {
+            "filename": "enum_conversion.c",
+            "description": "Issue 28: casts from/to an enumerated type are integer conversions from/to its compatible type (CIL ekind; C11 6.7.2.2p4), with corrections and the integer cast POs (previously no correction and a cast PO proven by enumeration membership); (unsigned char)M with M = -1 is 255: index-upper-bound and cast-lb violations; (enum sgn)4294967295u is -1: not-zero violation, int-overflow safe; delegated cast bounds; the enumeration-membership cast PO of (enum sgn)u is open",
+            "expected": {
+                "safe": 20,
+                "open": 1,
+                "violation": 4
+            }
+        },
+        {
+            "filename": "bitfield_store.c",
+            "description": "Issue 27 (a): a store into a bit-field of width w reduces the value modulo 2^w into the field's range (unsigned [0, 2^w-1]; signed [-2^(w-1), 2^(w-1)-1], gcc); f:3 = 9 stores 1 (index safe, previously violation), f:3 = 8 stores 0 (not-zero violation, previously safe), g:4 = 12 stores -4 (index-lower-bound violation), f:3 = u is in [0, 7]; bit-field promotion to int (27 (c)) not covered",
+            "expected": {
+                "safe": 82,
+                "violation": 2
             }
         }
     ]
