@@ -282,6 +282,14 @@
                 "safe": 53,
                 "open": 13
             }
+        },
+        {
+            "filename": "uint_underflow_minus.c",
+            "description": "Issue 40: uint-underflow(e1, e2, minusa) requires a relation between the operands (LB(e1) >= UB(e2), or e2 == 0); previously a non-negative lower bound on e1 alone was accepted, so lb_first_only (no bound on b) and lb_first_ub_too_large (a >= 5, b <= 6) were proven safe (now open); bounded_both, second_zero and constant_second stay safe. Operands are return values of an external function, so the POs cannot be delegated",
+            "expected": {
+                "safe": 33,
+                "open": 2
+            }
         }
     ]
 }
