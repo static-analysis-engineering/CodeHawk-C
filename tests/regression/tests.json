@@ -172,16 +172,16 @@
         },
         {
             "filename": "integer_conversion.c",
-            "description": "Issue 21: integer conversions are reduced modulo 2^N (unsigned targets; GCC semantics for out-of-range signed targets), _Bool conversion gives 0/1; (uint16_t)-1 indexes out of bounds (violation), (int)(2^32+3) == 3 and (_Bool)2 == 1 index in bounds (safe); (int32_t)0xc400000aU is folded to -1006632950, so the s >= 0 branch is unreachable: index-upper-bound(s) is safe, but index-lower-bound(s) is reported as a violation in that dead code (issue 25: unreachability not used by default; expected to become open/unreachable when 25 is fixed); the cast POs themselves remain violations until the analysis levels (issue 15, Part A)",
+            "description": "Issue 21: integer conversions are reduced modulo 2^N (unsigned targets; GCC semantics for out-of-range signed targets), _Bool conversion gives 0/1; (uint16_t)-1 indexes out of bounds (violation), (int)(2^32+3) == 3 and (_Bool)2 == 1 index in bounds (safe); (int32_t)0xc400000aU is folded to -1006632950, so the s >= 0 branch is unreachable: its proof obligations stay open with an unreachable diagnostic (issue 25; previously index-lower-bound(s) was a violation and index-upper-bound(s) safe from the facts of other domains); the cast POs themselves remain violations until the analysis levels (issue 15, Part A)",
             "expected": {
-                "safe": 25,
-                "open": 1,
-                "violation": 5
+                "safe": 24,
+                "open": 3,
+                "violation": 4
             }
         },
         {
             "filename": "unsigned_wrap_nested.c",
-            "description": "Issue 21: unsigned +, -, *, unary - and integer conversions nested in expressions, conditions and PO arguments are reduced modulo 2^N; index_wrap, rhs_wrap, neg_wrap are index-upper-bound violations (previously safe with index -1), mult_wrap has b == 0 (previously two false violations with b == 2^32), nowrap stays safe, param_index_wrap is safe relative to the delegated uint-underflow precondition",
+            "description": "Issue 21: unsigned +, -, *, unary - and integer conversions nested in expressions, conditions and PO arguments are reduced modulo 2^N; index_wrap, rhs_wrap, neg_wrap are index-upper-bound violations (previously safe with index -1), mult_wrap has b == 0 (previously two false violations with b == 2^32; return arr[b] is unreachable and its POs stay open, issue 25), cast_cond: (uint8_t)x is no longer the identity in the symbolic-sets translator (it made the reachable arr[x - 291] unreachable and initialized(x) open), nowrap stays safe, param_index_wrap is safe relative to the delegated uint-underflow precondition",
             "expected": {
                 "safe": 53,
                 "open": 2,
@@ -315,6 +315,14 @@
                 "safe": 44,
                 "open": 5,
                 "violation": 1
+            }
+        },
+        {
+            "filename": "unreachable_location.c",
+            "description": "Issue 25: a proof obligation at a location that some domain proves unreachable stays open with an explicit unreachable diagnostic (reported separately); it is not checked against the other domains' facts (previously plain_const index-lower-bound(s) was a violation and index-upper-bound(s) safe from the linear-equalities fact s == -5, and param_dead delegated both index proof obligations to the api from pepr facts); statement-local checks still apply (stmt_valid_dead: arr[3] safe); reachable code is unaffected",
+            "expected": {
+                "safe": 15,
+                "open": 5
             }
         }
     ]

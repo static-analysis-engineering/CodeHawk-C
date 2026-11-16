@@ -578,6 +578,85 @@ def file_code_open_tostring(cfile: "CFile", showinvs: bool = False) -> str:
     return file_code_tostring(cfile, pofilter=pofilter, showinvs=showinvs)
 
 
+def unreachable_locations(
+        ppos: Sequence["CFunctionPO"],
+        spos: Sequence["CFunctionPO"],
+        filefilter: Callable[[str], bool] = lambda f: True
+) -> List[Dict[str, Any]]:
+    """Return the locations of open proof obligations proven unreachable.
+
+    Unreachability does not discharge proof obligations (unless the analyzer
+    is run with -unreachability); the proof obligations stay open and are
+    reported separately, because unreachable code is rare in real code and
+    usually points to an imprecision or error in the analysis.
+
+    Returns:
+      list of records (file, function, line, domains, ppos, spos), one per
+      source line, sorted by file, function, and line
+    """
+    locs: Dict[Tuple[str, str, int], Dict[str, Any]] = {}
+
+    def add(po: "CFunctionPO", kind: str) -> None:
+        domains = po.unreachable_domains
+        if len(domains) == 0 or not filefilter(po.cfile.name):
+            return
+        key = (po.cfile.name, po.cfun.name, po.line)
+        if key not in locs:
+            locs[key] = {
+                "file": key[0], "function": key[1], "line": key[2],
+                "domains": [], "ppos": 0, "spos": 0}
+        locs[key][kind] += 1
+        for d in domains:
+            if d not in locs[key]["domains"]:
+                locs[key]["domains"].append(d)
+
+    for po in ppos:
+        add(po, "ppos")
+    for po in spos:
+        add(po, "spos")
+    return [locs[k] for k in sorted(locs)]
+
+
+def unreachable_locations_tostring(
+        locations: List[Dict[str, Any]],
+        openppos: int,
+        openspos: int) -> str:
+    """Return a report of the locations of open proof obligations proven
+    unreachable (empty if there are none)."""
+    if len(locations) == 0:
+        return ""
+    nppos = sum(loc["ppos"] for loc in locations)
+    nspos = sum(loc["spos"] for loc in locations)
+    lines: List[str] = []
+    lines.append(
+        "\n\nOpen proof obligations at locations proven unreachable: "
+        + str(nppos) + " of " + str(openppos) + " open primary, "
+        + str(nspos) + " of " + str(openspos) + " open supporting")
+    lines.append(
+        "(unreachability does not discharge proof obligations; unreachable"
+        + " code is rare and may point to an imprecision or error in the"
+        + " analysis)")
+    lines.append("-" * 80)
+    fnlen = max(len(loc["function"]) for loc in locations) + 2
+    filelen = max(len(loc["file"]) for loc in locations) + 2
+    lines.append(
+        "file".ljust(filelen) + "function".ljust(fnlen) + "line".rjust(6)
+        + "ppos".rjust(6) + "spos".rjust(6) + "  domains")
+    for loc in locations:
+        lines.append(
+            loc["file"].ljust(filelen)
+            + loc["function"].ljust(fnlen)
+            + str(loc["line"]).rjust(6)
+            + str(loc["ppos"]).rjust(6)
+            + str(loc["spos"]).rjust(6)
+            + "  " + ", ".join(loc["domains"]))
+    return "\n".join(lines)
+
+
+def _nonempty(s: str) -> List[str]:
+    return [s] if len(s) > 0 else []
+
+
 def proofobligation_stats_tostring(
         pporesults: Dict[str, Dict[str, int]],
         sporesults: Dict[str, Dict[str, int]],
@@ -627,6 +706,11 @@ def project_proofobligation_stats_tostring(
     lines.append(
         proofobligation_stats_tostring(
             tagpporesults, tagsporesults, extradsmethods=extradsmethods))
+    lines.extend(_nonempty(
+        unreachable_locations_tostring(
+            unreachable_locations(ppos, spos, filefilter=filefilter),
+            sum(r["open"] for r in pporesults.values()),
+            sum(r["open"] for r in sporesults.values()))))
     return "\n".join(lines)
 
 
@@ -653,6 +737,8 @@ def project_proofobligation_stats_to_dict(
     result["tagresults"]["spos"] = tagsporesults
     result["fileresults"]["ppos"] = pporesults
     result["fileresults"]["spos"] = sporesults
+    result["unreachable"] = unreachable_locations(
+        ppos, spos, filefilter=filefilter)
     return result
 
 
@@ -674,6 +760,12 @@ def project_proofobligation_stats_dict_to_string(
         tagpporesults = stats_dict["tagresults"]["ppos"]
         tagsporesults = stats_dict["tagresults"]["spos"]
         lines.append(proofobligation_stats_tostring(tagpporesults, tagsporesults))
+
+        lines.extend(_nonempty(
+            unreachable_locations_tostring(
+                stats_dict.get("unreachable", []),  # type: ignore
+                sum(r["open"] for r in pporesults.values()),
+                sum(r["open"] for r in sporesults.values()))))
 
     else:
         lines.append("Zero primary proof obligations")
@@ -701,6 +793,12 @@ def file_proofobligation_stats_tostring(
     lines.append("~" * 80)
 
     lines.append(proofobligation_stats_tostring(tagpporesults, tagsporesults))
+
+    lines.extend(_nonempty(
+        unreachable_locations_tostring(
+            unreachable_locations(ppos, spos),
+            sum(r["open"] for r in pporesults.values()),
+            sum(r["open"] for r in sporesults.values()))))
 
     return "\n".join(lines)
 
