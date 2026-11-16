@@ -166,6 +166,28 @@ class CFunctionPO:
         return self.status == "deadcode"
 
     @property
+    def unreachable_domains(self) -> List[str]:
+        """Return the domains that proved the location of this open proof
+        obligation unreachable.
+
+        Unless the analyzer is run with -unreachability (Juliet), an
+        unreachable location does not discharge a proof obligation: the
+        proof obligation stays open with an 'unreachable' diagnostic, as
+        unreachability in real code usually points to an imprecision or
+        error in the analysis.
+        """
+        if self.is_open and self.has_diagnostic():
+            prefix = "proven by domain "
+            return [
+                m[len(prefix):] if m.startswith(prefix) else m
+                for m in self.diagnostic.keyword_msgs.get("unreachable", [])]
+        return []
+
+    @property
+    def is_at_unreachable_location(self) -> bool:
+        return len(self.unreachable_domains) > 0
+
+    @property
     def is_delegated(self) -> bool:
         if self.is_safe and self.dependencies is not None:
             return self.dependencies.has_external_dependencies()
