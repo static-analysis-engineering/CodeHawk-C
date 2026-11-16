@@ -257,6 +257,31 @@
                 "safe": 82,
                 "violation": 2
             }
+        },
+        {
+            "filename": "out_parameter_abstraction.c",
+            "description": "Issue 36: objects addressed by an argument of a callee without known side effects are abstracted at the call (the addressed sub-object, or the enclosing array for a pointer to an array element, with all its fields and elements); previously only &lval/array arguments themselves were abstracted (only the variable for lval): (void *)&c, p = &v; f(p), the fields of &s, and (void *)buf kept their values, so index-upper-bound(x) was proven safe with x == 0 although the callee may make x == 12 (now open: void_out, ptr_copy, struct_out, array_out; field_out was already open); field_sibling: s.b is not reachable from &s.a and stays 3 (safe)",
+            "expected": {
+                "safe": 62,
+                "open": 5
+            }
+        },
+        {
+            "filename": "type_punned_access.c",
+            "description": "Issue 35: an access whose type differs from the type of the accessed object has an unknown value (read) or abstracts the object (write): *(char *)&e was the int e itself, so pun_read proved its branch unreachable and index-upper-bound(x) safe with x == 0 (12 on x86-64), now open; pun_write: index bounds of e open (previously violation/safe with e == 12). Pointer arithmetic on a known address shifts the last index instead of appending one, and keeps the field offset: ptr_plus_write *(p + 1) = 12 with p = &a[0] writes a[1] (index-upper-bound(a[1]) violation, previously safe with a[1] == 0); ptr_plus_field (p + 1)->a == 0 safe, (p + 1)->b == 12 violation (previously both open). External memory reached through void * is typed by the access (void_arg_state: uint-underflow safe)",
+            "expected": {
+                "safe": 122,
+                "open": 10,
+                "violation": 2
+            }
+        },
+        {
+            "filename": "global_abstraction.c",
+            "description": "Issue 36(d): a call may modify any global (address-taken or not) unless a contract protects it (const global-variable contract, or XPreservesValue of the global in the callee's side effects/postconditions); an unresolved indirect call abstracts its lhs, argument regions and all globals (previously the call was omitted); previously callback_global, direct_global, global_field, addr_taken_global, indirect_lhs and indirect_global proved index-upper-bound safe with index 0 (now open); library_call (strlen has a summary) and local_unaffected stay safe",
+            "expected": {
+                "safe": 53,
+                "open": 13
+            }
         }
     ]
 }
