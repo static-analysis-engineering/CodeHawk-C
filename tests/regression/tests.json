@@ -307,6 +307,15 @@
                 "open": 33,
                 "violation": 4
             }
+        },
+        {
+            "filename": "goto_translation.c",
+            "description": "Issue 41: in a function with gotos the last statement of the body was translated outside the CFG, so a backward goto in the last statement was lost and its target unreachable (goto_backward: all POs at the target open, now index-upper-bound(12) violation and initialized(x) safe; goto_backward_init: initialized(x) safe). In a nested goto block a break/continue of an enclosing loop or switch fell through to the statement after the block: index-upper-bound in nested_break, nested_continue and nested_switch_break was safe (now open); inner_loop_break (break within the block) stays safe",
+            "expected": {
+                "safe": 44,
+                "open": 5,
+                "violation": 1
+            }
         }
     ]
 }
