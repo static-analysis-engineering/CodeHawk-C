@@ -268,10 +268,10 @@
         },
         {
             "filename": "type_punned_access.c",
-            "description": "Issue 35: an access whose type differs from the type of the accessed object has an unknown value (read) or abstracts the object (write): *(char *)&e was the int e itself, so pun_read proved its branch unreachable and index-upper-bound(x) safe with x == 0 (12 on x86-64), now open; pun_write: index bounds of e open (previously violation/safe with e == 12). Pointer arithmetic on a known address shifts the last index instead of appending one, and keeps the field offset: ptr_plus_write *(p + 1) = 12 with p = &a[0] writes a[1] (index-upper-bound(a[1]) violation, previously safe with a[1] == 0); ptr_plus_field (p + 1)->a == 0 safe, (p + 1)->b == 12 violation (previously both open). External memory reached through void * is typed by the access (void_arg_state: uint-underflow safe)",
+            "description": "Issue 35: an access whose type differs from the type of the accessed object has an unknown value (read) or abstracts the object (write): *(char *)&e was the int e itself, so pun_read proved its branch unreachable and index-upper-bound(x) safe with x == 0 (12 on x86-64), now open; pun_write: index bounds of e open (previously violation/safe with e == 12). Pointer arithmetic on a known address shifts the last index instead of appending one, and keeps the field offset: ptr_plus_write *(p + 1) = 12 with p = &a[0] writes a[1] (index-upper-bound(a[1]) violation, previously safe with a[1] == 0); ptr_plus_field (p + 1)->a == 0 safe, (p + 1)->b == 12 violation (previously both open). External memory reached through void * is typed by the access (void_arg_state: uint-underflow safe). Issue 37: in the symbolic-sets domain a type-inconsistent access is no longer the object itself, so initialized(*(char *)&e) in pun_read is open (precision loss: the domain cannot distinguish the read from a partial write)",
             "expected": {
-                "safe": 122,
-                "open": 10,
+                "safe": 121,
+                "open": 11,
                 "violation": 2
             }
         },
@@ -289,6 +289,23 @@
             "expected": {
                 "safe": 33,
                 "open": 2
+            }
+        },
+        {
+            "filename": "symbolic_domain_calls.c",
+            "description": "Issues 36(c), 37: symbolic domains. Symbolic-sets conditions: lvals without a variable were the same temporary (conditions are translated outside a transaction), so G.ptr->cnt >= G.ptr->max was TRUE, the else branch dead and initialized(x) proven safe after the join (uninit_after_condition, now open). Numerical: the field offset of (gq + 1)->a through the initial value of a global pointer was dropped, so a and b were one variable (ptr_plus_fields: index-upper-bound violation, now safe). Sym_pointersets: calls without summary now abstract out-parameter regions, globals, and the lhs of unresolved indirect calls (out_param, global_pointer, indirect_lhs: branches r != 0 were dead in that domain; statuses unchanged). partial_init: a one-byte write through (char *)&e was recorded as an assignment of e (initialized(e) safe, now open)",
+            "expected": {
+                "safe": 100,
+                "open": 48
+            }
+        },
+        {
+            "filename": "library_write_sideeffects.c",
+            "description": "Issue 42: library summaries now list a block-write side effect for every pointer the function writes (58 summaries had a deref-write precondition but no write side effect; memset, read, time recorded the write only as initialization; strtok was marked functional; sscanf had no formatted-input; ioctl had no parameters): previously the written object kept its value and index-upper-bound(x) was safe with x == 0 in the nine write_* functions (now open). A block write through a null pointer, an absent variadic argument, or a non-pointer argument has no effect (guarded_args: safe). initialized(buf[0]) after buf[0] = 0; snprintf(buf, ..) is safe (the byte-sequence violation rule of the initialized checker was removed)",
+            "expected": {
+                "safe": 260,
+                "open": 33,
+                "violation": 4
             }
         }
     ]
