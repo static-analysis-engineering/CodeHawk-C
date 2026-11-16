@@ -298,6 +298,15 @@
                 "safe": 100,
                 "open": 48
             }
+        },
+        {
+            "filename": "library_write_sideeffects.c",
+            "description": "Issue 42: library summaries now list a block-write side effect for every pointer the function writes (58 summaries had a deref-write precondition but no write side effect; memset, read, time recorded the write only as initialization; strtok was marked functional; sscanf had no formatted-input; ioctl had no parameters): previously the written object kept its value and index-upper-bound(x) was safe with x == 0 in the nine write_* functions (now open). A block write through a null pointer, an absent variadic argument, or a non-pointer argument has no effect (guarded_args: safe). initialized(buf[0]) after buf[0] = 0; snprintf(buf, ..) is safe (the byte-sequence violation rule of the initialized checker was removed)",
+            "expected": {
+                "safe": 260,
+                "open": 33,
+                "violation": 4
+            }
         }
     ]
 }
