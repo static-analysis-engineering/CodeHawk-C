@@ -32,6 +32,7 @@ import xml.etree.ElementTree as ET
 
 from typing import Callable, Dict, List, Optional, TYPE_CHECKING
 
+from chc.proof.CFunctionPO import po_status
 from chc.proof.CFunctionPPO import CFunctionPPO
 from chc.proof.CProofDependencies import CProofDependencies
 from chc.proof.CProofDiagnostic import CProofDiagnostic, SituatedMsg
@@ -46,7 +47,6 @@ if TYPE_CHECKING:
     from chc.proof.CFunPODictionary import CFunPODictionary
 
 
-po_status = {"g": "safe", "o": "open", "r": "violation", "x": "dead-code"}
 
 
 class CFunctionPPOs:

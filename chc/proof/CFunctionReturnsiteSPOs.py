@@ -53,7 +53,7 @@ if TYPE_CHECKING:
     from chc.proof.CFunPODictionary import CFunPODictionary
 
 
-po_status = {"g": "safe", "o": "open", "r": "violation", "x": "dead-code"}
+po_status = PO.po_status
 
 
 class CFunctionReturnsiteSPOs:

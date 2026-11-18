@@ -63,6 +63,33 @@ po_status = {
 po_status_indicators = {v: k for (k, v) in po_status.items()}
 
 
+"""Analysis levels (issue 15), ordered by inclusion: undefined behavior only;
+plus implementation-defined behavior (default); plus value wrap-around.
+
+The analysis level only affects reporting: all proof obligations are generated
+and checked at every level. A proof obligation whose condition fails gets the
+status of the category of behavior that results: violation (undefined
+behavior), implementation-defined (conversion to a signed type of a value that
+is not representable, C11 6.3.1.3p3), or value-wrap-around (unsigned
+arithmetic, C11 6.2.5p9; conversion to an unsigned type, C11 6.3.1.3p2).
+"""
+analysis_levels: List[str] = [
+    "undefined-behavior", "implementation-defined", "value-wrap-around"]
+
+default_analysis_level: str = "implementation-defined"
+
+po_behavior_categories: Dict[str, str] = {
+    "unsigned-to-signed-cast": "implementation-defined",
+    "signed-to-signed-cast-lb": "implementation-defined",
+    "signed-to-signed-cast-ub": "implementation-defined",
+    "uint-overflow": "value-wrap-around",
+    "uint-underflow": "value-wrap-around",
+    "signed-to-unsigned-cast-lb": "value-wrap-around",
+    "signed-to-unsigned-cast-ub": "value-wrap-around",
+    "unsigned-to-unsigned-cast": "value-wrap-around",
+}
+
+
 class CFunctionPO:
     """Super class of primary and supporting proof obligations."""
 
@@ -163,7 +190,31 @@ class CFunctionPO:
 
     @property
     def is_deadcode(self) -> bool:
-        return self.status == "deadcode"
+        return self.status == "dead-code"
+
+    @property
+    def is_finding(self) -> bool:
+        """Returns true if the condition of the proof obligation fails, with
+        undefined, implementation-defined, or value-wrap-around behavior as
+        a result."""
+        return (
+            self.is_violated
+            or self.is_implementation_defined
+            or self.is_value_wrap_around)
+
+    @property
+    def behavior_category(self) -> str:
+        """Returns the category of behavior that results if the condition of
+        this proof obligation fails (one of analysis_levels)."""
+        return po_behavior_categories.get(
+            self.predicate_name, "undefined-behavior")
+
+    def in_analysis_level(self, level: str) -> bool:
+        """Returns true if this proof obligation is reported at the given
+        analysis level."""
+        return (
+            analysis_levels.index(self.behavior_category)
+            <= analysis_levels.index(level))
 
     @property
     def unreachable_domains(self) -> List[str]:
@@ -318,16 +369,17 @@ class CFunctionPO:
         else:
             if any(
                 [
-                    t.is_global_api_assumption or t.is_contract_assumption
+                    t.is_global_api_assumption
+                    or t.is_contract_assumption
+                    or t.is_global_assumption
                     for t in atypes
                 ]
             ):
                 return "contract"
-            else:
-                print("assumptions not recognized: ")
-                for t in atypes:
-                    print("  " + str(t))
+            elif any([t.is_api_assumption for t in atypes]):
                 return "api"
+            else:
+                return "local"
 
     def get_global_assumptions(self) -> List["AssumptionType"]:
         return [t for t in self.get_assumptions() if t.is_global_assumption]
