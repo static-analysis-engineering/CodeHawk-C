@@ -74,7 +74,7 @@
             "description": "False-positive signed-to-unsigned-cast-ub: caste(uint16_t, X) where X > 65535 is not modelled as modular truncation; the un-truncated int value propagates into the OR and exceeds uint16_t max; byte_swap_lo (val=31) is correctly safe because 31<<8=7936 fits in uint16_t without truncation (safe 52 -> 58: issue 29 adds non-negative(E1) and int-overflow(E1, E2, op:shiftlt) for the signed (promoted) shifts, all safe)",
             "expected": {
                 "safe": 58,
-                "violation": 2
+                "value-wrap-around": 2
             },
             "goal": "improve"
         },
@@ -167,16 +167,19 @@
             "expected": {
                 "safe": 49,
                 "open": 1,
-                "violation": 2
+                "violation": 1,
+                "value-wrap-around": 1
             }
         },
         {
             "filename": "integer_conversion.c",
-            "description": "Issue 21: integer conversions are reduced modulo 2^N (unsigned targets; GCC semantics for out-of-range signed targets), _Bool conversion gives 0/1; (uint16_t)-1 indexes out of bounds (violation), (int)(2^32+3) == 3 and (_Bool)2 == 1 index in bounds (safe); (int32_t)0xc400000aU is folded to -1006632950, so the s >= 0 branch is unreachable: its proof obligations stay open with an unreachable diagnostic (issue 25; previously index-lower-bound(s) was a violation and index-upper-bound(s) safe from the facts of other domains); the cast POs themselves remain violations until the analysis levels (issue 15, Part A)",
+            "description": "Issue 21: integer conversions are reduced modulo 2^N (unsigned targets; GCC semantics for out-of-range signed targets), _Bool conversion gives 0/1; (uint16_t)-1 indexes out of bounds (violation), (int)(2^32+3) == 3 and (_Bool)2 == 1 index in bounds (safe); (int32_t)0xc400000aU is folded to -1006632950, so the s >= 0 branch is unreachable: its proof obligations stay open with an unreachable diagnostic (issue 25; previously index-lower-bound(s) was a violation and index-upper-bound(s) safe from the facts of other domains); the failing cast POs are implementation-defined (signed targets, C11 6.3.1.3p3) or value-wrap-around (unsigned targets, 6.3.1.3p2) rather than violations (issue 15, Part A); the remaining violation is the out-of-bounds index",
             "expected": {
                 "safe": 24,
                 "open": 3,
-                "violation": 4
+                "violation": 1,
+                "implementation-defined": 2,
+                "value-wrap-around": 1
             }
         },
         {
@@ -185,7 +188,8 @@
             "expected": {
                 "safe": 53,
                 "open": 2,
-                "violation": 9
+                "violation": 4,
+                "value-wrap-around": 5
             }
         },
         {
@@ -220,7 +224,7 @@
             "description": "Universal uint-underflow violation of e1 - e2 requires UB(e1) - LB(e2) < 0 (the checker used UB(e2)): a in [10, 20], b in [0, 100] is delegated to the api (previously a violation); a <= 20, b >= 30 is a violation",
             "expected": {
                 "safe": 13,
-                "violation": 1
+                "value-wrap-around": 1
             }
         },
         {
@@ -247,7 +251,9 @@
             "expected": {
                 "safe": 20,
                 "open": 1,
-                "violation": 4
+                "violation": 2,
+                "implementation-defined": 1,
+                "value-wrap-around": 1
             }
         },
         {
@@ -260,10 +266,10 @@
         },
         {
             "filename": "out_parameter_abstraction.c",
-            "description": "Issue 36: objects addressed by an argument of a callee without known side effects are abstracted at the call (the addressed sub-object, or the enclosing array for a pointer to an array element, with all its fields and elements); previously only &lval/array arguments themselves were abstracted (only the variable for lval): (void *)&c, p = &v; f(p), the fields of &s, and (void *)buf kept their values, so index-upper-bound(x) was proven safe with x == 0 although the callee may make x == 12 (now open: void_out, ptr_copy, struct_out, array_out; field_out was already open); field_sibling: s.b is not reachable from &s.a and stays 3 (safe)",
+            "description": "Issue 36: objects addressed by an argument of a callee without known side effects are abstracted at the call (the addressed sub-object, or the enclosing array for a pointer to an array element, with all its fields and elements); previously only &lval/array arguments themselves were abstracted (only the variable for lval): (void *)&c, p = &v; f(p), the fields of &s, and (void *)buf kept their values, so index-upper-bound(x) was proven safe with x == 0 although the callee may make x == 12 (now open: void_out, ptr_copy, struct_out, array_out; field_out was already open); field_sibling: since issue 45, s.b is abstracted as well (open): the address of s escapes to ext_int, and a pointer to the first member, converted, points to the structure (C11 6.7.2.1p15)",
             "expected": {
-                "safe": 62,
-                "open": 5
+                "safe": 60,
+                "open": 7
             }
         },
         {
@@ -305,7 +311,7 @@
             "expected": {
                 "safe": 260,
                 "open": 33,
-                "violation": 4
+                "implementation-defined": 4
             }
         },
         {
@@ -323,6 +329,57 @@
             "expected": {
                 "safe": 15,
                 "open": 5
+            }
+        },
+        {
+            "filename": "analysis_levels.c",
+            "description": "Issue 15 (Part A): a failing proof obligation gets the status of the resulting behavior: violation (undefined behavior: ub_index), implementation-defined (unsigned-to-signed-cast, signed-to-signed-cast-lb/ub; C11 6.3.1.3p3) or value-wrap-around (uint-overflow, uint-underflow, signed-to-unsigned-cast-lb/ub, unsigned-to-unsigned-cast; C11 6.2.5p9, 6.3.1.3p2); previously all seven were violations. All proof obligations are checked at every level; the level only selects what the reports show",
+            "expected": {
+                "safe": 13,
+                "violation": 1,
+                "implementation-defined": 2,
+                "value-wrap-around": 4
+            }
+        },
+        {
+            "filename": "consolidated_status.c",
+            "description": "Issue 43: consolidated status of the primary proof obligations (chkc report, section Consolidated status); the status of each proof obligation is unchanged. Delegated index proof obligations: read_static and rec_a/rec_b (mutual recursion, greatest fixpoint) proven via their safe call sites; read_extern (external linkage) and read_addr (address taken) trust-ext; read_open dep-open (open call-site proof obligation); read_bad upper bound dep-fail (violated call-site proof obligation; its lower bound proven); lib_post: 7 proof obligations trust-lib (memset library summary, preserves-all-memory)",
+            "expected": {
+                "safe": 79,
+                "open": 1
+            },
+            "expected-consolidated": {
+                "proven": 65,
+                "trust-lib": 7,
+                "trust-ext": 4,
+                "dep-open": 2,
+                "dep-fail": 1,
+                "open": 1
+            }
+        },
+        {
+            "filename": "consolidated_closed_program.c",
+            "description": "Issue 43, closed-program mode (chkc report --closed-program --entry-point main --entry-point lib_entry): external linkage alone does not imply unseen callers; read_called (external linkage, safe call site) proven; read_uncalled (no callers) uncalled, not proven (unreachability policy); lib_entry (declared entry point) and read_addr (address taken) trust-ext. Without --closed-program all eight delegated proof obligations are trust-ext",
+            "expected": {
+                "safe": 17
+            },
+            "consolidated-options": {
+                "closed-program": true,
+                "entry-points": ["main", "lib_entry"]
+            },
+            "expected-consolidated": {
+                "proven": 11,
+                "trust-ext": 4,
+                "uncalled": 2
+            }
+        },
+        {
+            "filename": "call_frame_abstraction.c",
+            "description": "Issue 45: a call without library summary may change memory it does not receive as an argument: external memory (through pointer parameters, return values, pointers stored in memory) and locals whose address escaped (syntactic flow-insensitive escape analysis), also through pointers stored in an argument (depth 2: readv, struct field). The 14 index POs of ext_param, ext_param_defined, ext_return, escaped_call, escaped_defined, depth2_library, depth2_struct were proven safe with stale values and are open now; local_kept, local_library_arg (address only passed to memset) and ext_param_library (memset has a summary) stay safe. The violation is stack-address-escape (gx = &x) in escaped_defined",
+            "expected": {
+                "safe": 180,
+                "open": 43,
+                "violation": 1
             }
         }
     ]

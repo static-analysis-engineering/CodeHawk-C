@@ -9,8 +9,10 @@
    kept their values across the call, and the index POs below were proven safe
    with x == 0 although the callee may make x == 12.
 
-   Precision is preserved for the parts of an object that are not reachable
-   from the argument (field_sibling: s.b is not written by ext_int(&s.a)).
+   field_sibling: s.b was kept across ext_int(&s.a) as not reachable from the
+   argument. Since issue 45 the whole of s is abstracted: its address escapes
+   to ext_int, and a pointer to the first member, suitably converted, points
+   to the structure object (C11 6.7.2.1p15), so the callee may write s.b.
  */
 
 int arr[10];
@@ -64,7 +66,7 @@ int array_out(int fd) {         /* (void *)buf: open */
   return arr[x];
 }
 
-int field_sibling(void) {       /* s.b not reachable from &s.a: safe */
+int field_sibling(void) {       /* s escapes to ext_int: open */
   struct pair s;
   s.a = 0; s.b = 3;
   ext_int(&s.a);
