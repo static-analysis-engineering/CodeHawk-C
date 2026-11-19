@@ -286,10 +286,9 @@ def run_regression_test_file(
             i = diffs[0]
             print_error(
                 cfilename + ": FINDINGS line " + str(i + 1) + ": expected\n  "
-                + (expectedfindings[i] if i < len(expectedfindings)
-                   else "(none)")
-                + "\nbut found\n  " + (found[i] if i < len(found)
-                                         else "(none)"))
+                + (expectedfindings[i] if i < len(expectedfindings) else "(none)")
+                + "\nbut found\n  "
+                + (found[i] if i < len(found) else "(none)"))
             resultmsg = (
                 "Failed: FINDINGS text differs at line " + str(i + 1))
 

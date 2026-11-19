@@ -1062,7 +1062,6 @@ def ext_callers_tostring(
     return "\n".join(lines)
 
 
-
 def uncalled_functions(
         cons: ConsolidatedStatus,
         ppos: Sequence["CFunctionPO"],
@@ -1111,6 +1110,7 @@ def uncalled_functions_tostring(functions: List[Dict[str, Any]]) -> str:
             "  " + f["function"].ljust(fnlen) + f["file"].ljust(filelen)
             + str(f["ppos"]).rjust(7) + str(f["spos"]).rjust(7))
     return "\n".join(lines)
+
 
 def consolidated_status_tostring(
         pporesults: Dict[str, Dict[str, int]],

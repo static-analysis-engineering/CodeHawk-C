@@ -780,7 +780,7 @@ def cproject_report(args: argparse.Namespace) -> NoReturn:
     if statsresult is not None:
         print(RP.project_proofobligation_stats_dict_to_string(
             statsresult, showextcallers=showextcallers,
-                showconsolidated=showconsolidated))
+            showconsolidated=showconsolidated))
     else:
         print_error("Results were not readable")
         exit(1)

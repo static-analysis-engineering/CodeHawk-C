@@ -677,8 +677,8 @@ def boundary_tostring(b: Dict[str, Any], showall: bool = False) -> str:
             + " analyzed code or indirectly:")
         lines.append(
             "      their preconditions are assumed at those call sites ("
-            + _num(uncalledinside) + (" has" if uncalledinside == 1
-                                       else " have"))
+            + _num(uncalledinside)
+            + (" has" if uncalledinside == 1 else " have"))
         lines.append(
             "      no call site in the analyzed code)")
     lines.append(
