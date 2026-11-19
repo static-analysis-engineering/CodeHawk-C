@@ -86,8 +86,9 @@ def classify_tgt_violation(
         return "U"  # unknown
     if po.is_open:
         return "U"  # unknown
-    if po.is_violated:
-        return "V"  # violation reported
+    if po.is_finding:
+        return "V"  # violation reported (including implementation-defined
+        # behavior and value wrap-around, e.g., CWE-190/191 for unsigned)
     dm = po.dependencies.level
     if dm == "f" or dm == "s":
         return "S"  # found safe
@@ -116,7 +117,7 @@ def classify_tgt_safecontrol(
         return "U"  # unknown
     if po.is_open:
         return "U"  # unknown
-    if po.is_violated:
+    if po.is_finding:
         return "O"  # violation
     dm = po.dependencies.level
     if dm == "s" or dm == "f":

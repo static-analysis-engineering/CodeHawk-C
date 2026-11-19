@@ -608,6 +608,11 @@ def cfile_report_file(args: argparse.Namespace) -> NoReturn:
     cshowinvariants: bool = args.showinvariants
     cfunctions: Optional[List[str]] = args.functions
     copen: bool = args.open
+    analysislevel: str = args.analysis_level
+    showextcallers: bool = args.ext_callers
+    closedprogram: bool = args.closed_program
+    entrypoints: List[str] = args.entry_points or ["main"]
+    showconsolidated: bool = args.consolidated
     jsonoutput: bool = args.json
     outputfile: Optional[str] = args.output
     loglevel: str = args.loglevel
@@ -648,6 +653,8 @@ def cfile_report_file(args: argparse.Namespace) -> NoReturn:
         exit(0)
 
     def pofilter(po: "CFunctionPO") -> bool:
+        if not po.in_analysis_level(analysislevel):
+            return False
         if copen:
             return not po.is_closed
         else:
@@ -658,7 +665,10 @@ def cfile_report_file(args: argparse.Namespace) -> NoReturn:
             print(RP.file_code_tostring(
                 cfile, pofilter=pofilter, showinvs=cshowinvariants))
 
-        print(RP.file_proofobligation_stats_tostring(cfile))
+        print(RP.file_proofobligation_stats_tostring(
+            cfile, level=analysislevel, showextcallers=showextcallers,
+            closedprogram=closedprogram, entrypoints=entrypoints,
+            showconsolidated=showconsolidated))
 
         def callsite_str(instr: "CCallInstr") -> str:
             return (
@@ -679,7 +689,10 @@ def cfile_report_file(args: argparse.Namespace) -> NoReturn:
             cfun = cfile.get_function_by_name(fnname)
             print(RP.function_code_tostring(cfun, pofilter=pofilter))
 
-    print(RP.file_proofobligation_stats_tostring(cfile))
+    print(RP.file_proofobligation_stats_tostring(
+        cfile, level=analysislevel, showextcallers=showextcallers,
+        closedprogram=closedprogram, entrypoints=entrypoints,
+        showconsolidated=showconsolidated))
     exit(0)
 
 
@@ -846,7 +859,7 @@ def cfile_run_file(args: argparse.Namespace) -> NoReturn:
 
     def pofilter(po: "CFunctionPO") -> bool:
         if copen:
-            return (po.is_violated or (not po.is_closed))
+            return (po.is_finding or (not po.is_closed))
         else:
             return True
 
