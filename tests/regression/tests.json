@@ -512,6 +512,14 @@
                 "    findings_violation.c:8 (violation)  index-upper-bound(10, bound:10)",
                 "        a[10] = 0;"
             ]
+        },
+        {
+            "filename": "strncpy_source.c",
+            "description": "Issue 3: strncpy reads its source up to and including the null character, at most n (C11 7.24.2.4p2); summary precondition deref-read(s2, min(n, nullterminator-pos(s2) + 1)): string literals shorter than n are safe, directly and through a delegated (min-length) api condition; a non-terminated fixed-size field with n equal to its size is safe",
+            "expected": {
+                "safe": 96,
+                "open": 3
+            }
         }
     ]
 }
