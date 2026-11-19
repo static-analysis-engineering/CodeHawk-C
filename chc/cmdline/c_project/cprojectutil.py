@@ -51,6 +51,7 @@ from chc.linker.CLinker import CLinker
 
 from chc.reporting.BinCheckData import BinCheckData
 import chc.reporting.ProofObligations as RP
+import chc.reporting.VerificationReport as VR
 
 from chc.util.Config import Config
 import chc.util.fileutil as UF
@@ -123,6 +124,7 @@ def cproject_parse_project(args: argparse.Namespace) -> NoReturn:
     logfilemode: str = args.logfilemode
     preprocessed_path: str = args.preprocessed_path
     tgtplatform: Optional[str] = args.tgtplatform
+    optcompilecommands: Optional[str] = args.compile_commands
 
     try:
         UF.check_parser()
@@ -134,7 +136,12 @@ def cproject_parse_project(args: argparse.Namespace) -> NoReturn:
         print_error(f"Project directory {projectpath} not found")
         exit(1)
 
-    compilecommandsfile = os.path.join(projectpath, "compile_commands.json")
+    if optcompilecommands is not None:
+        # relative to the current directory, not to the project directory
+        compilecommandsfile = os.path.abspath(optcompilecommands)
+    else:
+        compilecommandsfile = os.path.abspath(
+            os.path.join(projectpath, "compile_commands.json"))
     if not os.path.isfile(compilecommandsfile):
         print_error(f"File {compilecommandsfile} not found")
         exit(1)
@@ -177,7 +184,9 @@ def cproject_parse_project(args: argparse.Namespace) -> NoReturn:
     parsemanager.initialize_paths()
     try:
         exitcode = parsemanager.parse_with_ccommands(
-            compilecommands, copyfiles=True)
+            compilecommands,
+            copyfiles=True,
+            compilecommandsfile=compilecommandsfile)
     except UF.CHCError as e:
         print(str(e.wrap()))
         exit(1)
@@ -691,6 +700,11 @@ def cproject_report(args: argparse.Namespace) -> NoReturn:
     tgtpath: str = args.tgtpath
     projectname: str = args.projectname
     canalysis: str = args.analysis
+    analysislevel: str = args.analysis_level
+    showextcallers: bool = args.ext_callers
+    closedprogram: bool = args.closed_program
+    entrypoints: List[str] = args.entry_points or ["main"]
+    showconsolidated: bool = args.consolidated
     verbose: bool = args.verbose
     loglevel: str = args.loglevel
     logfilename: Optional[str] = args.logfilename
@@ -708,8 +722,35 @@ def cproject_report(args: argparse.Namespace) -> NoReturn:
 
     if canalysis == "undefined-behavior":
         statsresult = UF.read_project_summary_results(targetpath, projectname)
-        if statsresult is not None:
-            print(RP.project_proofobligation_stats_dict_to_string(statsresult))
+        if (
+                statsresult is not None
+                and statsresult.get("analysislevel") == analysislevel
+                and "uncalled" in statsresult.get("consolidated", {})
+                and statsresult["consolidated"].get("closedprogram")
+                == closedprogram
+                and (not closedprogram
+                     or statsresult["consolidated"].get("entrypoints")
+                     == entrypoints)):
+            print(RP.project_proofobligation_stats_dict_to_string(
+                statsresult, showextcallers=showextcallers,
+                showconsolidated=showconsolidated))
+            exit(0)
+
+        if (
+                statsresult is not None
+                and UF.has_analysisresults_path(targetpath, projectname)):
+            # the saved summary was made at another analysis level or
+            # closed-program setting (or before analysis levels or the
+            # consolidated status existed): recompute from the results
+            contractpath = os.path.join(targetpath, "chc_contracts")
+            capp = CApplication(
+                projectpath, projectname, targetpath, contractpath)
+            print(RP.project_proofobligation_stats_dict_to_string(
+                RP.project_proofobligation_stats_to_dict(
+                    capp, level=analysislevel, closedprogram=closedprogram,
+                    entrypoints=entrypoints),
+                showextcallers=showextcallers,
+                showconsolidated=showconsolidated))
             exit(0)
 
         if not UF.has_analysisresults_path(targetpath, projectname):
@@ -722,7 +763,9 @@ def cproject_report(args: argparse.Namespace) -> NoReturn:
             projectpath, projectname, targetpath, contractpath)
 
         timestamp = os.stat(UF.get_cchpath(targetpath, projectname)).st_ctime
-        fresult = RP.project_proofobligation_stats_to_dict(capp)
+        fresult = RP.project_proofobligation_stats_to_dict(
+            capp, level=analysislevel, closedprogram=closedprogram,
+            entrypoints=entrypoints)
         fresult["timestamp"] = timestamp
         fresult["project"] = projectpath
         UF.save_project_summary_results(targetpath, projectname, fresult)
@@ -735,7 +778,9 @@ def cproject_report(args: argparse.Namespace) -> NoReturn:
 
     statsresult = UF.read_project_summary_results(targetpath, projectname)
     if statsresult is not None:
-        print(RP.project_proofobligation_stats_dict_to_string(statsresult))
+        print(RP.project_proofobligation_stats_dict_to_string(
+            statsresult, showextcallers=showextcallers,
+            showconsolidated=showconsolidated))
     else:
         print_error("Results were not readable")
         exit(1)
@@ -760,6 +805,45 @@ def cproject_report(args: argparse.Namespace) -> NoReturn:
     exit(0)
 
 
+def cproject_verification_report(args: argparse.Namespace) -> NoReturn:
+    """CLI command to output the verification report for users (issue 15A):
+    system boundary, results by property class, open proof obligations by
+    remedy, and findings."""
+
+    # arguments
+    tgtpath: str = args.tgtpath
+    projectname: str = args.projectname
+    analysislevel: str = args.analysis_level
+    closedprogram: bool = args.closed_program
+    entrypoints: List[str] = args.entry_points or ["main"]
+    showall: bool = args.all
+    jsonfile: Optional[str] = args.jsonfile
+
+    targetpath = os.path.abspath(tgtpath)
+    projectpath = targetpath
+
+    if not UF.has_analysisresults_path(targetpath, projectname):
+        print_error(
+            f"No analysis results found for {projectname} in {targetpath}")
+        exit(1)
+
+    contractpath = os.path.join(targetpath, "chc_contracts")
+    capp = CApplication(projectpath, projectname, targetpath, contractpath)
+
+    report = VR.VerificationReport(
+        capp, analysislevel, closedprogram=closedprogram,
+        entrypoints=entrypoints)
+    d = report.to_dict()
+    print(VR.verification_report_tostring(d, projectname, showall=showall))
+
+    if jsonfile is not None:
+        with open(jsonfile, "w") as fp:
+            json.dump(d, fp, indent=2)
+        print("\nReport data saved in " + jsonfile)
+
+    exit(0)
+
+
 def cproject_report_file(args: argparse.Namespace) -> NoReturn:
     """CLI command to output the results for a single file in a c project."""
 
@@ -771,6 +855,10 @@ def cproject_report_file(args: argparse.Namespace) -> NoReturn:
     showcode: bool = args.showcode
     showopen: bool = args.open
     showinvariants: bool = args.showinvariants
+    showextcallers: bool = args.ext_callers
+    closedprogram: bool = args.closed_program
+    entrypoints: List[str] = args.entry_points or ["main"]
+    showconsolidated: bool = args.consolidated
 
     targetpath = os.path.abspath(tgtpath)
     projectpath = targetpath
@@ -803,7 +891,9 @@ def cproject_report_file(args: argparse.Namespace) -> NoReturn:
         print(RP.file_code_tostring(
             cfile, pofilter=pofilter, showinvs=showinvariants))
 
-    print(RP.file_proofobligation_stats_tostring(cfile))
+    print(RP.file_proofobligation_stats_tostring(
+        cfile, showextcallers=showextcallers, closedprogram=closedprogram,
+        entrypoints=entrypoints, showconsolidated=showconsolidated))
 
     def callsite_str(instr: "CCallInstr") -> str:
         return (

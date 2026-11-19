@@ -851,6 +851,39 @@ def parse() -> argparse.Namespace:
         choices=["undefined-behavior", "outputparameters", "errno"],
         help="choose analysis for reporting results")
     cfilereport.add_argument(
+        "--analysis-level",
+        default="implementation-defined",
+        choices=["undefined-behavior", "implementation-defined",
+                 "value-wrap-around"],
+        help=("report undefined behavior only; plus implementation-defined"
+              + " behavior (default); plus value wrap-around (well-defined"
+              + " unsigned wrap-around and conversions to unsigned types)"))
+    cfilereport.add_argument(
+        "--closed-program",
+        action="store_true",
+        help=("consolidated status: the analyzed code is the whole program;"
+              + " only the entry points are called from outside it (external"
+              + " linkage alone does not imply unseen callers)"))
+    cfilereport.add_argument(
+        "--entry-point",
+        action="append",
+        dest="entry_points",
+        metavar="FUNCTION",
+        help=("entry point of the closed program (repeatable; default:"
+              + " main)"))
+    cfilereport.add_argument(
+        "--consolidated",
+        action="store_true",
+        help=("include the consolidated status of the proof obligations"
+              + " (issue 43)"))
+    cfilereport.add_argument(
+        "--ext-callers",
+        action="store_true",
+        help=("list the functions whose preconditions are assumed to be"
+              + " established by external or indirect callers, with their"
+              + " number of call sites in the analyzed code (consolidated"
+              + " status trust-ext)"))
+    cfilereport.add_argument(
         "--open",
         action="store_true",
         help="only show open proof obligations")
@@ -1501,11 +1534,29 @@ def parse() -> argparse.Namespace:
         chkc c-project parse myprojectdir myprojectname --tgtpath myresults
 
         Note: the directory passed to tgtpath must exist.
+
+        By default the compile commands are read from
+        myprojectdir/compile_commands.json. To use a different file, e.g.,
+        from a CMake build directory, or a filtered copy, call with
+        --compile-commands:
+
+        chkc c-project parse . myprojectname --compile-commands build/compile_commands.json
+
+        Note: all source files in the compile commands must be in
+        myprojectdir (or its subdirectories).
         """)
     cprojectparse.add_argument(
-        "path", help="top directory of c-project (with compile_commands.json)")
+        "path",
+        help=("top directory of c-project: a common ancestor directory of "
+              + "all source files (by default with compile_commands.json)"))
     cprojectparse.add_argument(
         "projectname", help="name of the project")
+    cprojectparse.add_argument(
+        "--compile-commands",
+        help=("compile commands (json) file to use instead of "
+              + "<path>/compile_commands.json (relative to the current "
+              + "directory); saved with the parse results as "
+              + "compile_commands.json"))
     cprojectparse.add_argument(
         "--tgtpath", help="directory to save the results")
     cprojectparse.add_argument(
@@ -1726,6 +1777,39 @@ def parse() -> argparse.Namespace:
         choices=["undefined-behavior", "outputparameters", "errno"],
         help="choose analysis for reporting results")
     cprojectreport.add_argument(
+        "--analysis-level",
+        default="implementation-defined",
+        choices=["undefined-behavior", "implementation-defined",
+                 "value-wrap-around"],
+        help=("report undefined behavior only; plus implementation-defined"
+              + " behavior (default); plus value wrap-around (well-defined"
+              + " unsigned wrap-around and conversions to unsigned types)"))
+    cprojectreport.add_argument(
+        "--closed-program",
+        action="store_true",
+        help=("consolidated status: the analyzed code is the whole program;"
+              + " only the entry points are called from outside it (external"
+              + " linkage alone does not imply unseen callers)"))
+    cprojectreport.add_argument(
+        "--entry-point",
+        action="append",
+        dest="entry_points",
+        metavar="FUNCTION",
+        help=("entry point of the closed program (repeatable; default:"
+              + " main)"))
+    cprojectreport.add_argument(
+        "--consolidated",
+        action="store_true",
+        help=("include the consolidated status of the proof obligations"
+              + " (issue 43; see also c-project verification-report)"))
+    cprojectreport.add_argument(
+        "--ext-callers",
+        action="store_true",
+        help=("list the functions whose preconditions are assumed to be"
+              + " established by external or indirect callers, with their"
+              + " number of call sites in the analyzed code (consolidated"
+              + " status trust-ext)"))
+    cprojectreport.add_argument(
         "--verbose", "-v",
         action="store_true")
     cprojectreport.add_argument(
@@ -1769,7 +1853,74 @@ def parse() -> argparse.Namespace:
         "--showinvariants",
         action="store_true",
         help="show location invariants on the code")
+    cprojectreportfile.add_argument(
+        "--closed-program",
+        action="store_true",
+        help=("consolidated status: the analyzed code is the whole program;"
+              + " only the entry points are called from outside it (external"
+              + " linkage alone does not imply unseen callers)"))
+    cprojectreportfile.add_argument(
+        "--entry-point",
+        action="append",
+        dest="entry_points",
+        metavar="FUNCTION",
+        help=("entry point of the closed program (repeatable; default:"
+              + " main)"))
+    cprojectreportfile.add_argument(
+        "--consolidated",
+        action="store_true",
+        help=("include the consolidated status of the proof obligations"
+              + " (issue 43; see also c-project verification-report)"))
+    cprojectreportfile.add_argument(
+        "--ext-callers",
+        action="store_true",
+        help=("list the functions whose preconditions are assumed to be"
+              + " established by external or indirect callers, with their"
+              + " number of call sites in the analyzed code (consolidated"
+              + " status trust-ext)"))
     cprojectreportfile.set_defaults(func=P.cproject_report_file)
+
+    # --- verification-report
+    cprojectverificationreport = cprojectparsers.add_parser(
+        "verification-report",
+        description=(
+            "Report for users verifying a system: the system boundary (what"
+            + " is missing and what is assumed), the results by property"
+            + " class, the open proof obligations by remedy, and the"
+            + " findings."))
+    cprojectverificationreport.add_argument(
+        "tgtpath", help="directory that contains the analysis results")
+    cprojectverificationreport.add_argument(
+        "projectname", help="name of the project")
+    cprojectverificationreport.add_argument(
+        "--analysis-level",
+        default="implementation-defined",
+        choices=["undefined-behavior", "implementation-defined",
+                 "value-wrap-around"],
+        help=("report undefined behavior only; plus implementation-defined"
+              + " behavior (default); plus value wrap-around"))
+    cprojectverificationreport.add_argument(
+        "--closed-program",
+        action="store_true",
+        help=("the analyzed code is the whole program; only the entry points"
+              + " are called from outside it"))
+    cprojectverificationreport.add_argument(
+        "--entry-point",
+        action="append",
+        dest="entry_points",
+        metavar="FUNCTION",
+        help="entry point of the closed program (repeatable; default: main)")
+    cprojectverificationreport.add_argument(
+        "--all",
+        action="store_true",
+        help="list all items instead of the most frequent ones")
+    cprojectverificationreport.add_argument(
+        "--json",
+        dest="jsonfile",
+        metavar="FILE",
+        help="also save the report data in json format")
+    cprojectverificationreport.set_defaults(
+        func=P.cproject_verification_report)
 
     # --- investigate
     cprojectinvestigate = cprojectparsers.add_parser("investigate")

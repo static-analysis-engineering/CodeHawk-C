@@ -38,6 +38,9 @@ from typing import Any, Dict, List, NoReturn
 from chc.app.CApplication import CApplication
 from chc.cmdline.AnalysisManager import AnalysisManager
 from chc.cmdline.ParseManager import ParseManager
+from chc.proof.ConsolidatedStatus import ConsolidatedStatus
+from chc.reporting.VerificationReport import (
+    VerificationReport, findings_tostring)
 
 import chc.util.fileutil as UF
 
@@ -216,6 +219,79 @@ def run_regression_test_file(
     else:
         resultmsg = "Passed " + ("." * 43)
 
+    # number of primary proof obligations at locations that some domain
+    # proves unreachable
+    expectedunr = testspec.get("expected-unreachable")
+    if resultmsg.startswith("Passed") and expectedunr is not None:
+        nunr = sum(
+            1 for fn in cfile.get_functions() for ppo in fn.get_ppos()
+            if len(ppo.unreachable_domains) > 0)
+        if nunr != expectedunr:
+            resultmsg = (
+                "Failed: Expected unreachable:" + str(expectedunr)
+                + ", but found " + str(nunr))
+
+    # consolidated status of the primary proof obligations
+    expectedcons = testspec.get("expected-consolidated", {})
+    if resultmsg.startswith("Passed") and len(expectedcons) > 0:
+        consoptions = testspec.get("consolidated-options", {})
+        cons = ConsolidatedStatus(
+            capp,
+            closedprogram=consoptions.get("closed-program", False),
+            entrypoints=consoptions.get("entry-points", ["main"]))
+        conscounts = cons.count(
+            [ppo for fn in cfile.get_functions() for ppo in fn.get_ppos()])
+        for (s, c) in expectedcons.items():
+            if conscounts.get(s, 0) != c:
+                resultmsg = (
+                    "Failed: Expected consolidated " + s + ":" + str(c)
+                    + ", but found " + str(conscounts.get(s, 0)))
+                break
+
+    # verification report
+    expectedvr = testspec.get("expected-verification", {})
+    if resultmsg.startswith("Passed") and len(expectedvr) > 0:
+        vroptions = testspec.get("consolidated-options", {})
+        vr = VerificationReport(
+            capp,
+            "implementation-defined",
+            closedprogram=vroptions.get("closed-program", False),
+            entrypoints=vroptions.get("entry-points", ["main"]))
+        vrcounts = vr.counts()
+        for (s, c) in expectedvr.items():
+            if vrcounts.get(s, 0) != c:
+                resultmsg = (
+                    "Failed: Expected verification " + s + ":" + str(c)
+                    + ", but found " + str(vrcounts.get(s, 0)))
+                break
+
+    # text of the FINDINGS section, including the caveat on open proof
+    # obligations and missing information
+    expectedfindings = testspec.get("expected-findings")
+    if resultmsg.startswith("Passed") and expectedfindings is not None:
+        vroptions = testspec.get("consolidated-options", {})
+        vr = VerificationReport(
+            capp,
+            "implementation-defined",
+            closedprogram=vroptions.get("closed-program", False),
+            entrypoints=vroptions.get("entry-points", ["main"]))
+        found = findings_tostring(
+            vr.findings(), results=vr.results(),
+            boundary=vr.boundary()).split("\n")
+        if found != expectedfindings:
+            diffs = [
+                i for i in range(max(len(found), len(expectedfindings)))
+                if i >= len(found) or i >= len(expectedfindings)
+                or found[i] != expectedfindings[i]]
+            i = diffs[0]
+            print_error(
+                cfilename + ": FINDINGS line " + str(i + 1) + ": expected\n  "
+                + (expectedfindings[i] if i < len(expectedfindings) else "(none)")
+                + "\nbut found\n  "
+                + (found[i] if i < len(found) else "(none)"))
+            resultmsg = (
+                "Failed: FINDINGS text differs at line " + str(i + 1))
+
     return returnmsg(resultmsg)
 
 
@@ -228,7 +304,7 @@ def regression_test_file(args: argparse.Namespace) -> NoReturn:
         print_error("File " + cfilename + " not found")
         exit(1)
 
-    run_regression_test_file(get_test(cfilename))
+    print(run_regression_test_file(get_test(cfilename)))
 
     exit(0)
 

@@ -351,10 +351,65 @@ class ParseManager(object):
         directory)."""
 
         filename = os.path.normpath(filename)
-        if filename.startswith(self.projectpath):
-            return filename[(len(self.projectpath) + 1):]
+        if self.is_in_project(filename):
+            return os.path.relpath(
+                os.path.abspath(filename), os.path.abspath(self.projectpath))
         else:
             return filename
+
+    def is_in_project(self, filename: str) -> bool:
+        """Return true if filename is in the project directory (or one of
+        its subdirectories).
+
+        Compares whole path components: /a/build is not a prefix of
+        /a/buildfile.c, nor of /a/file.c.
+        """
+        projectpath = os.path.abspath(self.projectpath)
+        filename = os.path.abspath(filename)
+        return os.path.commonpath([projectpath, filename]) == projectpath
+
+    def check_files_in_project(
+            self, compilecommands: List[Dict[str, Any]]) -> None:
+        """Raise an error if a C source file in the compile commands is
+        outside the project directory.
+
+        The parser names its results by the path of the source file relative
+        to the project directory, and so requires each source file to be in
+        that directory. This fails, e.g., for a CMake out-of-source build
+        when compile_commands.json is taken from the build directory and
+        the sources are in its parent.
+        """
+        outside: List[str] = []
+        for c in compilecommands:
+            cfilename = os.path.normpath(
+                os.path.join(c["directory"], c["file"]))
+            if (cfilename.endswith(".c")
+                    and not self.is_in_project(cfilename)
+                    and cfilename not in outside):
+                outside.append(cfilename)
+        if len(outside) > 0:
+            maxshown = 10
+            lines: List[str] = []
+            lines.append(
+                str(len(outside))
+                + " source file(s) in compile_commands.json are not in the "
+                + "project directory "
+                + self.projectpath
+                + ":")
+            for f in outside[:maxshown]:
+                lines.append("  " + f)
+            if len(outside) > maxshown:
+                lines.append(
+                    "  ... and " + str(len(outside) - maxshown) + " more")
+            lines.append(
+                "The project directory must be a common ancestor directory "
+                + "of all source files.")
+            lines.append(
+                "Use such a directory (e.g., the source root of an "
+                + "out-of-source CMake build) as project directory, and pass "
+                + "the compile commands file with --compile-commands (or "
+                + "copy it to that directory).")
+            raise UF.CHCError("\n".join(lines))
 
     def has_platform(self, cmd: List[str]) -> bool:
         return ("-m32" in cmd) or ("-m64" in cmd)
@@ -527,11 +582,18 @@ class ParseManager(object):
     def parse_with_ccommands(
             self,
             compilecommands: List[Dict[str, Any]],
-            copyfiles: bool = True) -> int:
-        """Preprocess and call C parser to produce xml semantics files."""
+            copyfiles: bool = True,
+            compilecommandsfile: Optional[str] = None) -> int:
+        """Preprocess and call C parser to produce xml semantics files.
+
+        compilecommandsfile is the file the compile commands were read from;
+        it is saved with the results as compile_commands.json (default:
+        compile_commands.json in the project directory).
+        """
 
         exitcode = 0
 
+        self.check_files_in_project(compilecommands)
         self.determine_platform(compilecommands)
         self.save_target_platform()
 
@@ -596,7 +658,12 @@ class ParseManager(object):
                 + " lines)"
             )
         os.chdir(self.projectpath)
-        shutil.copy("compile_commands.json", self.savedsourcepath)
+        if compilecommandsfile is None:
+            compilecommandsfile = "compile_commands.json"
+        # saved under the standard name, whatever the name of the file used
+        shutil.copy(
+            compilecommandsfile,
+            os.path.join(self.savedsourcepath, "compile_commands.json"))
         return exitcode
 
     def parse_ifiles(self, copyfiles: bool = True) -> None:

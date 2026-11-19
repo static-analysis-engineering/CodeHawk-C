@@ -6,7 +6,7 @@
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
 # Copyright (c) 2020-2022 Henny B. Sipma
-# Copyright (c) 2023-2024 Aarno Labs LLC
+# Copyright (c) 2023-2026 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +32,7 @@ import xml.etree.ElementTree as ET
 
 from typing import Callable, Dict, List, Optional, TYPE_CHECKING
 
+from chc.proof.CFunctionPO import po_status
 from chc.proof.CFunctionPPO import CFunctionPPO
 from chc.proof.CProofDependencies import CProofDependencies
 from chc.proof.CProofDiagnostic import CProofDiagnostic, SituatedMsg
@@ -44,9 +45,6 @@ if TYPE_CHECKING:
     from chc.app.CFunction import CFunction
     from chc.proof.CFunctionProofs import CFunctionProofs
     from chc.proof.CFunPODictionary import CFunPODictionary
-
-
-po_status = {"g": "safe", "o": "open", "r": "violation", "x": "dead-code"}
 
 
 class CFunctionPPOs:

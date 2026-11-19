@@ -34,6 +34,10 @@ from typing import (
 
 import chc.util.fileutil as UF
 
+from chc.proof.CFunctionPO import analysis_levels, default_analysis_level
+from chc.proof.ConsolidatedStatus import (
+    ConsolidatedStatus, consolidated_categories, consolidated_descriptions)
+
 if TYPE_CHECKING:
     from chc.app.CApplication import CApplication
     from chc.app.CFile import CFile
@@ -49,6 +53,19 @@ dischargemethods: List[str] = [
     "stmt", "local", "api", "contract", "open", "violated"]
 
 
+"""Overlay columns for proof obligations whose condition fails, by the
+category of behavior that results (issue 15): they are also counted in the
+column of their discharge method, and are not included in the totals. The
+violated column (undefined behavior) is always present; the other columns are
+present at the analysis levels that include them."""
+findingmethods: Dict[str, str] = {
+    "undefined-behavior": "violated",
+    "implementation-defined": "impl-def",
+    "value-wrap-around": "wrap"}
+
+overlaymethods: List[str] = list(findingmethods.values())
+
+
 histogramcolors: Dict[str, str] = {
     "violated": "red",
     "stmt": "green",
@@ -56,11 +73,26 @@ histogramcolors: Dict[str, str] = {
     "api": "springgreen",
     "contract": "aquamarine",
     "open": "orange",
+    "impl-def": "purple",
+    "wrap": "blue",
 }
 
 
-def get_dsmethods(extra: List[str]) -> List[str]:
-    return extra + dischargemethods
+def get_dsmethods(
+        extra: List[str], level: str = "undefined-behavior") -> List[str]:
+    """Return the column headers: the extra headers, the discharge methods,
+    and the overlay columns for the categories above undefined behavior that
+    are included in the analysis level."""
+    levelmethods = [
+        findingmethods[c]
+        for c in analysis_levels[1:analysis_levels.index(level) + 1]]
+    return extra + dischargemethods + levelmethods
+
+
+def filter_analysis_level(
+        pos: Sequence["CFunctionPO"], level: str) -> List["CFunctionPO"]:
+    """Return the proof obligations reported at the given analysis level."""
+    return [po for po in pos if po.in_analysis_level(level)]
 
 
 def get_dsmethod_header(
@@ -82,6 +114,10 @@ def classifypo(po: "CFunctionPO", d: Dict[str, int]) -> None:
     if po.is_closed:
         if po.is_violated:
             d["violated"] += 1
+        elif po.is_implementation_defined:
+            d["impl-def"] = d.get("impl-def", 0) + 1
+        elif po.is_value_wrap_around:
+            d["wrap"] = d.get("wrap", 0) + 1
         deps = po.dependencies
         if deps.has_external_dependencies():
             deptype = po.get_assumptions_type()
@@ -99,7 +135,8 @@ def classifypo(po: "CFunctionPO", d: Dict[str, int]) -> None:
 def get_method_count(
         pos: Sequence["CFunctionPO"],
         filefilter: Callable[[str], bool] = lambda f: True,
-        extradsmethods: List[str] = []) -> Dict[str, int]:
+        extradsmethods: List[str] = [],
+        level: str = default_analysis_level) -> Dict[str, int]:
     """Create dicharge method count dictionary from proof obligation list.
 
     Args:
@@ -110,7 +147,7 @@ def get_method_count(
       dictionary that organizes proof obligations by discharge method
     """
     result: Dict[str, int] = {}
-    for dm in get_dsmethods(extradsmethods):
+    for dm in get_dsmethods(extradsmethods, level):
         result[dm] = 0
     for po in pos:
         classifypo(po, result)
@@ -120,7 +157,8 @@ def get_method_count(
 def get_tag_method_count(
         pos: Sequence["CFunctionPO"],
         filefilter: Callable[[str], bool] = lambda f: True,
-        extradsmethods: List[str] = []) -> Dict[str, Dict[str, int]]:
+        extradsmethods: List[str] = [],
+        level: str = default_analysis_level) -> Dict[str, Dict[str, int]]:
     """Create predicate tag, discharge method count dictionary.
 
     Args:
@@ -131,7 +169,7 @@ def get_tag_method_count(
       dictionary that organizes proof obligations by predicate and discharge method
     """
     result: Dict[str, Dict[str, int]] = {}
-    dsmethods = get_dsmethods(extradsmethods)
+    dsmethods = get_dsmethods(extradsmethods, level)
     for po in pos:
         if not filefilter(po.cfile.name):
             continue
@@ -147,7 +185,8 @@ def get_tag_method_count(
 def get_file_method_count(
         pos: Sequence["CFunctionPO"],
         filefilter: Callable[[str], bool] = lambda f: True,
-        extradsmethods: List[str] = []) -> Dict[str, Dict[str, int]]:
+        extradsmethods: List[str] = [],
+        level: str = default_analysis_level) -> Dict[str, Dict[str, int]]:
     """Create file, discharge method count dictionary from proof obligation list.
 
     Args:
@@ -158,7 +197,7 @@ def get_file_method_count(
       dictionary that organizes proof obligations by file and discharge method
     """
     result: Dict[str, Dict[str, int]] = {}
-    dsmethods = get_dsmethods(extradsmethods)
+    dsmethods = get_dsmethods(extradsmethods, level)
     for po in pos:
         pofile = po.cfile.name
         if not filefilter(pofile):
@@ -173,7 +212,8 @@ def get_file_method_count(
 
 def get_function_method_count(
         pos: Sequence["CFunctionPO"],
-        extradsmethods: List[str] = []) -> Dict[str, Dict[str, int]]:
+        extradsmethods: List[str] = [],
+        level: str = default_analysis_level) -> Dict[str, Dict[str, int]]:
     """Create function, discharge method count dictionary from proof obligation list.
 
     Args:
@@ -184,7 +224,7 @@ def get_function_method_count(
       dictionary that organizes proof obligations by function and discharge method
     """
     result: Dict[str, Dict[str, int]] = {}
-    dsmethods = get_dsmethods(extradsmethods)
+    dsmethods = get_dsmethods(extradsmethods, level)
     for po in pos:
         pofunction = po.cfun.name
         if pofunction not in result:
@@ -214,13 +254,15 @@ def row_method_count_tostring(
 
     lines: List[str] = []
     width: int = 10
-    dsmethods = get_dsmethods(extradsmethods)
+    dsmethods = get_dsmethods(extradsmethods) + [
+        dm for dm in overlaymethods[1:] if any(dm in d[t] for t in d)]
     lines.append(get_dsmethod_header(rhlen, dsmethods, header1=header1))
-    barlen = 70 + rhlen
+    barlen = 10 * (len(dsmethods) + 1) + rhlen
     lines.append("-" * barlen)
     for t in sorted(d):
-        r = [d[t][dm] for dm in dsmethods]
-        total = sum([d[t][dm] for dm in dsmethods if not dm == "violated"])
+        r = [d[t].get(dm, 0) for dm in dsmethods]
+        total = sum(
+            [d[t].get(dm, 0) for dm in dsmethods if dm not in overlaymethods])
         lines.append(
             t.ljust(rhlen)
             + "".join([str(x).rjust(width) for x in r])
@@ -230,8 +272,9 @@ def row_method_count_tostring(
 
     totals: Dict[str, int] = {}
     for dm in dsmethods:
-        totals[dm] = sum([d[t][dm] for t in d])
-    totalcount: int = sum([totals[dm] for dm in totals if not dm == "violated"])
+        totals[dm] = sum([d[t].get(dm, 0) for t in d])
+    totalcount: int = sum(
+        [totals[dm] for dm in totals if dm not in overlaymethods])
     lines.append(
         "total".ljust(rhlen)
         + "".join([str(totals[dm]).rjust(width) for dm in dsmethods])
@@ -520,7 +563,7 @@ def function_code_open_tostring(
         fn: "CFunction", showinvs: bool = False) -> str:
 
     def pofilter(po: "CFunctionPO") -> bool:
-        return po.is_violated or (not po.is_closed)
+        return po.is_finding or (not po.is_closed)
 
     return function_code_tostring(fn, pofilter=pofilter, showinvs=showinvs)
 
@@ -529,7 +572,7 @@ def function_code_violation_tostring(
         fn: "CFunction", showinvs: bool = False) -> str:
 
     def pofilter(po: "CFunctionPO") -> bool:
-        return po.is_violated
+        return po.is_finding
 
     return function_code_tostring(fn, pofilter=pofilter, showinvs=showinvs)
 
@@ -573,7 +616,7 @@ def file_code_tostring(
 def file_code_open_tostring(cfile: "CFile", showinvs: bool = False) -> str:
 
     def pofilter(po: "CFunctionPO") -> bool:
-        return po.is_violated or (not po.is_closed)
+        return po.is_finding or (not po.is_closed)
 
     return file_code_tostring(cfile, pofilter=pofilter, showinvs=showinvs)
 
@@ -617,6 +660,59 @@ def unreachable_locations(
     return [locs[k] for k in sorted(locs)]
 
 
+def out_of_level_counts(
+        ppos: Sequence["CFunctionPO"],
+        spos: Sequence["CFunctionPO"],
+        level: str,
+        filefilter: Callable[[str], bool] = lambda f: True
+) -> Dict[str, Dict[str, Dict[str, int]]]:
+    """Return the status counts of the proof obligations that are not
+    reported at the given analysis level.
+
+    Returns:
+      dictionary: category of behavior -> ppos/spos -> status -> count
+    """
+    result: Dict[str, Dict[str, Dict[str, int]]] = {}
+    for (kind, pos) in [("ppos", ppos), ("spos", spos)]:
+        for po in pos:
+            if po.in_analysis_level(level) or not filefilter(po.cfile.name):
+                continue
+            catd = result.setdefault(po.behavior_category, {})
+            kindd = catd.setdefault(kind, {})
+            kindd[po.status] = kindd.get(po.status, 0) + 1
+    return result
+
+
+def out_of_level_tostring(
+        counts: Dict[str, Dict[str, Dict[str, int]]], level: str) -> str:
+    """Return a summary of the proof obligations not reported at the given
+    analysis level (empty if there are none)."""
+    if len(counts) == 0:
+        return ""
+
+    def kindstr(d: Dict[str, int], name: str) -> str:
+        return (
+            str(sum(d.values())) + " " + name + " ("
+            + ", ".join(k + ": " + str(d[k]) for k in sorted(d)) + ")")
+
+    lines: List[str] = []
+    lines.append(
+        "\n\nNot reported at analysis level " + level
+        + " (these proof obligations are checked at every level):")
+    for cat in analysis_levels:
+        if cat not in counts:
+            continue
+        parts = [
+            kindstr(counts[cat][k], name)
+            for (k, name) in [("ppos", "primary"), ("spos", "supporting")]
+            if k in counts[cat]]
+        lines.append("  " + cat + ": " + "; ".join(parts))
+    lines.append(
+        "  (use --analysis-level " + analysis_levels[-1]
+        + " to report them)")
+    return "\n".join(lines)
+
+
 def unreachable_locations_tostring(
         locations: List[Dict[str, Any]],
         openppos: int,
@@ -653,6 +749,448 @@ def unreachable_locations_tostring(
     return "\n".join(lines)
 
 
+def consolidated_counts(
+        cons: ConsolidatedStatus,
+        pos: Sequence["CFunctionPO"],
+        rowkey: Callable[["CFunctionPO"], str],
+        filefilter: Callable[[str], bool] = lambda f: True
+) -> Dict[str, Dict[str, int]]:
+    """Return row -> consolidated category -> count (issue 43)."""
+    result: Dict[str, Dict[str, int]] = {}
+    for po in pos:
+        if not filefilter(po.cfile.name):
+            continue
+        row = result.setdefault(
+            rowkey(po), {c: 0 for c in consolidated_categories})
+        row[cons.category(po)] += 1
+    return result
+
+
+def consolidated_tostring(
+        d: Dict[str, Dict[str, int]],
+        rhlen: int = 28,
+        header1: str = "") -> str:
+    """Return a table of consolidated category counts with totals and
+    percentages."""
+    width = 12
+    lines: List[str] = []
+    lines.append(
+        header1.ljust(rhlen)
+        + "".join(c.rjust(width) for c in consolidated_categories)
+        + "total".rjust(width))
+    barlen = width * (len(consolidated_categories) + 1) + rhlen
+    lines.append("-" * barlen)
+    for t in sorted(d):
+        r = [d[t].get(c, 0) for c in consolidated_categories]
+        lines.append(
+            t.ljust(rhlen)
+            + "".join(str(x).rjust(width) for x in r)
+            + str(sum(r)).rjust(width))
+    lines.append("-" * barlen)
+    totals = [
+        sum(d[t].get(c, 0) for t in d) for c in consolidated_categories]
+    total = sum(totals)
+    lines.append(
+        "total".ljust(rhlen)
+        + "".join(str(x).rjust(width) for x in totals)
+        + str(total).rjust(width))
+    if total > 0:
+        lines.append(
+            "percent".ljust(rhlen)
+            + "".join(
+                "{:.2f}".format(100.0 * x / total).rjust(width)
+                for x in totals))
+    return "\n".join(lines)
+
+
+def _split_top_level(s: str) -> List[str]:
+    """Split s at the commas that are not nested in (), [], or {}."""
+    parts: List[str] = []
+    depth = 0
+    start = 0
+    for (k, c) in enumerate(s):
+        if c in "([{":
+            depth += 1
+        elif c in ")]}":
+            depth -= 1
+        elif c == "," and depth == 0:
+            parts.append(s[start:k])
+            start = k + 1
+    parts.append(s[start:])
+    return [p.strip() for p in parts]
+
+
+def _matching_paren(s: str, start: int) -> int:
+    """Return the index of the parenthesis that closes the one opened just
+    before start (len(s) if there is none)."""
+    depth = 1
+    for k in range(start, len(s)):
+        if s[k] in "([{":
+            depth += 1
+        elif s[k] in ")]}":
+            depth -= 1
+            if depth == 0:
+                return k
+    return len(s)
+
+
+def compact_expression_str(s: str) -> str:
+    """Return a compact rendering of the string representation of a CIL
+    expression, for display only: casts (caste(t, e) -> e), type annotations
+    (e:(t)) and qualifiers are removed, string constants str(..) are quoted,
+    and sizeofe(..) is shown as sizeof(..)."""
+    while True:
+        k = s.find("caste(")
+        if k < 0:
+            break
+        end = _matching_paren(s, k + 6)
+        args = _split_top_level(s[k + 6:end])
+        inner = args[-1] if len(args) > 0 else ""
+        s = s[:k] + inner + s[end + 1:]
+    pos = 0
+    while True:
+        k = s.find("str(", pos)
+        if k < 0:
+            break
+        if k > 0 and (s[k - 1].isalnum() or s[k - 1] == "_"):
+            pos = k + 4
+            continue
+        end = _matching_paren(s, k + 4)
+        s = s[:k] + '"' + s[k + 4:end] + '"' + s[end + 1:]
+        pos = k + 1
+    s = s.replace("sizeofe(", "sizeof(")
+    # type annotations of expressions: e:(t)
+    while True:
+        k = s.find(":(")
+        if k < 0:
+            break
+        end = _matching_paren(s, k + 2)
+        s = s[:k] + s[end + 1:]
+    s = s.replace("[const: ,pconst: ]", "")
+    # type annotation of a parenthesized expression: (e):t
+    if s.startswith("(") and _matching_paren(s, 1) < len(s) - 1:
+        end = _matching_paren(s, 1)
+        if s[end + 1] == ":" and "(" not in s[end + 1:]:
+            s = s[:end + 1]
+    return s
+
+
+"""Predicate arguments that are omitted from the compact rendering: they
+describe how the analyzer represents the operation, not the condition."""
+_internal_predicate_args = ("op:", "typ:", "ikind:")
+
+
+def compact_predicate_str(po: "CFunctionPO") -> str:
+    """Return a compact, readable rendering of the predicate of a proof
+    obligation (for display only; see compact_expression_str)."""
+    s = str(po.predicate)
+    k = s.find("(")
+    if k < 0 or not s.endswith(")"):
+        return compact_expression_str(s)
+    name = s[:k]
+    args = [
+        compact_expression_str(a)
+        for a in _split_top_level(s[k + 1:-1])
+        if not a.startswith(_internal_predicate_args)]
+    return name + "(" + ", ".join(args) + ")"
+
+
+def _source_line(po: "CFunctionPO") -> str:
+    """Return the source line of the proof obligation, if available."""
+    try:
+        line = po.cfile.sourcefile.lines.get(po.line)
+    except Exception:
+        return ""
+    return line.strip() if line is not None else ""
+
+
+def _po_record(po: "CFunctionPO") -> Dict[str, Any]:
+    return {
+        "kind": "ppo" if po.is_ppo else "spo",
+        "file": po.cfile.name + ".c",
+        "function": po.cfun.name,
+        "line": po.line,
+        "predicate": compact_predicate_str(po),
+        "status": po.status,
+        "source": _source_line(po)}
+
+
+def pending_findings(
+        cons: ConsolidatedStatus,
+        pos: Sequence["CFunctionPO"],
+        filefilter: Callable[[str], bool] = lambda f: True
+) -> List[Dict[str, Any]]:
+    """Return the locally safe proof obligations that depend on a supporting
+    proof obligation that fails, with the failing supporting proof
+    obligations (records, serializable)."""
+    result: List[Dict[str, Any]] = []
+    for po in pos:
+        if not filefilter(po.cfile.name):
+            continue
+        if cons.category(po) != "dep-fail":
+            continue
+        record = _po_record(po)
+        record["findings"] = sorted(
+            [_po_record(spo) for spo in cons.blocking_pos(po)
+             if spo.is_finding],
+            key=lambda r: (r["file"], r["function"], r["line"]))
+        result.append(record)
+    return sorted(result, key=lambda r: (r["file"], r["function"], r["line"]))
+
+
+def pending_findings_tostring(pendingfindings: List[Dict[str, Any]]) -> str:
+    lines: List[str] = []
+    nppos = len([r for r in pendingfindings if r["kind"] == "ppo"])
+    nspos = len(pendingfindings) - nppos
+    lines.append(
+        "\nSafe locally, depending on a failing supporting proof obligation"
+        + " (dep-fail; "
+        + str(nppos) + " primary, " + str(nspos) + " supporting):")
+    for r in pendingfindings:
+        kind = "primary" if r["kind"] == "ppo" else "supporting"
+        lines.append("")
+        lines.append(
+            "  " + r["function"] + " (" + r["file"] + ":" + str(r["line"])
+            + ", " + kind + ")")
+        lines.append("      " + r["predicate"])
+        if r.get("source", "") != "":
+            lines.append("      " + str(r["line"]) + ": " + r["source"])
+        findings = r["findings"]
+        lines.append(
+            "    fails at " + str(len(findings)) + " call site"
+            + ("" if len(findings) == 1 else "s") + ":")
+        for f in findings:
+            lines.append(
+                "    - " + f["function"] + " (" + f["file"] + ":"
+                + str(f["line"]) + "): " + f["status"])
+            lines.append("        " + f["predicate"])
+            if f.get("source", "") != "":
+                lines.append("        " + str(f["line"]) + ": " + f["source"])
+    return "\n".join(lines)
+
+
+def ext_callers(
+        cons: ConsolidatedStatus,
+        ppos: Sequence["CFunctionPO"],
+        spos: Sequence["CFunctionPO"],
+        filefilter: Callable[[str], bool] = lambda f: True
+) -> Dict[str, Any]:
+    """Return the functions whose external or indirect callers are assumed
+    to establish the delegated conditions of the proof obligations in the
+    trust-ext category, with their number of call sites in the analyzed code,
+    and the number of trust-ext proof obligations that rely only on functions
+    without call sites in the analyzed code (serializable)."""
+    fns: Dict[Tuple[int, str], Dict[str, Any]] = {}
+    summary = {"ppos-uncalled": 0, "ppos-called": 0,
+               "spos-uncalled": 0, "spos-called": 0}
+    for (kind, pos) in [("ppos", ppos), ("spos", spos)]:
+        for po in pos:
+            if not filefilter(po.cfile.name):
+                continue
+            if cons.category(po) != "trust-ext":
+                continue
+            origins = [
+                fn for fn in cons.ext_callers(po)
+                if "uncalled" not in cons.ext_caller_linkage(fn)]
+            called = False
+            for fn in origins:
+                callsites = cons.ext_caller_callsites(fn)
+                called = called or callsites > 0
+                if fn not in fns:
+                    fns[fn] = {
+                        "file": cons.capp.get_file_by_index(fn[0]).name + ".c",
+                        "function": fn[1],
+                        "linkage": sorted(cons.ext_caller_linkage(fn)),
+                        "callsites": callsites,
+                        "ppos": 0,
+                        "spos": 0}
+                fns[fn][kind] += 1
+            summary[kind + ("-called" if called else "-uncalled")] += 1
+    result: Dict[str, Any] = dict(summary)
+    result["functions"] = sorted(
+        fns.values(), key=lambda r: (r["file"], r["function"]))
+    return result
+
+
+def ext_callers_tostring(
+        extfns: Dict[str, Any], showfunctions: bool = False) -> str:
+    """Return the summary of the trust-ext category; with showfunctions, also
+    the table of functions (ext-callers option)."""
+    functions: List[Dict[str, Any]] = extfns["functions"]
+    if len(functions) == 0:
+        return ""
+    uncalled = [f for f in functions if f["callsites"] == 0]
+    lines: List[str] = []
+    lines.append(
+        "\nRelies on external or indirect callers (trust-ext): preconditions"
+        + " of functions that\nmay be called from outside the analyzed code"
+        + " (extern; entry in closed-program mode)\nor indirectly (addrof);"
+        + " all their direct call sites in the analyzed code have\nproven"
+        + " supporting proof obligations.")
+    lines.append(
+        "  " + str(len(functions)) + " functions, "
+        + str(len(uncalled)) + " without call sites in the analyzed code")
+    for kind in ["ppos", "spos"]:
+        name = "primary" if kind == "ppos" else "supporting"
+        lines.append(
+            "  " + name + ": " + str(extfns[kind + "-uncalled"])
+            + " rely only on functions without call sites in the analyzed code, "
+            + str(extfns[kind + "-called"]) + " (also) on functions with"
+            + " call sites")
+    if not showfunctions:
+        lines.append(
+            "  (use --ext-callers to list the " + str(len(functions))
+            + " functions with their call sites)")
+        return "\n".join(lines)
+    fnlen = max(len(f["function"]) for f in functions) + 2
+    filelen = max(len(f["file"]) for f in functions) + 2
+    lines.append("")
+    lines.append(
+        "  " + "function".ljust(fnlen) + "file".ljust(filelen)
+        + "linkage".ljust(15) + "call sites".rjust(11)
+        + "ppos".rjust(7) + "spos".rjust(7))
+    lines.append("  " + "-" * (fnlen + filelen + 40))
+    for f in functions:
+        lines.append(
+            "  " + f["function"].ljust(fnlen) + f["file"].ljust(filelen)
+            + "+".join(f["linkage"]).ljust(15)
+            + str(f["callsites"]).rjust(11)
+            + str(f["ppos"]).rjust(7) + str(f["spos"]).rjust(7))
+    lines.append(
+        "  (ppos/spos: trust-ext proof obligations that rely on the function; a"
+        + " proof obligation may\n   rely on several functions)")
+    return "\n".join(lines)
+
+
+def uncalled_functions(
+        cons: ConsolidatedStatus,
+        ppos: Sequence["CFunctionPO"],
+        spos: Sequence["CFunctionPO"],
+        filefilter: Callable[[str], bool] = lambda f: True
+) -> List[Dict[str, Any]]:
+    """Return the functions without callers on which the proof obligations
+    in the uncalled category rely, with the number of those proof
+    obligations (serializable)."""
+    fns: Dict[Tuple[int, str], Dict[str, Any]] = {}
+    for (kind, pos) in [("ppos", ppos), ("spos", spos)]:
+        for po in pos:
+            if not filefilter(po.cfile.name):
+                continue
+            if cons.category(po) != "uncalled":
+                continue
+            for fn in cons.ext_callers(po):
+                if "uncalled" not in cons.ext_caller_linkage(fn):
+                    continue
+                if fn not in fns:
+                    fns[fn] = {
+                        "file": cons.capp.get_file_by_index(fn[0]).name + ".c",
+                        "function": fn[1],
+                        "ppos": 0,
+                        "spos": 0}
+                fns[fn][kind] += 1
+    return sorted(fns.values(), key=lambda r: (r["file"], r["function"]))
+
+
+def uncalled_functions_tostring(functions: List[Dict[str, Any]]) -> str:
+    if len(functions) == 0:
+        return ""
+    lines: List[str] = []
+    lines.append(
+        "\nRelies on functions without callers (uncalled): no direct call"
+        + " sites, address not\ntaken, not an entry point; the delegated"
+        + " conditions hold vacuously (dead code).")
+    fnlen = max(len(f["function"]) for f in functions) + 2
+    filelen = max(len(f["file"]) for f in functions) + 2
+    lines.append(
+        "  " + "function".ljust(fnlen) + "file".ljust(filelen)
+        + "ppos".rjust(7) + "spos".rjust(7))
+    lines.append("  " + "-" * (fnlen + filelen + 14))
+    for f in functions:
+        lines.append(
+            "  " + f["function"].ljust(fnlen) + f["file"].ljust(filelen)
+            + str(f["ppos"]).rjust(7) + str(f["spos"]).rjust(7))
+    return "\n".join(lines)
+
+
+def consolidated_status_tostring(
+        pporesults: Dict[str, Dict[str, int]],
+        sporesults: Dict[str, Dict[str, int]],
+        pendingfindings: List[Dict[str, Any]],
+        extfns: Dict[str, Any] = {},
+        rhlen: int = 28,
+        header1: str = "",
+        showextcallers: bool = False,
+        uncalledfns: List[Dict[str, Any]] = [],
+        closedprogram: bool = False,
+        entrypoints: List[str] = []) -> str:
+    """Return the consolidated-status section of a report (issue 43)."""
+    lines: List[str] = []
+    lines.append(
+        "\n\nConsolidated status"
+        + (" (closed program, entry points: " + ", ".join(entrypoints) + ")"
+           if closedprogram else ""))
+    lines.append("~" * 80)
+    lines.append(
+        "A proof obligation discharged by an assumption is safe locally; it"
+        + " is proven only if\nthe assumption is discharged inside the"
+        + " analyzed code, transitively, by proven\nsupporting proof"
+        + " obligations. Discharge method api delegates the condition to the"
+        + "\ncallers of the function (function precondition): the call sites"
+        + " in the analyzed\ncode are checked; only callers outside it or"
+        + " indirect callers remain (trust-ext).")
+    for c in consolidated_categories:
+        lines.append("  " + c.ljust(11) + ": " + consolidated_descriptions[c])
+    lines.append("\nPrimary Proof Obligations")
+    lines.append(consolidated_tostring(pporesults, rhlen, header1))
+    if len(sporesults) > 0:
+        lines.append("\nSupporting Proof Obligations")
+        lines.append(consolidated_tostring(sporesults, rhlen, header1))
+    if len(extfns) > 0:
+        lines.extend(_nonempty(
+            ext_callers_tostring(extfns, showextcallers)))
+    lines.extend(_nonempty(uncalled_functions_tostring(uncalledfns)))
+    if len(pendingfindings) > 0:
+        lines.append(pending_findings_tostring(pendingfindings))
+    return "\n".join(lines)
+
+
+def consolidated_to_dict(
+        cons: ConsolidatedStatus,
+        ppos: Sequence["CFunctionPO"],
+        spos: Sequence["CFunctionPO"],
+        rowkey: Callable[["CFunctionPO"], str],
+        filefilter: Callable[[str], bool] = lambda f: True
+) -> Dict[str, Any]:
+    """Return the consolidated-status results (serializable)."""
+    return {
+        "closedprogram": cons.closedprogram,
+        "entrypoints": cons.entrypoints,
+        "ppos": consolidated_counts(cons, ppos, rowkey, filefilter),
+        "spos": consolidated_counts(cons, spos, rowkey, filefilter),
+        "pendingfindings": pending_findings(
+            cons, list(ppos) + list(spos), filefilter),
+        "extcallers": ext_callers(cons, ppos, spos, filefilter),
+        "uncalled": uncalled_functions(cons, ppos, spos, filefilter)}
+
+
+def consolidated_dict_tostring(
+        consd: Dict[str, Any],
+        rhlen: int = 28,
+        header1: str = "",
+        showextcallers: bool = False) -> str:
+    return consolidated_status_tostring(
+        consd["ppos"],
+        consd["spos"],
+        consd["pendingfindings"],
+        consd.get("extcallers", {}),
+        rhlen=rhlen,
+        header1=header1,
+        showextcallers=showextcallers,
+        uncalledfns=consd.get("uncalled", []),
+        closedprogram=consd.get("closedprogram", False),
+        entrypoints=consd.get("entrypoints", []))
+
+
 def _nonempty(s: str) -> List[str]:
     return [s] if len(s) > 0 else []
 
@@ -679,14 +1217,23 @@ def proofobligation_stats_tostring(
 def project_proofobligation_stats_tostring(
         capp: "CApplication",
         filefilter: Callable[[str], bool] = lambda f: True,
-        extradsmethods: List[str] = []) -> str:
+        extradsmethods: List[str] = [],
+        level: str = default_analysis_level,
+        showextcallers: bool = False,
+        closedprogram: bool = False,
+        entrypoints: List[str] = ["main"],
+        showconsolidated: bool = False) -> str:
     lines: List[str] = []
-    ppos = capp.get_ppos()
-    spos = capp.get_spos()
+    allppos = capp.get_ppos()
+    allspos = capp.get_spos()
+    ppos = filter_analysis_level(allppos, level)
+    spos = filter_analysis_level(allspos, level)
     pporesults = get_file_method_count(
-        ppos, extradsmethods=extradsmethods, filefilter=filefilter)
+        ppos, extradsmethods=extradsmethods, filefilter=filefilter,
+        level=level)
     sporesults = get_file_method_count(
-        spos, extradsmethods=extradsmethods, filefilter=filefilter)
+        spos, extradsmethods=extradsmethods, filefilter=filefilter,
+        level=level)
 
     rhlen = capp.get_max_filename_length() + 3
     lines.append(
@@ -697,15 +1244,29 @@ def project_proofobligation_stats_tostring(
             header1="c files",
             extradsmethods=extradsmethods))
     tagpporesults = get_tag_method_count(
-        ppos, filefilter=filefilter, extradsmethods=extradsmethods)
+        ppos, filefilter=filefilter, extradsmethods=extradsmethods,
+        level=level)
     tagsporesults = get_tag_method_count(
-        spos, filefilter=filefilter, extradsmethods=extradsmethods)
+        spos, filefilter=filefilter, extradsmethods=extradsmethods,
+        level=level)
 
     lines.append("\n\nProof Obligation Statistics")
     lines.append("~" * 80)
     lines.append(
         proofobligation_stats_tostring(
             tagpporesults, tagsporesults, extradsmethods=extradsmethods))
+    if showconsolidated:
+        cons = ConsolidatedStatus(capp, closedprogram, entrypoints)
+        lines.append(
+            consolidated_dict_tostring(
+                consolidated_to_dict(
+                    cons, ppos, spos, lambda po: po.predicate_name,
+                    filefilter),
+                showextcallers=showextcallers))
+    lines.extend(_nonempty(
+        out_of_level_tostring(
+            out_of_level_counts(
+                allppos, allspos, level, filefilter=filefilter), level)))
     lines.extend(_nonempty(
         unreachable_locations_tostring(
             unreachable_locations(ppos, spos, filefilter=filefilter),
@@ -717,17 +1278,26 @@ def project_proofobligation_stats_tostring(
 def project_proofobligation_stats_to_dict(
         capp: "CApplication",
         filefilter: Callable[[str], bool] = lambda f: True,
-        extradsmethods: List[str] = []) -> Dict[str, Any]:
-    ppos = capp.get_ppos()
-    spos = capp.get_spos()
+        extradsmethods: List[str] = [],
+        level: str = default_analysis_level,
+        closedprogram: bool = False,
+        entrypoints: List[str] = ["main"]) -> Dict[str, Any]:
+    allppos = capp.get_ppos()
+    allspos = capp.get_spos()
+    ppos = filter_analysis_level(allppos, level)
+    spos = filter_analysis_level(allspos, level)
     pporesults = get_file_method_count(
-        ppos, extradsmethods=extradsmethods, filefilter=filefilter)
+        ppos, extradsmethods=extradsmethods, filefilter=filefilter,
+        level=level)
     sporesults = get_file_method_count(
-        spos, extradsmethods=extradsmethods, filefilter=filefilter)
+        spos, extradsmethods=extradsmethods, filefilter=filefilter,
+        level=level)
     tagpporesults = get_tag_method_count(
-        ppos, filefilter=filefilter, extradsmethods=extradsmethods)
+        ppos, filefilter=filefilter, extradsmethods=extradsmethods,
+        level=level)
     tagsporesults = get_tag_method_count(
-        spos, filefilter=filefilter, extradsmethods=extradsmethods)
+        spos, filefilter=filefilter, extradsmethods=extradsmethods,
+        level=level)
 
     result: Dict[str, Any] = {}
     result["tagresults"] = {}
@@ -739,11 +1309,19 @@ def project_proofobligation_stats_to_dict(
     result["fileresults"]["spos"] = sporesults
     result["unreachable"] = unreachable_locations(
         ppos, spos, filefilter=filefilter)
+    result["analysislevel"] = level
+    result["outoflevel"] = out_of_level_counts(
+        allppos, allspos, level, filefilter=filefilter)
+    cons = ConsolidatedStatus(capp, closedprogram, entrypoints)
+    result["consolidated"] = consolidated_to_dict(
+        cons, ppos, spos, lambda po: po.predicate_name, filefilter)
     return result
 
 
 def project_proofobligation_stats_dict_to_string(
-        stats_dict: Dict[str, Dict[str, Dict[str, Dict[str, int]]]]) -> str:
+        stats_dict: Dict[str, Any],
+        showextcallers: bool = False,
+        showconsolidated: bool = False) -> str:
     lines: List[str] = []
 
     pporesults = stats_dict["fileresults"]["ppos"]
@@ -761,6 +1339,17 @@ def project_proofobligation_stats_dict_to_string(
         tagsporesults = stats_dict["tagresults"]["spos"]
         lines.append(proofobligation_stats_tostring(tagpporesults, tagsporesults))
 
+        if showconsolidated and "consolidated" in stats_dict:
+            lines.append(
+                consolidated_dict_tostring(
+                    stats_dict["consolidated"],
+                    showextcallers=showextcallers))
+
+        lines.extend(_nonempty(
+            out_of_level_tostring(
+                stats_dict.get("outoflevel", {}),
+                str(stats_dict.get("analysislevel", default_analysis_level)))))
+
         lines.extend(_nonempty(
             unreachable_locations_tostring(
                 stats_dict.get("unreachable", []),  # type: ignore
@@ -774,25 +1363,51 @@ def project_proofobligation_stats_dict_to_string(
 
 
 def file_proofobligation_stats_tostring(
-        cfile: "CFile", extradsmethods: List[str] = []) -> str:
+        cfile: "CFile",
+        extradsmethods: List[str] = [],
+        level: str = default_analysis_level,
+        showextcallers: bool = False,
+        closedprogram: bool = False,
+        entrypoints: List[str] = ["main"],
+        showconsolidated: bool = False) -> str:
     lines: List[str] = []
-    ppos = cfile.get_ppos()
-    spos = cfile.get_spos()
-    pporesults = get_function_method_count(ppos, extradsmethods=extradsmethods)
-    sporesults = get_function_method_count(spos, extradsmethods=extradsmethods)
+    allppos = cfile.get_ppos()
+    allspos = cfile.get_spos()
+    ppos = filter_analysis_level(allppos, level)
+    spos = filter_analysis_level(allspos, level)
+    pporesults = get_function_method_count(
+        ppos, extradsmethods=extradsmethods, level=level)
+    sporesults = get_function_method_count(
+        spos, extradsmethods=extradsmethods, level=level)
 
     rhlen = cfile.get_max_functionname_length() + 3
     lines.append(
         proofobligation_stats_tostring(
             pporesults, sporesults, rhlen=rhlen, header1="functions"))
 
-    tagpporesults = get_tag_method_count(ppos, extradsmethods=extradsmethods)
-    tagsporesults = get_tag_method_count(spos, extradsmethods=extradsmethods)
+    tagpporesults = get_tag_method_count(
+        ppos, extradsmethods=extradsmethods, level=level)
+    tagsporesults = get_tag_method_count(
+        spos, extradsmethods=extradsmethods, level=level)
 
     lines.append("\n\nProof Obligation Statistics for file " + cfile.name)
     lines.append("~" * 80)
 
     lines.append(proofobligation_stats_tostring(tagpporesults, tagsporesults))
+
+    if showconsolidated:
+        cons = ConsolidatedStatus(cfile.capp, closedprogram, entrypoints)
+        lines.append(
+            consolidated_dict_tostring(
+                consolidated_to_dict(
+                    cons, ppos, spos, lambda po: po.cfun.name),
+                rhlen=rhlen,
+                header1="functions",
+                showextcallers=showextcallers))
+
+    lines.extend(_nonempty(
+        out_of_level_tostring(
+            out_of_level_counts(allppos, allspos, level), level)))
 
     lines.extend(_nonempty(
         unreachable_locations_tostring(
@@ -830,12 +1445,16 @@ def file_postcondition_assumptions_tostring(cfile: "CFile") -> str:
 
 
 def function_proofobligation_stats_tostring(
-        cfunction: "CFunction", extradsmethods: List[str] = []) -> str:
+        cfunction: "CFunction",
+        extradsmethods: List[str] = [],
+        level: str = default_analysis_level) -> str:
     lines: List[str] = []
-    ppos = cfunction.get_ppos()
-    spos = cfunction.get_spos()
-    tagpporesults = get_tag_method_count(ppos, extradsmethods=extradsmethods)
-    tagsporesults = get_tag_method_count(spos, extradsmethods=extradsmethods)
+    ppos = filter_analysis_level(cfunction.get_ppos(), level)
+    spos = filter_analysis_level(cfunction.get_spos(), level)
+    tagpporesults = get_tag_method_count(
+        ppos, extradsmethods=extradsmethods, level=level)
+    tagsporesults = get_tag_method_count(
+        spos, extradsmethods=extradsmethods, level=level)
 
     lines.append(
         "\n\nProof Obligation Statistics for function " + cfunction.name)
