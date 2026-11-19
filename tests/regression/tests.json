@@ -520,6 +520,14 @@
                 "safe": 96,
                 "open": 3
             }
+        },
+        {
+            "filename": "string_literal_bounds.c",
+            "description": "Issue 52: a string literal's array has strlen + 1 initialized elements (C11 6.4.5p6) and ptr-upper-bound allows one past the end (6.5.6p8): memcpy(buf, \"abc\", 4) is safe; memcpy(buf, \"abc\", 5) violates ptr-upper-bound and initialized-range",
+            "expected": {
+                "safe": 34,
+                "violation": 2
+            }
         }
     ]
 }
