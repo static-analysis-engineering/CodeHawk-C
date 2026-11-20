@@ -6,7 +6,7 @@
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
 # Copyright (c) 2020-2023 Henny B. Sipma
-# Copyright (c) 2023-2024 Aarno Labs LLC
+# Copyright (c) 2023-2026 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -141,6 +141,10 @@ class STerm(InterfaceDictionaryRecord):
 
     @property
     def is_choice_value(self) -> bool:
+        return False
+
+    @property
+    def is_min_value(self) -> bool:
         return False
 
     def get_mathml_node(self, signature: List[str]) -> ET.Element:
@@ -628,6 +632,49 @@ class STRuntimeValue(STerm):
 
     def __str__(self) -> str:
         return "runtime-value"
+
+
+@ifdregistry.register_tag("mn", STerm)
+class STMinValue(STerm):
+    """Minimum of the values of two terms.
+
+    Used, e.g., for the number of bytes strncpy reads from its source:
+    min(n, nullterminator-pos(s2) + 1) (C11 7.24.2.4p2).
+
+    * args[0]: index of first term in interface dictionary
+    * args[1]: index of second term in interface dictionary
+    """
+
+    def __init__(
+        self, ifd: "InterfaceDictionary", ixval: IT.IndexedTableValue
+    ) -> None:
+        STerm.__init__(self, ifd, ixval)
+
+    @property
+    def term1(self) -> STerm:
+        return self.get_iterm(0)
+
+    @property
+    def term2(self) -> STerm:
+        return self.get_iterm(1)
+
+    @property
+    def is_min_value(self) -> bool:
+        return True
+
+    def get_mathml_node(self, signature: List[str]) -> ET.Element:
+        anode = ET.Element("apply")
+        opnode = ET.Element("min")
+        t1node = self.term1.get_mathml_node(signature)
+        t2node = self.term2.get_mathml_node(signature)
+        anode.extend([opnode, t1node, t2node])
+        return anode
+
+    def pretty(self) -> str:
+        return "min(" + self.term1.pretty() + ", " + self.term2.pretty() + ")"
+
+    def __str__(self) -> str:
+        return "min(" + str(self.term1) + ", " + str(self.term2) + ")"
 
 
 @ifdregistry.register_tag("cv", STerm)
