@@ -528,6 +528,18 @@
                 "safe": 34,
                 "violation": 2
             }
+        },
+        {
+            "filename": "attribute_postconditions.c",
+            "description": "Contracts from attributes on application functions (codehawk branch attributeassumptions, cCHFileContract.get_application_function_attributes): a returns_nonnull postcondition is a conjecture, checked by a return-site supporting proof obligation and assumed by the callers' primary proof obligations. get_state: return-site not-null proven (address of a global element); find_state: one return site proven, one open (result of an external function without summary), callers still assume the postcondition (dependency on an open conjecture); lead_state: leading attribute attached by CIL to the base type (analyzer issue #59), no postcondition, caller not-null open. Other open primary proof obligations: initialized((*s).count) in the three callers, stack-address-escape of the external result returned by find_state. The literal return NULL case is left out because of analyzer issue #60 (null pointer constant proven not-null)",
+            "expected": {
+                "safe": 59,
+                "open": 5
+            },
+            "expected-spo": {
+                "safe": 2,
+                "open": 1
+            }
         }
     ]
 }

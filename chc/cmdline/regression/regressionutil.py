@@ -219,6 +219,22 @@ def run_regression_test_file(
     else:
         resultmsg = "Passed " + ("." * 43)
 
+    # optional: status counts of the supporting proof obligations (e.g.,
+    # return-site proof obligations that check contract postconditions)
+    expectedspo = testspec.get("expected-spo", {})
+    if resultmsg.startswith("Passed") and len(expectedspo) > 0:
+        spostatus: Dict[str, int] = {}
+        for fn in cfile.get_functions():
+            for spo in fn.get_spos():
+                spostatus.setdefault(spo.status, 0)
+                spostatus[spo.status] += 1
+        for (s, c) in expectedspo.items():
+            if spostatus.get(s, 0) != c:
+                resultmsg = (
+                    "Failed: Expected spo " + s + ":" + str(c)
+                    + ", but found " + s + ":" + str(spostatus.get(s, 0)))
+                break
+
     # number of primary proof obligations at locations that some domain
     # proves unreachable
     expectedunr = testspec.get("expected-unreachable")
