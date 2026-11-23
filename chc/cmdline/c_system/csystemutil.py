@@ -28,8 +28,8 @@
 
 A system is a set of CodeHawk-C projects (modules) that call each other, such
 as the cFS core (cFE), its libraries and its apps. Verification proceeds in two
-passes: every module is analyzed cold, the boundary between the modules is 
-collected and drafted as external companions, the user reviews them, and every 
+passes: every module is analyzed cold, the boundary between the modules is
+collected and drafted as external companions, the user reviews them, and every
 module is verified again against the reviewed companions.
 """
 
