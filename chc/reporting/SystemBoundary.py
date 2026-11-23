@@ -381,11 +381,8 @@ class SystemBoundary:
             byprov.setdefault(prov, {}).setdefault(
                 e["header"], []).append(e)
 
-        def order(p: str) -> bool:
-            return p.startswith("(", p)
-
         # order = lambda p: (p.startswith("("), p)
-        for prov in sorted(byprov, key=order):
+        for prov in sorted(byprov, key=lambda p: (p.startswith("("), p)):
             hs = byprov[prov]
             nf = sum(len(v) for v in hs.values())
             lines.append(
