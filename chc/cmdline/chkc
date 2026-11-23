@@ -47,6 +47,11 @@ Analysis commands are provided for two distinct ways of analysis:
              analyzes a project of multiple files that comes with a Makefile
 
 Run the respective option for more information on either one.
+
+In addition there are system commands to integrate the analysis of multiple
+modules (that are each verified with c-project commands):
+
+- chkc c-system ...
 """
 
 import argparse
@@ -62,6 +67,7 @@ from chc.app.CHVersion import chcversion
 import chc.cmdline.c_file.cfileutil as C
 import chc.cmdline.c_file.cfiletableutil as CT
 import chc.cmdline.c_project.cprojectutil as P
+import chc.cmdline.c_system.csystemutil as S
 import chc.cmdline.juliet.julietutil as J
 import chc.cmdline.kendra.kendrautil as K
 import chc.cmdline.regression.regressionutil as R
@@ -214,6 +220,28 @@ The compile_commands.json file is modified to emit preprocessed source files
 goblint CIL) to produce ocaml data structures for all data and function
 declarations and definitions in all source files. These artifacts are saved
 in a gzipped tar archive for further analysis.
+
+    """
+    print(descr)
+    exit(0)
+
+
+def csystemcommand(args: argparse.Namespace) -> NoReturn:
+    descr = """
+The chkc c-system set of commands is used to verify a system of separately
+analyzed projects (modules) that call each other, such as the cFS core, its
+libraries and its apps.
+
+Verification proceeds in two passes:
+
+- analyze every project cold (chkc c-project parse/analyze), without external
+  companions;
+- chkc c-system collect-boundary <tgtpath> <project> <project> ...
+      collects the functions that the projects call across their boundaries,
+      and writes draft companions (with the provenance of every condition)
+      for the headers that declare them;
+- review the drafts and place them on the contract path;
+- parse and analyze every project again with the reviewed companions.
 
     """
     print(descr)
@@ -1517,6 +1545,40 @@ def parse() -> argparse.Namespace:
     cfile_invfacttable.add_argument(
         "--tgtpath", help="directory that holds the analysis results")
     cfile_invfacttable.set_defaults(func=CT.cfile_invfact_table)
+
+    # ------------------------------------------------------------- c-system ---
+    csystemcmd = subparsers.add_parser("c-system")
+    csystemcmd.set_defaults(func=csystemcommand)
+    csystemparsers = csystemcmd.add_subparsers(title="show options")
+
+    # --- collect-boundary
+    csystemcollectboundary = csystemparsers.add_parser(
+        "collect-boundary",
+        description=(
+            "Collect the boundary of a system of projects analyzed cold:"
+            + " functions called across projects (with their provider, the"
+            + " clients' requests, and the provider's api assumptions and"
+            + " guarantees), functions defined by more than one project,"
+            + " indirect calls, address-taken functions, and functions"
+            + " defined nowhere. Writes draft companions per header for"
+            + " review, summary.txt and boundary.json."))
+    csystemcollectboundary.add_argument(
+        "tgtpath", help="directory that contains the analysis results")
+    csystemcollectboundary.add_argument(
+        "projectnames", nargs="+", help="names of the projects (modules)")
+    csystemcollectboundary.add_argument(
+        "--analysis-level",
+        default="implementation-defined",
+        choices=["undefined-behavior", "implementation-defined",
+                 "value-wrap-around"],
+        help=("proof obligations included in the boundary requests"
+              + " (default: implementation-defined)"))
+    csystemcollectboundary.add_argument(
+        "--output",
+        help=("directory for the draft companions (<provider>/<header>.chk.h,"
+              + " mirroring the source tree), summary.txt and boundary.json"
+              + " (default: <tgtpath>/chc_boundary)"))
+    csystemcollectboundary.set_defaults(func=S.csystem_collect_boundary)
 
     # ------------------------------------------------------------ c-project ---
     cprojectcmd = subparsers.add_parser("c-project")
