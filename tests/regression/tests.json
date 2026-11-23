@@ -540,6 +540,18 @@
                 "safe": 2,
                 "open": 1
             }
+        },
+        {
+            "filename": "companion_postconditions.c",
+            "description": "Contracts from companion specification files: the sources have no attributes; the parse step appends to the .i the preprocessed companions under cch_contracts: the header companion companion_postconditions.chk.h (of the included project header; returns_nonnull on the static inline accessor hdr_state) and the file companion companion_postconditions.c.chk.h (returns_nonnull on get_state and find_state). hdr_state, get_state: return-site not-null proven; find_state: one return site proven, one open (external result); callers of the three assume the postcondition (not-null proven); other_state has no companion entry, caller not-null open. Other open primary proof obligations: initialized((*s).count) in the four callers, stack-address-escape of the external result returned by find_state",
+            "expected": {
+                "safe": 74,
+                "open": 6
+            },
+            "expected-spo": {
+                "safe": 3,
+                "open": 1
+            }
         }
     ]
 }
