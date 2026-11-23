@@ -81,6 +81,9 @@ over its supporting proof obligations):
 - lib      : postcondition of an external function that is not part of the
              standard library (summary of another library, or attribute)
 - contract : user function contract or global contract (trusted)
+- interface: declared precondition of an exported function (chkc_exported):
+             checked by primary proof obligations at every call site, in
+             this module and in the client modules (verification pass)
 - extern   : precondition of a function with external linkage: callers
              outside the application are not checked (not in closed-program
              mode, where the analyzed code is the whole program and only the
@@ -112,6 +115,7 @@ from chc.app.IndexManager import FileVarReference
 if TYPE_CHECKING:
     from chc.app.CApplication import CApplication
     from chc.app.CFile import CFile
+    from chc.app.CFunction import CFunction
     from chc.proof.AssumptionType import (
         ApiAssumptionType, GlobalApiAssumptionType, PostconditionType)
     from chc.proof.CFunctionPO import CFunctionPO
@@ -126,6 +130,10 @@ proof obligation is in exactly one category:
 - trust-lib  : relies on library summaries outside the standard library
 - trust-user : relies on user function contracts or the global contract (and
                possibly library summaries)
+- trust-interface : relies only on declared preconditions of exported
+               functions, which are checked at every call site by primary
+               proof obligations (in this module and in the client modules,
+               when the system is verified against the same external units)
 - trust-ext  : relies on preconditions on callers the analysis cannot see:
                callers outside the analyzed code (external linkage) or
                indirect callers (address taken); all visible call sites have
@@ -140,13 +148,16 @@ proof obligation is in exactly one category:
 - finding    : violation, implementation-defined, or value wrap-around
 """
 consolidated_categories: List[str] = [
-    "proven", "trust-lib", "trust-user", "trust-ext", "uncalled", "dep-open",
-    "dep-fail", "open", "finding"]
+    "proven", "trust-interface", "trust-lib", "trust-user", "trust-ext",
+    "uncalled", "dep-open", "dep-fail", "open", "finding"]
 
 consolidated_descriptions: Dict[str, str] = {
     "proven": (
         "no assumptions, or all discharged inside the analyzed code,"
         + " transitively"),
+    "trust-interface": (
+        "relies on declared preconditions of exported functions (checked at"
+        + " all call sites)"),
     "trust-lib": "relies on non-standard library summaries or attributes",
     "trust-user": "relies on user function or global contracts",
     "trust-ext": (
@@ -203,7 +214,9 @@ def reasons_category(reasons: FrozenSet[str]) -> str:
         return "uncalled"
     if "contract" in reasons:
         return "trust-user"
-    return "trust-lib"
+    if "lib" in reasons:
+        return "trust-lib"
+    return "trust-interface"
 
 
 class ConsolidatedStatus:
@@ -292,6 +305,15 @@ class ConsolidatedStatus:
         except Exception:
             return None
 
+    def _is_interface_precondition(
+            self, cfile: "CFile", cfun: "CFunction", apiid: int) -> bool:
+        """Return true if the api assumption is a declared precondition of an
+        exported function (chkc_exported)."""
+        a = cfun.api.api_assumptions.get(apiid)
+        if a is None or not a.iscontract:
+            return False
+        return cfun.name in cfile.externalcontracts.exported_functions
+
     def _compute(self) -> None:
         addrof = self._address_taken_functions()
         for cfile in self.capp.cfiles:
@@ -326,6 +348,11 @@ class ConsolidatedStatus:
                 elif a.is_api_assumption:
                     aa: "ApiAssumptionType" = a   # type: ignore
                     apiid = aa.predicate.index
+                    if self._is_interface_precondition(cfile, cfun, apiid):
+                        # checked by primary proof obligations at the call
+                        # sites (no call-site supporting proof obligations)
+                        fixed.add("interface")
+                        continue
                     callsites = self.capp.get_callsites(
                         cfile.index, cfun.svar.vid)
                     linkage: Set[str] = set([])
