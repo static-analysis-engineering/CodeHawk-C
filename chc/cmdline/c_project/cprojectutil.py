@@ -125,6 +125,7 @@ def cproject_parse_project(args: argparse.Namespace) -> NoReturn:
     preprocessed_path: str = args.preprocessed_path
     tgtplatform: Optional[str] = args.tgtplatform
     optcompilecommands: Optional[str] = args.compile_commands
+    optcontractpath: Optional[str] = args.contractpath
 
     try:
         UF.check_parser()
@@ -147,6 +148,14 @@ def cproject_parse_project(args: argparse.Namespace) -> NoReturn:
         exit(1)
 
     projectpath = os.path.abspath(projectpath)
+
+    # companion specification files (foo.h -> foo.chk.h,
+    # foo.c -> foo.c.chk.h), mirroring the source tree
+    if optcontractpath is not None:
+        # relative to the current directory, not to the project directory
+        contractpath = os.path.abspath(optcontractpath)
+    else:
+        contractpath = os.path.join(projectpath, "cch_contracts")
 
     if opttgtpath is not None:
         if not os.path.isdir(opttgtpath):
@@ -179,7 +188,8 @@ def cproject_parse_project(args: argparse.Namespace) -> NoReturn:
         targetpath,
         keep_system_includes=keep_system_includes,
         preprocessed_path=preprocessed_path,
-        tgtplatform=tgtplatform)
+        tgtplatform=tgtplatform,
+        contractpath=contractpath)
     parsemanager.remove_semantics()
     parsemanager.initialize_paths()
     try:

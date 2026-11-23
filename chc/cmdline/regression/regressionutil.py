@@ -115,7 +115,8 @@ def run_regression_test_file(
         projectpath,
         projectname,
         targetpath,
-        tgtplatform=testspec.get("tgtplatform"))
+        tgtplatform=testspec.get("tgtplatform"),
+        contractpath=os.path.join(projectpath, "cch_contracts"))
     parsemanager.remove_semantics()
     parsemanager.initialize_paths()
 

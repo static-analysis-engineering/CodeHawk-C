@@ -673,6 +673,12 @@ def parse() -> argparse.Namespace:
               + "the parse results and used to set the analyzer wordsize "
               + "(default: m64)"))
     cfileparse.add_argument(
+        "--contractpath",
+        help=("directory with companion specification files (foo.h -> "
+              + "foo.chk.h, foo.c -> foo.c.chk.h, relative to the directory "
+              + "of the c file), appended to the preprocessed file "
+              + "(default: <cpath>/cch_contracts)"))
+    cfileparse.add_argument(
         "--preprocessed-path",
         help="directory that contains preprocessed source files")
     cfileparse.add_argument(
@@ -1559,6 +1565,14 @@ def parse() -> argparse.Namespace:
               + "compile_commands.json"))
     cprojectparse.add_argument(
         "--tgtpath", help="directory to save the results")
+    cprojectparse.add_argument(
+        "--contractpath",
+        help=("directory with companion specification files (foo.h -> "
+              + "foo.chk.h, foo.c -> foo.c.chk.h, mirroring the source "
+              + "tree), appended to the preprocessed "
+              + "files of the defining source files and of the source files "
+              + "that include a specified header (relative to the current "
+              + "directory; default: <path>/cch_contracts)"))
     cprojectparse.add_argument(
         "--keep-system-includes",
         action="store_true",
