@@ -6,7 +6,7 @@
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
 # Copyright (c) 2021-2022 Henny B. Sipma
-# Copyright (c) 2023-2024 Aarno Labs LLC
+# Copyright (c) 2023-2026 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -58,6 +58,10 @@ class PPOType(CFunPOType):
 
     @property
     def is_lib_ppo(self) -> bool:
+        return False
+
+    @property
+    def is_guarantee_ppo(self) -> bool:
         return False
 
     def __str__(self) -> str:
@@ -157,4 +161,58 @@ class LibPPOType(PPOType):
             + self.lib_function_name
             + ", "
             + str(self.precondition)
+            + ")")
+
+
+@podregistry.register_tag("pg", PPOType)
+class GuaranteePPOType(PPOType):
+    """Primary proof obligation for a postcondition guarantee of an exported
+    function (declared chkc_exported in its external unit) at a return site.
+
+    The postconditions of exported functions are hard requirements of the
+    system boundary: the client modules assume them, so in the module that
+    defines the function they are primary proof obligations, not supporting
+    ones.
+
+    * args[0]: index of location in cdeclarations
+    * args[1]: index of context in contexts
+    * args[2]: index of predicate in predicate dictionary
+    * args[3]: index of the postcondition (xpredicate) in interface dictionary
+    """
+
+    def __init__(
+            self, pod: "CFunPODictionary", ixval: IndexedTableValue
+    ) -> None:
+        PPOType.__init__(self, pod, ixval)
+
+    @property
+    def is_guarantee_ppo(self) -> bool:
+        return True
+
+    @property
+    def location(self) -> "CLocation":
+        return self.cdecls.get_location(self.args[0])
+
+    @property
+    def context(self) -> "ProgramContext":
+        return self.cxd.get_program_context(self.args[1])
+
+    @property
+    def predicate(self) -> "CPOPredicate":
+        return self.pd.get_predicate(self.args[2])
+
+    @property
+    def postcondition(self) -> "XPredicate":
+        return self.ifd.get_xpredicate(self.args[3])
+
+    def __str__(self) -> str:
+        return (
+            "ppo("
+            + str(self.location)
+            + ", "
+            + str(self.context)
+            + ", "
+            + str(self.predicate)
+            + ", guarantee "
+            + str(self.postcondition)
             + ")")
