@@ -493,7 +493,8 @@
                 "  No violations (undefined behavior) found.",
                 "  This does NOT establish the absence of undefined behavior:",
                 "    - verification is incomplete: information is missing (calls to unmodeled",
-                "      functions, indirect calls, or inline assembly; see SYSTEM BOUNDARY)",
+                "      or partially specified functions, indirect calls, or inline assembly;",
+                "      see SYSTEM BOUNDARY)",
                 "  Absence of undefined behavior is established only when no proof",
                 "  obligations are open and no information is missing."
             ]
@@ -551,6 +552,64 @@
             "expected-spo": {
                 "safe": 3,
                 "open": 1
+            }
+        },
+        {
+            "filename": "external_contracts.c",
+            "description": "Issues 62 and 66: specifications of external functions from attributes, exported by the analyzer (<file>_xc.xml) and classified by the verification report per axis. Complete (effects and preconditions declared; preconditions only by chkc_ attributes, user decision 2026-11-22): ext_full (chkc_preserves_all_memory; chkc_nonnull), ext_none (chkc_preserves_all_memory; chkc_requires_none), ext_unknown (chkc_effects_unknown; chkc_requires_none). Partial, listed as missing information: ext_len (pure gives effects; gcc nonnull is used but does not declare preconditions), ext_div (const gives effects only), ext_printf (gcc format: no declared axis), ext_exit (noreturn: neither). Unmodeled: ext_plain. Standard library: strlen",
+            "expected": {},
+            "expected-verification": {
+                "unmodeled-functions": 1,
+                "partial-functions": 4,
+                "summarized-functions": 4,
+                "stdlib-functions": 1
+            }
+        },
+        {
+            "filename": "exported_guarantees.c",
+            "description": "Verification pass (system-boundary guarantees): functions declared chkc_exported have their postconditions checked by primary proof obligations at return sites (PPOguarantee). get_s: 1 guarantee proven, declared side effect reported as not checked; find_s: 2 guarantees, 1 proven, 1 open (external lookup without specification; remedy external-condition); read_x: chkc_nonnull(1) assumed, dereference proven; local_s (not exported): 2 return-site supporting proof obligations, 1 proven, 1 open",
+            "expected": {},
+            "expected-spo": {
+                "safe": 1,
+                "open": 1
+            },
+            "expected-verification": {
+                "exported-functions": 3,
+                "guarantee-proven": 2,
+                "guarantee-open": 1,
+                "external-condition": 1
+            }
+        },
+        {
+            "filename": "null_pointer_constant.c",
+            "description": "Issue 60: a null pointer constant converted to a pointer (literal 0, NULL, via void *, via a pointer typedef) is a violation of not-null instead of an absolute address (5 violations, including the return site of an exported function that guarantees returns_nonnull); a nonzero constant is an absolute address (safe); an integer variable converted to a pointer is not evidence of non-null (delegated to the callers, or open)",
+            "expected": {
+                "safe": 61,
+                "open": 10,
+                "violation": 5
+            }
+        },
+        {
+            "filename": "interface_preconditions.c",
+            "description": "Verification pass, interface preconditions: an exported function (chkc_exported) can delegate only its declared preconditions; other conditions stay open as missing preconditions (remedy missing-precondition: sum needs not-null(q), initialized(p->x), initialized(q->x)); a proof obligation discharged by a declared precondition is trust-interface; calls to the exported function in its own file check the declared precondition by primary proof obligations (proven for &g, violation for a null pointer) and get no call-site supporting proof obligations",
+            "expected": {
+                "safe": 39,
+                "open": 4,
+                "violation": 1
+            },
+            "expected-spo": {
+                "open": 2
+            },
+            "expected-verification": {
+                "missing-precondition": 3,
+                "exported-functions": 1
+            },
+            "expected-consolidated": {
+                "proven": 36,
+                "trust-interface": 1,
+                "dep-open": 2,
+                "open": 4,
+                "finding": 1
             }
         }
     ]
