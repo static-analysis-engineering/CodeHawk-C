@@ -1,1 +1,1 @@
-chcversion: str = "0.2.0-2026-06-18"
+chcversion: str = "0.2.0-2026-11-23"

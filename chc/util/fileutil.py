@@ -6,7 +6,7 @@
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
 # Copyright (c) 2020-2022 Henny B. Sipma
-# Copyright (c) 2023-2025 Aarno Labs LLC
+# Copyright (c) 2023-2026 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -91,6 +91,7 @@ multiple stages:
    - tp/pn.cch/a/fp/x/x_ctxt.xml
    - tp/pn.cch/a/fp/x/x_ixf.xml
    - tp/pn.cch/a/fp/x/x_prd.xml
+   - tp/pn.cch/a/fp/x/x_xc.xml
    - tp/pn.cch/a/fp/x/functions/<x_fn>/x_fn_api.xml
    - tp/pn.cch/a/fp/x/functions/<x_fn>/x_fn_pod.xml
    - tp/pn.cch/a/fp/x/functions/<x_fn>/x_fn_ppo.xml
@@ -1060,6 +1061,37 @@ def save_cfile_interface_dictionary(
     header.append(xnode)
     with open(filename, "w") as fp:
         fp.write(UX.doc_to_pretty(ET.ElementTree(header)))
+
+
+def get_cfile_external_contracts_name(
+        targetpath: str,
+        projectname: str,
+        cfilepath: Optional[str],
+        cfilename: str) -> str:
+    filepath = get_cfile_filepath(targetpath, projectname, cfilepath, cfilename)
+    return os.path.join(filepath, cfilename + "_xc.xml")
+
+
+def get_cfile_external_contracts_xnode(
+        targetpath: str,
+        projectname: str,
+        cfilepath: Optional[str],
+        cfilename: str,
+        rootnode: str = "external-contracts") -> Optional[ET.Element]:
+    """Contracts of the external functions as used by the analysis, with
+    their origin (attributes, contract file), and (rootnode
+    exported-functions) the declared contracts of the exported functions;
+    written by the analyzer when it generates the primary proof obligations.
+    None if the file is not present (results of an older analyzer)."""
+    filename = get_cfile_external_contracts_name(
+        targetpath, projectname, cfilepath, cfilename)
+    if not os.path.isfile(filename):
+        return None
+    return get_xnode(
+        filename,
+        rootnode,
+        "External function contracts file",
+        show=False)
 
 
 def get_cfile_contexttablename(

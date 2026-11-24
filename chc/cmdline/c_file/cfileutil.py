@@ -126,6 +126,7 @@ def cfile_parse_file(args: argparse.Namespace) -> NoReturn:
     logfilemode: str = args.logfilemode
     preprocessed_path: str = args.preprocessed_path
     tgtplatform: Optional[str] = args.tgtplatform
+    optcontractpath: Optional[str] = args.contractpath
 
     try:
         UF.check_parser()
@@ -160,9 +161,21 @@ def cfile_parse_file(args: argparse.Namespace) -> NoReturn:
 
     chklogger.logger.info("Target path: %s", targetpath)
 
+    # directory with companion specification files (default: cch_contracts
+    # in the directory of the c file)
+    if optcontractpath is not None:
+        contractpath = os.path.abspath(optcontractpath)
+    else:
+        contractpath = os.path.join(projectpath, "cch_contracts")
+
     parsemanager = ParseManager(
-        projectpath, projectname, targetpath, keep_system_includes=keep_system_includes,
-        preprocessed_path=preprocessed_path, tgtplatform=tgtplatform)
+        projectpath,
+        projectname,
+        targetpath,
+        keep_system_includes=keep_system_includes,
+        preprocessed_path=preprocessed_path,
+        tgtplatform=tgtplatform,
+        contractpath=contractpath)
     parsemanager.remove_semantics()
     parsemanager.initialize_paths()
 
@@ -753,9 +766,15 @@ def cfile_run_file(args: argparse.Namespace) -> NoReturn:
 
     chklogger.logger.info("Target path: %s", targetpath)
 
+    # companion specification files from cch_contracts in the directory of
+    # the c file (as in c-file parse)
     parsemanager = ParseManager(
-        projectpath, projectname, targetpath, keep_system_includes=keep_system_includes,
-        tgtplatform=tgtplatform)
+        projectpath,
+        projectname,
+        targetpath,
+        keep_system_includes=keep_system_includes,
+        tgtplatform=tgtplatform,
+        contractpath=os.path.join(projectpath, "cch_contracts"))
     parsemanager.remove_semantics()
     parsemanager.initialize_paths()
 

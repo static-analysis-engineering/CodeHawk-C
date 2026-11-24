@@ -10,12 +10,19 @@ ConfigLocal.py
 chc/bin/*/canalyzer
 chc/bin/*/parseFile
 
+# Regression test artifacts
+tests/regression/*.cch.tar.gz
+tests/kendra/*/*.cch.tar.gz
+tests/attributes/*.cch.tar.gz
+
 # Emacs
 *.py~
 *.rst~
 *.c~
 *.css~
+*.json~
 chkc~
+Makefile~
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

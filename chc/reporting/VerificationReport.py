@@ -40,16 +40,15 @@ questions of a user who wants to verify a system, in this order:
 2. Results: the primary proof obligations by property class and consolidated
    status (proven, proven under assumptions, open, violation,
    implementation-defined, value wrap-around); the consolidated status takes
-   the supporting proof obligations at call sites into account (issue 43).
+   the supporting proof obligations at call sites into account.
 3. Open proof obligations by remedy: open because a precondition is not
    established at a call site; because a property of an unmodeled function
    is missing (an assumption only the user can provide, grouped per function
    and phrased as a property the user can confirm from the function's
-   documentation); because a
-   postcondition of a program function is missing (an intermediate condition,
-   to be derived or conjectured and checked, issue 44); because they depend on
-   the state of global variables (global/data-structure invariant); or not
-   classified (invariant too weak, or a possible defect).
+   documentation); because a postcondition of a program function is missing
+   (an intermediate condition, to be derived or conjectured and checked;
+   because they depend on the state of global variables (global/data-structure
+   invariant); or not classified (invariant too weak, or a possible defect).
 4. Findings: violations individually; implementation-defined and value
    wrap-around findings grouped by predicate.
 
@@ -131,6 +130,12 @@ result_column_headers: Dict[str, str] = {
 
 """Remedy groups for open proof obligations, in order."""
 remedy_groups: List[Tuple[str, Tuple[str, str]]] = [
+    ("missing-precondition",
+     ("an exported function needs a precondition it does not declare",
+      "(declare it in its external unit, or fix the function)")),
+    ("export-guarantee",
+     ("a guarantee of an exported function is not established",
+      "(fix the function, or weaken the guarantee in its external unit)")),
     ("call-site",
      ("a precondition is not established at a call site",
       "(fix or strengthen the callers)")),
@@ -149,9 +154,9 @@ remedy_groups: List[Tuple[str, Tuple[str, str]]] = [
 
 """User-facing phrasing of the conditions requested from functions outside the
 analyzed code, with the contract term. The analyzer requests a sufficient
-condition, which may be stronger than what the open proof obligation needs
-(issue 47); the phrasing states what the condition means, so that the user
-can confirm it as a property of the function itself."""
+condition, which may be stronger than what the open proof obligation needs;
+the phrasing states what the condition means, so that the user can confirm it
+as a property of the function itself."""
 external_condition_text: Dict[str, Tuple[str, str]] = {
     "preserves-all-memory": (
         "frees nothing",
@@ -175,6 +180,9 @@ external_condition_text: Dict[str, Tuple[str, str]] = {
 def external_condition_property(cond: str) -> str:
     return external_condition_text.get(cond, (cond, ""))[0]
 
+
+_missingpre_re = re.compile(
+    r"^missing precondition of exported function (\S+): (.*)$")
 
 _postrequest_re = re.compile(
     r"submitted postrequest for condition (.+) to (\S+)\s*$")
@@ -268,6 +276,8 @@ class VerificationReport:
         missingheaders: Dict[str, str] = {}
         unmodeled: Dict[str, Dict[str, Any]] = {}
         summarized: Dict[str, int] = {}
+        specified: Dict[str, Dict[str, Any]] = {}
+        partial: Dict[str, Dict[str, Any]] = {}
         stdlib: Dict[str, int] = {}
         indirect: List[Dict[str, Any]] = []
         asm: List[Dict[str, Any]] = []
@@ -304,7 +314,24 @@ class VerificationReport:
                         elif self.cons.is_standard_library_function(name):
                             stdlib[name] = stdlib.get(name, 0) + 1
                         else:
-                            summarized[name] = summarized.get(name, 0) + 1
+                            # library summary or contract:
+                            # complete if effects and preconditions are
+                            # declared
+                            spec = cfile.externalcontracts.specification(
+                                name)
+                            if spec["status"] in ["summary", "complete"]:
+                                summarized[name] = summarized.get(name, 0) + 1
+                                _combine_specification(
+                                    specified, name, spec)
+                            else:
+                                r = partial.setdefault(name, {
+                                    "function": name,
+                                    "header": _declaring_header(cfile, vid),
+                                    "callsites": 0,
+                                    "callers": set([])})
+                                r["callsites"] += 1
+                                r["callers"].add(cfun.name)
+                                _combine_specification(partial, name, spec)
                     else:
                         indirect.append({
                             "file": cfile.name + ".c",
@@ -319,6 +346,8 @@ class VerificationReport:
                             "function": cfun.name,
                             "line": instr.location.line})
         for r in unmodeled.values():
+            r["callers"] = len(r["callers"])
+        for r in partial.values():
             r["callers"] = len(r["callers"])
 
         ppos = self._ppos()
@@ -357,6 +386,25 @@ class VerificationReport:
             except Exception:
                 pass
 
+        # exported functions (chkc_exported): guarantees checked by primary
+        # proof obligations; declared side effects not checked
+        exported: Dict[str, Dict[str, Any]] = {}
+        for cfile in self.capp.cfiles:
+            for (xfn, c) in (
+                    cfile.externalcontracts.exported_functions.items()):
+                exported[xfn] = {
+                    "function": xfn,
+                    "file": cfile.name + ".c",
+                    "guarantees": len(c["post"]),
+                    "preconditions": len(c["pre"]),
+                    "side-effects": c["side"],
+                    "ppos": {"proven": 0, "open": 0, "other": 0}}
+        for po in ppos:
+            if getattr(po, "is_guarantee", False) and po.cfun.name in exported:
+                col = self.result_column(po)
+                key = col if col in ["proven", "open"] else "other"
+                exported[po.cfun.name]["ppos"][key] += 1
+
         unreachable = unreachable_locations(
             ppos, filter_analysis_level(self.capp.get_spos(), self.level))
 
@@ -375,6 +423,12 @@ class VerificationReport:
             "unreachable": unreachable,
             "stdlib": stdlib,
             "summarized": summarized,
+            "specified": specified,
+            "exported": sorted(
+                exported.values(), key=lambda r: (r["file"], r["function"])),
+            "partial": sorted(
+                partial.values(),
+                key=lambda r: (-r["callsites"], r["function"])),
             "extcallers": sorted(
                 extfns.values(), key=lambda r: (r["file"], r["function"])),
             "uncalled": [
@@ -393,7 +447,7 @@ class VerificationReport:
         cat = self.cons.category(po)
         if cat == "proven":
             return "proven"
-        if cat in ["trust-lib", "trust-user", "trust-ext"]:
+        if cat in ["trust-interface", "trust-lib", "trust-user", "trust-ext"]:
             return "assumed"
         if cat == "uncalled":
             return "no-callers"
@@ -445,7 +499,25 @@ class VerificationReport:
         """Return the remedy group of an open primary proof obligation, with
         the (function, condition) pairs it would need, if any."""
         if self.cons.category(po) in ["dep-open", "dep-fail"]:
+            # blocked at a call site in an exported function that would need
+            # an undeclared precondition: the remedy is in the interface
+            blocked = [
+                (r.group(1), r.group(2))
+                for spo in self.cons.blocking_pos(po)
+                for r in (
+                    _missingpre_re.match(m)
+                    for m in self._diagnostic_msgs(spo))
+                if r is not None]
+            if len(blocked) > 0:
+                return ("missing-precondition", blocked)
             return ("call-site", [(po.cfun.name, "")])
+        missing = [
+            (r.group(1), r.group(2))
+            for r in (
+                _missingpre_re.match(m) for m in self._diagnostic_msgs(po))
+            if r is not None]
+        if len(missing) > 0:
+            return ("missing-precondition", missing)
         requests: List[Tuple[str, str]] = []
         for m in self._diagnostic_msgs(po):
             r = _postrequest_re.match(m)
@@ -456,6 +528,11 @@ class VerificationReport:
             return ("external-condition", external)
         if len(requests) > 0:
             return ("program-postcondition", requests)
+        if getattr(po, "is_guarantee", False):
+            return (
+                "export-guarantee",
+                [(po.cfun.name,
+                  str(getattr(po.potype, "postcondition", "")))])
         globalnames = self._global_names(po.cfile)
         used = [
             n for n in _identifier_re.findall(str(po.predicate))
@@ -530,6 +607,11 @@ class VerificationReport:
                 r["callsites"] for r in b["unmodeled"]),
             "indirect-calls": len(b["indirect"]),
             "summarized-functions": len(b["summarized"]) + len(b["stdlib"]),
+            "partial-functions": len(b["partial"]),
+            "exported-functions": len(b["exported"]),
+            "guarantee-proven": sum(
+                r["ppos"]["proven"] for r in b["exported"]),
+            "guarantee-open": sum(r["ppos"]["open"] for r in b["exported"]),
             "stdlib-functions": len(b["stdlib"]),
             "ext-callers": len(b["extcallers"]),
         }
@@ -546,6 +628,39 @@ class VerificationReport:
             "results": self.results(),
             "remedies": self.remedies(),
             "findings": self.findings()}
+
+
+# order of completeness of a specification, least complete first
+_SPEC_ORDER = ["not-recorded", "partial", "complete", "summary"]
+
+
+def _combine_specification(
+        table: Dict[str, Dict[str, Any]],
+        name: str,
+        spec: Dict[str, Optional[str]]) -> None:
+    """Record the specification of an external function as seen by a file;
+    when files see different specifications (e.g., different companions
+    included), keep the least complete one, axis by axis."""
+    r = table.setdefault(name, {})
+    if "status" not in r:
+        r.update(spec)
+        return
+    if _SPEC_ORDER.index(str(spec["status"])) < _SPEC_ORDER.index(
+            str(r["status"])):
+        r["status"] = spec["status"]
+    for axis in ["effects", "preconditions"]:
+        if spec[axis] is None:
+            r[axis] = None
+
+
+def _declaring_header(cfile: Any, vid: int) -> str:
+    try:
+        vinfo = cfile.get_global_varinfo(vid)
+        if vinfo.vdecl is not None:
+            return str(vinfo.vdecl.file)
+    except Exception:
+        pass
+    return ""
 
 
 def _instrs(cfun: Any) -> List[Any]:
@@ -595,9 +710,10 @@ def boundary_tostring(b: Dict[str, Any], showall: bool = False) -> str:
             "  Closed program: entry points " + ", ".join(b["entrypoints"]))
 
     unmodeled = b["unmodeled"]
+    partial = b.get("partial", [])
     indirect = b["indirect"]
     asm = b["asm"]
-    if len(unmodeled) + len(indirect) + len(asm) > 0:
+    if len(unmodeled) + len(partial) + len(indirect) + len(asm) > 0:
         lines.append("")
         lines.append(
             "  VERIFICATION IS INCOMPLETE: information is missing for")
@@ -624,6 +740,46 @@ def boundary_tostring(b: Dict[str, Any], showall: bool = False) -> str:
                 lines.append(
                     "      ... and " + str(len(unmodeled) - len(shown))
                     + " more (use --all)")
+        if len(partial) > 0:
+            nsites = sum(r["callsites"] for r in partial)
+            lines.append(
+                "    " + _n(len(partial), "function") + " called ("
+                + _n(nsites, "call site") + ") that are only partially"
+                + " specified:")
+            lines.append(
+                "    undeclared effects are havocked (sound); undeclared"
+                + " preconditions are")
+            lines.append(
+                "    NOT checked (declare chkc_effects_unknown or"
+                + " chkc_requires_none if intended).")
+            shown = partial if showall else partial[:10]
+            fnlen = max(len(r["function"]) for r in shown) + 2
+            for r in shown:
+                lines.append(
+                    "      " + r["function"].ljust(fnlen)
+                    + _n(r["callsites"], "call site").rjust(14)
+                    + (("  (declared in " + r["header"] + ")")
+                       if r["header"] else ""))
+                if r.get("status") == "not-recorded":
+                    lines.append(
+                        "        specification not recorded by the analyzer"
+                        + " (analyze again)")
+                    continue
+                pre = r["preconditions"]
+                if pre is None:
+                    pre = "NOT DECLARED"
+                    if r.get("compiler-preconditions"):
+                        pre += (
+                            " (used, not counted: "
+                            + r["compiler-preconditions"] + ")")
+                lines.append(
+                    "        effects: "
+                    + (r["effects"] or "NOT DECLARED")
+                    + "; preconditions: " + pre)
+            if len(shown) < len(partial):
+                lines.append(
+                    "      ... and " + str(len(partial) - len(shown))
+                    + " more (use --all)")
         if len(indirect) > 0:
             nfns = len(set((r["file"], r["function"]) for r in indirect))
             lines.append(
@@ -638,8 +794,9 @@ def boundary_tostring(b: Dict[str, Any], showall: bool = False) -> str:
                 + ": not analyzed.")
     else:
         lines.append(
-            "  No calls to unmodeled functions, indirect calls, or inline"
-            + " assembly.")
+            "  No calls to unmodeled or partially specified functions,"
+            + " indirect calls, or")
+        lines.append("  inline assembly.")
     lines.append(
         "    Not modeled: concurrency (interrupts, signal handlers,"
         + " threads) and")
@@ -660,6 +817,37 @@ def boundary_tostring(b: Dict[str, Any], showall: bool = False) -> str:
         lines.append(
             "    C11 4p6, that conforms to the standard); counted as proven")
 
+    exported = b.get("exported", [])
+    if len(exported) > 0:
+        nppos = sum(sum(r["ppos"].values()) for r in exported)
+        nproven = sum(r["ppos"]["proven"] for r in exported)
+        nopen = sum(r["ppos"]["open"] for r in exported)
+        nside = [r for r in exported if len(r["side-effects"]) > 0]
+        lines.append("")
+        lines.append("  Guaranteed (checked):")
+        lines.append(
+            "    " + _n(len(exported), "exported function")
+            + " (chkc_exported): "
+            + _n(nppos, "postcondition proof obligation") + " at return"
+            + " sites,")
+        lines.append(
+            "    " + _num(nproven) + " proven, " + _num(nopen) + " open"
+            + ("" if nppos == nproven + nopen
+               else ", " + _num(nppos - nproven - nopen) + " other"))
+        if len(nside) > 0:
+            lines.append(
+                "    declared side effects of " + _n(len(nside), "function")
+                + " are NOT checked:")
+            shown = nside if showall else nside[:10]
+            for r in shown:
+                lines.append(
+                    "      " + r["function"] + ": "
+                    + ", ".join(r["side-effects"]))
+            if len(shown) < len(nside):
+                lines.append(
+                    "      ... and " + str(len(nside) - len(shown))
+                    + " more (use --all)")
+
     lines.append("")
     lines.append("  Assumed (trusted):")
     summarized = b["summarized"]
@@ -668,7 +856,10 @@ def boundary_tostring(b: Dict[str, Any], showall: bool = False) -> str:
             "    " + _n(len(summarized), "other external function")
             + " (" + _n(sum(summarized.values()), "call site")
             + "), as specified by library")
-        lines.append("    summaries or declared attributes")
+        lines.append(
+            "    summaries or by declared attributes/contracts (effects and"
+            + " preconditions")
+        lines.append("    declared)")
     ext = b["extcallers"]
     if len(ext) > 0:
         uncalledinside = len([f for f in ext if f["callsites"] == 0])
@@ -854,7 +1045,9 @@ def no_violations_caveat(
     rows: Dict[str, Dict[str, int]] = results["rows"]
     nopen = sum(row["open"] for row in rows.values())
     nassumed = sum(row["assumed"] for row in rows.values())
-    missing = len(b["unmodeled"]) + len(b["indirect"]) + len(b["asm"])
+    missing = (
+        len(b["unmodeled"]) + len(b.get("partial", []))
+        + len(b["indirect"]) + len(b["asm"]))
     lines: List[str] = []
     if nopen > 0 or missing > 0:
         lines.append(
@@ -871,8 +1064,10 @@ def no_violations_caveat(
                 "    - verification is incomplete: information is missing"
                 + " (calls to unmodeled")
             lines.append(
-                "      functions, indirect calls, or inline assembly; see"
-                + " SYSTEM BOUNDARY)")
+                "      or partially specified functions, indirect calls, or"
+                + " inline assembly;")
+            lines.append(
+                "      see SYSTEM BOUNDARY)")
         lines.append(
             "  Absence of undefined behavior is established only when no"
             + " proof")
@@ -897,7 +1092,9 @@ def violations_caveat(
     exhaustive while proof obligations are open or information is missing."""
     rows: Dict[str, Dict[str, int]] = results["rows"]
     nopen = sum(row["open"] for row in rows.values())
-    missing = len(b["unmodeled"]) + len(b["indirect"]) + len(b["asm"])
+    missing = (
+        len(b["unmodeled"]) + len(b.get("partial", []))
+        + len(b["indirect"]) + len(b["asm"]))
     lines: List[str] = []
     if nopen > 0 or missing > 0:
         lines.append("  This list may be incomplete:")

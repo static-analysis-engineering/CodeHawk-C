@@ -51,6 +51,8 @@ class ApiAssumption:
            on this assumption
         isglobal (bool=False): assumption holds globally
         isfile (bool=False): assumption holds for the entire c-file
+        iscontract (bool=False): declared (contract) precondition of the
+           function, rather than derived by delegation
     """
 
     def __init__(
@@ -62,6 +64,7 @@ class ApiAssumption:
         spos: List[int],
         isglobal: bool = False,
         isfile: bool = False,
+        iscontract: bool = False,
     ) -> None:
         self.id = id
         self.capi = capi  # api/CFunctionAPI
@@ -71,6 +74,7 @@ class ApiAssumption:
         self.spos = spos
         self.isglobal = isglobal  # assumption includes global variable
         self.isfile = isfile
+        self.iscontract = iscontract
 
     def __str__(self) -> str:
         strppos = ""

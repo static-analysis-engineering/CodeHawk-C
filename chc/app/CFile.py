@@ -6,7 +6,7 @@
 #
 # Copyright (c) 2017-2020 Kestrel Technology LLC
 # Copyright (c) 2020-2022 Henny B. Sipma
-# Copyright (c) 2023-2025 Aarno Labs LLC
+# Copyright (c) 2023-2026 Aarno Labs LLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -34,6 +34,7 @@ import xml.etree.ElementTree as ET
 from typing import (
     Any, Callable, Dict, Iterable, List, Optional, Tuple, TYPE_CHECKING)
 
+from chc.api.CExternalContracts import CExternalContracts
 from chc.api.InterfaceDictionary import InterfaceDictionary
 from chc.api.CFileContracts import CFileContracts
 from chc.api.CFunctionContract import CFunctionContract
@@ -114,6 +115,7 @@ class CFile(object):
         self._contextdictionary: Optional[CContextDictionary] = None
         self._predicatedictionary: Optional[CFilePredicateDictionary] = None
         self._interfacedictionary: Optional[InterfaceDictionary] = None
+        self._externalcontracts: Optional[CExternalContracts] = None
         self._assigndictionary: Optional[CFileAssignmentDictionary] = None
         self._functions: Optional[Dict[int, CFunction]] = None  # vid -> CFunction
         self.strings: Dict[int, Tuple[int, str]] = {}  # string-index -> (len,string)
@@ -410,6 +412,14 @@ class CFile(object):
 
     def reset_interfacedictionary(self) -> None:
         self._interfacedictionary = None
+
+    @property
+    def externalcontracts(self) -> CExternalContracts:
+        """Contracts of the external functions as used by the analysis,
+        with their origin (issues 62, 66)."""
+        if self._externalcontracts is None:
+            self._externalcontracts = CExternalContracts(self)
+        return self._externalcontracts
 
     @property
     def assigndictionary(self) -> CFileAssignmentDictionary:

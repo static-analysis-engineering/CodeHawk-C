@@ -28,6 +28,7 @@
 # ------------------------------------------------------------------------------
 
 import os
+import re
 import sys
 import subprocess
 import shlex
@@ -80,6 +81,7 @@ class ParseManager(object):
             keepUnused: bool = False,
             tgtplatform: Optional[str] = None,
             preprocessed_path: str = "",
+            contractpath: Optional[str] = None,
     ) -> None:
         """Initialize paths to code, results, and parser executable.
 
@@ -122,6 +124,11 @@ class ParseManager(object):
         self._tgtplatform_source = (
             "command-line" if self._tgtplatform_explicit else "default")
         self._preprocessed_path = preprocessed_path
+        # directory with companion specification files (foo.h -> foo.chk.h,
+        # foo.c -> foo.c.chk.h),
+        # mirroring the source tree; no companions if None or absent
+        self._contractpath = (
+            os.path.abspath(contractpath) if contractpath is not None else None)
         self.config = Config()
 
     @property
@@ -328,6 +335,8 @@ class ParseManager(object):
                 stdout=open(os.devnull, "w"),
                 stderr=subprocess.STDOUT,
             )
+        if os.path.isfile(os.path.join(self.projectpath, ifilename)):
+            self.append_companions(cfilename, ifilename, cmd, self.projectpath)
         if copyfiles:
             tgtcfilename = os.path.join(self.savedsourcepath, cfilename)
             tgtifilename = os.path.join(self.savedsourcepath, ifilename)
@@ -579,6 +588,169 @@ class ParseManager(object):
             print("\nCCWarning: Filename not recognized: " + cfilename)
             return (None, None)
 
+    # ------------------------------------------------------------ companions
+    #
+    # A companion holds attributed redeclarations (contracts) of functions.
+    # The companion of a header (foo.h -> foo.chk.h) is the interface
+    # contract of the functions declared (or defined, e.g., static inline
+    # accessors) in that header: it is appended both to the files that
+    # define these functions (guarantee) and to their clients (assumption).
+    # The companion of a source file (foo.c -> foo.c.chk.h) holds the
+    # module-internal contracts (static functions, functions not exported
+    # through a header). The companions live under the contract path,
+    # mirroring the source tree:
+    #   <projectpath>/src/foo.h  ->  <contractpath>/src/foo.chk.h
+    #   <projectpath>/src/foo.c  ->  <contractpath>/src/foo.c.chk.h
+    # The parse step appends to foo.i, after a marker line: the companions
+    # of all project headers included by foo.c (in order of first inclusion,
+    # read from the line markers in foo.i), then foo.c.chk.h. Each companion
+    # is preprocessed separately with the -I/-D/-U/-std/platform options of
+    # the compile command; it does not see the macros defined in the
+    # project sources, and must not include project headers (these are
+    # already in foo.i).
+
+    COMPANION_MARKER = (
+        "/* ==== chkc companion specifications (appended by the parse "
+        + "step) ==== */")
+
+    LINE_MARKER = re.compile(r'^#\s*(?:line\s+)?\d+\s+"([^"]*)"')
+
+    def companion_file(self, srcfilename: str) -> Optional[str]:
+        """Return the companion file name for a source or header file in
+        the project, if a contract path is set (the file may not exist)."""
+
+        if self._contractpath is None:
+            return None
+        if not self.is_in_project(srcfilename):
+            return None
+        relname = os.path.relpath(
+            os.path.abspath(srcfilename), os.path.abspath(self.projectpath))
+        (base, ext) = os.path.splitext(relname)
+        if ext == ".h":
+            # foo.h -> foo.chk.h (interface contract)
+            return os.path.join(self._contractpath, base + ".chk.h")
+        else:
+            # foo.c -> foo.c.chk.h (module-internal contracts; distinct
+            # from the companion of foo.h)
+            return os.path.join(self._contractpath, relname + ".chk.h")
+
+    def included_project_headers(self, ifilename: str, cwd: str) -> List[str]:
+        """Return the project headers named in the line markers of a
+        preprocessed file, in order of first occurrence."""
+
+        result: List[str] = []
+        with open(ifilename, "r", errors="replace") as fp:
+            for line in fp:
+                if line.startswith(self.COMPANION_MARKER):
+                    break
+                m = self.LINE_MARKER.match(line)
+                if m is None:
+                    continue
+                name = m.group(1)
+                if not name.endswith(".h"):
+                    continue
+                name = os.path.normpath(os.path.join(cwd, name))
+                if name in result:
+                    continue
+                if self.is_in_project(name):
+                    result.append(name)
+        return result
+
+    def companion_preprocess_options(self, command: List[str]) -> List[str]:
+        """Return the options of a compile command that the preprocessing
+        of a companion needs: include paths, macro (un)definitions,
+        language standard, and the target platform."""
+
+        result: List[str] = []
+        withargument = ["-I", "-D", "-U", "-isystem", "-iquote", "-idirafter"]
+        i = 1
+        while i < len(command):
+            tok = command[i]
+            if tok in withargument and i + 1 < len(command):
+                result.extend([tok, command[i + 1]])
+                i += 2
+                continue
+            if (any(tok.startswith(p) for p in ["-I", "-D", "-U"])
+                    or tok.startswith("-std=")):
+                result.append(tok)
+            i += 1
+        result.append(self.tgtplatform)
+        return result
+
+    def preprocess_companion(
+            self, companion: str, compiler: str, options: List[str], cwd: str
+    ) -> str:
+        """Preprocess a companion file; return the preprocessed text."""
+
+        cmd = [compiler, "-E", "-g", "-x", "c"] + options + [companion]
+        chklogger.logger.info("Preprocess companion: %s", " ".join(cmd))
+        result = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True)
+        if result.returncode != 0:
+            raise UF.CHCError(
+                "Error in preprocessing companion "
+                + companion
+                + ":\n"
+                + result.stderr)
+        return result.stdout
+
+    def append_companions(
+            self,
+            cfilename: str,
+            ifilename: str,
+            command: List[str],
+            cwd: str) -> List[str]:
+        """Append the companions of cfilename and of the project headers it
+        includes to ifilename; return the companions appended.
+
+        Any companion section appended earlier is removed first, so the
+        operation can be repeated on the same preprocessed file."""
+
+        if self._contractpath is None or not os.path.isdir(self._contractpath):
+            return []
+        cfilename = os.path.normpath(os.path.join(cwd, cfilename))
+        ifilename = os.path.normpath(os.path.join(cwd, ifilename))
+
+        candidates: List[str] = []
+        for h in self.included_project_headers(ifilename, cwd):
+            hc = self.companion_file(h)
+            if hc is not None:
+                candidates.append(hc)
+        cc = self.companion_file(cfilename)
+        if cc is not None:
+            candidates.append(cc)
+        companions = [c for c in candidates if os.path.isfile(c)]
+
+        with open(ifilename, "r", errors="replace") as fp:
+            text = fp.read()
+        original = text
+        index = text.find(self.COMPANION_MARKER)
+        if index >= 0:
+            text = text[:index]
+
+        if len(companions) > 0:
+            compiler = command[0] if len(command) > 0 else "cc"
+            options = self.companion_preprocess_options(command)
+            if not text.endswith("\n"):
+                text += "\n"
+            text += self.COMPANION_MARKER + "\n"
+            for c in companions:
+                text += self.preprocess_companion(c, compiler, options, cwd)
+                if not text.endswith("\n"):
+                    text += "\n"
+            chklogger.logger.info(
+                "Companions appended to %s: %s", ifilename, ", ".join(companions))
+            print(
+                "Companions for "
+                + self.normalize_filename(cfilename)
+                + ": "
+                + ", ".join(os.path.relpath(c, self._contractpath)
+                            for c in companions))
+
+        if text != original:
+            with open(ifilename, "w") as fp:
+                fp.write(text)
+        return companions
+
     def parse_with_ccommands(
             self,
             compilecommands: List[Dict[str, Any]],
@@ -605,6 +777,15 @@ class ParseManager(object):
                 continue
             if ifilename is None:
                 continue
+            companions = self.append_companions(
+                cfilename, ifilename, self.command_tokens(c), c["directory"])
+            if len(companions) > 0 and copyfiles:
+                savedifilename = os.path.join(
+                    self.savedsourcepath, self.normalize_filename(ifilename))
+                if (os.path.isfile(savedifilename)
+                        and os.path.normpath(savedifilename)
+                        != os.path.normpath(os.path.abspath(ifilename))):
+                    shutil.copy(ifilename, savedifilename)
             cfilename = os.path.abspath(cfilename)
             ifilename = os.path.abspath(ifilename)
             command = [

@@ -128,8 +128,10 @@ class CFunctionApi:
                     spos = IT.get_attribute_int_list(x, "spos")
                     isglobal = x.get("global", "no") == "yes"
                     isfile = x.get("file", "no") == "yes"
+                    iscontract = x.get("contract", "no") == "yes"
                     apiass = ApiAssumption(
-                        self, id, p, ppos, spos, isglobal=isglobal, isfile=isfile)
+                        self, id, p, ppos, spos, isglobal=isglobal, isfile=isfile,
+                        iscontract=iscontract)
                     self._api_assumptions[id] = apiass
         return self._api_assumptions
 
