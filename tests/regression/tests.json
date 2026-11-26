@@ -611,6 +611,14 @@
                 "open": 4,
                 "finding": 1
             }
+        },
+        {
+            "filename": "outparam_postconditions.c",
+            "description": "Issue 73: out-parameter postconditions with an error discriminator (framed as library-summary postconditions / error-postconditions, mutually exclusive outcomes). chkc_initializes(i) makes the scalar leaves of *arg i initialized (post-initialized symbol); with chkc_error_returns_lt/eq(c) only in the success outcome, resolved against the interval of the call's return-value variable at the proof obligation. Proven (contract): use_checked, use_checked_ge, use_val (unconditional), use_eq_zero, use_nested (2). Open: use_unchecked (error outcome not excluded), use_error (error branch), use_plain (no postcondition), use_reassigned (status overwritten: the condition is on the return value, not on the status variable), use_eq (!= -1 not expressible as an interval), use_join (imprecise: the path without the call leaves the return value unconstrained), use_join_error, use_loop, use_prior_partial (initialized before the call on one path only), and 2 arithmetic proof obligations in use_nested. Error outcome: the location keeps its state before the call (copied into a prior-state augmentation variable at the call): use_prior (initialized at declaration, status ignored, as in the cFE *_VerifyCmdLength functions) is proven locally",
+            "expected": {
+                "safe": 168,
+                "open": 11
+            }
         }
     ]
 }
